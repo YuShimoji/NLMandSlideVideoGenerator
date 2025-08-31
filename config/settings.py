@@ -1,0 +1,129 @@
+"""
+システム設定ファイル
+"""
+from pathlib import Path
+from typing import Dict, Any
+import os
+
+# プロジェクトルートディレクトリ
+PROJECT_ROOT = Path(__file__).parent.parent
+
+class Settings:
+    """アプリケーション設定"""
+    
+    def __init__(self):
+        # 基本設定
+        self.APP_NAME = "NLMandSlideVideoGenerator"
+        self.VERSION = "1.0.0"
+        self.DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+        
+        # API設定
+        self.YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+        self.YOUTUBE_CLIENT_ID = os.getenv("YOUTUBE_CLIENT_ID", "")
+        self.YOUTUBE_CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", "")
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+        
+        # ファイルパス設定
+        self.DATA_DIR = PROJECT_ROOT / "data"
+        self.AUDIO_DIR = self.DATA_DIR / "audio"
+        self.SLIDES_DIR = self.DATA_DIR / "slides"
+        self.VIDEOS_DIR = self.DATA_DIR / "videos"
+        self.TRANSCRIPTS_DIR = self.DATA_DIR / "transcripts"
+        
+        # ログ設定
+        self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+        self.LOG_FILE = PROJECT_ROOT / "logs" / "app.log"
+        
+        # 動画生成設定
+        self.VIDEO_SETTINGS = {
+            "resolution": (1920, 1080),
+            "fps": 30,
+            "video_codec": "libx264",
+            "audio_codec": "aac",
+            "crf": 23,
+            "audio_bitrate": "128k"
+        }
+        
+        # 字幕設定
+        self.SUBTITLE_SETTINGS = {
+            "font_family": "Noto Sans CJK JP",
+            "font_size": 48,
+            "font_color": "white",
+            "background_color": "black",
+            "background_opacity": 0.7,
+            "position": "bottom"
+        }
+        
+        # エフェクト設定
+        self.EFFECT_SETTINGS = {
+            "zoom": {
+                "start_scale": 1.0,
+                "end_scale": 1.1,
+                "easing": "ease_in_out"
+            },
+            "pan": {
+                "max_horizontal": 0.05,
+                "max_vertical": 0.03,
+                "duration_factor": 0.8
+            },
+            "fade": {
+                "duration": 0.5,
+                "type": "cross_fade"
+            }
+        }
+        
+        # NotebookLM設定
+        self.NOTEBOOK_LM_SETTINGS = {
+            "max_sources": 10,
+            "audio_quality_threshold": 0.95,
+            "transcript_accuracy_threshold": 0.98,
+            "max_audio_duration": 1800  # 30分
+        }
+        
+        # Google Slides設定
+        self.SLIDES_SETTINGS = {
+            "max_chars_per_slide": 200,
+            "max_slides_per_batch": 20,
+            "theme": "business",
+            "min_font_size": 24
+        }
+        
+        # YouTube設定
+        self.YOUTUBE_SETTINGS = {
+            "privacy_status": "private",
+            "category_id": "27",  # 教育カテゴリ
+            "default_language": "ja",
+            "default_audio_language": "ja",
+            "max_title_length": 100,
+            "max_description_length": 5000,
+            "max_tags_length": 500
+        }
+        
+        # リトライ設定
+        self.RETRY_SETTINGS = {
+            "max_retries": 3,
+            "backoff_factor": 2,
+            "timeout": 30
+        }
+
+# グローバル設定インスタンス
+settings = Settings()
+
+# ディレクトリ作成
+def create_directories():
+    """必要なディレクトリを作成"""
+    directories = [
+        settings.DATA_DIR,
+        settings.AUDIO_DIR,
+        settings.SLIDES_DIR,
+        settings.VIDEOS_DIR,
+        settings.TRANSCRIPTS_DIR,
+        settings.LOG_FILE.parent
+    ]
+    
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
+
+if __name__ == "__main__":
+    create_directories()
+    print(f"設定完了: {settings.APP_NAME} v{settings.VERSION}")

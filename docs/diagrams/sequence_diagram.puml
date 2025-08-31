@@ -1,0 +1,146 @@
+@startuml sequence_diagram
+!theme cerulean-outline
+title NLMandSlideVideoGenerator - 動画生成シーケンス図
+
+actor User as user
+participant "Main Controller" as main
+participant "Gemini Integration" as gemini
+participant "Content Splitter" as splitter
+participant "Slide Generator" as slides
+participant "TTS Integration" as tts
+participant "Video Composer" as video
+participant "Subtitle Generator" as subtitle
+participant "YouTube Uploader" as youtube
+
+user -> main : start_generation(topic, settings)
+activate main
+
+main -> main : validate_input(topic, settings)
+main -> main : load_configuration()
+
+== AI台本生成フェーズ ==
+main -> gemini : generate_script(topic)
+activate gemini
+gemini -> gemini : prepare_prompt(topic)
+gemini -> gemini : call_gemini_api()
+gemini -> gemini : parse_response()
+gemini --> main : ScriptInfo
+deactivate gemini
+
+main -> splitter : split_content(script)
+activate splitter
+splitter -> splitter : analyze_structure(script.content)
+splitter -> splitter : create_slide_sections()
+splitter -> splitter : suggest_images()
+splitter --> main : List[SlideInfo]
+deactivate splitter
+
+== 並列処理: スライド生成 & 音声生成 ==
+par スライド生成
+    main -> slides : create_presentation(script)
+    activate slides
+    slides -> slides : authenticate_google_slides()
+    slides -> slides : create_blank_presentation()
+    
+    loop for each slide_info
+        slides -> slides : add_slide(slide_info)
+        slides -> slides : apply_layout(slide_info.layout)
+        slides -> slides : insert_content(slide_info.content)
+    end
+    
+    slides -> slides : apply_theme()
+    slides -> slides : export_slide_images()
+    slides --> main : SlidesPackage
+    deactivate slides
+
+else 音声生成
+    main -> tts : generate_audio(script.content)
+    activate tts
+    
+    alt ElevenLabs利用可能
+        tts -> tts : elevenlabs_tts(script.content)
+    else OpenAI利用可能
+        tts -> tts : openai_tts(script.content)
+    else Azure利用可能
+        tts -> tts : azure_tts(script.content)
+    else Google Cloud TTS
+        tts -> tts : google_tts(script.content)
+    end
+    
+    tts -> tts : validate_audio_quality()
+    tts -> tts : save_audio_file()
+    tts --> main : AudioInfo
+    deactivate tts
+end
+
+== 動画合成フェーズ ==
+main -> subtitle : generate_subtitles(script, audio)
+activate subtitle
+subtitle -> subtitle : parse_script_timing()
+subtitle -> subtitle : sync_with_audio(audio.duration)
+subtitle -> subtitle : create_srt_file()
+subtitle --> main : subtitle_file_path
+deactivate subtitle
+
+main -> video : compose_video(slides_package, audio, subtitles)
+activate video
+video -> video : load_slide_images()
+video -> video : load_audio_file()
+video -> video : calculate_slide_timing()
+
+loop for each slide
+    video -> video : create_video_clip(slide_image, duration)
+    video -> video : add_transition_effects()
+end
+
+video -> video : combine_video_clips()
+video -> video : add_audio_track(audio)
+video -> video : add_subtitle_track(subtitles)
+video -> video : apply_final_effects()
+video -> video : render_final_video()
+video --> main : VideoInfo
+deactivate video
+
+== YouTube投稿フェーズ ==
+main -> youtube : upload_video(video_info, metadata)
+activate youtube
+youtube -> youtube : authenticate_youtube_api()
+youtube -> youtube : prepare_upload_metadata()
+youtube -> youtube : create_thumbnail()
+
+youtube -> youtube : start_video_upload()
+youtube -> youtube : monitor_upload_progress()
+
+alt アップロード成功
+    youtube -> youtube : set_video_metadata()
+    youtube -> youtube : upload_thumbnail()
+    youtube -> youtube : set_privacy_status()
+    youtube --> main : UploadResult(success=True)
+else アップロード失敗
+    youtube -> youtube : log_error()
+    youtube --> main : UploadResult(success=False)
+end
+deactivate youtube
+
+main -> main : cleanup_temp_files()
+main -> main : save_generation_log()
+main --> user : 完了通知(upload_result)
+deactivate main
+
+note over user, youtube
+  **エラーハンドリング**
+  各ステップでエラーが発生した場合：
+  1. エラーログを記録
+  2. 可能であればリトライ
+  3. フォールバック処理を実行
+  4. ユーザーに適切なエラーメッセージを返す
+end note
+
+note over main
+  **非同期処理**
+  - スライド生成と音声生成は並列実行
+  - 長時間処理はプログレス通知
+  - API制限を考慮したレート制限
+end note
+
+@enduml

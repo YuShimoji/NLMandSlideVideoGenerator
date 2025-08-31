@@ -1,0 +1,128 @@
+@startuml system_architecture
+!theme aws-orange
+title NLMandSlideVideoGenerator - システムアーキテクチャ
+
+!define RECTANGLE class
+
+package "External APIs" {
+    [Google AI Studio\n(Gemini API)] as Gemini
+    [YouTube Data API v3] as YouTube
+    [Google Slides API] as Slides
+    [ElevenLabs TTS] as ElevenLabs
+    [OpenAI TTS] as OpenAI
+    [Azure Speech] as Azure
+    [Google Cloud TTS] as GoogleTTS
+}
+
+package "Core System" {
+    package "src/" {
+        package "notebook_lm/" {
+            [audio_generator.py] as AudioGen
+            [gemini_integration.py] as GeminiInt
+            [podcast_generator.py] as PodcastGen
+            [script_processor.py] as ScriptProc
+        }
+        
+        package "slides/" {
+            [slide_generator.py] as SlideGen
+            [content_splitter.py] as ContentSplit
+        }
+        
+        package "audio/" {
+            [tts_integration.py] as TTSInt
+        }
+        
+        package "video_editor/" {
+            [video_composer.py] as VideoComp
+            [subtitle_generator.py] as SubGen
+            [effect_processor.py] as EffectProc
+        }
+        
+        package "youtube/" {
+            [uploader.py] as Uploader
+        }
+        
+        [main.py] as Main
+        [data_models.py] as DataModels
+    }
+    
+    package "config/" {
+        [settings.py] as Settings
+        [api_keys.py] as APIKeys
+    }
+}
+
+package "Testing & Setup" {
+    [test_api_integration.py] as APITest
+    [setup_environment.py] as EnvSetup
+    [github_setup.py] as GitSetup
+}
+
+package "Documentation" {
+    [README.md] as README
+    [docs/] as Docs
+    [.github/workflows/] as Actions
+}
+
+' Main workflow connections
+Main --> GeminiInt : スクリプト生成
+Main --> SlideGen : スライド作成
+Main --> AudioGen : 音声生成
+Main --> VideoComp : 動画合成
+Main --> Uploader : YouTube投稿
+
+' API integrations
+GeminiInt --> Gemini : AI台本生成
+SlideGen --> Slides : スライド自動作成
+AudioGen --> TTSInt : 音声変換
+TTSInt --> ElevenLabs : TTS (Primary)
+TTSInt --> OpenAI : TTS (Backup)
+TTSInt --> Azure : TTS (Enterprise)
+TTSInt --> GoogleTTS : TTS (Fallback)
+Uploader --> YouTube : 動画アップロード
+
+' Internal dependencies
+AudioGen --> ScriptProc : 台本処理
+SlideGen --> ContentSplit : コンテンツ分割
+VideoComp --> SubGen : 字幕生成
+VideoComp --> EffectProc : エフェクト処理
+PodcastGen --> AudioGen : ポッドキャスト音声
+
+' Configuration
+Main --> Settings : 設定読み込み
+Settings --> APIKeys : API認証情報
+APITest --> Settings : テスト設定
+
+' Data flow
+DataModels --> AudioGen : AudioInfo
+DataModels --> SlideGen : SlideInfo
+DataModels --> VideoComp : VideoInfo
+DataModels --> Uploader : UploadResult
+
+' Setup and documentation
+EnvSetup --> Settings : 環境構築
+GitSetup --> Actions : CI/CD設定
+Actions --> Docs : 自動ドキュメント生成
+
+note right of Main
+  メインエントリーポイント
+  - 非同期処理制御
+  - エラーハンドリング
+  - プログレス管理
+end note
+
+note right of TTSInt
+  マルチプロバイダー対応
+  - フォールバック機能
+  - レート制限対応
+  - 音質最適化
+end note
+
+note right of VideoComp
+  動画合成エンジン
+  - MoviePy統合
+  - 字幕同期
+  - エフェクト適用
+end note
+
+@enduml

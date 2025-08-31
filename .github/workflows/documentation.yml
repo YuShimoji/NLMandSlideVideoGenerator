@@ -1,0 +1,379 @@
+name: Documentation Generation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install sphinx sphinx-rtd-theme myst-parser
+    
+    - name: Install Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+    
+    - name: Install PlantUML
+      run: |
+        sudo apt-get install -y default-jre
+        wget -O plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
+        sudo mv plantuml.jar /usr/local/bin/
+        echo '#!/bin/bash' | sudo tee /usr/local/bin/plantuml
+        echo 'java -jar /usr/local/bin/plantuml.jar "$@"' | sudo tee -a /usr/local/bin/plantuml
+        sudo chmod +x /usr/local/bin/plantuml
+    
+    - name: Generate PlantUML diagrams
+      run: |
+        mkdir -p docs/diagrams/generated
+        find docs/diagrams -name "*.puml" -exec plantuml -tpng -o generated {} \;
+        find docs/diagrams -name "*.plantuml" -exec plantuml -tpng -o generated {} \;
+    
+    - name: Create Doxyfile
+      run: |
+        cat > Doxyfile << 'EOF'
+        # Doxygen configuration for NLMandSlideVideoGenerator
+        
+        PROJECT_NAME           = "NLMandSlideVideoGenerator"
+        PROJECT_NUMBER         = "v1.0.0"
+        PROJECT_BRIEF          = "YouTube解説動画の自動生成システム"
+        
+        OUTPUT_DIRECTORY       = docs/doxygen
+        CREATE_SUBDIRS         = NO
+        
+        INPUT                  = src/ README.md
+        INPUT_ENCODING         = UTF-8
+        FILE_PATTERNS          = *.py *.md
+        RECURSIVE              = YES
+        
+        EXCLUDE_PATTERNS       = */test* */__pycache__/* */.*
+        
+        SOURCE_BROWSER         = YES
+        INLINE_SOURCES         = NO
+        
+        GENERATE_HTML          = YES
+        HTML_OUTPUT            = html
+        HTML_FILE_EXTENSION    = .html
+        HTML_HEADER            = 
+        HTML_FOOTER            = 
+        HTML_STYLESHEET        = 
+        HTML_EXTRA_STYLESHEET  = 
+        HTML_EXTRA_FILES       = 
+        HTML_COLORSTYLE_HUE    = 220
+        HTML_COLORSTYLE_SAT    = 100
+        HTML_COLORSTYLE_GAMMA  = 80
+        HTML_TIMESTAMP         = YES
+        HTML_DYNAMIC_MENUS     = YES
+        HTML_DYNAMIC_SECTIONS  = NO
+        HTML_INDEX_NUM_ENTRIES = 100
+        
+        GENERATE_LATEX         = NO
+        GENERATE_RTF           = NO
+        GENERATE_MAN           = NO
+        GENERATE_XML           = NO
+        
+        HAVE_DOT               = YES
+        DOT_NUM_THREADS        = 0
+        DOT_FONTNAME           = Helvetica
+        DOT_FONTSIZE           = 10
+        DOT_FONTPATH           = 
+        CLASS_GRAPH            = YES
+        COLLABORATION_GRAPH    = YES
+        GROUP_GRAPHS           = YES
+        UML_LOOK               = NO
+        UML_LIMIT_NUM_FIELDS   = 10
+        TEMPLATE_RELATIONS     = NO
+        INCLUDE_GRAPH          = YES
+        INCLUDED_BY_GRAPH      = YES
+        CALL_GRAPH             = NO
+        CALLER_GRAPH           = NO
+        GRAPHICAL_HIERARCHY    = YES
+        DIRECTORY_GRAPH        = YES
+        
+        OPTIMIZE_OUTPUT_FOR_C  = NO
+        OPTIMIZE_OUTPUT_JAVA   = NO
+        OPTIMIZE_FOR_FORTRAN   = NO
+        OPTIMIZE_OUTPUT_VHDL   = NO
+        OPTIMIZE_OUTPUT_SLICE  = NO
+        
+        EXTRACT_ALL            = YES
+        EXTRACT_PRIVATE        = YES
+        EXTRACT_PRIV_VIRTUAL   = NO
+        EXTRACT_PACKAGE        = NO
+        EXTRACT_STATIC         = YES
+        EXTRACT_LOCAL_CLASSES  = YES
+        EXTRACT_LOCAL_METHODS  = NO
+        EXTRACT_ANON_NSPACES   = NO
+        
+        HIDE_UNDOC_MEMBERS     = NO
+        HIDE_UNDOC_CLASSES     = NO
+        HIDE_FRIEND_COMPOUNDS  = NO
+        HIDE_IN_BODY_DOCS      = NO
+        
+        CASE_SENSE_NAMES       = YES
+        HIDE_SCOPE_NAMES       = NO
+        HIDE_COMPOUND_REFERENCE= NO
+        SHOW_INCLUDE_FILES     = YES
+        SHOW_GROUPED_MEMB_INC  = NO
+        FORCE_LOCAL_INCLUDES   = NO
+        INLINE_INFO            = YES
+        SORT_MEMBER_DOCS       = YES
+        SORT_BRIEF_DOCS        = NO
+        SORT_MEMBERS_CTORS_1ST = NO
+        SORT_GROUP_NAMES       = NO
+        SORT_BY_SCOPE_NAME     = NO
+        
+        GENERATE_TODOLIST      = YES
+        GENERATE_TESTLIST      = YES
+        GENERATE_BUGLIST       = YES
+        GENERATE_DEPRECATEDLIST= YES
+        
+        FILTER_PATTERNS        = "*.py=python_filter.py"
+        FILTER_SOURCE_FILES    = NO
+        FILTER_SOURCE_PATTERNS = 
+        
+        USE_MDFILE_AS_MAINPAGE = README.md
+        EOF
+    
+    - name: Generate Doxygen documentation
+      run: |
+        doxygen Doxyfile
+    
+    - name: Create Python documentation with Sphinx
+      run: |
+        mkdir -p docs/sphinx
+        cd docs/sphinx
+        sphinx-quickstart -q -p "NLMandSlideVideoGenerator" -a "YuShimoji" -v "1.0.0" --ext-autodoc --ext-viewcode --makefile --no-batchfile .
+        
+        # Configure Sphinx
+        cat > conf.py << 'EOF'
+        import os
+        import sys
+        sys.path.insert(0, os.path.abspath('../../src'))
+        
+        project = 'NLMandSlideVideoGenerator'
+        copyright = '2025, YuShimoji'
+        author = 'YuShimoji'
+        release = '1.0.0'
+        
+        extensions = [
+            'sphinx.ext.autodoc',
+            'sphinx.ext.viewcode',
+            'sphinx.ext.napoleon',
+            'sphinx.ext.intersphinx',
+            'myst_parser'
+        ]
+        
+        templates_path = ['_templates']
+        exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+        
+        html_theme = 'sphinx_rtd_theme'
+        html_static_path = ['_static']
+        
+        autodoc_default_options = {
+            'members': True,
+            'member-order': 'bysource',
+            'special-members': '__init__',
+            'undoc-members': True,
+            'exclude-members': '__weakref__'
+        }
+        
+        napoleon_google_docstring = True
+        napoleon_numpy_docstring = True
+        napoleon_include_init_with_doc = False
+        napoleon_include_private_with_doc = False
+        
+        intersphinx_mapping = {
+            'python': ('https://docs.python.org/3/', None),
+        }
+        EOF
+        
+        # Generate API documentation
+        sphinx-apidoc -o . ../../src
+        make html
+    
+    - name: Create unified documentation site
+      run: |
+        mkdir -p docs/site
+        
+        # Create main index page
+        cat > docs/site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>NLMandSlideVideoGenerator - ドキュメント</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 20px;
+                    background: #f5f5f5;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 40px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                h1 {
+                    color: #2c3e50;
+                    border-bottom: 3px solid #3498db;
+                    padding-bottom: 10px;
+                }
+                .grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 20px;
+                    margin-top: 30px;
+                }
+                .card {
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 20px;
+                    background: #fafafa;
+                    transition: transform 0.2s;
+                }
+                .card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+                .card h3 {
+                    margin-top: 0;
+                    color: #34495e;
+                }
+                .card a {
+                    color: #3498db;
+                    text-decoration: none;
+                    font-weight: 500;
+                }
+                .card a:hover {
+                    text-decoration: underline;
+                }
+                .badge {
+                    display: inline-block;
+                    background: #3498db;
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 0.8em;
+                    margin-left: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🎬 NLMandSlideVideoGenerator</h1>
+                <p>YouTube解説動画の自動生成システム - 包括的なドキュメント</p>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>📚 API ドキュメント</h3>
+                        <p>Doxygenで生成されたコードドキュメント</p>
+                        <a href="doxygen/html/index.html">Doxygen Documentation →</a>
+                        <span class="badge">自動生成</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🐍 Python API リファレンス</h3>
+                        <p>Sphinxで生成されたPython API詳細</p>
+                        <a href="sphinx/_build/html/index.html">Sphinx Documentation →</a>
+                        <span class="badge">詳細</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>📊 システム図表</h3>
+                        <p>PlantUMLで生成されたアーキテクチャ図</p>
+                        <a href="diagrams/generated/">System Diagrams →</a>
+                        <span class="badge">視覚化</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🚀 セットアップガイド</h3>
+                        <p>環境構築と初期設定の手順</p>
+                        <a href="../api_setup_guide.html">Setup Guide →</a>
+                        <span class="badge">必須</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🏗️ システム仕様</h3>
+                        <p>アーキテクチャと技術仕様</p>
+                        <a href="../system_architecture.html">Architecture →</a>
+                        <span class="badge">技術</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🧪 テスト・デモ</h3>
+                        <p>テスト実行とデモンストレーション</p>
+                        <a href="../development_guide.html">Development →</a>
+                        <span class="badge">実践</span>
+                    </div>
+                </div>
+                
+                <hr style="margin: 40px 0;">
+                
+                <h2>📈 プロジェクト統計</h2>
+                <ul>
+                    <li><strong>4,000+行</strong> のPythonコード</li>
+                    <li><strong>35+ファイル</strong> (ソース、テスト、ドキュメント)</li>
+                    <li><strong>完全な非同期処理</strong> 対応</li>
+                    <li><strong>包括的なAPI統合</strong> (Gemini, YouTube, Slides, TTS)</li>
+                    <li><strong>自動化された環境セットアップ</strong></li>
+                </ul>
+                
+                <p style="margin-top: 30px; text-align: center; color: #7f8c8d;">
+                    Generated by GitHub Actions • Updated automatically on every push
+                </p>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+        # Copy generated documentation
+        cp -r docs/doxygen docs/site/ 2>/dev/null || true
+        cp -r docs/sphinx/_build docs/site/sphinx 2>/dev/null || true
+        cp -r docs/diagrams docs/site/ 2>/dev/null || true
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'docs/site'
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

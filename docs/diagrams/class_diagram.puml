@@ -1,0 +1,228 @@
+@startuml class_diagram
+!theme plain
+title NLMandSlideVideoGenerator - クラス図
+
+skinparam class {
+    BackgroundColor lightblue
+    BorderColor darkblue
+    ArrowColor darkblue
+}
+
+package "Data Models" {
+    class ScriptInfo {
+        +title: str
+        +content: str
+        +sections: List[str]
+        +duration_estimate: float
+        +language: str
+        +metadata: Dict
+        --
+        +validate(): bool
+        +to_dict(): Dict
+        +from_dict(data: Dict): ScriptInfo
+    }
+
+    class SlideInfo {
+        +slide_id: str
+        +title: str
+        +content: str
+        +layout: str
+        +duration: float
+        +image_suggestions: Optional[List[str]]
+        +notes: str
+        --
+        +validate(): bool
+        +to_dict(): Dict
+        +estimate_reading_time(): float
+    }
+
+    class SlidesPackage {
+        +presentation_id: str
+        +slides: List[SlideInfo]
+        +theme: str
+        +total_duration: float
+        +created_at: datetime
+        --
+        +add_slide(slide: SlideInfo): void
+        +get_total_slides(): int
+        +export_urls(): List[str]
+    }
+
+    class AudioInfo {
+        +file_path: str
+        +duration: float
+        +format: str
+        +sample_rate: int
+        +language: str
+        +provider: str
+        +quality_score: float
+        --
+        +validate_file(): bool
+        +get_metadata(): Dict
+        +convert_format(target: str): str
+    }
+
+    class VideoInfo {
+        +file_path: str
+        +duration: float
+        +resolution: Tuple[int, int]
+        +fps: int
+        +format: str
+        +file_size: int
+        +has_subtitles: bool
+        --
+        +validate(): bool
+        +get_thumbnail(time: float): str
+        +compress(quality: str): str
+    }
+
+    class UploadResult {
+        +video_id: str
+        +url: str
+        +title: str
+        +status: str
+        +uploaded_at: datetime
+        +view_count: int
+        +metadata: Dict
+        --
+        +is_successful(): bool
+        +get_analytics(): Dict
+        +update_status(): void
+    }
+}
+
+package "Core Components" {
+    class GeminiIntegration {
+        -api_key: str
+        -model: str
+        -temperature: float
+        --
+        +generate_script(topic: str): ScriptInfo
+        +enhance_content(content: str): str
+        +validate_api_key(): bool
+        -_make_request(prompt: str): str
+    }
+
+    class SlideGenerator {
+        -slides_service: Any
+        -template_id: str
+        --
+        +create_presentation(script: ScriptInfo): SlidesPackage
+        +add_slide(content: str): SlideInfo
+        +apply_theme(theme: str): void
+        +export_images(): List[str]
+        -_batch_update(requests: List): void
+    }
+
+    class TTSIntegration {
+        -providers: Dict[str, Any]
+        -fallback_order: List[str]
+        --
+        +generate_audio(text: str, provider: str): AudioInfo
+        +get_available_voices(): List[str]
+        +test_provider(provider: str): bool
+        -_elevenlabs_tts(text: str): AudioInfo
+        -_openai_tts(text: str): AudioInfo
+        -_azure_tts(text: str): AudioInfo
+        -_google_tts(text: str): AudioInfo
+    }
+
+    class VideoComposer {
+        -temp_dir: str
+        -effects: List[str]
+        --
+        +compose_video(slides: SlidesPackage, audio: AudioInfo): VideoInfo
+        +add_subtitles(video: VideoInfo, script: ScriptInfo): VideoInfo
+        +apply_effects(video: VideoInfo): VideoInfo
+        +generate_thumbnail(video: VideoInfo): str
+        -_sync_audio_slides(audio: AudioInfo, slides: List): void
+    }
+
+    class YouTubeUploader {
+        -youtube_service: Any
+        -credentials: Any
+        --
+        +upload_video(video: VideoInfo, metadata: Dict): UploadResult
+        +set_thumbnail(video_id: str, thumbnail: str): bool
+        +update_metadata(video_id: str, metadata: Dict): bool
+        +get_upload_status(video_id: str): str
+        -_authenticate(): Any
+    }
+
+    class ContentSplitter {
+        -max_slide_length: int
+        -slide_templates: Dict
+        --
+        +split_content(script: ScriptInfo): List[SlideInfo]
+        +suggest_images(content: str): List[str]
+        +estimate_timing(content: str): float
+        -_analyze_structure(text: str): List[str]
+    }
+
+    class SubtitleGenerator {
+        -font_config: Dict
+        -timing_config: Dict
+        --
+        +generate_subtitles(script: ScriptInfo, audio: AudioInfo): str
+        +sync_with_audio(subtitles: str, audio: AudioInfo): str
+        +apply_styling(subtitles: str): str
+        -_calculate_timing(text: str, duration: float): List
+    }
+}
+
+package "Utilities" {
+    class SimpleLogger {
+        -log_level: str
+        -log_file: str
+        --
+        +info(message: str): void
+        +error(message: str): void
+        +warning(message: str): void
+        +debug(message: str): void
+        -_format_message(level: str, message: str): str
+    }
+
+    class Settings {
+        +API_KEYS: Dict
+        +DEFAULT_SETTINGS: Dict
+        +PATHS: Dict
+        --
+        +load_config(): Dict
+        +get_api_key(service: str): str
+        +validate_settings(): bool
+        +update_setting(key: str, value: Any): void
+    }
+}
+
+' Relationships
+GeminiIntegration --> ScriptInfo : creates
+ContentSplitter --> SlideInfo : creates
+SlideGenerator --> SlidesPackage : creates
+TTSIntegration --> AudioInfo : creates
+VideoComposer --> VideoInfo : creates
+YouTubeUploader --> UploadResult : creates
+
+SlideGenerator --> SlideInfo : uses
+VideoComposer --> SlidesPackage : uses
+VideoComposer --> AudioInfo : uses
+SubtitleGenerator --> ScriptInfo : uses
+SubtitleGenerator --> AudioInfo : uses
+
+ContentSplitter --> ScriptInfo : processes
+SlideGenerator --> ContentSplitter : depends on
+VideoComposer --> SubtitleGenerator : depends on
+
+' Data model relationships
+SlidesPackage *-- SlideInfo : contains
+ScriptInfo --> SlideInfo : splits into
+AudioInfo --> VideoInfo : combined with
+SlidesPackage --> VideoInfo : rendered to
+
+' Utility dependencies
+GeminiIntegration --> Settings : uses
+SlideGenerator --> Settings : uses
+TTSIntegration --> Settings : uses
+VideoComposer --> SimpleLogger : uses
+YouTubeUploader --> SimpleLogger : uses
+
+@enduml

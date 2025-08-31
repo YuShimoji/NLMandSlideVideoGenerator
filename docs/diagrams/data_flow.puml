@@ -1,0 +1,99 @@
+@startuml data_flow
+!theme blueprint
+title NLMandSlideVideoGenerator - データフローとプロセス
+
+skinparam activity {
+    BackgroundColor lightblue
+    BorderColor darkblue
+    FontColor black
+}
+
+start
+
+:ユーザー入力\n(トピック・設定);
+
+partition "AI台本生成" {
+    :Gemini API呼び出し;
+    :台本テキスト生成;
+    :構造化データ変換;
+    :ScriptInfo作成;
+}
+
+partition "コンテンツ分割" {
+    :台本セクション分析;
+    :スライド単位に分割;
+    :画像提案生成;
+    :SlideInfo配列作成;
+}
+
+fork
+    partition "スライド生成" {
+        :Google Slides API;
+        :テンプレート適用;
+        :コンテンツ挿入;
+        :レイアウト調整;
+        :SlidesPackage作成;
+    }
+fork again
+    partition "音声生成" {
+        :TTS プロバイダー選択;
+        if (ElevenLabs利用可能?) then (yes)
+            :ElevenLabs TTS;
+        else (no)
+            if (OpenAI利用可能?) then (yes)
+                :OpenAI TTS;
+            else (no)
+                if (Azure利用可能?) then (yes)
+                    :Azure Speech;
+                else (no)
+                    :Google Cloud TTS;
+                endif
+            endif
+        endif
+        :音声ファイル生成;
+        :AudioInfo作成;
+    }
+end fork
+
+partition "動画合成" {
+    :スライド画像取得;
+    :音声ファイル読み込み;
+    :字幕生成;
+    :タイミング同期;
+    :エフェクト適用;
+    :動画ファイル出力;
+    :VideoInfo作成;
+}
+
+partition "YouTube投稿" {
+    :メタデータ準備;
+    :サムネイル生成;
+    :YouTube API認証;
+    :動画アップロード;
+    :公開設定;
+    :UploadResult作成;
+}
+
+:完了通知;
+
+stop
+
+note right
+  **データモデル**
+  - ScriptInfo: 台本データ
+  - SlideInfo: スライド情報
+  - SlidesPackage: スライド集合
+  - AudioInfo: 音声データ
+  - VideoInfo: 動画情報
+  - UploadResult: 投稿結果
+end note
+
+note left
+  **エラーハンドリング**
+  - API制限対応
+  - フォールバック機能
+  - リトライ機構
+  - ログ出力
+end note
+
+@enduml

@@ -1,0 +1,38 @@
+"""
+API キー設定ファイルのテンプレート
+使用方法: このファイルを api_keys.py にコピーして、実際のAPI キーを設定してください
+"""
+
+# YouTube API 設定
+YOUTUBE_API_KEY = "your_youtube_api_key_here"
+YOUTUBE_CLIENT_ID = "your_youtube_client_id_here"
+YOUTUBE_CLIENT_SECRET = "your_youtube_client_secret_here"
+
+# Google API 設定（将来的なGoogle Slides API自動化用）
+GOOGLE_API_KEY = "your_google_api_key_here"
+GOOGLE_CLIENT_ID = "your_google_client_id_here"
+GOOGLE_CLIENT_SECRET = "your_google_client_secret_here"
+
+# OpenAI API 設定（オプション - AI機能強化用）
+OPENAI_API_KEY = "your_openai_api_key_here"
+
+# その他のAPI設定
+# 必要に応じて追加のAPI キーをここに記述
+
+# セキュリティ設定
+SECRET_KEY = "your_secret_key_for_encryption"
+JWT_SECRET = "your_jwt_secret_key"
+
+# データベース設定（本番環境用）
+DATABASE_URL = "postgresql://user:password@localhost/nlm_video_generator"
+
+# Redis設定（キューシステム用）
+REDIS_URL = "redis://localhost:6379/0"
+
+# 外部サービス設定
+WEBHOOK_SECRET = "your_webhook_secret"
+
+# 注意事項:
+# 1. このファイルは .gitignore に追加されているため、Git にコミットされません
+# 2. 本番環境では環境変数を使用することを推奨します
+# 3. API キーは絶対に公開リポジトリにコミットしないでください
