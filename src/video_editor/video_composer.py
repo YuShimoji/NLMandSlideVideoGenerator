@@ -8,7 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import json
 from datetime import datetime
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 # 基本的なロガー設定（loguruの代替）
 class SimpleLogger:

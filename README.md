@@ -212,6 +212,57 @@ python main.py --help
 python main.py --topic "AI技術の最新動向" --duration 300
 ```
 
+## 🧩 モジュラーパイプラインの使い方
+
+実装を疎結合化したモジュラーパイプラインを追加しました。依存性注入により各役割（ソース収集/音声/台本/スライド/合成/メタデータ/アップロード）を差し替え可能です。
+
+### デモ実行
+
+```bash
+python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
+
+# アップロードまで実行したい場合（認証設定が必要）
+# python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p --upload --public
+```
+
+生成物は `data/` 配下に出力されます。
+
+### 追加ファイル
+- `src/core/interfaces.py` — 各モジュールのProtocolインターフェイス
+- `src/core/pipeline.py` — 依存性注入可能なモジュラーパイプライン
+- `run_modular_demo.py` — モジュラーパイプラインのデモ実行スクリプト
+
+## 🪟 Windows 環境でのUnicode表示について
+
+Windowsコンソールの既定コードページ（cp932）で絵文字などの出力時に `UnicodeEncodeError` が発生する問題に対応しました。以下のスクリプトでは標準出力/標準エラーをUTF-8に再設定しています。
+
+- `run_api_test.py`
+- `run_debug_test.py`
+- `test_api_integration.py`
+- `test_execution_demo.py`
+- `test_simple_mock.py`
+
+サブプロセス実行時も `encoding='utf-8', errors='replace'` を設定済みです。追加で問題が出る場合は、以下も有効です。
+
+- `PYTHONIOENCODING=utf-8` 環境変数の利用
+- Windows Terminal で UTF-8 を使用
+
+## 🔁 後方互換のための変更点
+
+- `slides/slide_generator.py`
+  - `SlideInfo`: 旧フィールド `layout`/`duration` を `layout_type`/`estimated_duration` にマッピング（`__post_init__`）
+  - `SlidesPackage`: `presentation_id`/`title` を省略可能に
+  - テスト用 `create_slides_from_content()` を用意
+- `youtube/uploader.py`
+  - `UploadResult.uploaded_at` を Optional[datetime] に
+- `youtube/metadata_generator.py`
+  - `VideoMetadata` に `language`/`privacy_status` を Optional で追加
+  - `thumbnail_suggestions` を Optional[List[str]] に
+- `notebook_lm/audio_generator.py`
+  - `AudioInfo.language` を設定（`settings.YOUTUBE_SETTINGS.default_audio_language`）
+
+これらにより、既存のテスト・デモスクリプトとの後方互換性が維持されます。
+
 ## 📋 必要なAPI認証情報
 
 | サービス | 必要な認証情報 | 用途 |

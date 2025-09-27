@@ -74,6 +74,9 @@ class MetadataGenerator:
                 "category_id": self.youtube_settings["category_id"],
                 "thumbnail_suggestions": thumbnail_suggestions
             }
+            # 既定の言語とプライバシー設定を付与（後で上書き可能）
+            metadata.setdefault("language", self.youtube_settings.get("default_language", "ja"))
+            metadata.setdefault("privacy_status", self.youtube_settings.get("privacy_status", "private"))
             
             logger.success("YouTubeメタデータ生成完了")
             return metadata
