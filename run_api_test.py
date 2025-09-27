@@ -42,6 +42,8 @@ def run_api_integration_test():
             [sys.executable, str(test_script)],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             cwd=str(project_root),
             timeout=120  # 2分でタイムアウト
         )

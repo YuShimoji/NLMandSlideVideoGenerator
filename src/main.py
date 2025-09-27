@@ -29,6 +29,7 @@ try:
     from slides.slide_generator import SlideGenerator
     from video_editor.video_composer import VideoComposer
     from youtube.uploader import YouTubeUploader
+    from youtube.metadata_generator import MetadataGenerator
 except ImportError as e:
     print(f"モジュールインポートエラー: {e}")
     print("基本的な依存関係をインストールしてください")
@@ -44,6 +45,7 @@ class VideoGenerationPipeline:
         self.slide_generator = SlideGenerator()
         self.video_composer = VideoComposer()
         self.youtube_uploader = YouTubeUploader()
+        self.metadata_generator = MetadataGenerator()
     
     async def generate_video(
         self,
@@ -76,32 +78,41 @@ class VideoGenerationPipeline:
             # Phase 1: NotebookLMでの作業
             logger.info("Phase 1: ソース収集・音声生成")
             sources = await self.source_collector.collect_sources(topic, urls)
-            audio_file = await self.audio_generator.generate_audio(sources)
-            transcript = await self.transcript_processor.process_audio(audio_file)
+            audio_info = await self.audio_generator.generate_audio(sources)
+            transcript = await self.transcript_processor.process_audio(audio_info)
             
             # Phase 2: Google Slideでの作業
             logger.info("Phase 2: スライド生成")
-            slides_file = await self.slide_generator.generate_slides(
+            slides_pkg = await self.slide_generator.generate_slides(
                 transcript, max_slides=max_slides
             )
             
             # Phase 3: 動画編集作業
             logger.info("Phase 3: 動画編集・合成")
-            video_file = await self.video_composer.compose_video(
-                audio_file=audio_file,
-                slides_file=slides_file,
+            video_info = await self.video_composer.compose_video(
+                audio_file=audio_info,
+                slides_file=slides_pkg,
                 transcript=transcript,
                 quality=video_quality
             )
             
             # Phase 4: YouTubeアップロード
             logger.info("Phase 4: YouTubeアップロード")
-            youtube_url = await self.youtube_uploader.upload_video(
-                video_file=video_file,
-                transcript=transcript,
-                schedule=upload_schedule,
-                private=private_upload
+            # メタデータ生成
+            metadata_dict = await self.metadata_generator.generate_metadata(transcript)
+            # プライバシー設定を反映
+            metadata_dict["privacy_status"] = "private" if private_upload else "public"
+            metadata_dict["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+
+            # 認証（モック対応）
+            await self.youtube_uploader.authenticate()
+
+            upload_result = await self.youtube_uploader.upload_video(
+                video=video_info,
+                metadata=metadata_dict,
+                thumbnail_path=None
             )
+            youtube_url = upload_result.video_url
             
             logger.success(f"動画生成完了: {youtube_url}")
             return youtube_url
@@ -115,7 +126,7 @@ def main():
     YouTube解説動画自動化システム
     
     使用例:
-    python src/main.py
+    python src/main.py --topic "AI技術の最新動向"
     """
     import argparse
     
@@ -163,11 +174,11 @@ def main():
             )
         )
         
-        click.echo(f"✅ 動画生成完了!")
-        click.echo(f"📺 YouTube URL: {youtube_url}")
+        print(f"✅ 動画生成完了!")
+        print(f"📺 YouTube URL: {youtube_url}")
         
     except Exception as e:
-        click.echo(f"❌ エラーが発生しました: {str(e)}", err=True)
+        print(f"❌ エラーが発生しました: {str(e)}")
         if debug:
             raise
 

@@ -29,7 +29,9 @@ class VideoMetadata:
     description: str
     tags: List[str]
     category_id: str
-    thumbnail_suggestions: List[str]
+    thumbnail_suggestions: Optional[List[str]] = None
+    language: Optional[str] = None
+    privacy_status: Optional[str] = None
 
 class MetadataGenerator:
     """メタデータ生成クラス"""

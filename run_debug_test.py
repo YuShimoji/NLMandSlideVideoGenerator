@@ -3,6 +3,13 @@
 デバッグテスト実行とシステム状態確認
 """
 import sys
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import subprocess
 from pathlib import Path
 
@@ -24,6 +31,8 @@ def run_debug_test():
             [sys.executable, str(debug_script)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(project_root)
         )
         

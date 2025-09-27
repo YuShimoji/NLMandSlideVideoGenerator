@@ -8,6 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import json
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
 
 # 基本的なロガー設定（loguruの代替）
 class SimpleLogger:
@@ -109,15 +110,38 @@ class VideoComposer:
         # TODO: 実際のPowerPoint画像抽出実装
         # python-pptxライブラリまたはLibreOfficeを使用
         
-        # プレースホルダー実装
-        slide_images = []
+        # プレースホルダー実装: 実在するPNG画像を生成
+        slide_images: List[Path] = []
+        target_width, target_height = self.video_settings["resolution"]
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
         for i, slide in enumerate(slides_file.slides, 1):
-            # 仮の画像ファイルパス
             image_path = self.output_dir / f"slide_{i:03d}.png"
-            slide_images.append(image_path)
             
-            # 実際には画像抽出処理を実行
-            # await self._extract_single_slide_image(slides_file.file_path, i, image_path)
+            # 既に存在しない場合のみ生成
+            if not image_path.exists():
+                # 背景とテキストの簡易プレースホルダー生成
+                img = Image.new('RGB', (target_width, target_height), color=(20, 20, 20))
+                draw = ImageDraw.Draw(img)
+                
+                # タイトルと簡易情報を描画（フォントはデフォルト）
+                title_text = slide.title or f"Slide {i}"
+                subtitle_text = (slide.content[:60] + "...") if slide.content and len(slide.content) > 60 else (slide.content or "")
+                label_text = f"#{i:02d} | {slide.layout_type or slide.layout or 'layout'} | {slide.estimated_duration or 10:.0f}s"
+                
+                # テキスト配置
+                x_margin = 40
+                y = 60
+                draw.text((x_margin, y), title_text, fill=(235, 235, 235))
+                y += 60
+                if subtitle_text:
+                    draw.text((x_margin, y), subtitle_text, fill=(200, 200, 200))
+                    y += 40
+                draw.text((x_margin, y), label_text, fill=(160, 160, 160))
+                
+                img.save(image_path, format='PNG')
+            
+            slide_images.append(image_path)
         
         logger.info(f"スライド画像抽出完了: {len(slide_images)}枚")
         return slide_images
@@ -164,11 +188,21 @@ class VideoComposer:
             
             # スライド動画クリップ作成
             video_clips = []
-            slide_duration = audio_clip.duration / len(slide_images)
+            num_items = max(len(slide_images), 1)
+            slide_duration = max(audio_clip.duration / num_items, 0.1)
             
             for i, slide_image in enumerate(slide_images):
+                # ProcessedSlide にも対応（最初のフレームを使用）
+                img_path = slide_image
+                try:
+                    # dataclass で processed_frames を持つ場合
+                    if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
+                        img_path = slide_image.processed_frames[0]
+                except Exception:
+                    img_path = slide_image
+                
                 # 画像クリップ作成
-                img_clip = ImageClip(str(slide_image))
+                img_clip = ImageClip(str(img_path))
                 img_clip = img_clip.set_duration(slide_duration)
                 img_clip = img_clip.resize(resolution)
                 
@@ -219,6 +253,11 @@ class VideoComposer:
             return await self._compose_video_fallback(
                 audio_info, slide_images, subtitle_file, quality, output_path
             )
+        except Exception as e:
+            logger.warning(f"MoviePy処理で例外が発生したためフォールバックします: {e}")
+            return await self._compose_video_fallback(
+                audio_info, slide_images, subtitle_file, quality, output_path
+            )
     
     def _get_resolution_from_quality(self, quality: str) -> tuple:
         """
@@ -249,7 +288,7 @@ class VideoComposer:
             合成された動画クリップ
         """
         try:
-            from moviepy.editor import CompositeVideoClip
+            from moviepy.editor import CompositeVideoClip, TextClip
             import pysrt
             
             # SRTファイル読み込み

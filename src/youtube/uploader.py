@@ -7,7 +7,7 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from dataclasses import dataclass
 
 # SimpleLogger クラス
@@ -34,11 +34,11 @@ class UploadResult:
     upload_status: str
     processing_status: str
     privacy_status: str
-    uploaded_at: datetime
+    uploaded_at: Optional[datetime] = None
 
 @dataclass
-class VideoMetadata:
-    """動画メタデータ"""
+class UploadMetadata:
+    """YouTubeアップロード用メタデータ"""
     title: str
     description: str
     tags: list
@@ -78,13 +78,33 @@ class YouTubeUploader:
             return False
     
     async def upload_video(
-        self, 
-        video_path: Path, 
-        metadata: VideoMetadata,
+        self,
+        video: Union[Path, Any],
+        metadata: Union[UploadMetadata, Dict[str, Any]],
         thumbnail_path: Optional[Path] = None
     ) -> UploadResult:
         """動画をアップロード"""
         try:
+            # 入力の正規化
+            if isinstance(video, Path):
+                video_path = video
+            elif hasattr(video, "file_path"):
+                video_path = Path(getattr(video, "file_path"))
+            else:
+                raise TypeError("video には Path か file_path 属性を持つオブジェクトを渡してください")
+
+            if isinstance(metadata, dict):
+                # dict から UploadMetadata に正規化
+                metadata = UploadMetadata(
+                    title=metadata.get("title", "Untitled"),
+                    description=metadata.get("description", ""),
+                    tags=list(metadata.get("tags", [])),
+                    category_id=str(metadata.get("category_id", "27")),
+                    language=str(metadata.get("language", "ja")),
+                    privacy_status=str(metadata.get("privacy_status", "private")),
+                    thumbnail_path=Path(metadata["thumbnail_path"]) if metadata.get("thumbnail_path") else None,
+                )
+
             logger.info(f"動画アップロード開始: {video_path.name}")
             
             # クォータチェック
@@ -117,7 +137,7 @@ class YouTubeUploader:
             logger.error(f"動画アップロード失敗: {e}")
             raise
     
-    async def _validate_metadata(self, metadata: VideoMetadata) -> None:
+    async def _validate_metadata(self, metadata: UploadMetadata) -> None:
         """メタデータを検証"""
         # タイトル長制限（100文字）
         if len(metadata.title) > 100:
@@ -142,7 +162,7 @@ class YouTubeUploader:
     async def _perform_upload(
         self, 
         video_path: Path, 
-        metadata: VideoMetadata,
+        metadata: UploadMetadata,
         thumbnail_path: Optional[Path] = None
     ) -> UploadResult:
         """実際のアップロード処理"""
@@ -231,7 +251,7 @@ class YouTubeUploader:
     async def update_video_metadata(
         self, 
         video_id: str, 
-        metadata: VideoMetadata
+        metadata: UploadMetadata
     ) -> bool:
         """動画メタデータを更新"""
         try:

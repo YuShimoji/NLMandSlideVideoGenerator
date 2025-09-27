@@ -4,6 +4,13 @@
 実際の動作確認と成果物の生成
 """
 import sys
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import asyncio
 from pathlib import Path
 from datetime import datetime
@@ -149,7 +156,9 @@ class DemoRunner:
                 end_time=15.2,
                 speaker="ナレーター1",
                 text="こんにちは。今日はAI技術の最新動向について詳しく解説していきます。",
-                confidence=0.98
+                key_points=["AI", "最新動向"],
+                slide_suggestion="AI技術の最新動向の概要",
+                confidence_score=0.98
             ),
             TranscriptSegment(
                 id=2,
@@ -157,7 +166,9 @@ class DemoRunner:
                 end_time=32.8,
                 speaker="ナレーター2",
                 text="2024年は特に生成AIの分野で大きな進歩が見られました。",
-                confidence=0.96
+                key_points=["生成AI", "進歩"],
+                slide_suggestion="生成AIの主な進歩",
+                confidence_score=0.96
             ),
             TranscriptSegment(
                 id=3,
@@ -165,7 +176,9 @@ class DemoRunner:
                 end_time=48.5,
                 speaker="ナレーター1",
                 text="機械学習のアルゴリズムも従来より効率的になっています。",
-                confidence=0.97
+                key_points=["機械学習", "効率化"],
+                slide_suggestion="機械学習の効率化",
+                confidence_score=0.97
             ),
             TranscriptSegment(
                 id=4,
@@ -173,7 +186,9 @@ class DemoRunner:
                 end_time=65.1,
                 speaker="ナレーター2",
                 text="産業界での応用も急速に拡大しており、自動化技術の導入が進んでいます。",
-                confidence=0.95
+                key_points=["産業応用", "自動化"],
+                slide_suggestion="産業応用の拡大",
+                confidence_score=0.95
             )
         ]
         
@@ -182,7 +197,8 @@ class DemoRunner:
             total_duration=185.7,
             segments=segments,
             accuracy_score=0.965,
-            language="ja"
+            created_at=datetime.now(),
+            source_audio_path=str(settings.AUDIO_DIR / "generated_audio_demo.mp3")
         )
         
         print(f"📄 文字起こし結果:")
@@ -195,7 +211,7 @@ class DemoRunner:
         for segment in segments[:2]:
             print(f"  [{segment.start_time:.1f}s-{segment.end_time:.1f}s] {segment.speaker}")
             print(f"    「{segment.text}」")
-            print(f"    信頼度: {segment.confidence:.2f}")
+            print(f"    信頼度: {segment.confidence_score:.2f}")
         
         # 台本をファイルに保存
         transcript_file = settings.TRANSCRIPTS_DIR / "transcript_demo.json"
@@ -206,7 +222,8 @@ class DemoRunner:
             "title": mock_transcript.title,
             "total_duration": mock_transcript.total_duration,
             "accuracy_score": mock_transcript.accuracy_score,
-            "language": mock_transcript.language,
+            "created_at": mock_transcript.created_at.isoformat(),
+            "source_audio_path": mock_transcript.source_audio_path,
             "segments": [
                 {
                     "id": seg.id,
@@ -214,7 +231,9 @@ class DemoRunner:
                     "end_time": seg.end_time,
                     "speaker": seg.speaker,
                     "text": seg.text,
-                    "confidence": seg.confidence
+                    "key_points": seg.key_points,
+                    "slide_suggestion": seg.slide_suggestion,
+                    "confidence_score": seg.confidence_score
                 }
                 for seg in mock_transcript.segments
             ]

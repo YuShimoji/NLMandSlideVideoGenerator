@@ -4,6 +4,14 @@ API統合テスト
 実環境でのAPI連携動作確認
 """
 import sys
+try:
+    # Windowsのコンソールで絵文字などが原因で失敗しないようUTF-8に設定
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 import asyncio
 from pathlib import Path
 from datetime import datetime
