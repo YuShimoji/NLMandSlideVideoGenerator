@@ -17,7 +17,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "src"))
 
-async def test_basic_imports():
+def test_basic_imports():
     """基本的なインポートテスト"""
     print("=== 基本インポートテスト ===")
     
@@ -50,7 +50,7 @@ async def test_basic_imports():
         print(f"✗ インポートエラー: {e}")
         return False
 
-async def test_basic_instantiation():
+def test_basic_instantiation():
     """基本的なクラスインスタンス化テスト"""
     print("\n=== クラスインスタンス化テスト ===")
     
@@ -95,7 +95,7 @@ async def test_basic_instantiation():
         traceback.print_exc()
         return False
 
-async def test_data_classes():
+def test_data_classes():
     """データクラスのテスト"""
     print("\n=== データクラステスト ===")
     

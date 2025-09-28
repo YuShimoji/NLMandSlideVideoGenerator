@@ -22,13 +22,16 @@ class Settings:
         self.YOUTUBE_CLIENT_ID = os.getenv("YOUTUBE_CLIENT_ID", "")
         self.YOUTUBE_CLIENT_SECRET = os.getenv("YOUTUBE_CLIENT_SECRET", "")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+        self.GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         
         # ファイルパス設定
         self.DATA_DIR = PROJECT_ROOT / "data"
         self.AUDIO_DIR = self.DATA_DIR / "audio"
         self.SLIDES_DIR = self.DATA_DIR / "slides"
+        self.SLIDES_IMAGES_DIR = self.SLIDES_DIR / "images"
         self.VIDEOS_DIR = self.DATA_DIR / "videos"
         self.TRANSCRIPTS_DIR = self.DATA_DIR / "transcripts"
+        self.SCRIPTS_DIR = self.DATA_DIR / "scripts"
         
         # ログ設定
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -98,6 +101,41 @@ class Settings:
             "max_description_length": 5000,
             "max_tags_length": 500
         }
+
+        # Google OAuth 設定
+        self.GOOGLE_SCOPES = [
+            "https://www.googleapis.com/auth/presentations",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        self.GOOGLE_CLIENT_SECRETS_FILE = Path(os.getenv(
+            "GOOGLE_CLIENT_SECRETS_FILE",
+            str(PROJECT_ROOT / "google_client_secret.json")
+        ))
+        self.GOOGLE_OAUTH_TOKEN_FILE = Path(os.getenv(
+            "GOOGLE_OAUTH_TOKEN_FILE",
+            str(PROJECT_ROOT / "token.json")
+        ))
+
+        # TTS 設定
+        self.TTS_SETTINGS = {
+            "provider": os.getenv("TTS_PROVIDER", "none"),  # none | openai | elevenlabs | azure
+            "openai": {
+                "model": os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
+                "voice": os.getenv("OPENAI_TTS_VOICE", "alloy"),
+                "format": os.getenv("OPENAI_TTS_FORMAT", "mp3"),
+            },
+            "elevenlabs": {
+                "api_key": os.getenv("ELEVENLABS_API_KEY", ""),
+                "voice_id": os.getenv("ELEVENLABS_VOICE_ID", ""),
+                "model": os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
+            },
+            "azure": {
+                "key": os.getenv("AZURE_SPEECH_KEY", ""),
+                "region": os.getenv("AZURE_SPEECH_REGION", ""),
+                "voice": os.getenv("AZURE_SPEECH_VOICE", "ja-JP-NanamiNeural"),
+                "format": os.getenv("AZURE_SPEECH_FORMAT", "audio-48khz-192kbitrate-mono-mp3"),
+            },
+        }
         
         # リトライ設定
         self.RETRY_SETTINGS = {
@@ -116,8 +154,10 @@ def create_directories():
         settings.DATA_DIR,
         settings.AUDIO_DIR,
         settings.SLIDES_DIR,
+        settings.SLIDES_IMAGES_DIR,
         settings.VIDEOS_DIR,
         settings.TRANSCRIPTS_DIR,
+        settings.SCRIPTS_DIR,
         settings.LOG_FILE.parent
     ]
     

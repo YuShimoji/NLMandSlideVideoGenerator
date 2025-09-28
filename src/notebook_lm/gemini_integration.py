@@ -151,15 +151,39 @@ URL: {source.get('url', 'URL不明')}
             # レート制限チェック
             await self._check_rate_limit()
             
-            # 実際のAPI呼び出しはここで実装
-            # import google.generativeai as genai
-            # genai.configure(api_key=self.api_key)
-            # model = genai.GenerativeModel(self.model_name)
-            # response = model.generate_content(prompt)
+            # 実API呼び出し（APIキーが設定されていれば試行）
+            if self.api_key:
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=self.api_key)
+                    model = genai.GenerativeModel(self.model_name)
+                    resp = await asyncio.to_thread(model.generate_content, prompt)
+                    content_str = getattr(resp, "text", None)
+                    if not content_str:
+                        try:
+                            content_str = json.dumps(resp.to_dict(), ensure_ascii=False)
+                        except Exception:
+                            # 念のため最低限のJSONを返す
+                            content_str = json.dumps({
+                                "title": "生成結果",
+                                "segments": [],
+                                "total_duration_estimate": 0,
+                                "language": "ja"
+                            }, ensure_ascii=False)
+                    real_response = GeminiResponse(
+                        content=content_str,
+                        model=self.model_name,
+                        usage_metadata={},
+                        safety_ratings=[],
+                        created_at=datetime.now()
+                    )
+                    self.request_count += 1
+                    return real_response
+                except Exception as e:
+                    logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
             
-            # モック実装
+            # モック実装（フォールバック）
             await asyncio.sleep(2)  # API呼び出し時間をシミュレート
-            
             mock_content = {
                 "title": "AI技術の最新動向 - 2024年版完全解説",
                 "segments": [

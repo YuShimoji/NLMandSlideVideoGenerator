@@ -22,6 +22,7 @@ logger = SimpleLogger()
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
 from .content_splitter import ContentSplitter
+from .google_slides_client import GoogleSlidesClient
 
 @dataclass
 class SlideInfo:
@@ -127,27 +128,77 @@ class SlideGenerator:
             SlidesPackage: 生成されたスライドパッケージ
         """
         logger.info("Google Slidesでスライド生成中...")
+        client = GoogleSlidesClient()
+        presentation_id: Optional[str] = None
+        slides: List[SlideInfo] = []
         
-        # Step 1: Google Slidesセッション開始
-        session_id = await self._start_google_slides_session()
+        # まずはAPIが利用可能か試みる
+        try:
+            presentation_id = client.create_presentation(presentation_title)
+        except Exception as e:
+            presentation_id = None
+            logger.warning(f"Slides APIのプレゼン作成に失敗: {e}")
         
-        # Step 2: 新しいプレゼンテーション作成
-        presentation_id = await self._create_new_presentation(session_id, presentation_title)
+        if presentation_id:
+            # API経由でのスライド追加（簡易）
+            try:
+                simplified = [
+                    {
+                        "title": c.get("title", f"スライド {i+1}"),
+                        "content": c.get("text", ""),
+                        "duration": c.get("duration", 15.0)
+                    }
+                    for i, c in enumerate(slide_contents)
+                ]
+                client.add_slides(presentation_id, simplified)
+            except Exception as e:
+                logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
+            
+            # SlideInfoを整備
+            for i, c in enumerate(slide_contents, start=1):
+                slides.append(SlideInfo(
+                    slide_id=i,
+                    title=c.get("title", f"スライド {i}"),
+                    content=c.get("text", ""),
+                    layout_type=c.get("layout", "title_and_content"),
+                    estimated_duration=c.get("duration", 15.0),
+                ))
+            
+            # PPTXとサムネイル画像を書き出し
+            pptx_path = self.output_dir / f"{presentation_id}.pptx"
+            try:
+                client.export_pptx(presentation_id, pptx_path)
+            except Exception as e:
+                logger.warning(f"PPTXエクスポート失敗: {e}")
+            
+            try:
+                client.export_thumbnails(presentation_id, settings.SLIDES_IMAGES_DIR / presentation_id)
+            except Exception as e:
+                logger.warning(f"サムネイル書き出し失敗: {e}")
+            
+            slides_package = SlidesPackage(
+                file_path=pptx_path,
+                slides=slides,
+                total_slides=len(slides),
+                theme=self.theme,
+                presentation_id=presentation_id,
+                title=presentation_title,
+                created_at=time.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            logger.info(f"Google Slidesでの生成完了: {len(slides)}枚")
+            return slides_package
         
-        # Step 3: バッチ処理でスライド生成
+        # APIが使えない場合は既存のモック実装にフォールバック
+        logger.warning("Slides API未使用のため、モック生成にフォールバックします")
         slides = []
         batch_size = min(self.max_slides_per_batch, len(slide_contents))
-        
         for i in range(0, len(slide_contents), batch_size):
             batch = slide_contents[i:i + batch_size]
-            batch_slides = await self._generate_slides_batch(session_id, batch, i + 1)
+            batch_slides = await self._generate_slides_batch("mock_session", batch, i + 1)
             slides.extend(batch_slides)
-            
-            # レート制限対応
             if i + batch_size < len(slide_contents):
                 await asyncio.sleep(2)
-        
-        # スライドパッケージ作成
+        presentation_id = f"presentation_{int(time.time())}"
         slides_package = SlidesPackage(
             file_path=self.output_dir / f"{presentation_id}.pptx",
             slides=slides,
@@ -157,8 +208,6 @@ class SlideGenerator:
             title=presentation_title,
             created_at=time.strftime("%Y-%m-%d %H:%M:%S")
         )
-        
-        logger.info(f"Google Slidesでの生成完了: {len(slides)}枚")
         return slides_package
     
     async def create_slides_from_content(
@@ -346,15 +395,17 @@ class SlideGenerator:
         """
         logger.info("スライドファイルダウンロード中...")
         
+        # 既にAPIでエクスポート済みなら何もしない
+        if slides_package.file_path.exists():
+            logger.info(f"既存スライドを検出: {slides_package.file_path} -> ダウンロード処理をスキップ")
+            return
+        
         # ディレクトリ作成
         slides_package.file_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # TODO: 実際のダウンロード実装
-        # Google SlidesからPowerPoint形式でダウンロード
-        
-        # プレースホルダー: 空のファイル作成
+        # フォールバック: プレースホルダーファイルを作成
         with open(slides_package.file_path, 'wb') as f:
-            f.write(b'')  # 実際にはPowerPointファイルの内容
+            f.write(b'')
         
         logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
     

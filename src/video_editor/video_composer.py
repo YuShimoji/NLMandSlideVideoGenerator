@@ -107,10 +107,22 @@ class VideoComposer:
         """
         logger.info("スライド画像抽出中...")
         
-        # TODO: 実際のPowerPoint画像抽出実装
-        # python-pptxライブラリまたはLibreOfficeを使用
+        # 1) Google Slides のエクスポート画像を優先
+        try:
+            if getattr(slides_file, "presentation_id", ""):
+                images_dir = settings.SLIDES_IMAGES_DIR / slides_file.presentation_id
+                if images_dir.exists():
+                    exported = sorted(images_dir.glob("*.png"))
+                    if exported:
+                        logger.info(f"エクスポート済みスライド画像を使用: {len(exported)}枚 from {images_dir}")
+                        return exported
+        except Exception:
+            pass
         
-        # プレースホルダー実装: 実在するPNG画像を生成
+        # 2) TODO: PPTX からの抽出（未実装）。現状はプレースホルダー生成にフォールバック。
+        # python-pptx や libreoffice --convert-to での抽出検討箇所
+        
+        # 3) フォールバック: プレースホルダー生成（実在するPNGを作成）
         slide_images: List[Path] = []
         target_width, target_height = self.video_settings["resolution"]
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -118,18 +130,12 @@ class VideoComposer:
         for i, slide in enumerate(slides_file.slides, 1):
             image_path = self.output_dir / f"slide_{i:03d}.png"
             
-            # 既に存在しない場合のみ生成
             if not image_path.exists():
-                # 背景とテキストの簡易プレースホルダー生成
                 img = Image.new('RGB', (target_width, target_height), color=(20, 20, 20))
                 draw = ImageDraw.Draw(img)
-                
-                # タイトルと簡易情報を描画（フォントはデフォルト）
                 title_text = slide.title or f"Slide {i}"
                 subtitle_text = (slide.content[:60] + "...") if slide.content and len(slide.content) > 60 else (slide.content or "")
-                label_text = f"#{i:02d} | {slide.layout_type or slide.layout or 'layout'} | {slide.estimated_duration or 10:.0f}s"
-                
-                # テキスト配置
+                label_text = f"#{i:02d} | {slide.layout_type or getattr(slide, 'layout', None) or 'layout'} | {slide.estimated_duration or 10:.0f}s"
                 x_margin = 40
                 y = 60
                 draw.text((x_margin, y), title_text, fill=(235, 235, 235))
@@ -138,12 +144,11 @@ class VideoComposer:
                     draw.text((x_margin, y), subtitle_text, fill=(200, 200, 200))
                     y += 40
                 draw.text((x_margin, y), label_text, fill=(160, 160, 160))
-                
                 img.save(image_path, format='PNG')
             
             slide_images.append(image_path)
         
-        logger.info(f"スライド画像抽出完了: {len(slide_images)}枚")
+        logger.info(f"スライド画像抽出完了: {len(slide_images)}枚 (placeholder)")
         return slide_images
     
     async def _compose_final_video(
