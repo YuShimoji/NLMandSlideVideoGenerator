@@ -3,7 +3,6 @@
 プロジェクトの基本機能をテスト
 """
 import pytest
-import asyncio
 from pathlib import Path
 import sys
 
