@@ -2,6 +2,7 @@
 """
 TTS統合モジュール
 複数の音声合成サービスを統合して使用
+実API呼び出しを可能にし、失敗時はモックにフォールバック
 """
 import asyncio
 import json
@@ -10,6 +11,11 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
+import os
+import time
+import requests
+
+from config.settings import settings
 
 # SimpleLogger クラス
 class SimpleLogger:
@@ -63,7 +69,14 @@ class TTSIntegration:
     def __init__(self, api_keys: Dict[str, str]):
         self.api_keys = api_keys
         self.providers = {}
-        self.default_provider = TTSProvider.ELEVENLABS
+        # 既定プロバイダーは settings から
+        provider_name = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
+        self.default_provider = {
+            "elevenlabs": TTSProvider.ELEVENLABS,
+            "openai": TTSProvider.OPENAI,
+            "azure": TTSProvider.AZURE,
+            "google_cloud": TTSProvider.GOOGLE_CLOUD,
+        }.get(provider_name, TTSProvider.ELEVENLABS)
         self._initialize_providers()
     
     def _initialize_providers(self):
@@ -185,7 +198,45 @@ class ElevenLabsTTS(BaseTTS):
             # data = {"text": text, "model_id": "eleven_multilingual_v2"}
             # response = requests.post(url, json=data, headers=headers)
             
-            # モック実装
+            # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
+            try:
+                voice_id = (
+                    voice_config.voice_id if voice_config and getattr(voice_config, "voice_id", None)
+                    else settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id", "")
+                ) or "21m00Tcm4TlvDq8ikWAM"
+                model_id = settings.TTS_SETTINGS.get("elevenlabs", {}).get("model", "eleven_multilingual_v2")
+                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+                headers = {
+                    "xi-api-key": self.api_key,
+                    "accept": "audio/mpeg",
+                    "content-type": "application/json",
+                }
+                payload = {"text": text, "model_id": model_id}
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with requests.post(url, json=payload, headers=headers, stream=True, timeout=120) as resp:
+                    resp.raise_for_status()
+                    with open(output_path, "wb") as f:
+                        for chunk in resp.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                file_size = output_path.stat().st_size
+                duration = max(len(text) * 0.08, 1.0)
+                audio_info = AudioInfo(
+                    file_path=output_path,
+                    duration=duration,
+                    quality_score=0.95,
+                    sample_rate=44100,
+                    file_size=file_size,
+                    language="ja",
+                    channels=1,
+                    provider="elevenlabs",
+                    voice_id=voice_id,
+                )
+                return audio_info
+            except Exception as _e:
+                logger.warning(f"ElevenLabs 実API呼び出しに失敗したためフォールバックします: {_e}")
+            
+            # モック実装（フォールバック）
             await asyncio.sleep(3)  # 合成時間をシミュレート
             
             # 空のファイルを作成
@@ -242,7 +293,47 @@ class OpenAITTS(BaseTTS):
             #     input=text
             # )
             
-            # モック実装
+            # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
+            try:
+                model = settings.TTS_SETTINGS.get("openai", {}).get("model", "gpt-4o-mini-tts")
+                voice = (
+                    voice_config.voice_id if voice_config and getattr(voice_config, "voice_id", None)
+                    else settings.TTS_SETTINGS.get("openai", {}).get("voice", "alloy")
+                )
+                endpoint = "https://api.openai.com/v1/audio/speech"
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": model,
+                    "voice": voice,
+                    "input": text,
+                    "format": settings.TTS_SETTINGS.get("openai", {}).get("format", "mp3"),
+                }
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with requests.post(endpoint, json=payload, headers=headers, timeout=120) as resp:
+                    resp.raise_for_status()
+                    with open(output_path, "wb") as f:
+                        f.write(resp.content)
+                file_size = output_path.stat().st_size
+                duration = max(len(text) * 0.07, 1.0)
+                audio_info = AudioInfo(
+                    file_path=output_path,
+                    duration=duration,
+                    quality_score=0.90,
+                    sample_rate=24000,
+                    file_size=file_size,
+                    language="en",
+                    channels=1,
+                    provider="openai",
+                    voice_id=voice,
+                )
+                return audio_info
+            except Exception as _e:
+                logger.warning(f"OpenAI TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
+            
+            # モック実装（フォールバック）
             await asyncio.sleep(2)
             
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -303,7 +394,41 @@ class AzureTTS(BaseTTS):
             # )
             # synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
             
-            # モック実装
+            # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
+            try:
+                import azure.cognitiveservices.speech as speechsdk
+                voice = (
+                    voice_config.voice_id if voice_config and getattr(voice_config, "voice_id", None)
+                    else settings.TTS_SETTINGS.get("azure", {}).get("voice", "ja-JP-NanamiNeural")
+                )
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                def _synthesize_sync():
+                    speech_config = speechsdk.SpeechConfig(subscription=self.api_key, region=self.region)
+                    speech_config.speech_synthesis_voice_name = voice
+                    audio_config = speechsdk.audio.AudioOutputConfig(filename=str(output_path))
+                    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
+                    result = synthesizer.speak_text_async(text).get()
+                    if result.reason != speechsdk.ResultReason.SynthesizingAudioCompleted:
+                        raise RuntimeError(f"Azure TTS 合成失敗: {result.reason}")
+                await asyncio.to_thread(_synthesize_sync)
+                file_size = output_path.stat().st_size
+                duration = max(len(text) * 0.08, 1.0)
+                audio_info = AudioInfo(
+                    file_path=output_path,
+                    duration=duration,
+                    quality_score=0.88,
+                    sample_rate=16000,
+                    file_size=file_size,
+                    language="ja",
+                    channels=1,
+                    provider="azure",
+                    voice_id=voice,
+                )
+                return audio_info
+            except Exception as _e:
+                logger.warning(f"Azure TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
+            
+            # モック実装（フォールバック）
             await asyncio.sleep(2.5)
             
             output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -189,13 +189,21 @@ python setup_environment.py
 cp .env.example .env
 
 # .envファイルを編集してAPI認証情報を設定
+# 主要項目（抜粋）:
+#   GEMINI_API_KEY=...
+#   TTS_PROVIDER=none|elevenlabs|openai|azure|google_cloud
+#   ELEVENLABS_API_KEY=... (必要に応じて ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL)
+#   OPENAI_API_KEY=... (必要に応じて OPENAI_TTS_MODEL, OPENAI_TTS_VOICE, OPENAI_TTS_FORMAT)
+#   AZURE_SPEECH_KEY=..., AZURE_SPEECH_REGION=... (必要に応じて AZURE_SPEECH_VOICE)
+#   GOOGLE_CLIENT_SECRETS_FILE=./google_client_secret.json
+#   GOOGLE_OAUTH_TOKEN_FILE=./token.json
 # 詳細は docs/api_setup_guide.md を参照
 ```
 
 ### 3. 統合テスト実行
 
 ```bash
-# API連携テスト
+# API連携テスト（モック中心、実APIキー未設定でも可）
 python test_api_integration.py
 
 # デモ実行
@@ -208,8 +216,11 @@ python test_execution_demo.py
 # ヘルプ表示
 python main.py --help
 
-# 動画生成実行
+# 動画生成実行（Gemini+TTS を使用する場合は .env にキー設定 & TTS_PROVIDER を指定）
 python main.py --topic "AI技術の最新動向" --duration 300
+
+# モジュラーパイプラインのデモ（Gemini+TTS と Slides 画像エクスポートに対応）
+python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
 ```
 
 ## 🧩 モジュラーパイプラインの使い方

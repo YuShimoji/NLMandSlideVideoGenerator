@@ -23,13 +23,17 @@ from .interfaces import (
 )
 
 # 既存実装（デフォルトDI）
-from notebook_lm.source_collector import SourceCollector
+from notebook_lm.source_collector import SourceCollector, SourceInfo
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo
 from slides.slide_generator import SlideGenerator, SlidesPackage
 from video_editor.video_composer import VideoComposer, VideoInfo
 from youtube.uploader import YouTubeUploader, UploadResult
 from youtube.metadata_generator import MetadataGenerator
+
+# 追加統合（オプション）
+from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
+from audio.tts_integration import TTSIntegration, TTSProvider, VoiceConfig
 
 
 class SimpleLogger:
@@ -92,8 +96,87 @@ class ModularVideoPipeline:
         sources = await self.source_collector.collect_sources(topic, urls)
         logger.info(f"ソース収集完了: {len(sources)}件")
 
-        # Phase 2: 音声生成
-        audio_info = await self.audio_generator.generate_audio(sources)
+        # Phase 2: 音声生成（Gemini+TTS が設定されていれば優先）
+        audio_info: AudioInfo
+        script_path = None
+        if settings.GEMINI_API_KEY and settings.TTS_SETTINGS.get("provider", "none") != "none":
+            logger.info("Gemini + TTS による音声生成パスを使用します")
+            # Gemini でスクリプト生成
+            try:
+                gemini = GeminiIntegration(api_key=settings.GEMINI_API_KEY)
+                # SourceInfo -> dict
+                sources_payload = [
+                    {
+                        "url": getattr(s, "url", ""),
+                        "title": getattr(s, "title", ""),
+                        "content_preview": getattr(s, "content_preview", ""),
+                        "relevance_score": getattr(s, "relevance_score", 0.0),
+                        "reliability_score": getattr(s, "reliability_score", 0.0),
+                    }
+                    for s in sources
+                ]
+                language = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+                script_info: ScriptInfo = await gemini.generate_script_from_sources(
+                    sources=sources_payload,
+                    topic=topic,
+                    target_duration=300.0,
+                    language=language,
+                )
+                # スクリプトを保存
+                import json as _json
+                from datetime import datetime as _dt
+                settings.SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
+                ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+                script_path = settings.SCRIPTS_DIR / f"script_{ts}.json"
+                with open(script_path, "w", encoding="utf-8") as f:
+                    f.write(script_info.content)
+                logger.info(f"スクリプト保存: {script_path}")
+                # TTS 用にテキスト整形（セグメントの content を結合）
+                try:
+                    content_obj = _json.loads(script_info.content)
+                    if isinstance(content_obj, dict) and "segments" in content_obj:
+                        tts_text = "\n\n".join(seg.get("content", "") for seg in content_obj.get("segments", []))
+                    else:
+                        tts_text = script_info.content
+                except Exception:
+                    tts_text = script_info.content
+                # TTS 統合
+                api_keys = {
+                    "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
+                    "openai": settings.OPENAI_API_KEY,
+                    "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
+                    "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
+                }
+                tts = TTSIntegration(api_keys)
+                # 音声ファイルパス
+                audio_output = settings.AUDIO_DIR / f"tts_{ts}.mp3"
+                # Voice 設定（簡易）
+                voice_id = settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id", "default")
+                voice_cfg = VoiceConfig(
+                    voice_id=voice_id,
+                    language=language,
+                    gender="female",
+                    age_range="adult",
+                    accent="japanese" if language == "ja" else "",
+                    quality="high",
+                )
+                tts_audio = await tts.generate_audio(tts_text, audio_output, voice_cfg)
+                # 既存 AudioInfo 型に正規化
+                audio_info = AudioInfo(
+                    file_path=tts_audio.file_path,
+                    duration=tts_audio.duration,
+                    quality_score=tts_audio.quality_score,
+                    sample_rate=tts_audio.sample_rate,
+                    file_size=tts_audio.file_size,
+                    language=language,
+                    channels=getattr(tts_audio, "channels", 2),
+                )
+                logger.info(f"音声生成完了(TTS): {audio_info.file_path}")
+            except Exception as e:
+                logger.warning(f"Gemini/TTS パスでエラーが発生したためフォールバックします: {e}")
+                audio_info = await self.audio_generator.generate_audio(sources)
+        else:
+            audio_info = await self.audio_generator.generate_audio(sources)
         logger.info(f"音声生成完了: {audio_info.file_path}")
 
         # Phase 3: 文字起こし
