@@ -32,6 +32,7 @@ class Settings:
         self.VIDEOS_DIR = self.DATA_DIR / "videos"
         self.TRANSCRIPTS_DIR = self.DATA_DIR / "transcripts"
         self.SCRIPTS_DIR = self.DATA_DIR / "scripts"
+        self.TEMPLATES_DIR = self.DATA_DIR / "templates"
         
         # ログ設定
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -135,8 +136,38 @@ class Settings:
                 "voice": os.getenv("AZURE_SPEECH_VOICE", "ja-JP-NanamiNeural"),
                 "format": os.getenv("AZURE_SPEECH_FORMAT", "audio-48khz-192kbitrate-mono-mp3"),
             },
+            "google_cloud": {
+                "api_key": os.getenv("GOOGLE_CLOUD_TTS_KEY", ""),
+                "voice": os.getenv("GOOGLE_CLOUD_TTS_VOICE", "ja-JP-Neural2-B"),
+                "speaking_rate": float(os.getenv("GOOGLE_CLOUD_TTS_RATE", "1.0")),
+            },
         }
-        
+
+        self.PIPELINE_STAGE_MODES = {
+            "stage1": os.getenv("PIPELINE_STAGE1_MODE", "auto"),
+            "stage2": os.getenv("PIPELINE_STAGE2_MODE", "auto"),
+            "stage3": os.getenv("PIPELINE_STAGE3_MODE", "auto"),
+        }
+
+        self.PIPELINE_COMPONENTS = {
+            "script_provider": os.getenv("SCRIPT_PROVIDER", "legacy"),
+            "voice_pipeline": os.getenv("VOICE_PIPELINE", "legacy"),
+            "editing_backend": os.getenv("EDITING_BACKEND", "moviepy"),
+            "platform_adapter": os.getenv("PLATFORM_ADAPTER", "youtube"),
+        }
+
+        self.YMM4_SETTINGS = {
+            "project_template": os.getenv("YMM4_TEMPLATE_PATH", str(self.TEMPLATES_DIR / "ymm4" / "base_project.y4mmp")),
+            "auto_hotkey_script": os.getenv("YMM4_AHK_SCRIPT", str(self.TEMPLATES_DIR / "scripts" / "ymm4_export.ahk")),
+            "workspace_dir": os.getenv("YMM4_WORKSPACE_DIR", str(self.DATA_DIR / "ymm4")),
+        }
+
+        self.PUBLISHING_SETTINGS = {
+            "default_platform": os.getenv("PUBLISHING_DEFAULT_PLATFORM", "youtube"),
+            "schedule_timezone": os.getenv("PUBLISHING_TIMEZONE", "Asia/Tokyo"),
+            "fallback_upload": os.getenv("PUBLISHING_FALLBACK", "legacy"),
+        }
+
         # リトライ設定
         self.RETRY_SETTINGS = {
             "max_retries": 3,
@@ -158,6 +189,7 @@ def create_directories():
         settings.VIDEOS_DIR,
         settings.TRANSCRIPTS_DIR,
         settings.SCRIPTS_DIR,
+        settings.TEMPLATES_DIR,
         settings.LOG_FILE.parent
     ]
     
