@@ -50,6 +50,7 @@ from .voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
 from .timeline.basic_planner import BasicTimelinePlanner
 from .editing.moviepy_backend import MoviePyEditingBackend
 from .editing.ymm4_backend import YMM4EditingBackend
+from .platforms.youtube_adapter import YouTubePlatformAdapter
 
 
 class SimpleLogger:
@@ -390,6 +391,7 @@ def build_default_pipeline() -> ModularVideoPipeline:
     voice_pipeline = None
     timeline_planner = None
     editing_backend = None
+    platform_adapter = None
 
     if components.get("script_provider") == "gemini" and settings.GEMINI_API_KEY:
         try:
@@ -409,11 +411,16 @@ def build_default_pipeline() -> ModularVideoPipeline:
         timeline_planner = BasicTimelinePlanner()
         editing_backend = YMM4EditingBackend()
 
+    platform_adapter_setting = components.get("platform_adapter")
+    if platform_adapter_setting == "youtube":
+        platform_adapter = YouTubePlatformAdapter()
+
     pipeline = ModularVideoPipeline(
         script_provider=script_provider,
         voice_pipeline=voice_pipeline,
         timeline_planner=timeline_planner,
         editing_backend=editing_backend,
+        platform_adapter=platform_adapter,
     )
 
     pipeline.stage_modes.update(stage_modes)

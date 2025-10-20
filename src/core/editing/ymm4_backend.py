@@ -1,10 +1,8 @@
-"""YMM4 ベースの編集バックエンド（テンプレート + AutoHotkey フォールバック）"""
-from __future__ import annotations
-
 import asyncio
 import json
 import logging
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -47,10 +45,12 @@ class YMM4EditingBackend(IEditingBackend):
         project_dir = self._prepare_workspace()
         project_file = self._prepare_project_file(project_dir)
         self._export_plan(project_dir, timeline_plan, audio, transcript)
-
         self._record_execution_hint(project_dir)
 
-        # YMM4 書き出しが未整備のため、MoviePy にフォールバックして動画を生成
+        # YMM4 AutoHotkeyスクリプト実行（オプション）
+        await self._run_autohotkey_script(project_dir, project_file)
+
+        # YMM4書き出しが未整備のため、MoviePy にフォールバックして動画を生成
         video_info = await self.fallback_backend.render(
             timeline_plan=timeline_plan,
             audio=audio,
@@ -127,6 +127,50 @@ class YMM4EditingBackend(IEditingBackend):
             "4. 完了後、生成された動画ファイルを pipeline の成果物に差し替え",
         ]
         hint_path.write_text("\n".join(content), encoding="utf-8")
+
+    async def _run_autohotkey_script(self, project_dir: Path, project_file: Path) -> None:
+        """AutoHotkeyスクリプトを実行してYMM4を操作（オプション）"""
+        if not self.auto_hotkey_script.exists():
+            logger.warning(f"AutoHotkeyスクリプトが見つかりません: {self.auto_hotkey_script}")
+            return
+
+        try:
+            # AutoHotkeyスクリプト実行（非同期）
+            cmd = [
+                "AutoHotkey.exe" if Path("C:/Program Files/AutoHotkey/AutoHotkey.exe").exists()
+                else "C:/Program Files/AutoHotkey/v2/AutoHotkey.exe",
+                str(self.auto_hotkey_script),
+                "--project", str(project_file)
+            ]
+
+            logger.info(f"AutoHotkeyスクリプト実行: {' '.join(cmd)}")
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(project_dir)
+            )
+
+            # タイムアウト付きで待機（例: 5分）
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300.0)
+                if process.returncode == 0:
+                    logger.info("AutoHotkeyスクリプト実行成功")
+                    if stdout:
+                        logger.debug(f"AHK stdout: {stdout.decode()}")
+                else:
+                    logger.warning(f"AutoHotkeyスクリプト実行失敗 (exit code: {process.returncode})")
+                    if stderr:
+                        logger.warning(f"AHK stderr: {stderr.decode()}")
+            except asyncio.TimeoutError:
+                logger.warning("AutoHotkeyスクリプト実行タイムアウト")
+                process.terminate()
+                await process.wait()
+
+        except FileNotFoundError:
+            logger.warning("AutoHotkey実行ファイルが見つかりません。手動実行してください。")
+        except Exception as e:
+            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
 
     def _export_video_metadata(self, project_dir: Path, video_info: VideoInfo) -> None:
         metadata_path = project_dir / "render_metadata.json"
