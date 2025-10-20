@@ -21,6 +21,16 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 | Stage 2: 編集生成 | タイムライン構築・映像生成 | `TimelinePlanner`, `SlideProvider`, `EditingBackend (MoviePy, YMM4)` | assist / auto |
 | Stage 3: 投稿配信 | メタデータ生成・投稿 | `MetadataGenerator`, `Scheduler`, `PlatformAdapter` | manual / auto |
 
+### 1.5 2025-10 更新: モジュラーコンポーネント
+- **Stage1**
+  - `GeminiScriptProvider` (`src/core/providers/script/gemini_provider.py`) が `IScriptProvider` を実装し、`PIPELINE_COMPONENTS.script_provider=gemini` で自動注入。
+  - `TTSVoicePipeline` (`src/core/voice_pipelines/tts_voice_pipeline.py`) が `IVoicePipeline` を実装し、`PIPELINE_COMPONENTS.voice_pipeline` が `tts` または `gemini_tts` の場合に利用。
+- **Stage2**
+  - `TimelinePlan`/`TimelineSegment` (`src/core/timeline/models.py`) および `BasicTimelinePlanner` (`src/core/timeline/basic_planner.py`) により、音声長と台本セグメントからタイムラインを生成。
+  - `MoviePyEditingBackend` (`src/core/editing/moviepy_backend.py`) と `YMM4EditingBackend` (`src/core/editing/ymm4_backend.py`) により、`PIPELINE_COMPONENTS.editing_backend` 設定で MoviePy / YMM4 を切り替え。
+- **テスト**
+  - `tests/test_timeline_planner.py` を追加し、タイムライン整合性とフォールバック動作を検証。
+
 ## 2. 機能要件
 
 ### 2.1 コア機能（Stage別）
