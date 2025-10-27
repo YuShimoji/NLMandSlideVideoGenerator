@@ -10,7 +10,7 @@ from datetime import datetime
 from config.settings import settings
 from audio.tts_integration import TTSIntegration, VoiceConfig, TTSProvider
 
-from ...interfaces import IVoicePipeline
+from ..interfaces import IVoicePipeline
 
 
 class TTSVoicePipeline(IVoicePipeline):

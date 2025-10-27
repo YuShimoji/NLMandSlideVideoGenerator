@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Protocol, List, Optional, Union, Dict, Any, Callable
 
 from config.settings import settings, create_directories
 
@@ -141,6 +141,7 @@ class ModularVideoPipeline:
         upload: bool = True,
         stage_modes: Optional[Dict[str, str]] = None,
         user_preferences: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
     ) -> Dict[str, Any]:
         """
         パイプライン実行
@@ -153,8 +154,12 @@ class ModularVideoPipeline:
             self.stage_modes.update(stage_modes)
 
         # Phase 1: ソース収集
+        if progress_callback:
+            progress_callback("ソース収集", 0.1, "関連ソースの収集を開始します...")
         sources = await self.source_collector.collect_sources(topic, urls)
         logger.info(f"ソース収集完了: {len(sources)}件")
+        if progress_callback:
+            progress_callback("ソース収集", 0.1, f"ソース収集完了: {len(sources)}件")
 
         stage1_mode = self.stage_modes.get("stage1", "auto")
         stage2_mode = self.stage_modes.get("stage2", "auto")
@@ -167,6 +172,8 @@ class ModularVideoPipeline:
 
         # Stage1: Script + Voice orchestration
         if self.script_provider and self.voice_pipeline:
+            if progress_callback:
+                progress_callback("スクリプト生成", 0.2, "AIによるスクリプト生成を開始します...")
             logger.info(f"Stage1モード: {stage1_mode}")
             raw_script = await self.script_provider.generate_script(
                 topic=topic,
@@ -174,6 +181,8 @@ class ModularVideoPipeline:
                 mode=stage1_mode,
             )
             script_bundle = await self.content_adapter.normalize_script(raw_script) if self.content_adapter else raw_script
+            if progress_callback:
+                progress_callback("音声合成", 0.3, "テキスト-to-スピーチで音声を生成します...")
             audio_info = await self.voice_pipeline.synthesize(
                 script=script_bundle or raw_script,
                 preferred_provider=settings.TTS_SETTINGS.get("provider", "none"),
@@ -187,28 +196,44 @@ class ModularVideoPipeline:
                     }
                 )
         else:
+            if progress_callback:
+                progress_callback("従来処理", 0.2, "従来の処理方式を使用します...")
             logger.info("Stage1カスタムプロバイダ未設定のため従来フローを使用")
             script_bundle, audio_info = await self._run_legacy_stage1(topic, sources)
 
         logger.info(f"音声生成完了: {audio_info.file_path}")
+        if progress_callback:
+            progress_callback("音声生成", 0.4, f"音声生成完了: {audio_info.file_path}")
 
         # Phase 2: 文字起こし
+        if progress_callback:
+            progress_callback("文字起こし", 0.5, "音声から文字起こしを行います...")
         transcript = await self.transcript_processor.process_audio(audio_info)
         logger.info(f"文字起こし完了: {transcript.title}")
+        if progress_callback:
+            progress_callback("文字起こし", 0.5, f"文字起こし完了: {transcript.title}")
 
         # Phase 3: スライド生成
+        if progress_callback:
+            progress_callback("スライド生成", 0.6, "Google Slidesでプレゼンテーションを作成します...")
         slides_pkg = await self.slide_generator.generate_slides(transcript)
         logger.info(f"スライド生成完了: {slides_pkg.total_slides}枚")
+        if progress_callback:
+            progress_callback("スライド生成", 0.6, f"スライド生成完了: {slides_pkg.total_slides}枚")
 
         # Stage2: 映像タイムライン計画 & レンダリング
         thumbnail_path: Optional[Path] = None
         if self.timeline_planner and self.editing_backend:
+            if progress_callback:
+                progress_callback("タイムライン計画", 0.7, "動画のタイムラインを計画します...")
             logger.info(f"Stage2モード: {stage2_mode}")
             timeline_plan = await self.timeline_planner.build_plan(
                 script=script_bundle or {"segments": transcript.segments},
                 audio=audio_info,
                 user_preferences=user_preferences,
             )
+            if progress_callback:
+                progress_callback("動画レンダリング", 0.75, "MoviePyで動画をレンダリングします...")
             video_info = await self.editing_backend.render(
                 timeline_plan=timeline_plan,
                 audio=audio_info,
@@ -227,10 +252,14 @@ class ModularVideoPipeline:
                     logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
                     thumbnail_path = None
         else:
+            if progress_callback:
+                progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
             logger.info("Stage2拡張未設定のため従来の VideoComposer を使用")
             video_info = await self.video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
 
         logger.info(f"動画合成完了: {video_info.file_path}")
+        if progress_callback:
+            progress_callback("動画合成", 0.8, f"動画合成完了: {video_info.file_path}")
 
         # Stage3: 投稿・配信
         upload_result: Optional[UploadResult] = None
@@ -239,12 +268,16 @@ class ModularVideoPipeline:
         publishing_result: Optional[Dict[str, Any]] = None
 
         if upload:
+            if progress_callback:
+                progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
             # メタデータ生成
             metadata = await self.metadata_generator.generate_metadata(transcript)
             metadata["privacy_status"] = "private" if private_upload else "public"
             metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
 
             if self.platform_adapter:
+                if progress_callback:
+                    progress_callback("YouTubeアップロード", 0.95, "YouTubeに動画をアップロードします...")
                 logger.info(f"Stage3モード: {stage3_mode}")
                 package = {
                     "video": video_info,
@@ -264,6 +297,8 @@ class ModularVideoPipeline:
                 )
                 youtube_url = publishing_result.get("url") if publishing_result else None
             else:
+                if progress_callback:
+                    progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
                 await self.uploader.authenticate()
                 upload_result = await self.uploader.upload_video(
                     video=video_info,
@@ -273,7 +308,8 @@ class ModularVideoPipeline:
                 youtube_url = upload_result.video_url if upload_result else None
                 logger.success(f"アップロード完了: {youtube_url}")
         else:
-            logger.info("アップロードをスキップしました")
+            if progress_callback:
+                progress_callback("完了", 1.0, "アップロードをスキップしました")
 
         artifacts = PipelineArtifacts(
             sources=sources,
@@ -289,6 +325,9 @@ class ModularVideoPipeline:
             metadata=metadata,
             publishing_result=publishing_result,
         )
+
+        if progress_callback:
+            progress_callback("完了", 1.0, "パイプライン実行完了")
 
         return {
             "success": True,
