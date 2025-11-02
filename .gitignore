@@ -185,3 +185,6 @@ downloads/
 uploads/
 cache/
 sessions/
+
+# OpenSpec generated documentation
+# docs/generated/

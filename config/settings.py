@@ -33,6 +33,7 @@ class Settings:
         self.TRANSCRIPTS_DIR = self.DATA_DIR / "transcripts"
         self.SCRIPTS_DIR = self.DATA_DIR / "scripts"
         self.TEMPLATES_DIR = self.DATA_DIR / "templates"
+        self.THUMBNAILS_DIR = self.DATA_DIR / "thumbnails"
         
         # ログ設定
         self.LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -154,6 +155,7 @@ class Settings:
             "voice_pipeline": os.getenv("VOICE_PIPELINE", "legacy"),
             "editing_backend": os.getenv("EDITING_BACKEND", "moviepy"),
             "platform_adapter": os.getenv("PLATFORM_ADAPTER", "youtube"),
+            "thumbnail_generator": os.getenv("THUMBNAIL_GENERATOR", "ai"),
         }
 
         self.YMM4_SETTINGS = {
@@ -190,6 +192,7 @@ def create_directories():
         settings.TRANSCRIPTS_DIR,
         settings.SCRIPTS_DIR,
         settings.TEMPLATES_DIR,
+        settings.THUMBNAILS_DIR,
         settings.LOG_FILE.parent
     ]
     

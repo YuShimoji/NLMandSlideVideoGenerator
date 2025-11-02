@@ -1,0 +1,124 @@
+name: OpenSpec PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/core/**'
+      - 'docs/openspec_*.md'
+      - 'tests/test_openspec_*.py'
+
+jobs:
+  pr-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate OpenSpec Changes
+        run: |
+          echo "🔍 Validating OpenSpec changes..."
+
+          # Check if OpenSpec files were modified
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -q "openspec_"; then
+            echo "✅ OpenSpec specification files modified"
+          else
+            echo "ℹ️  No OpenSpec specification changes detected"
+          fi
+
+          # Check if core components were modified
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -q "src/core/"; then
+            echo "✅ Core component files modified"
+          else
+            echo "ℹ️  No core component changes detected"
+          fi
+
+      - name: Run OpenSpec Interface Tests
+        run: python -m pytest tests/test_openspec_interfaces.py -v
+
+      - name: Run Component Integration Tests
+        run: python -m pytest tests/test_pipeline_integration.py -v --tb=short
+
+      - name: Validate Component Specifications
+        run: python scripts/validate_openspec.py
+
+      - name: Check Specification Compliance
+        run: |
+          python -c "
+          from scripts.validate_openspec import OpenSpecValidator
+          from pathlib import Path
+          import sys
+
+          validator = OpenSpecValidator(Path('docs'))
+          validator.load_specs()
+
+          print(f'📊 Validating {len(validator.specs)} component specifications...')
+
+          issues = []
+          for component_name, spec in validator.specs.items():
+              # Check required fields
+              required_fields = ['component', 'version', 'interface']
+              for field in required_fields:
+                  if field not in spec:
+                      issues.append(f'{component_name}: Missing required field \"{field}\"')
+
+              # Check implementations
+              if 'implementations' not in spec or not spec['implementations']:
+                  issues.append(f'{component_name}: No implementations defined')
+
+              # Check validation rules
+              if 'validation' not in spec:
+                  issues.append(f'{component_name}: No validation rules defined')
+
+          if issues:
+              print('❌ Specification compliance issues found:')
+              for issue in issues:
+                  print(f'  - {issue}')
+              sys.exit(1)
+          else:
+              print('✅ All specifications are compliant')
+          "
+
+      - name: Generate PR Validation Report
+        run: |
+          echo "# OpenSpec PR Validation Report" > pr-validation-report.md
+          echo "" >> pr-validation-report.md
+          echo "**PR:** #${{ github.event.pull_request.number }}" >> pr-validation-report.md
+          echo "**Branch:** ${{ github.head_ref }}" >> pr-validation-report.md
+          echo "**Status:** ✅ Passed" >> pr-validation-report.md
+          echo "" >> pr-validation-report.md
+          echo "## Validation Results" >> pr-validation-report.md
+          echo "- OpenSpec interface tests: ✅ Passed" >> pr-validation-report.md
+          echo "- Component integration tests: ✅ Passed" >> pr-validation-report.md
+          echo "- Specification validation: ✅ Passed" >> pr-validation-report.md
+          echo "- Compliance check: ✅ Passed" >> pr-validation-report.md
+
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('pr-validation-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Upload PR validation artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr-validation-report
+          path: pr-validation-report.md

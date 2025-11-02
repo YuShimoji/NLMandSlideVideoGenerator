@@ -233,7 +233,7 @@ python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
 python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
 
 # アップロードまで実行したい場合（認証設定が必要）
-# python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p --upload --public
+# python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p --upload --public --thumbnail --thumbnail-style modern
 ```
 
 生成物は `data/` 配下に出力されます。
@@ -242,6 +242,48 @@ python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
 - `src/core/interfaces.py` — 各モジュールのProtocolインターフェイス
 - `src/core/pipeline.py` — 依存性注入可能なモジュラーパイプライン
 - `run_modular_demo.py` — モジュラーパイプラインのデモ実行スクリプト
+
+## 🛠️ OpenSpec開発ワークフロー
+
+プロジェクトはOpenSpec（オープン仕様言語）に基づく構造化開発を採用しています。新機能開発時は以下の手順で進めます。
+
+### コンポーネント開発手順
+
+```bash
+# 1. OpenSpec仕様定義
+# docs/openspec_components.md に新規コンポーネントを定義
+
+# 2. インターフェース生成
+python scripts/generate_interfaces.py --spec docs/openspec_components.md --component YourComponent
+
+# 3. 実装作成
+# 生成されたインターフェースを実装
+
+# 4. 仕様検証
+python scripts/validate_openspec.py --component YourComponent
+
+# 5. ドキュメント生成
+python scripts/generate_docs.py
+
+# 6. テスト実行
+python -m pytest tests/ --cov=src --cov-report=term-missing
+```
+
+### OpenSpecツール
+
+- `scripts/validate_openspec.py` — コンポーネント仕様検証
+- `scripts/generate_interfaces.py` — インターフェース自動生成
+- `scripts/generate_docs.py` — ドキュメント自動生成
+
+### 仕様遵守の重要性
+
+OpenSpecにより以下の品質が保証されます：
+- **インターフェース一貫性**: 全実装が同じ契約を満たす
+- **自動検証**: 実装の仕様準拠を自動チェック
+- **ドキュメント同期**: コードとドキュメントの自動同期
+- **交換可能性**: コンポーネントのプラグイン可能交換
+
+詳細は [OpenSpec開発ガイド](docs/openspec_guide.md) を参照してください。
 
 ## 🪟 Windows 環境でのUnicode表示について
 
@@ -322,6 +364,9 @@ python test_api_integration.py
 - [システム仕様書](docs/system_architecture.md)
 - [開発ガイド](docs/development_guide.md)
 - [プロジェクト完成報告](docs/project_completion_report.md)
+- [OpenSpec開発ガイド](docs/openspec_guide.md)
+- [OpenSpecコンポーネント仕様](docs/openspec_components.md)
+- [OpenSpec開発ワークフロー](docs/openspec_workflow.md)
 
 ## 🔧 技術スタック
 

@@ -38,6 +38,21 @@ class VideoInfo:
     has_effects: bool
     created_at: datetime
 
+
+@dataclass
+class ThumbnailInfo:
+    """サムネイル情報"""
+    file_path: Path
+    title_text: str
+    subtitle_text: str
+    style: str
+    resolution: tuple
+    file_size: int
+    has_overlay: bool
+    has_text_effects: bool
+    created_at: datetime
+
+
 class VideoComposer:
     """動画合成クラス"""
     

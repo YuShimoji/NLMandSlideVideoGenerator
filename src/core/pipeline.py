@@ -48,6 +48,8 @@ from audio.tts_integration import TTSIntegration, TTSProvider, VoiceConfig
 from .providers.script.gemini_provider import GeminiScriptProvider
 from .voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
 from .timeline.basic_planner import BasicTimelinePlanner
+from .thumbnails import AIThumbnailGenerator
+from .thumbnails.template_generator import TemplateThumbnailGenerator
 from .editing.moviepy_backend import MoviePyEditingBackend
 from .editing.ymm4_backend import YMM4EditingBackend
 from .platforms.youtube_adapter import YouTubePlatformAdapter
@@ -241,13 +243,17 @@ class ModularVideoPipeline:
                 transcript=transcript,
                 quality=quality,
             )
-            if self.thumbnail_generator:
+            if self.thumbnail_generator and (user_preferences and user_preferences.get("generate_thumbnail", False)):
                 try:
-                    thumbnail_path = await self.thumbnail_generator.generate_thumbnail(
-                        timeline_plan=timeline_plan,
+                    thumbnail_style = user_preferences.get("thumbnail_style", "modern")
+                    thumbnail_info = await self.thumbnail_generator.generate(
+                        video=video_info,
                         script=script_bundle or {"title": transcript.title},
-                        assets=registered_assets or {},
+                        slides=slides_pkg,
+                        style=thumbnail_style
                     )
+                    thumbnail_path = thumbnail_info.file_path
+                    logger.info(f"サムネイル生成完了: {thumbnail_path}")
                 except Exception as thumb_err:
                     logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
                     thumbnail_path = None
@@ -431,6 +437,7 @@ def build_default_pipeline() -> ModularVideoPipeline:
     timeline_planner = None
     editing_backend = None
     platform_adapter = None
+    thumbnail_generator = None
 
     if components.get("script_provider") == "gemini" and settings.GEMINI_API_KEY:
         try:
@@ -454,12 +461,20 @@ def build_default_pipeline() -> ModularVideoPipeline:
     if platform_adapter_setting == "youtube":
         platform_adapter = YouTubePlatformAdapter()
 
+    # サムネイル生成の初期化
+    thumbnail_setting = components.get("thumbnail_generator", "ai")
+    if thumbnail_setting == "ai":
+        thumbnail_generator = AIThumbnailGenerator()
+    elif thumbnail_setting == "template":
+        thumbnail_generator = TemplateThumbnailGenerator()
+
     pipeline = ModularVideoPipeline(
         script_provider=script_provider,
         voice_pipeline=voice_pipeline,
         timeline_planner=timeline_planner,
         editing_backend=editing_backend,
         platform_adapter=platform_adapter,
+        thumbnail_generator=thumbnail_generator,
     )
 
     pipeline.stage_modes.update(stage_modes)

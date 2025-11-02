@@ -22,7 +22,7 @@ from core.pipeline import ModularVideoPipeline  # noqa: E402
 from config.settings import create_directories  # noqa: E402
 
 
-async def main_async(topic: str, urls: list[str] | None, quality: str, upload: bool, private: bool):
+async def main_async(topic: str, urls: list[str] | None, quality: str, upload: bool, private: bool, thumbnail: bool, thumbnail_style: str):
     create_directories()
     pipeline = ModularVideoPipeline()
     result = await pipeline.run(
@@ -31,6 +31,10 @@ async def main_async(topic: str, urls: list[str] | None, quality: str, upload: b
         quality=quality,
         private_upload=private,
         upload=upload,
+        user_preferences={
+            "generate_thumbnail": thumbnail,
+            "thumbnail_style": thumbnail_style
+        } if thumbnail else None
     )
 
     print("\n=== モジュラーパイプライン結果 ===")
@@ -43,6 +47,8 @@ async def main_async(topic: str, urls: list[str] | None, quality: str, upload: b
     print(f"  音声: {artifacts.audio.file_path}")
     print(f"  スライド: {artifacts.slides.file_path} ({artifacts.slides.total_slides}枚)")
     print(f"  動画: {artifacts.video.file_path}")
+    if artifacts.thumbnail_path:
+        print(f"  サムネイル: {artifacts.thumbnail_path}")
 
     return 0
 
@@ -54,6 +60,8 @@ def main():
     parser.add_argument("--quality", choices=["720p", "1080p", "4k"], default="1080p")
     parser.add_argument("--upload", action="store_true", help="YouTubeへアップロードする")
     parser.add_argument("--public", action="store_true", help="公開アップロード (デフォルトは非公開)")
+    parser.add_argument("--thumbnail", action="store_true", help="サムネイルを自動生成する")
+    parser.add_argument("--thumbnail-style", choices=["modern", "classic", "gaming", "educational"], default="modern", help="サムネイルスタイル")
 
     args = parser.parse_args()
 
@@ -64,6 +72,8 @@ def main():
             quality=args.quality,
             upload=bool(args.upload),
             private=not bool(args.public),
+            thumbnail=bool(args.thumbnail),
+            thumbnail_style=args.thumbnail_style
         )
     )
 

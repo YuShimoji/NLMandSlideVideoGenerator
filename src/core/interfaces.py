@@ -146,3 +146,38 @@ class IPublishingQueue(Protocol):
         schedule: Optional[str] = None,
     ) -> str:
         """予約投稿や承認待ちキューに投入"""
+
+
+class ThumbnailGeneratorProtocol(Protocol):
+    """サムネイル自動生成プロトコル"""
+
+    async def generate(
+        self,
+        video: "VideoInfo",
+        script: Dict[str, Any],
+        slides: "SlidesPackage",
+        style: str = "modern"
+    ) -> "ThumbnailInfo":
+        """
+        動画、スクリプト、スライド情報からサムネイルを自動生成
+
+        Args:
+            video: 動画情報
+            script: スクリプトデータ
+            slides: スライドパッケージ
+            style: サムネイルスタイル ('modern', 'classic', 'gaming', 'educational')
+
+        Returns:
+            ThumbnailInfo: 生成されたサムネイル情報
+        """
+
+
+# インターフェースエイリアス
+IScriptProvider = ScriptProviderProtocol
+IVoicePipeline = VoicePipelineProtocol
+IEditingBackend = EditingBackendProtocol
+IPlatformAdapter = PlatformAdapterProtocol
+IContentAdapter = ContentAdapterProtocol
+ITimelinePlanner = TimelinePlannerProtocol
+IAssetRegistry = AssetRegistryProtocol
+IThumbnailGenerator = ThumbnailGeneratorProtocol
