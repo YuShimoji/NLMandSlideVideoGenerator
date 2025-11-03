@@ -77,6 +77,9 @@ class YMM4EditingBackend(IEditingBackend):
             try:
                 shutil.copy2(self.project_template, project_path)
                 logger.info(f"YMM4 テンプレートを複製しました: {project_path}")
+                
+                # テンプレート差分適用プロトタイプ
+                self._apply_template_diff(project_dir, project_path)
             except Exception as err:
                 logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
                 project_path.touch()
@@ -183,3 +186,89 @@ class YMM4EditingBackend(IEditingBackend):
             "created_at": video_info.created_at.isoformat(),
         }
         metadata_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _apply_template_diff(self, project_dir: Path, project_path: Path) -> None:
+        """
+        テンプレート差分適用プロトタイプ
+        
+        Args:
+            project_dir: プロジェクトディレクトリ
+            project_path: プロジェクトファイルパス
+        """
+        try:
+            # テンプレートの JSON メタデータを探す
+            template_json = self.project_template.with_suffix('.json')
+            if not template_json.exists():
+                logger.info("テンプレート JSON メタデータが見つからないため、差分適用をスキップ")
+                return
+            
+            # テンプレートメタデータを読み込み
+            with open(template_json, 'r', encoding='utf-8') as f:
+                template_meta = json.load(f)
+            
+            # 差分適用設定を取得（例: 環境変数や設定ファイルから）
+            diff_config = self._load_diff_config()
+            
+            if diff_config:
+                # 差分適用ロジック（プロトタイプ）
+                updated_meta = self._compute_template_diff(template_meta, diff_config)
+                
+                # 更新されたメタデータを保存
+                updated_json = project_dir / "template_diff_applied.json"
+                with open(updated_json, 'w', encoding='utf-8') as f:
+                    json.dump(updated_meta, f, ensure_ascii=False, indent=2)
+                
+                logger.info(f"テンプレート差分適用完了: {updated_json}")
+                logger.info(f"適用された差分: {diff_config}")
+            else:
+                logger.info("適用する差分設定が見つからないため、スキップ")
+                
+        except Exception as e:
+            logger.warning(f"テンプレート差分適用エラー: {e}")
+
+    def _load_diff_config(self) -> Optional[Dict[str, Any]]:
+        """
+        差分適用設定を読み込み
+        
+        Returns:
+            Optional[Dict[str, Any]]: 差分設定
+        """
+        # プロトタイプ: 環境変数から読み込み
+        diff_str = os.getenv("YMM4_TEMPLATE_DIFF", "")
+        if diff_str:
+            try:
+                return json.loads(diff_str)
+            except json.JSONDecodeError:
+                logger.warning(f"無効な差分設定: {diff_str}")
+        return None
+
+    def _compute_template_diff(self, template_meta: Dict[str, Any], diff_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        テンプレート差分を計算して適用
+        
+        Args:
+            template_meta: テンプレートメタデータ
+            diff_config: 差分設定
+            
+        Returns:
+            Dict[str, Any]: 更新されたメタデータ
+        """
+        # プロトタイプ: シンプルな差分適用
+        updated = template_meta.copy()
+        
+        # 例: 字幕スタイルの更新
+        if "subtitle_style" in diff_config:
+            updated.setdefault("styles", {})["subtitle"] = diff_config["subtitle_style"]
+            logger.info(f"字幕スタイルを更新: {diff_config['subtitle_style']}")
+        
+        # 例: 背景色の更新
+        if "background_color" in diff_config:
+            updated.setdefault("styles", {})["background"] = diff_config["background_color"]
+            logger.info(f"背景色を更新: {diff_config['background_color']}")
+        
+        # 例: エフェクトの追加
+        if "effects" in diff_config:
+            updated.setdefault("effects", []).extend(diff_config["effects"])
+            logger.info(f"エフェクトを追加: {diff_config['effects']}")
+        
+        return updated

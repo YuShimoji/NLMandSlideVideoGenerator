@@ -171,13 +171,3 @@ class ThumbnailGeneratorProtocol(Protocol):
             ThumbnailInfo: 生成されたサムネイル情報
         """
 
-
-# インターフェースエイリアス
-IScriptProvider = ScriptProviderProtocol
-IVoicePipeline = VoicePipelineProtocol
-IEditingBackend = EditingBackendProtocol
-IPlatformAdapter = PlatformAdapterProtocol
-IContentAdapter = ContentAdapterProtocol
-ITimelinePlanner = TimelinePlannerProtocol
-IAssetRegistry = AssetRegistryProtocol
-IThumbnailGenerator = ThumbnailGeneratorProtocol

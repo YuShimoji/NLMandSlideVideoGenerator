@@ -3,21 +3,16 @@
 YouTube動画用のタイトル、概要、タグを自動生成
 """
 import asyncio
+import json
+import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 import re
 from collections import Counter
 from datetime import datetime
 
-# 基本的なロガー設定（loguruの代替）
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-    def debug(self, msg): print(f"[DEBUG] {msg}")
-
-logger = SimpleLogger()
+logger = logging.getLogger(__name__)
 
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
@@ -36,33 +31,75 @@ class VideoMetadata:
 class MetadataGenerator:
     """メタデータ生成クラス"""
     
-    def __init__(self):
+    def __init__(self, template_dir: Optional[Path] = None):
         self.youtube_settings = settings.YOUTUBE_SETTINGS
         self.max_title_length = self.youtube_settings["max_title_length"]
         self.max_description_length = self.youtube_settings["max_description_length"]
         self.max_tags_length = self.youtube_settings["max_tags_length"]
         
-    async def generate_metadata(self, transcript: TranscriptInfo) -> Dict[str, Any]:
+        # テンプレートディレクトリ
+        self.template_dir = template_dir or settings.TEMPLATES_DIR / "metadata"
+        self.template_dir.mkdir(exist_ok=True)
+        
+        # テンプレート読み込み
+        self.templates = self._load_templates()
+    
+    def _load_templates(self) -> Dict[str, Dict[str, Any]]:
+        """テンプレートファイルを読み込み"""
+        templates = {}
+        
+        if self.template_dir.exists():
+            for template_file in self.template_dir.glob("*.json"):
+                try:
+                    with open(template_file, 'r', encoding='utf-8') as f:
+                        template_data = json.load(f)
+                        template_name = template_file.stem
+                        templates[template_name] = template_data
+                        logger.info(f"メタデータテンプレート読み込み: {template_name}")
+                except Exception as e:
+                    logger.warning(f"テンプレート読み込みエラー {template_file}: {e}")
+        
+        # デフォルトテンプレート
+        templates.setdefault('default', {
+            'title_template': '{topic} - {key_points}',
+            'description_template': 'この動画では{topic}について解説します。\n\n{toc}\n\n{hashtags}',
+            'tags_template': ['{topic}', '解説', 'チュートリアル'],
+            'category_id': self.youtube_settings['category_id'],
+            'language': self.youtube_settings['default_language']
+        })
+        
+        return templates
+    
+    async def generate_metadata(self, transcript: TranscriptInfo, template_name: str = "default") -> Dict[str, Any]:
         """
         台本からYouTube用メタデータを生成
         
         Args:
             transcript: 台本情報
+            template_name: 使用するテンプレート名
             
         Returns:
             Dict[str, Any]: 生成されたメタデータ
         """
-        logger.info("YouTubeメタデータ生成開始")
+        logger.info(f"YouTubeメタデータ生成開始 (テンプレート: {template_name})")
+        
+        # テンプレートの検証
+        if template_name not in self.templates:
+            logger.warning(f"不明なテンプレート '{template_name}'、default にフォールバック")
+            template_name = "default"
+        
+        template = self.templates[template_name]
+        logger.info(f"適用するテンプレート: {template}")
         
         try:
             # Step 1: タイトル生成
-            title = self._generate_title(transcript)
+            title = self._generate_title_from_template(transcript, template)
             
             # Step 2: 概要欄生成
-            description = self._generate_description(transcript)
+            description = self._generate_description_from_template(transcript, template)
             
             # Step 3: タグ生成
-            tags = self._generate_tags(transcript)
+            tags = self._generate_tags_from_template(transcript, template)
             
             # Step 4: サムネイル提案生成
             thumbnail_suggestions = self._generate_thumbnail_suggestions(transcript)
@@ -559,3 +596,169 @@ class MetadataGenerator:
             optimized["description"] = keyword_line + optimized["description"]
         
         return optimized
+
+    def _generate_title_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> str:
+        """
+        テンプレートからタイトルを生成
+        
+        Args:
+            transcript: 台本情報
+            template: テンプレートデータ
+            
+        Returns:
+            str: 生成されたタイトル
+        """
+        title_template = template.get('title_template', '{topic} - {key_points}')
+        
+        # プレースホルダーを解決
+        replacements = {
+            '{topic}': transcript.title or 'トピックなし',
+            '{key_points}': self._get_key_points_string(transcript),
+            '{duration}': self._format_duration(transcript),
+        }
+        
+        title = title_template
+        for placeholder, value in replacements.items():
+            title = title.replace(placeholder, value)
+        
+        # 長さ制限
+        if len(title) > self.max_title_length:
+            title = title[:self.max_title_length-3] + "..."
+        
+        return title
+
+    def _generate_description_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> str:
+        """
+        テンプレートから概要欄を生成
+        
+        Args:
+            transcript: 台本情報
+            template: テンプレートデータ
+            
+        Returns:
+            str: 生成された概要欄
+        """
+        desc_template = template.get('description_template', 'この動画では{topic}について解説します。\n\n{toc}\n\n{hashtags}')
+        
+        # プレースホルダーを解決
+        replacements = {
+            '{topic}': transcript.title or 'トピックなし',
+            '{toc}': self._generate_toc_string(transcript),
+            '{hashtags}': self._generate_hashtags_string(transcript),
+            '{summary}': self._generate_video_summary(transcript),
+        }
+        
+        description = desc_template
+        for placeholder, value in replacements.items():
+            description = description.replace(placeholder, value)
+        
+        # 長さ制限
+        if len(description) > self.max_description_length:
+            description = description[:self.max_description_length-3] + "..."
+        
+        return description
+
+    def _generate_tags_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> List[str]:
+        """
+        テンプレートからタグを生成
+        
+        Args:
+            transcript: 台本情報
+            template: テンプレートデータ
+            
+        Returns:
+            List[str]: 生成されたタグ
+        """
+        tags_template = template.get('tags_template', ['{topic}', '解説', 'チュートリアル'])
+        
+        tags = []
+        for tag_template in tags_template:
+            # プレースホルダーを解決
+            tag = tag_template.replace('{topic}', transcript.title or 'トピックなし')
+            tags.append(tag)
+        
+        # 文字数制限
+        total_length = sum(len(tag) for tag in tags) + len(tags) - 1
+        if total_length > self.max_tags_length:
+            # 短くする
+            tags = tags[:10]  # 最大10タグ
+        
+        return tags
+
+    def _get_key_points_string(self, transcript: TranscriptInfo) -> str:
+        """キーポイントを文字列化"""
+        keywords = self._extract_main_keywords(transcript)
+        return ', '.join(keywords[:3])
+
+    def _format_duration(self, transcript: TranscriptInfo) -> str:
+        """動画時間をフォーマット"""
+        if transcript.segments:
+            total_time = max(seg.end_time for seg in transcript.segments)
+            minutes = int(total_time // 60)
+            return f"{minutes}分"
+        return "不明"
+
+    def _generate_toc_string(self, transcript: TranscriptInfo) -> str:
+        """目次を文字列化"""
+        chapters = self._generate_chapters(transcript)
+        return '\n'.join(chapters[:5])  # 最大5チャプター
+
+    def _generate_hashtags_string(self, transcript: TranscriptInfo) -> str:
+        """ハッシュタグを文字列化"""
+        hashtags = [f"#{tag.replace(' ', '')}" for tag in self._extract_main_keywords(transcript)[:3]]
+        return ' '.join(hashtags)
+
+    def create_template_from_metadata(self, metadata: Dict[str, Any], template_name: str) -> None:
+        """
+        既存メタデータからテンプレートを作成
+        
+        Args:
+            metadata: メタデータ
+            template_name: テンプレート名
+        """
+        template = {
+            'title_template': metadata.get('title', '{topic} - {key_points}'),
+            'description_template': metadata.get('description', 'この動画では{topic}について解説します。\n\n{toc}\n\n{hashtags}'),
+            'tags_template': metadata.get('tags', ['{topic}', '解説']),
+            'category_id': metadata.get('category_id', self.youtube_settings['category_id']),
+            'language': metadata.get('language', self.youtube_settings['default_language'])
+        }
+        
+        # テンプレートを保存
+        template_path = self.template_dir / f"{template_name}.json"
+        with open(template_path, 'w', encoding='utf-8') as f:
+            json.dump(template, f, ensure_ascii=False, indent=2)
+        
+        # キャッシュ更新
+        self.templates[template_name] = template
+        logger.info(f"テンプレート '{template_name}' を作成しました")
+
+    def edit_template(self, template_name: str, updates: Dict[str, Any]) -> None:
+        """
+        テンプレートを編集
+        
+        Args:
+            template_name: テンプレート名
+            updates: 更新内容
+        """
+        if template_name not in self.templates:
+            raise ValueError(f"テンプレート '{template_name}' が見つかりません")
+        
+        # 更新適用
+        self.templates[template_name].update(updates)
+        
+        # 保存
+        template_path = self.template_dir / f"{template_name}.json"
+        with open(template_path, 'w', encoding='utf-8') as f:
+            json.dump(self.templates[template_name], f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"テンプレート '{template_name}' を更新しました")
+
+    def list_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        利用可能なテンプレート一覧を取得
+        
+        Returns:
+            Dict[str, Dict[str, Any]]: テンプレート一覧
+        """
+        return self.templates.copy()

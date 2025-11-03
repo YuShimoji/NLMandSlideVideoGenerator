@@ -18,6 +18,12 @@ class SimpleLogger:
 
 logger = SimpleLogger()
 
+import json
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
 
@@ -28,25 +34,74 @@ class SubtitleSegment:
     start_time: str
     end_time: str
     text: str
+    style: Optional[Dict[str, Any]] = None  # 装飾情報
 
 class SubtitleGenerator:
     """字幕生成クラス"""
     
-    def __init__(self):
+    def __init__(self, preset_dir: Optional[Path] = None):
         self.subtitle_settings = settings.SUBTITLE_SETTINGS
         self.output_dir = settings.TRANSCRIPTS_DIR
         
-    async def generate_subtitles(self, transcript_info: TranscriptInfo) -> Path:
+        # プリセットディレクトリ
+        self.preset_dir = preset_dir or settings.TEMPLATES_DIR / "subtitles"
+        self.preset_dir.mkdir(exist_ok=True)
+        
+        # プリセット読み込み
+        self.presets = self._load_presets()
+    
+    def _load_presets(self) -> Dict[str, Dict[str, Any]]:
+        """プリセットファイルを読み込み"""
+        presets = {}
+        
+        if self.preset_dir.exists():
+            for preset_file in self.preset_dir.glob("*.json"):
+                try:
+                    with open(preset_file, 'r', encoding='utf-8') as f:
+                        preset_data = json.load(f)
+                        preset_name = preset_file.stem
+                        presets[preset_name] = preset_data
+                        logger.info(f"字幕プリセット読み込み: {preset_name}")
+                except Exception as e:
+                    logger.warning(f"プリセット読み込みエラー {preset_file}: {e}")
+        
+        # デフォルトプリセット
+        presets.setdefault('default', {
+            'font_family': self.subtitle_settings['font_family'],
+            'font_size': self.subtitle_settings['font_size'],
+            'font_color': self.subtitle_settings['font_color'],
+            'background_color': self.subtitle_settings['background_color'],
+            'background_opacity': self.subtitle_settings['background_opacity'],
+            'position': self.subtitle_settings['position'],
+            'effects': []
+        })
+        
+        return presets
+    
+    async def generate_subtitles(
+        self,
+        transcript_info: TranscriptInfo,
+        style: str = "default"
+    ) -> Path:
         """
         台本から字幕ファイルを生成
         
         Args:
             transcript_info: 台本情報
+            style: 字幕スタイルプリセット名
             
         Returns:
             Path: 生成された字幕ファイルパス
         """
-        logger.info("字幕生成開始")
+        logger.info(f"字幕生成開始 (スタイル: {style})")
+        
+        # プリセットの検証
+        if style not in self.presets:
+            logger.warning(f"不明なスタイル '{style}'、default にフォールバック")
+            style = "default"
+        
+        self.current_preset = self.presets[style]
+        logger.info(f"適用するプリセット: {self.current_preset}")
         
         try:
             # Step 1: 字幕セグメント作成
@@ -58,10 +113,13 @@ class SubtitleGenerator:
             # Step 3: SRTファイル生成
             srt_path = await self._generate_srt_file(optimized_segments, transcript_info.title)
             
-            # Step 4: VTTファイル生成（Web用）
+            # Step 4: ASSファイル生成（スタイル付き）
+            ass_path = await self._generate_ass_file(optimized_segments, transcript_info.title, style)
+            
+            # Step 5: VTTファイル生成（Web用）
             vtt_path = await self._generate_vtt_file(optimized_segments, transcript_info.title)
             
-            logger.success(f"字幕生成完了: {srt_path}")
+            logger.success(f"字幕生成完了: {srt_path}, {ass_path}")
             return srt_path
             
         except Exception as e:
@@ -257,6 +315,97 @@ class SubtitleGenerator:
         
         logger.info(f"VTTファイル生成完了: {vtt_path}")
         return vtt_path
+    
+    async def _generate_ass_file(self, segments: List[SubtitleSegment], title: str, style: str) -> Path:
+        """
+        ASSファイルを生成（スタイル付き字幕）
+        
+        Args:
+            segments: 字幕セグメント一覧
+            title: タイトル
+            style: スタイル名
+            
+        Returns:
+            Path: 生成されたASSファイルパス
+        """
+        # ファイル名生成
+        safe_title = re.sub(r'[^\w\s-]', '', title).strip()
+        safe_title = re.sub(r'[-\s]+', '_', safe_title)
+        ass_path = self.output_dir / f"{safe_title}_subtitles_{style}.ass"
+        
+        # ディレクトリ作成
+        ass_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # プリセットからスタイル情報を取得
+        preset = self.presets.get(style, self.presets['default'])
+        
+        # ASSファイル書き込み
+        with open(ass_path, 'w', encoding='utf-8') as f:
+            # Script Info セクション
+            f.write("[Script Info]\n")
+            f.write("Title: Generated Subtitles\n")
+            f.write("ScriptType: v4.00+\n")
+            f.write("WrapStyle: 0\n")
+            f.write("ScaledBorderAndShadow: yes\n")
+            f.write("YCbCr Matrix: TV.601\n\n")
+            
+            # V4+ Styles セクション
+            f.write("[V4+ Styles]\n")
+            f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+            
+            # スタイル定義（プリセットから）
+            style_name = f"Style_{style}"
+            font_name = preset.get('font_family', 'Arial')
+            font_size = preset.get('font_size', 48)
+            primary_color = self._hex_to_ass_color(preset.get('font_color', '#ffffff'))
+            outline_color = self._hex_to_ass_color(preset.get('background_color', '#000000'))
+            back_color = self._hex_to_ass_color(preset.get('background_color', '#000000'))
+            outline = 2
+            shadow = 1
+            alignment = 2  # 中央揃え
+            
+            f.write(f"Style: {style_name},{font_name},{font_size},{primary_color},{primary_color},{outline_color},{back_color},0,0,0,0,100,100,0,0,1,{outline},{shadow},{alignment},10,10,10,1\n\n")
+            
+            # Events セクション
+            f.write("[Events]\n")
+            f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+            
+            for segment in segments:
+                start_ass = self._srt_to_ass_time(segment.start_time)
+                end_ass = self._srt_to_ass_time(segment.end_time)
+                text = segment.text
+                
+                # エフェクト適用（プリセットから）
+                effects = preset.get('effects', [])
+                if effects:
+                    # シンプルなエフェクト適用例
+                    for effect in effects:
+                        if effect.get('type') == 'glow':
+                            text = f"{{\\blur{effect.get('intensity', 1)}}}{text}"
+                        elif effect.get('type') == 'shadow':
+                            text = f"{{\\shad{effect.get('distance', 1)}}}{text}"
+                
+                f.write(f"Dialogue: 0,{start_ass},{end_ass},{style_name},,0,0,0,,{text}\n")
+        
+        logger.info(f"ASSファイル生成完了: {ass_path}")
+        return ass_path
+    
+    def _hex_to_ass_color(self, hex_color: str) -> str:
+        """16進数カラーをASSカラー形式に変換"""
+        hex_color = hex_color.lstrip('#')
+        if len(hex_color) == 6:
+            r, g, b = [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
+            # ASSはBGR形式
+            return f"&H00{b:02x}{g:02x}{r:02x}"
+        return "&H00ffffff"  # デフォルト白
+    
+    def _srt_to_ass_time(self, srt_time: str) -> str:
+        """SRT時間をASS時間に変換"""
+        # SRT: 00:00:00,000 -> ASS: 0:00:00.00
+        time_part, millis = srt_time.split(',')
+        hours, minutes, seconds = time_part.split(':')
+        centiseconds = int(millis) // 10
+        return f"{int(hours)}:{minutes}:{seconds}.{centiseconds:02d}"
     
     def _seconds_to_srt_time(self, seconds: float) -> str:
         """

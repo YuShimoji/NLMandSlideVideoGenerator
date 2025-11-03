@@ -74,19 +74,26 @@ class SlideGenerator:
     async def generate_slides(
         self,
         transcript: TranscriptInfo,
-        max_slides: int = 20
+        max_slides: int = 20,
+        script_bundle: Optional[Dict[str, Any]] = None
     ) -> SlidesPackage:
         """
         台本からスライドを生成
         
         Args:
-            transcript_info: 台本情報
+            transcript: 台本情報
             max_slides: 最大スライド数
+            script_bundle: オプションのスクリプトバンドル（NotebookLM対応）
             
         Returns:
             SlidesPackage: 生成されたスライドパッケージ
         """
         logger.info(f"スライド生成開始: {transcript.title}")
+        
+        # NotebookLM DeepDive のスライド情報がある場合は優先使用
+        if script_bundle and "slides" in script_bundle:
+            logger.info("NotebookLM DeepDive のスライド情報を検出、使用します")
+            return await self._generate_slides_from_bundle(script_bundle, max_slides)
         
         try:
             # Step 1: 台本をスライド用に分割
@@ -208,6 +215,71 @@ class SlideGenerator:
             title=presentation_title,
             created_at=time.strftime("%Y-%m-%d %H:%M:%S")
         )
+        return slides_package
+    
+    async def _generate_slides_from_bundle(
+        self,
+        script_bundle: Dict[str, Any],
+        max_slides: int
+    ) -> SlidesPackage:
+        """
+        スクリプトバンドルからスライドを生成（NotebookLM対応）
+        
+        Args:
+            script_bundle: スクリプトバンドル
+            max_slides: 最大スライド数
+            
+        Returns:
+            SlidesPackage: 生成されたスライドパッケージ
+        """
+        logger.info("スクリプトバンドルからスライド生成中...")
+        
+        bundle_slides = script_bundle.get("slides", [])
+        slides: List[SlideInfo] = []
+        
+        # バンドルのスライドを SlideInfo に変換
+        for i, bundle_slide in enumerate(bundle_slides[:max_slides]):
+            slide_info = SlideInfo(
+                slide_id=i + 1,
+                title=bundle_slide.get("title", f"スライド {i+1}"),
+                content=bundle_slide.get("content", ""),
+                layout_type=bundle_slide.get("layout", "title_and_content"),
+                estimated_duration=bundle_slide.get("duration", 15.0),
+                image_suggestions=bundle_slide.get("images", [])
+            )
+            slides.append(slide_info)
+        
+        # スライドが足りない場合はセグメントから補完
+        if len(slides) < max_slides and "segments" in script_bundle:
+            segments = script_bundle["segments"]
+            for j, segment in enumerate(segments[len(slides):max_slides]):
+                slide_info = SlideInfo(
+                    slide_id=len(slides) + j + 1,
+                    title=f"セグメント {len(slides) + j + 1}",
+                    content=segment.get("content", ""),
+                    layout_type="title_and_content",
+                    estimated_duration=segment.get("duration", 15.0)
+                )
+                slides.append(slide_info)
+        
+        presentation_id = f"notebooklm_{int(time.time())}"
+        title = script_bundle.get("title", "NotebookLM Presentation")
+        
+        slides_package = SlidesPackage(
+            file_path=self.output_dir / f"{presentation_id}.pptx",
+            slides=slides,
+            total_slides=len(slides),
+            theme=self.theme,
+            presentation_id=presentation_id,
+            title=title,
+            created_at=time.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        
+        # ファイル生成とメタデータ保存
+        await self._download_slides_file(slides_package)
+        await self._save_slides_metadata(slides_package)
+        
+        logger.info(f"バンドルからのスライド生成完了: {len(slides)}枚")
         return slides_package
     
     async def create_slides_from_content(
