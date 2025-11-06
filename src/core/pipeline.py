@@ -7,13 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import time
 from datetime import datetime
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Protocol, List, Optional, Union, Dict, Any, Callable
-from functools import wraps
+from pathlib import Path
 
 from config.settings import settings, create_directories
 
@@ -61,117 +58,11 @@ from .platforms.youtube_adapter import YouTubePlatformAdapter
 from .platforms.tiktok_adapter import TikTokPlatformAdapter
 from .adapters import ContentAdapterManager
 
-
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-
-
-logger = SimpleLogger()
-
-
-def retry_on_failure(max_retries: int = None, backoff_factor: float = None, exceptions: tuple = (Exception,)):
-    """
-    リトライデコレータ
-
-    Args:
-        max_retries: 最大リトライ回数
-        backoff_factor: バックオフ係数
-        exceptions: リトライ対象例外
-    """
-    max_retries = max_retries or settings.RETRY_SETTINGS.get("max_retries", 3)
-    backoff_factor = backoff_factor or settings.RETRY_SETTINGS.get("backoff_factor", 2.0)
-
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            last_exception = None
-
-            for attempt in range(max_retries + 1):
-                try:
-                    return await func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-
-                    if attempt < max_retries:
-                        wait_time = backoff_factor ** attempt
-                        logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {wait_time:.1f}s...")
-                        await asyncio.sleep(wait_time)
-                    else:
-                        logger.error(f"All {max_retries + 1} attempts failed. Last error: {e}")
-                        raise last_exception
-
-            # この行は到達しないはず
-            raise last_exception
-
-        return wrapper
-    return decorator
-
-
-class PipelineError(Exception):
-    """パイプラインエラー"""
-
-    def __init__(self, message: str, stage: str = None, recoverable: bool = False, user_message: str = None):
-        super().__init__(message)
-        self.stage = stage
-        self.recoverable = recoverable
-        self.user_message = user_message or self._generate_user_message(message, stage)
-
-    def _generate_user_message(self, message: str, stage: str) -> str:
-        """ユーザーフレンドリーなエラーメッセージ生成"""
-        base_messages = {
-            "script": "スクリプト生成でエラーが発生しました。トピックを確認してください。",
-            "voice": "音声生成でエラーが発生しました。TTS 設定を確認してください。",
-            "slides": "スライド生成でエラーが発生しました。Google Slides API を確認してください。",
-            "video": "動画合成でエラーが発生しました。MoviePy の設定を確認してください。",
-            "upload": "動画アップロードでエラーが発生しました。YouTube API を確認してください。",
-        }
-
-        if stage and stage in base_messages:
-            return base_messages[stage]
-        else:
-            return "処理中にエラーが発生しました。しばらく経ってから再度お試しください。"
-
-
-def with_fallback(primary_func, fallback_func, *args, **kwargs):
-    """
-    フォールバック処理付き関数実行
-
-    Args:
-        primary_func: メイン関数
-        fallback_func: フォールバック関数
-        *args, **kwargs: 関数引数
-    """
-    try:
-        return primary_func(*args, **kwargs)
-    except Exception as e:
-        logger.warning(f"Primary function failed: {e}. Using fallback...")
-        try:
-            return fallback_func(*args, **kwargs)
-        except Exception as fallback_e:
-            logger.error(f"Fallback also failed: {fallback_e}")
-            raise PipelineError(
-                f"Both primary and fallback failed: {e} -> {fallback_e}",
-                recoverable=False
-            )
-
-
-@dataclass
-class PipelineArtifacts:
-    sources: List
-    audio: AudioInfo
-    transcript: TranscriptInfo
-    slides: SlidesPackage
-    video: VideoInfo
-    upload: Optional[UploadResult]
-    script: Optional[Dict[str, Any]] = None
-    timeline_plan: Optional[Dict[str, Any]] = None
-    assets: Optional[Dict[str, Any]] = None
-    thumbnail_path: Optional[Path] = None
-    metadata: Optional[Dict[str, Any]] = None
-    publishing_result: Optional[Dict[str, Any]] = None
+from .utils.decorators import retry_on_failure
+from .utils.logger import logger
+from .exceptions import PipelineError
+from .models import PipelineArtifacts
+from .helpers import with_fallback
 
 
 class ModularVideoPipeline:
@@ -618,66 +509,3 @@ class ModularVideoPipeline:
         # フォールバック: 既存AudioGeneratorのみ
         audio_info = await self.audio_generator.generate_audio(sources)
         return script_bundle, audio_info
-
-
-def build_default_pipeline() -> ModularVideoPipeline:
-    """設定に基づきモジュールコンポーネントを組み立てるヘルパー"""
-
-    stage_modes = settings.PIPELINE_STAGE_MODES
-    components = settings.PIPELINE_COMPONENTS
-
-    script_provider = None
-    voice_pipeline = None
-    timeline_planner = None
-    editing_backend = None
-    platform_adapter = None
-    thumbnail_generator = None
-
-    if components.get("script_provider") == "gemini" and settings.GEMINI_API_KEY:
-        try:
-            script_provider = GeminiScriptProvider()
-        except ValueError as err:
-            logger.warning(f"GeminiScriptProviderの初期化に失敗しました: {err}")
-    elif components.get("script_provider") == "notebooklm":
-        try:
-            script_provider = NotebookLMScriptProvider()
-        except ValueError as err:
-            logger.warning(f"NotebookLMScriptProviderの初期化に失敗しました: {err}")
-
-    if components.get("voice_pipeline") in {"tts", "gemini_tts"}:
-        voice_pipeline = TTSVoicePipeline()
-
-    editing_backend_setting = components.get("editing_backend")
-
-    if editing_backend_setting == "moviepy":
-        timeline_planner = BasicTimelinePlanner()
-        editing_backend = MoviePyEditingBackend()
-    elif editing_backend_setting == "ymm4":
-        timeline_planner = BasicTimelinePlanner()
-        editing_backend = YMM4EditingBackend()
-
-    platform_adapter_setting = components.get("platform_adapter")
-    if platform_adapter_setting == "youtube":
-        platform_adapter = YouTubePlatformAdapter()
-    elif platform_adapter_setting == "tiktok":
-        platform_adapter = TikTokPlatformAdapter()
-
-    # サムネイル生成の初期化
-    thumbnail_setting = components.get("thumbnail_generator", "ai")
-    if thumbnail_setting == "ai":
-        thumbnail_generator = AIThumbnailGenerator()
-    elif thumbnail_setting == "template":
-        thumbnail_generator = TemplateThumbnailGenerator()
-
-    pipeline = ModularVideoPipeline(
-        script_provider=script_provider,
-        voice_pipeline=voice_pipeline,
-        timeline_planner=timeline_planner,
-        editing_backend=editing_backend,
-        platform_adapter=platform_adapter,
-        thumbnail_generator=thumbnail_generator,
-    )
-
-    pipeline.stage_modes.update(stage_modes)
-
-    return pipeline
