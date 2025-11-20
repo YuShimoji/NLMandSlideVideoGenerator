@@ -8,14 +8,7 @@ from pathlib import Path
 from typing import Optional, List
 
 # 基本的なロガー設定（loguruの代替）
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-    def debug(self, msg): print(f"[DEBUG] {msg}")
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 try:
     from config.settings import settings, create_directories

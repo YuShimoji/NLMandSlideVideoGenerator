@@ -11,13 +11,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw
 
 # 基本的なロガー設定（loguruの代替）
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo

@@ -11,14 +11,7 @@ import re
 from datetime import datetime
 
 # 基本的なロガー設定（loguruの代替）
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-    def debug(self, msg): print(f"[DEBUG] {msg}")
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 from config.settings import settings
 from .audio_generator import AudioInfo
@@ -86,6 +79,9 @@ class TranscriptProcessor:
         except Exception as e:
             logger.error(f"文字起こし処理エラー: {str(e)}")
             raise
+
+    async def process_transcript(self, audio_info: AudioInfo) -> TranscriptInfo:
+        return await self.process_audio(audio_info)
     
     async def _upload_audio_to_notebook(self, audio_path: Path) -> str:
         """

@@ -10,21 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
-# SimpleLogger クラス
-class SimpleLogger:
-    @staticmethod
-    def info(message: str):
-        print(f"[INFO] {message}")
-    
-    @staticmethod
-    def error(message: str):
-        print(f"[ERROR] {message}")
-    
-    @staticmethod
-    def warning(message: str):
-        print(f"[WARNING] {message}")
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 @dataclass
 class GeminiResponse:

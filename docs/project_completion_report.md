@@ -256,6 +256,26 @@
 - **保守可能**: 明確な構造とドキュメント
 - **テスト可能**: 包括的テストカバレッジ
 
+## 📌 2025年11月 追加開発・リファクタリング状況
+
+- **リモート同期・環境確認**
+  - `master` ブランチを `origin/master` と同期し、依存関係チェック・コンパイル確認を実施済み。
+  - `test_dependencies.bat` および `python -m compileall src` により、少なくともインポートレベル・構文レベルでの問題がないことを確認。
+- **ロギング基盤の統一**
+  - 各モジュールに分散していた `SimpleLogger` 実装を `core.utils.logger.SimpleLogger` に集約。
+  - 以下のモジュールで共通ロガー `from core.utils.logger import logger` を使用するよう統一: `main.py`, `notebook_lm/audio_generator.py`, `notebook_lm/transcript_processor.py`, `slides/slide_generator.py`, `video_editor/video_composer.py`, `audio/tts_integration.py`, `notebook_lm/gemini_integration.py`, `youtube/uploader.py`。
+  - `debug()` メソッドを追加し、既存コードとの後方互換性を確保。
+- **Transcript API の一貫性向上**
+  - `TranscriptProcessor` に `process_transcript()` を追加し、既存の `process_audio()` に委譲するエイリアスとして実装。
+  - これにより、モックテストやパイプラインコードから `process_transcript()` を前提に呼び出しても安全に動作。
+- **実装済み機能ハイライトと今後のタスク整理**
+  - NotebookLM/Gemini・Slides・TTS・動画合成・YouTube 連携・Web/API を含む、現時点の実装済み機能を整理。
+  - 今後のリファクタリングおよび開発の優先タスクを以下の観点で明文化:
+    - パイプライン長大メソッドの段階的分割（`ModularVideoPipeline.run` / `VideoGenerationPipeline.generate_video` など）
+    - ログ・例外クラス・DTO の整理
+    - モックテストおよび Web/API テストの拡充
+    - 実 API/プロバイダ切り替え UI やサムネ自動生成など UX 改善
+
 ## 📞 サポート・連絡先
 
 ### 開発チーム
