@@ -371,6 +371,104 @@ async def run_pipeline(payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/v1/pipeline/csv")
+async def run_pipeline_csv(payload: Dict[str, Any]):
+    """CSVタイムラインモードでパイプラインを実行するエンドポイント
+
+    Request body:
+        {
+          "csv_path": "...",          # A列=話者, B列=テキスト のCSVパス
+          "audio_dir": "...",         # 行ごとの音声ファイル(WAV)ディレクトリ
+          "topic": "任意のトピック名", # 省略時はCSVファイル名を使用
+          "quality": "1080p",         # 任意。既定は 1080p
+          "editing_backend": "moviepy"|"ymm4", # 省略可
+          "private_upload": true,      # 任意
+          "upload": false              # 実際にアップロードするかどうか
+        }
+    """
+
+    csv_path = payload.get("csv_path")
+    audio_dir = payload.get("audio_dir")
+    if not csv_path or not audio_dir:
+        raise HTTPException(status_code=400, detail="'csv_path' and 'audio_dir' are required")
+
+    topic = payload.get("topic")
+    quality = payload.get("quality") or "1080p"
+    editing_backend = payload.get("editing_backend") or settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    private_upload = payload.get("private_upload", True)
+    upload = payload.get("upload", False)
+
+    # 一時的に編集バックエンドを上書き
+    old_backend = settings.PIPELINE_COMPONENTS["editing_backend"]
+    settings.PIPELINE_COMPONENTS["editing_backend"] = editing_backend
+
+    execution_id = datetime.now().strftime("run_csv_%Y%m%d_%H%M%S")
+    PROGRESS[execution_id] = {"stage": "initializing", "progress": 0.0, "message": "starting csv timeline"}
+
+    def progress_cb(stage: str, progress: float, message: str):
+        PROGRESS[execution_id] = {"stage": stage, "progress": progress, "message": message}
+
+    from pathlib import Path as _Path
+
+    try:
+        pipeline = build_default_pipeline()
+        result = await pipeline.run_csv_timeline(
+            csv_path=_Path(csv_path),
+            audio_dir=_Path(audio_dir),
+            topic=topic,
+            quality=quality,
+            private_upload=private_upload,
+            upload=upload,
+            stage_modes=settings.PIPELINE_STAGE_MODES,
+            user_preferences={},
+            progress_callback=progress_cb,
+        )
+
+        RUNS[execution_id] = {
+            "id": execution_id,
+            "status": "succeeded" if result.get("success") else "failed",
+            "topic": result.get("artifacts").transcript.title if result.get("artifacts") else topic,
+            "started_at": None,
+            "finished_at": datetime.now().isoformat(),
+            "youtube_url": result.get("youtube_url"),
+            "upload_requested": upload,
+            "mode": "csv_timeline",
+            "csv_path": csv_path,
+            "audio_dir": audio_dir,
+        }
+
+        ARTIFACTS[execution_id] = _to_dict(result.get("artifacts"))
+
+        _save_runs()
+        _save_artifact(execution_id, ARTIFACTS[execution_id])
+
+        settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
+
+        out = {
+            "success": bool(result.get("success")),
+            "youtube_url": result.get("youtube_url"),
+            "artifacts": ARTIFACTS[execution_id],
+        }
+        return JSONResponse(content=out)
+
+    except Exception as e:
+        settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
+        RUNS[execution_id] = {
+            "id": execution_id,
+            "status": "failed",
+            "topic": topic,
+            "started_at": None,
+            "finished_at": datetime.now().isoformat(),
+            "error": str(e),
+            "upload_requested": upload,
+            "mode": "csv_timeline",
+            "csv_path": csv_path,
+            "audio_dir": audio_dir,
+        }
+        _save_runs()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/v1/pipeline/{execution_id}/progress")
 async def get_progress(execution_id: str = FPath(...)):
     if execution_id not in PROGRESS:

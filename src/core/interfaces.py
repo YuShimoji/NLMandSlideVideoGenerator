@@ -4,18 +4,20 @@
 """
 from __future__ import annotations
 
-from typing import Protocol, List, Optional, Union, Dict, Any
+from typing import Protocol, List, Optional, Union, Dict, Any, TYPE_CHECKING, runtime_checkable
 from pathlib import Path
 
-# 既存のデータ型を再利用
-from notebook_lm.source_collector import SourceInfo
-from notebook_lm.audio_generator import AudioInfo
-from notebook_lm.transcript_processor import TranscriptInfo
-from slides.slide_generator import SlidesPackage
-from video_editor.video_composer import VideoInfo
-from youtube.uploader import UploadResult, UploadMetadata
+if TYPE_CHECKING:
+    # 型チェック専用のインポート（実行時には評価しない）
+    from notebook_lm.source_collector import SourceInfo
+    from notebook_lm.audio_generator import AudioInfo
+    from notebook_lm.transcript_processor import TranscriptInfo
+    from slides.slide_generator import SlidesPackage
+    from video_editor.video_composer import VideoInfo
+    from youtube.uploader import UploadResult, UploadMetadata
 
 
+@runtime_checkable
 class IScriptProvider(Protocol):
     async def generate_script(
         self,
@@ -31,6 +33,7 @@ class IContentAdapter(Protocol):
         """NotebookLM DeepDiveなど固有フォーマットを内部スキーマへ変換"""
 
 
+@runtime_checkable
 class IVoicePipeline(Protocol):
     async def synthesize(
         self,
@@ -59,6 +62,7 @@ class ITimelinePlanner(Protocol):
         """セグメント・時間配分・エフェクト指示を計画"""
 
 
+@runtime_checkable
 class IEditingBackend(Protocol):
     async def render(
         self,
@@ -130,6 +134,7 @@ class IThumbnailGenerator(Protocol):
         """サムネイルテンプレート適用を抽象化"""
 
 
+@runtime_checkable
 class IPlatformAdapter(Protocol):
     async def publish(
         self,

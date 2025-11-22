@@ -9,20 +9,9 @@ from dataclasses import dataclass
 import re
 
 # 基本的なロガー設定（loguruの代替）
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-    def debug(self, msg): print(f"[DEBUG] {msg}")
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 import json
-import logging
-from pathlib import Path
-
-logger = logging.getLogger(__name__)
 
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment

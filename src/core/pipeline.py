@@ -38,6 +38,7 @@ from .persistence import db_manager
 from notebook_lm.source_collector import SourceCollector, SourceInfo
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo
+from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
 from slides.slide_generator import SlideGenerator, SlidesPackage
 from video_editor.video_composer import VideoComposer, VideoInfo
 from youtube.uploader import YouTubeUploader, UploadResult
@@ -62,7 +63,7 @@ from .utils.decorators import retry_on_failure
 from .utils.logger import logger
 from .exceptions import PipelineError
 from .models import PipelineArtifacts
-from .helpers import with_fallback
+from .helpers import with_fallback, build_default_pipeline
 
 
 class ModularVideoPipeline:
@@ -379,6 +380,281 @@ class ModularVideoPipeline:
 
         except Exception as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
+            db_manager.update_generation_status(job_id, 'failed', str(e))
+            raise PipelineError(str(e), recoverable=False)
+
+    async def run_csv_timeline(
+        self,
+        csv_path: Path,
+        audio_dir: Path,
+        topic: Optional[str] = None,
+        quality: str = "1080p",
+        private_upload: bool = True,
+        upload: bool = False,
+        stage_modes: Optional[Dict[str, str]] = None,
+        user_preferences: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+        job_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """CSVタイムライン(P10)から動画生成を行う専用パス
+
+        - SourceCollector / AudioGenerator / TranscriptProcessor をスキップし、
+          ユーザー提供の CSV + 行ごと音声から TranscriptInfo / AudioInfo を構築する。
+        - 以降のスライド生成・動画合成・アップロード処理は既存の run() と同じフローを利用する。
+        """
+
+        import wave
+
+        def _find_audio_files(directory: Path) -> list[Path]:
+            patterns = ["*.wav"]
+            files: list[Path] = []
+            for pat in patterns:
+                files.extend(sorted(directory.glob(pat)))
+            return sorted(set(files))
+
+        def _build_audio_segments(audio_files: list[Path]) -> list[AudioInfo]:
+            segments: list[AudioInfo] = []
+            for path in audio_files:
+                if path.suffix.lower() != ".wav":
+                    logger.warning(f"WAV 以外の拡張子はスキップします: {path}")
+                    continue
+                with wave.open(str(path), "rb") as wf:
+                    frames = wf.getnframes()
+                    framerate = wf.getframerate() or 1
+                    duration = frames / float(framerate)
+                segments.append(AudioInfo(file_path=path, duration=duration))
+            return segments
+
+        def _combine_wav_files(input_files: list[Path], output_path: Path) -> float:
+            if not input_files:
+                raise ValueError("入力 WAV がありません")
+
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            total_frames = 0
+            params = None
+
+            for path in input_files:
+                with wave.open(str(path), "rb") as wf:
+                    if params is None:
+                        params = wf.getparams()
+                    else:
+                        if wf.getparams()[:3] != params[:3]:
+                            raise RuntimeError(f"WAV フォーマットが一致しません: {path}")
+                    total_frames += wf.getnframes()
+
+            assert params is not None
+
+            with wave.open(str(output_path), "wb") as out_wf:
+                out_wf.setparams(params)
+                for path in input_files:
+                    with wave.open(str(path), "rb") as in_wf:
+                        frames = in_wf.readframes(in_wf.getnframes())
+                        out_wf.writeframes(frames)
+
+            framerate = params.framerate or 1
+            duration = total_frames / float(framerate)
+            return duration
+
+        csv_path = csv_path.expanduser().resolve()
+        audio_dir = audio_dir.expanduser().resolve()
+
+        if job_id is None:
+            import uuid
+            job_id = str(uuid.uuid4())
+
+        if not csv_path.exists():
+            raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
+        if not audio_dir.exists():
+            raise FileNotFoundError(f"音声ディレクトリが見つかりません: {audio_dir}")
+
+        topic = topic or csv_path.stem
+
+        db_manager.save_generation_record({
+            'job_id': job_id,
+            'topic': topic,
+            'status': 'running',
+            'created_at': datetime.now(),
+            'metadata': {
+                'quality': quality,
+                'private_upload': private_upload,
+                'upload': upload,
+                'stage_modes': stage_modes or {},
+                'user_preferences': user_preferences or {},
+                'mode': 'csv_timeline',
+                'csv_path': str(csv_path),
+                'audio_dir': str(audio_dir),
+            }
+        })
+
+        logger.info(f"CSVタイムラインパイプライン開始: {csv_path} (Job ID: {job_id})")
+        create_directories()
+
+        if stage_modes:
+            self.stage_modes.update(stage_modes)
+
+        stage2_mode = self.stage_modes.get("stage2", "auto")
+        stage3_mode = self.stage_modes.get("stage3", "auto")
+
+        try:
+            if progress_callback:
+                progress_callback("CSV読み込み", 0.1, "CSVと行ごとの音声からタイムラインを構築します...")
+
+            audio_files = _find_audio_files(audio_dir)
+            if not audio_files:
+                raise RuntimeError(f"音声ファイル(WAV)が見つかりません (dir={audio_dir})")
+
+            audio_segments = _build_audio_segments(audio_files)
+
+            loader = CsvTranscriptLoader()
+            transcript = await loader.load_from_csv(csv_path, audio_segments=audio_segments)
+
+            combined_audio_path = settings.AUDIO_DIR / f"{csv_path.stem}_combined.wav"
+            total_duration = _combine_wav_files(audio_files, combined_audio_path)
+            audio_info = AudioInfo(
+                file_path=combined_audio_path,
+                duration=total_duration,
+                quality_score=1.0,
+                sample_rate=44100,
+                file_size=combined_audio_path.stat().st_size if combined_audio_path.exists() else 0,
+                language=settings.YOUTUBE_SETTINGS.get("default_audio_language", "ja"),
+                channels=2,
+            )
+
+            logger.info(f"CSVタイムラインから TranscriptInfo / AudioInfo を構築しました: {transcript.title}")
+
+            if progress_callback:
+                progress_callback("スライド生成", 0.4, "CSVタイムラインからスライドを生成します...")
+
+            slides_pkg = await self.slide_generator.generate_slides(transcript, script_bundle=None)
+            logger.info(f"スライド生成完了: {getattr(slides_pkg, 'total_slides', 'N/A')}枚")
+
+            thumbnail_path: Optional[Path] = None
+            timeline_plan: Optional[Dict[str, Any]] = None
+            registered_assets: Optional[Dict[str, Any]] = None
+
+            if self.timeline_planner and self.editing_backend:
+                if progress_callback:
+                    progress_callback("タイムライン計画", 0.6, "動画のタイムラインを計画します...")
+                logger.info(f"Stage2モード: {stage2_mode}")
+                timeline_plan = await self.timeline_planner.build_plan(
+                    script={"segments": transcript.segments},
+                    audio=audio_info,
+                    user_preferences=user_preferences,
+                )
+                if progress_callback:
+                    progress_callback("動画レンダリング", 0.7, "MoviePyで動画をレンダリングします...")
+                video_info = await self.editing_backend.render(
+                    timeline_plan=timeline_plan,
+                    audio=audio_info,
+                    slides=slides_pkg,
+                    transcript=transcript,
+                    quality=quality,
+                )
+            else:
+                if progress_callback:
+                    progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
+                logger.info("Stage2拡張未設定のため従来の VideoComposer を使用 (CSVタイムライン)")
+                video_info = await self.video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
+
+            logger.info(f"動画合成完了: {video_info.file_path}")
+            if progress_callback:
+                progress_callback("動画合成", 0.8, f"動画合成完了: {video_info.file_path}")
+
+            upload_result: Optional[UploadResult] = None
+            youtube_url: Optional[str] = None
+            metadata: Optional[Dict[str, Any]] = None
+            publishing_result: Optional[Dict[str, Any]] = None
+
+            if upload:
+                if progress_callback:
+                    progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
+                metadata = await self.metadata_generator.generate_metadata(transcript)
+                metadata["privacy_status"] = "private" if private_upload else "public"
+                metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+
+                if self.platform_adapter:
+                    if progress_callback:
+                        progress_callback("YouTubeアップロード", 0.95, "YouTubeに動画をアップロードします...")
+                    logger.info(f"Stage3モード: {stage3_mode}")
+                    package = {
+                        "video": video_info,
+                        "metadata": metadata,
+                        "thumbnail": thumbnail_path,
+                        "schedule": user_preferences.get("schedule") if user_preferences else None,
+                    }
+                    if self.publishing_queue:
+                        queue_id = await self.publishing_queue.enqueue(
+                            package,
+                            schedule=package.get("schedule"),
+                        )
+                        logger.info(f"投稿キューに登録しました: {queue_id}")
+                    publishing_result = await self.platform_adapter.publish(
+                        package,
+                        options={"mode": stage3_mode},
+                    )
+                    youtube_url = publishing_result.get("url") if publishing_result else None
+                else:
+                    if progress_callback:
+                        progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
+                    await self.uploader.authenticate()
+                    upload_result = await self.uploader.upload_video(
+                        video=video_info,
+                        metadata=metadata,
+                        thumbnail_path=thumbnail_path,
+                    )
+                    youtube_url = upload_result.video_url if upload_result else None
+                    logger.success(f"アップロード完了: {youtube_url}")
+            else:
+                if progress_callback:
+                    progress_callback("完了", 1.0, "アップロードをスキップしました")
+
+            artifacts = PipelineArtifacts(
+                sources=[],
+                audio=audio_info,
+                transcript=transcript,
+                slides=slides_pkg,
+                video=video_info,
+                upload=upload_result,
+                script=None,
+                timeline_plan=timeline_plan,
+                assets=registered_assets,
+                thumbnail_path=thumbnail_path,
+                metadata=metadata,
+                publishing_result=publishing_result,
+            )
+
+            if progress_callback:
+                progress_callback("完了", 1.0, "CSVタイムラインパイプライン実行完了")
+
+            db_manager.update_generation_status(job_id, 'completed')
+            db_manager.save_generation_record({
+                'job_id': job_id,
+                'topic': topic,
+                'status': 'completed',
+                'completed_at': datetime.now(),
+                'artifacts': {
+                    'youtube_url': youtube_url,
+                    'video_file': str(artifacts.video.file_path) if artifacts.video else None,
+                    'audio_file': str(artifacts.audio.file_path) if artifacts.audio else None,
+                    'script_file': None,
+                }
+            })
+
+            return {
+                "success": True,
+                "youtube_url": youtube_url,
+                "artifacts": artifacts,
+                "job_id": job_id,
+            }
+
+        except PipelineError as e:
+            logger.error(f"Pipeline error (CSV Job {job_id}): {e}")
+            db_manager.update_generation_status(job_id, 'failed', str(e))
+            raise
+
+        except Exception as e:
+            logger.error(f"Unexpected error (CSV Job {job_id}): {e}")
             db_manager.update_generation_status(job_id, 'failed', str(e))
             raise PipelineError(str(e), recoverable=False)
 

@@ -19,13 +19,19 @@ from .source_collector import SourceInfo
 
 @dataclass
 class AudioInfo:
-    """音声情報"""
+    """音声情報
+
+    互換性のため、品質スコアやファイルサイズなどは省略可能な引数として扱う。
+    既存テストでは file_path, duration, language, sample_rate のみを指定しているため、
+    quality_score と file_size にはデフォルト値を設定する。
+    """
+
     file_path: Path
     duration: float
-    quality_score: float
-    sample_rate: int
-    file_size: int
-    language: str
+    quality_score: float = 1.0
+    sample_rate: int = 44100
+    file_size: int = 0
+    language: str = "ja"
     channels: int = 2
 
 class AudioGenerator:

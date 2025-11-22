@@ -26,10 +26,11 @@ class GeminiScriptProvider(IScriptProvider):
         self.target_duration = target_duration
         self.language = language or settings.YOUTUBE_SETTINGS.get("default_language", "ja")
 
-        if not self.api_key:
-            raise ValueError("Gemini APIキーが設定されていません。環境変数 GEMINI_API_KEY を確認してください。")
-
-        self.client = GeminiIntegration(api_key=self.api_key)
+        # APIキーがない環境でもインターフェースチェック用にインスタンス化だけは許可し、
+        # 実際の generate_script 呼び出し時にエラーとする（テスト互換のための設計）。
+        self.client: Optional[GeminiIntegration] = None
+        if self.api_key:
+            self.client = GeminiIntegration(api_key=self.api_key)
 
     async def generate_script(
         self,
@@ -37,6 +38,13 @@ class GeminiScriptProvider(IScriptProvider):
         sources: List[SourceInfo],
         mode: str = "auto",
     ) -> Dict[str, Any]:
+        if not self.api_key:
+            raise ValueError("Gemini APIキーが設定されていません。環境変数 GEMINI_API_KEY を確認してください。")
+
+        # 遅延初期化（テストや軽量チェック時に無駄な初期化を避ける）
+        if self.client is None:
+            self.client = GeminiIntegration(api_key=self.api_key)
+
         sources_payload: List[Dict[str, Any]] = [
             {
                 "url": getattr(src, "url", ""),

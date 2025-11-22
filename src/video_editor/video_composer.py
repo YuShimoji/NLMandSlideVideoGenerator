@@ -22,15 +22,22 @@ from .effect_processor import EffectProcessor
 
 @dataclass
 class VideoInfo:
-    """動画情報"""
+    """動画情報
+
+    互換性のため、テストで使用されている `format` 引数をオプションフィールドとして受け付ける。
+    既存コードでは解像度やコーデック情報を別途管理しているため、format はメタデータ用途とし、
+    省略時は "mp4" をデフォルトとする。
+    """
+
     file_path: Path
     duration: float
     resolution: tuple
-    fps: int
-    file_size: int
-    has_subtitles: bool
-    has_effects: bool
-    created_at: datetime
+    fps: int = 30
+    file_size: int = 0
+    has_subtitles: bool = False
+    has_effects: bool = False
+    created_at: datetime = datetime.now()
+    format: str = "mp4"
 
 
 @dataclass

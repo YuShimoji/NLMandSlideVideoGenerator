@@ -39,14 +39,24 @@ class SlideInfo:
 
 @dataclass
 class SlidesPackage:
-    """スライドパッケージ情報"""
-    file_path: Path
-    slides: List[SlideInfo]
-    total_slides: int
-    theme: str
+    """スライドパッケージ情報
+
+    テスト互換性のため、file_path / total_slides / theme は省略可能な引数として扱う。
+    既存のテストでは presentation_id と slides のみを指定しているため、
+    それら以外のフィールドにはデフォルト値を設定する。
+    """
+
+    file_path: Optional[Path] = None
+    slides: List[SlideInfo] = None
+    total_slides: int = 0
+    theme: str = "default"
     presentation_id: str = ""
     title: str = ""
     created_at: str = None
+
+    def __post_init__(self):
+        if self.slides is None:
+            self.slides = []
 
 class SlideGenerator:
     """スライド生成クラス"""

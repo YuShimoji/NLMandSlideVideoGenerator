@@ -18,6 +18,16 @@ class YouTubePlatformAdapter(IPlatformAdapter):
         self.uploader = YouTubeUploader()
         self._authenticated = False
 
+    async def upload(self, video, metadata, thumbnail=None, schedule=None):
+        """互換性用ラッパー: 従来の upload 風シグネチャを publish に委譲する"""
+        package = {
+            "video": video,
+            "metadata": metadata,
+            "thumbnail": thumbnail,
+            "schedule": schedule,
+        }
+        return await self.publish(package)
+
     async def publish(
         self,
         package: Dict[str, Any],
