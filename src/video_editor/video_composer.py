@@ -150,16 +150,39 @@ class VideoComposer:
                 img = Image.new('RGB', (target_width, target_height), color=(20, 20, 20))
                 draw = ImageDraw.Draw(img)
                 title_text = slide.title or f"Slide {i}"
-                subtitle_text = (slide.content[:60] + "...") if slide.content and len(slide.content) > 60 else (slide.content or "")
-                label_text = f"#{i:02d} | {slide.layout_type or getattr(slide, 'layout', None) or 'layout'} | {slide.estimated_duration or 10:.0f}s"
+
+                body_text = slide.content or ""
+                max_body_chars = 80
+                if len(body_text) > max_body_chars:
+                    subtitle_text = body_text[: max_body_chars - 3] + "..."
+                else:
+                    subtitle_text = body_text
+
+                speakers = getattr(slide, "speakers", None) or []
+                show_speakers = bool(speakers) and settings.SLIDES_SETTINGS.get("show_speaker_on_placeholder", False)
+                if show_speakers:
+                    speaker_text = " / ".join(dict.fromkeys(str(s) for s in speakers if s))
+                else:
+                    speaker_text = ""
+
+                total_slides = getattr(slides_file, "total_slides", None) or len(slides_file.slides)
+                duration_seconds = float(slide.estimated_duration or 10.0)
+                label_text = f"{i:02d}/{total_slides:02d}  •  {duration_seconds:.0f}s"
+
                 x_margin = 40
                 y = 60
                 draw.text((x_margin, y), title_text, fill=(235, 235, 235))
-                y += 60
+                y += 50
+
+                if speaker_text:
+                    draw.text((x_margin, y), speaker_text, fill=(210, 210, 210))
+                    y += 40
+
                 if subtitle_text:
                     draw.text((x_margin, y), subtitle_text, fill=(200, 200, 200))
                     y += 40
-                draw.text((x_margin, y), label_text, fill=(160, 160, 160))
+
+                draw.text((x_margin, target_height - 80), label_text, fill=(160, 160, 160))
                 img.save(image_path, format='PNG')
             
             slide_images.append(image_path)
@@ -210,21 +233,31 @@ class VideoComposer:
             # スライド動画クリップ作成
             video_clips = []
             num_items = max(len(slide_images), 1)
-            slide_duration = max(audio_clip.duration / num_items, 0.1)
+            default_slide_duration = max(audio_clip.duration / num_items, 0.1)
             
             for i, slide_image in enumerate(slide_images):
                 # ProcessedSlide にも対応（最初のフレームを使用）
                 img_path = slide_image
+                clip_duration = default_slide_duration
                 try:
                     # dataclass で processed_frames を持つ場合
                     if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
                         img_path = slide_image.processed_frames[0]
+                    # CSVタイムラインなどでは ProcessedSlide.duration に
+                    # 対応するセグメント長が入っているため、それを優先的に使用する
+                    if hasattr(slide_image, "duration"):
+                        try:
+                            duration_value = float(getattr(slide_image, "duration") or 0.0)
+                            if duration_value > 0:
+                                clip_duration = duration_value
+                        except (TypeError, ValueError):
+                            pass
                 except Exception:
                     img_path = slide_image
                 
                 # 画像クリップ作成
                 img_clip = ImageClip(str(img_path))
-                img_clip = img_clip.set_duration(slide_duration)
+                img_clip = img_clip.set_duration(clip_duration)
                 img_clip = img_clip.resize(resolution)
                 
                 video_clips.append(img_clip)
@@ -298,42 +331,46 @@ class VideoComposer:
         return quality_map.get(quality, (1920, 1080))
     
     def _add_subtitles_to_video(self, video_clip, subtitle_file: Path):
-        """
-        動画に字幕を追加
-        
-        Args:
-            video_clip: 動画クリップ
-            subtitle_file: 字幕ファイル
-            
-        Returns:
-            合成された動画クリップ
+        """動画に字幕をオーバーレイする
+
+        - `pysrt` がインストールされている場合: MoviePy + TextClip でハードサブタイトルを合成
+        - `pysrt` が無い場合: 処理をスキップし、外部字幕ファイル(SRT/ASS/VTT)のみを利用する
         """
         try:
             from moviepy.editor import CompositeVideoClip, TextClip
-            import pysrt
-            
+
+            try:
+                import pysrt
+            except ImportError:
+                # 環境に pysrt が無い場合は動画への埋め込みを行わず、外部字幕としての利用に限定する
+                logger.info(
+                    "pysrt がインストールされていないため、動画への字幕オーバーレイをスキップします。"
+                    "SRT/ASS/VTT ファイルは外部字幕として再生ソフト側で利用できます。"
+                )
+                return video_clip
+
             # SRTファイル読み込み
             subs = pysrt.open(str(subtitle_file))
-            
+
             subtitle_clips = []
             for sub in subs:
                 # 時間変換
                 start_time = self._srt_time_to_seconds(sub.start)
                 end_time = self._srt_time_to_seconds(sub.end)
-                
+
                 # テキストクリップ作成
                 txt_clip = TextClip(
                     sub.text,
                     fontsize=settings.SUBTITLE_SETTINGS["font_size"],
                     color=settings.SUBTITLE_SETTINGS["font_color"],
-                    font=settings.SUBTITLE_SETTINGS["font_family"]
-                ).set_position(('center', 'bottom')).set_start(start_time).set_end(end_time)
-                
+                    font=settings.SUBTITLE_SETTINGS["font_family"],
+                ).set_position(("center", "bottom")).set_start(start_time).set_end(end_time)
+
                 subtitle_clips.append(txt_clip)
-            
+
             # 字幕を動画に合成
             return CompositeVideoClip([video_clip] + subtitle_clips)
-            
+
         except Exception as e:
             logger.warning(f"字幕追加に失敗: {str(e)}")
             return video_clip

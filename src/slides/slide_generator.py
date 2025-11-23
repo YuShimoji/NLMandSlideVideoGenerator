@@ -29,6 +29,7 @@ class SlideInfo:
     # 互換性維持のためのフィールド（旧API: layout/duration）
     layout: str = None
     duration: float = None
+    speakers: Optional[List[str]] = None
 
     def __post_init__(self):
         # 旧フィールドが渡された場合、新フィールドに反映
@@ -172,6 +173,7 @@ class SlideGenerator:
                     content=c.get("text", ""),
                     layout_type=c.get("layout", "title_and_content"),
                     estimated_duration=c.get("duration", 15.0),
+                    speakers=c.get("speakers"),
                 ))
             
             # PPTXとサムネイル画像を書き出し
@@ -293,7 +295,9 @@ class SlideGenerator:
         """テスト用のシンプルなスライド生成（モック）
         test_api_integration.py の Slides API テスト互換のために提供
         """
-        # slides_content の各要素は {slide_id?, title, content, layout, duration} を想定
+        # slides_content の各要素は
+        # {slide_id?, title, content|text, layout, duration, speakers?, image_suggestions?}
+        # を想定
         slides: List[SlideInfo] = []
         for i, content in enumerate(slides_content, start=1):
             slide = SlideInfo(
@@ -302,6 +306,8 @@ class SlideGenerator:
                 content=content.get("content", content.get("text", "")),
                 layout_type=content.get("layout"),
                 estimated_duration=content.get("duration", 15.0),
+                image_suggestions=content.get("image_suggestions"),
+                speakers=content.get("speakers"),
             )
             slides.append(slide)
         presentation_id = f"presentation_{int(time.time())}"

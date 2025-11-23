@@ -29,6 +29,7 @@ class SplitContent:
     duration: float
     source_segments: List[int]  # 元のセグメントID
     image_suggestions: List[str]
+    speakers: List[str]
 
 class ContentSplitter:
     """コンテンツ分割クラス"""
@@ -262,6 +263,10 @@ class ContentSplitter:
         
         # ソースセグメントID
         source_segments = [seg.id for seg in segments]
+
+        # 話者名リスト（順序を保持して重複除去）
+        speakers = [seg.speaker for seg in segments]
+        speakers = list(dict.fromkeys(speakers))
         
         # 画像提案生成
         image_suggestions = self._generate_image_suggestions(key_points, text)
@@ -273,7 +278,8 @@ class ContentSplitter:
             key_points=key_points,
             duration=duration,
             source_segments=source_segments,
-            image_suggestions=image_suggestions
+            image_suggestions=image_suggestions,
+            speakers=speakers,
         )
     
     def _generate_slide_title(self, segments: List[TranscriptSegment], key_points: List[str]) -> str:
@@ -434,7 +440,8 @@ class ContentSplitter:
                 "key_points": content.key_points,
                 "duration": content.duration,
                 "source_segments": content.source_segments,
-                "image_suggestions": content.image_suggestions
+                "image_suggestions": content.image_suggestions,
+                "speakers": content.speakers,
             }
             slide_contents.append(slide_dict)
         

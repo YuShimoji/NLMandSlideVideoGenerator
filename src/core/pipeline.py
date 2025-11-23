@@ -526,8 +526,30 @@ class ModularVideoPipeline:
             if progress_callback:
                 progress_callback("スライド生成", 0.4, "CSVタイムラインからスライドを生成します...")
 
-            slides_pkg = await self.slide_generator.generate_slides(transcript, script_bundle=None)
-            logger.info(f"スライド生成完了: {getattr(slides_pkg, 'total_slides', 'N/A')}枚")
+            # CSVタイムラインモードでは「1行=1スライド」を基本とし、
+            # 各スライドの表示時間を対応するセグメント duration に合わせる
+            slide_contents: list[dict[str, Any]] = []
+            for i, seg in enumerate(transcript.segments, 1):
+                seg_duration = max(float(seg.end_time - seg.start_time), 0.1)
+                slide_contents.append(
+                    {
+                        "slide_id": i,
+                        "title": getattr(seg, "slide_suggestion", None) or seg.text[:30],
+                        "text": seg.text,
+                        "key_points": getattr(seg, "key_points", []),
+                        "duration": seg_duration,
+                        "source_segments": [seg.id],
+                        "speakers": [seg.speaker] if getattr(seg, "speaker", None) else [],
+                    }
+                )
+
+            slides_pkg = await self.slide_generator.create_slides_from_content(
+                slides_content=slide_contents,
+                presentation_title=transcript.title,
+            )
+            logger.info(
+                f"スライド生成完了 (CSV 1行=1スライド): {getattr(slides_pkg, 'total_slides', 'N/A')}枚"
+            )
 
             thumbnail_path: Optional[Path] = None
             timeline_plan: Optional[Dict[str, Any]] = None

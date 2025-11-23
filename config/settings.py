@@ -90,7 +90,8 @@ class Settings:
             "max_chars_per_slide": 200,
             "max_slides_per_batch": 20,
             "theme": "business",
-            "min_font_size": 24
+            "min_font_size": 24,
+            "show_speaker_on_placeholder": False,
         }
         
         # YouTube設定

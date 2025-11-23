@@ -129,6 +129,7 @@ def main():
     parser.add_argument('--output-dir', help='出力ディレクトリ')
     parser.add_argument('--max-slides', type=int, default=20, help='最大スライド数')
     parser.add_argument('--video-quality', choices=['720p', '1080p', '4k'], default='1080p', help='動画品質')
+    parser.add_argument('--max-chars-per-slide', type=int, default=None, help='1スライドあたりの最大文字数 (省略時は設定値を使用)')
     parser.add_argument('--upload-schedule', help='アップロードスケジュール (YYYY-MM-DD HH:MM)')
     parser.add_argument('--private-upload', action='store_true', default=True, help='非公開アップロード')
     parser.add_argument('--debug', action='store_true', help='デバッグモード')
@@ -140,6 +141,7 @@ def main():
     output_dir = args.output_dir
     max_slides = args.max_slides
     video_quality = args.video_quality
+    max_chars_per_slide = args.max_chars_per_slide
     upload_schedule = args.upload_schedule
     private_upload = args.private_upload
     debug = args.debug
@@ -150,6 +152,17 @@ def main():
     
     # 必要なディレクトリを作成
     create_directories()
+
+    # スライド1枚あたりの最大文字数が指定されていれば設定を上書き
+    if max_chars_per_slide is not None:
+        try:
+            from config.settings import settings as _settings
+
+            if max_chars_per_slide > 0:
+                _settings.SLIDES_SETTINGS["max_chars_per_slide"] = max_chars_per_slide
+                logger.info(f"SLIDES_SETTINGS.max_chars_per_slide を {max_chars_per_slide} に上書きしました")
+        except Exception as e:
+            logger.warning(f"max_chars_per_slide オプションの適用に失敗しました: {e}")
     
     # パイプライン実行
     pipeline = VideoGenerationPipeline()

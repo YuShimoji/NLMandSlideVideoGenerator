@@ -22,6 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import settings  # noqa: E402
 from src.core.pipeline import build_default_pipeline  # noqa: E402
+from scripts.inspect_csv_timeline import inspect_timeline as inspect_csv_timeline  # noqa: E402
 
 app = FastAPI(title="NLMandSlideVideoGenerator API", version="1.1.0")
 
@@ -313,6 +314,12 @@ async def run_pipeline(payload: Dict[str, Any]):
     old_backend = settings.PIPELINE_COMPONENTS['editing_backend']
     settings.PIPELINE_COMPONENTS['editing_backend'] = editing_backend
 
+    # Optionally override max_chars_per_slide for this request
+    slides_max_chars = payload.get("slides_max_chars_per_slide")
+    old_max_chars = settings.SLIDES_SETTINGS.get("max_chars_per_slide")
+    if isinstance(slides_max_chars, int) and slides_max_chars > 0:
+        settings.SLIDES_SETTINGS["max_chars_per_slide"] = slides_max_chars
+
     execution_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
     PROGRESS[execution_id] = {"stage": "initializing", "progress": 0.0, "message": "starting"}
 
@@ -345,9 +352,10 @@ async def run_pipeline(payload: Dict[str, Any]):
         # Persist to disk
         _save_runs()
         _save_artifact(execution_id, ARTIFACTS[execution_id])
-        
-        # Restore backend
+
+        # Restore backend and slide settings
         settings.PIPELINE_COMPONENTS['editing_backend'] = old_backend
+        settings.SLIDES_SETTINGS["max_chars_per_slide"] = old_max_chars
         
         # Conform to spec: return immediate result
         out = {
@@ -369,6 +377,64 @@ async def run_pipeline(payload: Dict[str, Any]):
         }
         _save_runs()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/csv/inspect")
+async def inspect_csv_timeline_api(payload: Dict[str, Any]):
+    """CSVタイムライン分割結果を可視化するための補助API
+
+    Request body:
+        {
+          "csv_path": "...",                    # A列=話者, B列=テキスト のCSVパス
+          "audio_dir": "...",                   # 行ごとの音声ファイル(WAV)ディレクトリ
+          "slides_max_chars_per_slide": 80,      # 任意。指定時は分割時の文字数上限として使用
+          "max_slides": 50                       # 任意。ContentSplitter への最大スライド数
+        }
+
+    Response body:
+        {
+          "transcript": { ... },   # TranscriptInfo のJSON表現
+          "slides": [ ... ],        # ContentSplitter のスライド分割結果
+          "stats": { ... }          # 分割に関する簡易統計
+        }
+    """
+
+    csv_path = payload.get("csv_path")
+    audio_dir = payload.get("audio_dir")
+    if not csv_path or not audio_dir:
+        raise HTTPException(status_code=400, detail="'csv_path' and 'audio_dir' are required")
+
+    max_slides = payload.get("max_slides") or 50
+    slides_max_chars = payload.get("slides_max_chars_per_slide")
+
+    from pathlib import Path as _Path
+
+    try:
+        summary = await inspect_csv_timeline(
+            csv_path=_Path(csv_path),
+            audio_dir=_Path(audio_dir),
+            max_chars_per_slide=slides_max_chars,
+            max_slides=max_slides,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    transcript_obj = summary.get("transcript")
+    slides = summary.get("slide_contents") or []
+    stats = summary.get("stats") or {}
+
+    transcript_dict = _to_dict(transcript_obj) if transcript_obj is not None else None
+
+    out = {
+        "transcript": transcript_dict,
+        "slides": slides,
+        "stats": stats,
+    }
+    return JSONResponse(content=out)
 
 
 @app.post("/api/v1/pipeline/csv")
@@ -401,6 +467,12 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
     # 一時的に編集バックエンドを上書き
     old_backend = settings.PIPELINE_COMPONENTS["editing_backend"]
     settings.PIPELINE_COMPONENTS["editing_backend"] = editing_backend
+
+    # Optionally override max_chars_per_slide for this request
+    slides_max_chars = payload.get("slides_max_chars_per_slide")
+    old_max_chars = settings.SLIDES_SETTINGS.get("max_chars_per_slide")
+    if isinstance(slides_max_chars, int) and slides_max_chars > 0:
+        settings.SLIDES_SETTINGS["max_chars_per_slide"] = slides_max_chars
 
     execution_id = datetime.now().strftime("run_csv_%Y%m%d_%H%M%S")
     PROGRESS[execution_id] = {"stage": "initializing", "progress": 0.0, "message": "starting csv timeline"}
@@ -443,6 +515,7 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
         _save_artifact(execution_id, ARTIFACTS[execution_id])
 
         settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
+        settings.SLIDES_SETTINGS["max_chars_per_slide"] = old_max_chars
 
         out = {
             "success": bool(result.get("success")),

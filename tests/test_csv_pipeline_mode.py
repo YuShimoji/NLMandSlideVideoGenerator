@@ -50,6 +50,7 @@ async def test_run_csv_timeline_basic(tmp_path: Path):
         # 4) SlideGenerator / VideoComposer をモック
         slide_gen = Mock()
         slide_gen.generate_slides = AsyncMock(return_value=Mock(total_slides=1))
+        slide_gen.create_slides_from_content = AsyncMock(return_value=Mock(total_slides=2))
 
         video_comp = Mock()
         dummy_video_path = tmp_path / "out.mp4"
@@ -75,5 +76,5 @@ async def test_run_csv_timeline_basic(tmp_path: Path):
         assert artifacts.video.file_path == dummy_video_path
         assert artifacts.audio.duration > 0
 
-        slide_gen.generate_slides.assert_awaited()
+        slide_gen.create_slides_from_content.assert_awaited()
         video_comp.compose_video.assert_awaited()
