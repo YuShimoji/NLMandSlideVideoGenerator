@@ -8,7 +8,9 @@ import pytest
 import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from pathlib import Path
+from dataclasses import dataclass
 import sys
+from fastapi.testclient import TestClient
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
@@ -325,3 +327,93 @@ class TestOperationalFeatures:
 
         except Exception as e:
             pytest.skip(f"Configuration test failed: {e}")
+
+class TestCsvPipelineApiYmm4:
+    """CSV パイプライン API の YMM4 エクスポート統合テスト"""
+
+    @dataclass
+    class _DummyTranscript:
+        title: str
+
+    @dataclass
+    class _DummyArtifacts:
+        transcript: "TestCsvPipelineApiYmm4._DummyTranscript"
+        editing_outputs: dict
+
+    class _DummyPipeline:
+        def __init__(self, artifacts):
+            self._artifacts = artifacts
+
+        async def run_csv_timeline(self, *args, **kwargs):
+            return {
+                "success": True,
+                "artifacts": self._artifacts,
+                "youtube_url": None,
+            }
+
+    def _create_client(self):
+        from src.server import api as api_mod
+
+        client = TestClient(api_mod.app)
+        return client, api_mod
+
+    def test_csv_api_returns_ymm4_export_field(self):
+        """export_ymm4 指定時に ymm4_export フィールドがレスポンスに含まれる"""
+        from config.settings import settings
+
+        client, api_mod = self._create_client()
+
+        artifacts = self._DummyArtifacts(
+            transcript=self._DummyTranscript(title="CSV Title"),
+            editing_outputs={"ymm4": {"project_dir": "/tmp/ymm4_project"}},
+        )
+
+        dummy_pipeline = self._DummyPipeline(artifacts)
+
+        payload = {
+            "csv_path": "C:/dummy/timeline.csv",
+            "audio_dir": "C:/dummy/audio",
+            "export_ymm4": True,
+            "upload": False,
+        }
+
+        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "moviepy"}, clear=False):
+            with patch.object(api_mod, "build_default_pipeline", return_value=dummy_pipeline):
+                response = client.post("/api/v1/pipeline/csv", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "ymm4_export" in data
+        assert data["ymm4_export"]["project_dir"] == "/tmp/ymm4_project"
+
+    def test_csv_api_export_ymm4_overrides_editing_backend(self):
+        """export_ymm4=true の場合、editing_backend が明示されていても YMM4 が優先される"""
+        from config.settings import settings
+
+        client, api_mod = self._create_client()
+
+        artifacts = self._DummyArtifacts(
+            transcript=self._DummyTranscript(title="CSV Title"),
+            editing_outputs={},
+        )
+
+        dummy_pipeline = self._DummyPipeline(artifacts)
+
+        payload = {
+            "csv_path": "C:/dummy/timeline.csv",
+            "audio_dir": "C:/dummy/audio",
+            "editing_backend": "moviepy",
+            "export_ymm4": True,
+            "upload": False,
+        }
+
+        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "moviepy"}, clear=False):
+            with patch.object(api_mod, "build_default_pipeline", return_value=dummy_pipeline):
+                response = client.post("/api/v1/pipeline/csv", json=payload)
+                # エンドポイント内部で editing_backend が YMM4 に切り替えられているはず
+                assert settings.PIPELINE_COMPONENTS["editing_backend"] == "ymm4"
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True

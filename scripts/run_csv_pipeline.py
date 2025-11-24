@@ -56,25 +56,35 @@ async def _run(args: argparse.Namespace) -> int:
     quality: str = args.video_quality
     private_upload: bool = not args.public_upload
     upload: bool = args.upload
+    export_ymm4: bool = args.export_ymm4
 
     logger.info(
         f"CSVタイムラインパイプラインを実行します: topic={topic}, csv={csv_path}, "
-        f"audio_dir={audio_dir}, quality={quality}, upload={upload}, private_upload={private_upload}"
+        f"audio_dir={audio_dir}, quality={quality}, upload={upload}, "
+        f"private_upload={private_upload}, export_ymm4={export_ymm4}"
     )
 
-    pipeline = build_default_pipeline()
+    original_backend = settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    if export_ymm4:
+        settings.PIPELINE_COMPONENTS["editing_backend"] = "ymm4"
+        logger.info("YMM4エクスポートを有効化: editing_backend=ymm4")
 
-    result = await pipeline.run_csv_timeline(
-        csv_path=csv_path,
-        audio_dir=audio_dir,
-        topic=topic,
-        quality=quality,
-        private_upload=private_upload,
-        upload=upload,
-        stage_modes=settings.PIPELINE_STAGE_MODES,
-        user_preferences={},
-        progress_callback=None,
-    )
+    try:
+        pipeline = build_default_pipeline()
+
+        result = await pipeline.run_csv_timeline(
+            csv_path=csv_path,
+            audio_dir=audio_dir,
+            topic=topic,
+            quality=quality,
+            private_upload=private_upload,
+            upload=upload,
+            stage_modes=settings.PIPELINE_STAGE_MODES,
+            user_preferences={},
+            progress_callback=None,
+        )
+    finally:
+        settings.PIPELINE_COMPONENTS["editing_backend"] = original_backend
 
     artifacts = result.get("artifacts")
     video_path = getattr(artifacts.video, "file_path", None) if artifacts else None
@@ -83,6 +93,13 @@ async def _run(args: argparse.Namespace) -> int:
         print(f"Generated video: {video_path}")
     else:
         print("Pipeline finished, but video path was not available in artifacts.")
+
+    editing_outputs = getattr(artifacts, "editing_outputs", None) if artifacts else None
+    if editing_outputs and "ymm4" in editing_outputs:
+        ymm4_info = editing_outputs["ymm4"]
+        print("\nYMM4 export artifacts:")
+        for key, value in ymm4_info.items():
+            print(f"  - {key}: {value}")
 
     if result.get("youtube_url"):
         print(f"YouTube URL: {result['youtube_url']}")
@@ -118,6 +135,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         default=False,
         help="アップロード時に公開ステータスを使用 (指定しない場合は非公開)",
+    )
+    parser.add_argument(
+        "--export-ymm4",
+        action="store_true",
+        default=False,
+        help="YMM4 編集プロジェクトを書き出し (editing_backend=YMM4 を強制)",
     )
 
     args = parser.parse_args(argv)

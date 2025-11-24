@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from config.settings import settings
 from ..interfaces import IEditingBackend
@@ -26,6 +26,7 @@ class MoviePyEditingBackend(IEditingBackend):
         slides: SlidesPackage,
         transcript: TranscriptInfo,
         quality: str = "1080p",
+        extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         plan = self._parse_plan(timeline_plan)
         # TODO: plan 情報を VideoComposer に反映（シーン長・エフェクト適用など）

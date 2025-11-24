@@ -1,11 +1,12 @@
 import asyncio
 import json
 import logging
+import os
 import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from config.settings import settings
 from ..interfaces import IEditingBackend
@@ -41,10 +42,15 @@ class YMM4EditingBackend(IEditingBackend):
         slides: SlidesPackage,
         transcript: TranscriptInfo,
         quality: str = "1080p",
+        extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         project_dir = self._prepare_workspace()
         project_file = self._prepare_project_file(project_dir)
         self._export_plan(project_dir, timeline_plan, audio, transcript)
+        self._export_slides_payload(project_dir, extras)
+        self._copy_csv_source(project_dir, extras)
+        self._copy_audio_assets(project_dir, extras)
+        self._record_export_outputs(project_dir, project_file, extras)
         self._record_execution_hint(project_dir)
 
         # YMM4 AutoHotkeyスクリプト実行（オプション）
@@ -57,6 +63,7 @@ class YMM4EditingBackend(IEditingBackend):
             slides=slides,
             transcript=transcript,
             quality=quality,
+            extras=extras,
         )
 
         self._export_video_metadata(project_dir, video_info)
@@ -130,6 +137,93 @@ class YMM4EditingBackend(IEditingBackend):
             "4. 完了後、生成された動画ファイルを pipeline の成果物に差し替え",
         ]
         hint_path.write_text("\n".join(content), encoding="utf-8")
+
+    def _export_slides_payload(self, project_dir: Path, extras: Optional[Dict[str, Any]]) -> None:
+        if not extras:
+            return
+        payload = extras.get("slides_payload")
+        if not payload:
+            logger.info("slides_payload が提供されていないため書き出しをスキップします")
+            return
+
+        slides_path = project_dir / "slides_payload.json"
+        slides_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info(f"slides_payload.json を出力しました: {slides_path}")
+
+    def _copy_csv_source(self, project_dir: Path, extras: Optional[Dict[str, Any]]) -> None:
+        if not extras:
+            return
+        csv_path = extras.get("csv_path")
+        if not csv_path:
+            return
+
+        source = Path(csv_path)
+        if not source.exists():
+            logger.warning(f"CSVファイルが見つからないためコピーをスキップします: {source}")
+            return
+
+        text_dir = project_dir / "text"
+        text_dir.mkdir(parents=True, exist_ok=True)
+        destination = text_dir / source.name
+        shutil.copy2(source, destination)
+        logger.info(f"CSVをコピーしました: {destination}")
+
+    def _copy_audio_assets(self, project_dir: Path, extras: Optional[Dict[str, Any]]) -> None:
+        if not extras:
+            return
+
+        audio_dir = project_dir / "audio"
+        segments_dir = audio_dir / "segments"
+        segments_dir.mkdir(parents=True, exist_ok=True)
+
+        audio_files: Sequence[str] = extras.get("audio_files") or []
+        for idx, audio_path in enumerate(audio_files, start=1):
+            source = Path(audio_path)
+            if not source.exists():
+                logger.warning(f"セグメント音声が見つかりません: {source}")
+                continue
+
+            ext = source.suffix or ".wav"
+            destination = segments_dir / f"{idx:03d}{ext.lower()}"
+            shutil.copy2(source, destination)
+
+        combined_audio = extras.get("combined_audio_path")
+        if combined_audio:
+            combined_source = Path(combined_audio)
+            if combined_source.exists():
+                audio_dir.mkdir(parents=True, exist_ok=True)
+                destination = audio_dir / combined_source.name
+                shutil.copy2(combined_source, destination)
+            else:
+                logger.warning(f"結合音声が見つからないためコピーをスキップします: {combined_source}")
+
+    def _record_export_outputs(
+        self,
+        project_dir: Path,
+        project_file: Path,
+        extras: Optional[Dict[str, Any]],
+    ) -> None:
+        if extras is None:
+            return
+        export_outputs = extras.setdefault("export_outputs", {})
+        payload = {
+            "project_dir": str(project_dir),
+            "project_file": str(project_file),
+        }
+
+        timeline_path = project_dir / "timeline_plan.json"
+        if timeline_path.exists():
+            payload["timeline_plan"] = str(timeline_path)
+
+        slides_payload_path = project_dir / "slides_payload.json"
+        if slides_payload_path.exists():
+            payload["slides_payload"] = str(slides_payload_path)
+
+        audio_dir = project_dir / "audio"
+        if audio_dir.exists():
+            payload["audio_dir"] = str(audio_dir)
+
+        export_outputs["ymm4"] = payload
 
     async def _run_autohotkey_script(self, project_dir: Path, project_file: Path) -> None:
         """AutoHotkeyスクリプトを実行してYMM4を操作（オプション）"""

@@ -348,24 +348,21 @@ async def run_pipeline(payload: Dict[str, Any]):
             "upload_requested": upload,
         }
         ARTIFACTS[execution_id] = _to_dict(result.get("artifacts"))
-        
+
         # Persist to disk
         _save_runs()
         _save_artifact(execution_id, ARTIFACTS[execution_id])
 
-        # Restore backend and slide settings
-        settings.PIPELINE_COMPONENTS['editing_backend'] = old_backend
-        settings.SLIDES_SETTINGS["max_chars_per_slide"] = old_max_chars
-        
         # Conform to spec: return immediate result
         out = {
             "success": bool(result.get("success")),
             "youtube_url": result.get("youtube_url"),
             "artifacts": ARTIFACTS[execution_id],
+            "execution_id": execution_id,
         }
         return JSONResponse(content=out)
+
     except Exception as e:
-        settings.PIPELINE_COMPONENTS['editing_backend'] = old_backend
         RUNS[execution_id] = {
             "id": execution_id,
             "status": "failed",
@@ -377,6 +374,11 @@ async def run_pipeline(payload: Dict[str, Any]):
         }
         _save_runs()
         raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        # Restore backend and slide settings even if an error occurs
+        settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
+        settings.SLIDES_SETTINGS["max_chars_per_slide"] = old_max_chars
 
 
 @app.post("/api/v1/csv/inspect")
@@ -460,7 +462,13 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
 
     topic = payload.get("topic")
     quality = payload.get("quality") or "1080p"
-    editing_backend = payload.get("editing_backend") or settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    export_ymm4 = bool(payload.get("export_ymm4"))
+    editing_backend = payload.get("editing_backend")
+    if not editing_backend:
+        editing_backend = "ymm4" if export_ymm4 else settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    elif export_ymm4 and editing_backend != "ymm4":
+        # export_ymm4 が明示された場合は優先的にYMM4を利用
+        editing_backend = "ymm4"
     private_upload = payload.get("private_upload", True)
     upload = payload.get("upload", False)
 
@@ -496,10 +504,13 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
             progress_callback=progress_cb,
         )
 
+        artifacts_obj = result.get("artifacts")
+        artifacts_dict = _to_dict(artifacts_obj)
+
         RUNS[execution_id] = {
             "id": execution_id,
             "status": "succeeded" if result.get("success") else "failed",
-            "topic": result.get("artifacts").transcript.title if result.get("artifacts") else topic,
+            "topic": artifacts_obj.transcript.title if artifacts_obj else topic,
             "started_at": None,
             "finished_at": datetime.now().isoformat(),
             "youtube_url": result.get("youtube_url"),
@@ -509,23 +520,24 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
             "audio_dir": audio_dir,
         }
 
-        ARTIFACTS[execution_id] = _to_dict(result.get("artifacts"))
+        ARTIFACTS[execution_id] = artifacts_dict
 
         _save_runs()
         _save_artifact(execution_id, ARTIFACTS[execution_id])
-
-        settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
-        settings.SLIDES_SETTINGS["max_chars_per_slide"] = old_max_chars
 
         out = {
             "success": bool(result.get("success")),
             "youtube_url": result.get("youtube_url"),
             "artifacts": ARTIFACTS[execution_id],
+            "execution_id": execution_id,
         }
+
+        editing_outputs = artifacts_dict.get("editing_outputs") if artifacts_dict else None
+        if editing_outputs and "ymm4" in editing_outputs:
+            out["ymm4_export"] = editing_outputs["ymm4"]
         return JSONResponse(content=out)
 
     except Exception as e:
-        settings.PIPELINE_COMPONENTS["editing_backend"] = old_backend
         RUNS[execution_id] = {
             "id": execution_id,
             "status": "failed",

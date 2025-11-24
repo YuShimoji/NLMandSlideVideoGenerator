@@ -71,6 +71,7 @@ class IEditingBackend(Protocol):
         slides: SlidesPackage,
         transcript: TranscriptInfo,
         quality: str = "1080p",
+        extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         """MoviePy/YMM4など各レンダラーの共通インターフェイス"""
 

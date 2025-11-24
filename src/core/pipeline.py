@@ -37,7 +37,7 @@ from .persistence import db_manager
 # 既存実装（デフォルトDI）
 from notebook_lm.source_collector import SourceCollector, SourceInfo
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
-from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo
+from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo, TranscriptSegment
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
 from slides.slide_generator import SlideGenerator, SlidesPackage
 from video_editor.video_composer import VideoComposer, VideoInfo
@@ -182,6 +182,7 @@ class ModularVideoPipeline:
             script_bundle: Optional[Dict[str, Any]] = None
             timeline_plan: Optional[Dict[str, Any]] = None
             registered_assets: Optional[Dict[str, Any]] = None
+            editing_outputs: Optional[Dict[str, Any]] = None
 
             # Stage1: Script + Voice orchestration
             if self.script_provider and self.voice_pipeline:
@@ -252,13 +253,16 @@ class ModularVideoPipeline:
                 )
                 if progress_callback:
                     progress_callback("動画レンダリング", 0.75, "MoviePyで動画をレンダリングします...")
+                editing_extras: Dict[str, Any] = {"export_outputs": {}}
                 video_info = await self.editing_backend.render(
                     timeline_plan=timeline_plan,
                     audio=audio_info,
                     slides=slides_pkg,
                     transcript=transcript,
                     quality=quality,
+                    extras=editing_extras,
                 )
+                editing_outputs = editing_extras.get("export_outputs") or None
                 if self.thumbnail_generator and (user_preferences and user_preferences.get("generate_thumbnail", False)):
                     try:
                         thumbnail_style = user_preferences.get("thumbnail_style", "modern")
@@ -346,6 +350,7 @@ class ModularVideoPipeline:
                 thumbnail_path=thumbnail_path,
                 metadata=metadata,
                 publishing_result=publishing_result,
+                editing_outputs=editing_outputs,
             )
 
             if progress_callback:
@@ -382,6 +387,238 @@ class ModularVideoPipeline:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
             db_manager.update_generation_status(job_id, 'failed', str(e))
             raise PipelineError(str(e), recoverable=False)
+
+    def _expand_segment_into_slides(
+        self,
+        segment: TranscriptSegment,
+        start_slide_id: int,
+    ) -> List[Dict[str, Any]]:
+        """CSV 1行を1枚または複数サブスライドに展開"""
+
+        text = (segment.text or "").strip()
+        text_length = len(text)
+        segment_duration = max(float(segment.end_time - segment.start_time), 0.1)
+
+        slides_settings = settings.SLIDES_SETTINGS
+        auto_split = slides_settings.get("auto_split_long_lines", False)
+        threshold = int(slides_settings.get("long_line_char_threshold", 9999))
+        target_chars = int(slides_settings.get("long_line_target_chars_per_subslide", threshold))
+        max_subslides = max(int(slides_settings.get("long_line_max_subslides", 1)), 1)
+        min_duration = float(slides_settings.get("min_subslide_duration", 0.5))
+
+        should_split = (
+            auto_split
+            and max_subslides > 1
+            and target_chars > 0
+            and text_length >= threshold
+        )
+
+        if should_split:
+            chunks = self._split_text_for_subslides(text, target_chars, max_subslides)
+        else:
+            chunks = [text]
+
+        durations = self._allocate_subslide_durations(
+            total_duration=segment_duration,
+            chunks=chunks,
+            min_duration=min_duration,
+        )
+
+        total_subslides = len(chunks)
+        slides: List[Dict[str, Any]] = []
+        for idx, chunk in enumerate(chunks):
+            slides.append(
+                self._build_slide_dict(
+                    segment=segment,
+                    slide_id=start_slide_id + idx,
+                    text=chunk,
+                    duration=durations[idx],
+                    sub_index=idx,
+                    sub_total=total_subslides,
+                )
+            )
+        return slides
+
+    def _split_text_for_subslides(
+        self,
+        text: str,
+        target_chars: int,
+        max_subslides: int,
+    ) -> List[str]:
+        """句読点優先で長文を複数スライド用テキストに分割"""
+
+        normalized = (text or "").strip()
+        if not normalized:
+            return [""]
+
+        chunks: List[str] = []
+        remaining = normalized
+
+        while remaining and len(chunks) < max_subslides - 1:
+            if len(remaining) <= target_chars:
+                break
+
+            split_index = self._find_split_index(remaining, target_chars)
+            chunk = remaining[:split_index].strip()
+            if not chunk:
+                chunk = remaining[:target_chars]
+                split_index = len(chunk)
+
+            chunks.append(chunk)
+            remaining = remaining[split_index:].lstrip()
+
+        if remaining:
+            chunks.append(remaining)
+
+        return chunks[:max_subslides]
+
+    def _find_split_index(self, text: str, preferred_length: int) -> int:
+        if len(text) <= preferred_length:
+            return len(text)
+
+        search_window = min(len(text), preferred_length + 40)
+        slice_text = text[:search_window]
+
+        punctuation_patterns = ["。", "！", "？", "!", "?", "、", ",", " ", "\n"]
+        for pattern in punctuation_patterns:
+            idx = slice_text.rfind(pattern, 0, search_window)
+            if idx != -1 and idx >= int(preferred_length * 0.6):
+                return idx + 1
+
+        return preferred_length
+
+    def _allocate_subslide_durations(
+        self,
+        total_duration: float,
+        chunks: List[str],
+        min_duration: float,
+    ) -> List[float]:
+        if total_duration <= 0:
+            total_duration = 0.1 * len(chunks)
+
+        total_chars = sum(max(len(chunk.strip()), 1) for chunk in chunks)
+        total_chars = max(total_chars, 1)
+
+        remaining_duration = total_duration
+        remaining_chars = total_chars
+        durations: List[float] = []
+
+        for idx, chunk in enumerate(chunks):
+            chunk_chars = max(len(chunk.strip()), 1)
+            slots_left = len(chunks) - idx - 1
+
+            ratio = chunk_chars / remaining_chars if remaining_chars else 0
+            duration = total_duration * ratio if ratio > 0 else remaining_duration / max(slots_left + 1, 1)
+            duration = max(duration, min_duration)
+
+            max_allowed = remaining_duration - (slots_left * min_duration)
+            if max_allowed > 0:
+                duration = min(duration, max_allowed)
+
+            durations.append(duration)
+            remaining_duration -= duration
+            remaining_chars -= chunk_chars
+
+        total_assigned = sum(durations)
+        diff = total_duration - total_assigned
+        if durations:
+            durations[-1] += diff
+            if durations[-1] < min_duration:
+                deficit = min_duration - durations[-1]
+                durations[-1] = min_duration
+                for i in range(len(durations) - 2, -1, -1):
+                    available = durations[i] - min_duration
+                    if available <= 0:
+                        continue
+                    take = min(available, deficit)
+                    durations[i] -= take
+                    deficit -= take
+                    if deficit <= 0:
+                        break
+
+        return durations
+
+    def _build_slide_dict(
+        self,
+        segment: TranscriptSegment,
+        slide_id: int,
+        text: str,
+        duration: float,
+        sub_index: int,
+        sub_total: int,
+    ) -> Dict[str, Any]:
+        base_title = getattr(segment, "slide_suggestion", None) or (segment.text[:30] if segment.text else f"Segment {segment.id}")
+        if sub_total > 1 and sub_index > 0:
+            title = f"{base_title}（続き {sub_index + 1}/{sub_total}）"
+        else:
+            title = base_title
+
+        return {
+            "slide_id": slide_id,
+            "title": title,
+            "text": text,
+            "key_points": getattr(segment, "key_points", []),
+            "duration": max(duration, 0.1),
+            "source_segments": [segment.id],
+            "speakers": [segment.speaker] if getattr(segment, "speaker", None) else [],
+            "subslide_index": sub_index,
+            "subslide_count": sub_total,
+            "is_continued": sub_total > 1 and sub_index > 0,
+        }
+
+    def _build_slides_payload(
+        self,
+        segment_payloads: List[Dict[str, Any]],
+        csv_path: Path,
+    ) -> Dict[str, Any]:
+        video_resolution = settings.VIDEO_SETTINGS.get("resolution", (1920, 1080))
+        auto_split = settings.SLIDES_SETTINGS.get("auto_split_long_lines", False)
+
+        payload_segments: List[Dict[str, Any]] = []
+        for payload in segment_payloads:
+            segment = payload.get("segment")
+            slides = payload.get("slides", [])
+            audio_file: Optional[Path] = payload.get("audio_file")
+
+            if not segment:
+                continue
+
+            converted_slides: List[Dict[str, Any]] = []
+            for idx, slide in enumerate(slides):
+                converted_slides.append(
+                    {
+                        "slide_id": slide.get("slide_id"),
+                        "order": slide.get("subslide_index", idx),
+                        "count": slide.get("subslide_count", len(slides)),
+                        "title": slide.get("title"),
+                        "text": slide.get("text"),
+                        "duration": float(slide.get("duration", 0.0) or 0.0),
+                        "is_continued": bool(slide.get("is_continued", False)),
+                    }
+                )
+
+            payload_segments.append(
+                {
+                    "segment_id": getattr(segment, "id", None),
+                    "speaker": getattr(segment, "speaker", ""),
+                    "start_time": float(getattr(segment, "start_time", 0.0) or 0.0),
+                    "end_time": float(getattr(segment, "end_time", 0.0) or 0.0),
+                    "text": getattr(segment, "text", ""),
+                    "audio_file": str(audio_file) if audio_file else None,
+                    "subslides": converted_slides,
+                }
+            )
+
+        return {
+            "meta": {
+                "source_csv": str(csv_path),
+                "generated_at": datetime.now().isoformat(),
+                "auto_split": auto_split,
+                "video_resolution": list(video_resolution),
+                "total_segments": len(payload_segments),
+            },
+            "segments": payload_segments,
+        }
 
     async def run_csv_timeline(
         self,
@@ -529,31 +766,48 @@ class ModularVideoPipeline:
             # CSVタイムラインモードでは「1行=1スライド」を基本とし、
             # 各スライドの表示時間を対応するセグメント duration に合わせる
             slide_contents: list[dict[str, Any]] = []
-            for i, seg in enumerate(transcript.segments, 1):
-                seg_duration = max(float(seg.end_time - seg.start_time), 0.1)
-                slide_contents.append(
+            segment_payloads: List[Dict[str, Any]] = []
+            next_slide_id = 1
+            for idx, seg in enumerate(transcript.segments):
+                segment_slides = self._expand_segment_into_slides(seg, next_slide_id)
+                slide_contents.extend(segment_slides)
+                next_slide_id += len(segment_slides)
+
+                audio_file = audio_files[idx] if idx < len(audio_files) else None
+                segment_payloads.append(
                     {
-                        "slide_id": i,
-                        "title": getattr(seg, "slide_suggestion", None) or seg.text[:30],
-                        "text": seg.text,
-                        "key_points": getattr(seg, "key_points", []),
-                        "duration": seg_duration,
-                        "source_segments": [seg.id],
-                        "speakers": [seg.speaker] if getattr(seg, "speaker", None) else [],
+                        "segment": seg,
+                        "slides": segment_slides,
+                        "audio_file": audio_file,
                     }
                 )
+
+            slides_payload = self._build_slides_payload(
+                segment_payloads=segment_payloads,
+                csv_path=csv_path,
+            )
+
+            editing_extras: Dict[str, Any] = {
+                "slides_payload": slides_payload,
+                "csv_path": str(csv_path),
+                "audio_files": [str(path) for path in audio_files],
+                "combined_audio_path": str(combined_audio_path),
+                "export_outputs": {},
+            }
 
             slides_pkg = await self.slide_generator.create_slides_from_content(
                 slides_content=slide_contents,
                 presentation_title=transcript.title,
             )
             logger.info(
-                f"スライド生成完了 (CSV 1行=1スライド): {getattr(slides_pkg, 'total_slides', 'N/A')}枚"
+                "スライド生成完了 (CSVタイムライン): %s枚"
+                % getattr(slides_pkg, "total_slides", len(slide_contents))
             )
 
             thumbnail_path: Optional[Path] = None
             timeline_plan: Optional[Dict[str, Any]] = None
             registered_assets: Optional[Dict[str, Any]] = None
+            editing_outputs: Optional[Dict[str, Any]] = None
 
             if self.timeline_planner and self.editing_backend:
                 if progress_callback:
@@ -572,7 +826,9 @@ class ModularVideoPipeline:
                     slides=slides_pkg,
                     transcript=transcript,
                     quality=quality,
+                    extras=editing_extras,
                 )
+                editing_outputs = editing_extras.get("export_outputs") or None
             else:
                 if progress_callback:
                     progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
@@ -644,6 +900,8 @@ class ModularVideoPipeline:
                 thumbnail_path=thumbnail_path,
                 metadata=metadata,
                 publishing_result=publishing_result,
+                slides_payload=slides_payload,
+                editing_outputs=editing_outputs,
             )
 
             if progress_callback:

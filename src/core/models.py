@@ -20,3 +20,5 @@ class PipelineArtifacts:
     thumbnail_path: Optional[Path] = None
     metadata: Optional[Dict[str, Any]] = None
     publishing_result: Optional[Dict[str, Any]] = None
+    slides_payload: Optional[Dict[str, Any]] = None
+    editing_outputs: Optional[Dict[str, Any]] = None

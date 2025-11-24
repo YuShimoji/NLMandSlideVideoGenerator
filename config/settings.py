@@ -92,6 +92,11 @@ class Settings:
             "theme": "business",
             "min_font_size": 24,
             "show_speaker_on_placeholder": False,
+            "auto_split_long_lines": True,
+            "long_line_char_threshold": 120,
+            "long_line_target_chars_per_subslide": 60,
+            "long_line_max_subslides": 3,
+            "min_subslide_duration": 0.5,
         }
         
         # YouTube設定

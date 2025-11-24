@@ -152,11 +152,7 @@ class VideoComposer:
                 title_text = slide.title or f"Slide {i}"
 
                 body_text = slide.content or ""
-                max_body_chars = 80
-                if len(body_text) > max_body_chars:
-                    subtitle_text = body_text[: max_body_chars - 3] + "..."
-                else:
-                    subtitle_text = body_text
+                subtitle_text = self._wrap_placeholder_text(body_text)
 
                 speakers = getattr(slide, "speakers", None) or []
                 show_speakers = bool(speakers) and settings.SLIDES_SETTINGS.get("show_speaker_on_placeholder", False)
@@ -189,6 +185,41 @@ class VideoComposer:
         
         logger.info(f"スライド画像抽出完了: {len(slide_images)}枚 (placeholder)")
         return slide_images
+    
+    def _wrap_placeholder_text(
+        self,
+        text: str,
+        max_chars_per_line: int = 26,
+        max_lines: int = 3,
+    ) -> str:
+        """プレースホルダ用にテキストを簡易折り返しする
+
+        - 日本語/英語混在を前提に、文字数ベースで固定幅に分割
+        - 最大行数を超える場合は末尾に "..." を付与して省略を示す
+        """
+        normalized = (text or "").strip()
+        if not normalized:
+            return ""
+
+        lines = []
+        index = 0
+        length = len(normalized)
+
+        while index < length and len(lines) < max_lines:
+            end = min(index + max_chars_per_line, length)
+            line = normalized[index:end]
+            lines.append(line)
+            index = end
+
+        # まだテキストが残っている場合は末尾に省略記号を付ける
+        if index < length and lines:
+            last = lines[-1]
+            if len(last) >= 3:
+                lines[-1] = last[:-3] + "..."
+            else:
+                lines[-1] = last + "..."
+
+        return "\n".join(lines)
     
     async def _compose_final_video(
         self,
