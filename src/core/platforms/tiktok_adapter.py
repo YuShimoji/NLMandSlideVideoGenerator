@@ -4,13 +4,11 @@ TikTok / TikTok Shorts への動画投稿機能
 """
 import asyncio
 import json
-import logging
 from typing import Dict, Any, Optional, Union
 from pathlib import Path
 
 from core.interfaces import IPlatformAdapter
-
-logger = logging.getLogger(__name__)
+from ..utils.logger import logger
 
 
 class TikTokPlatformAdapter(IPlatformAdapter):

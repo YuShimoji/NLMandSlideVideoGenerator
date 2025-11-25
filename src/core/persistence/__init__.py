@@ -4,15 +4,13 @@
 """
 import sqlite3
 import json
-import logging
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from contextlib import contextmanager
 
 from config.settings import settings
-
-logger = logging.getLogger(__name__)
+from ..utils.logger import logger
 
 
 class DatabaseManager:

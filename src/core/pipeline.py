@@ -1065,3 +1065,146 @@ class ModularVideoPipeline:
         # フォールバック: 既存AudioGeneratorのみ
         audio_info = await self.audio_generator.generate_audio(sources)
         return script_bundle, audio_info
+
+    # =========================================================================
+    # Stage2/Stage3 共通ヘルパーメソッド（run() と run_csv_timeline() の重複コード削減）
+    # =========================================================================
+
+    async def _run_stage2_video_render(
+        self,
+        audio_info: AudioInfo,
+        slides_pkg: SlidesPackage,
+        transcript: TranscriptInfo,
+        quality: str,
+        script_bundle: Optional[Dict[str, Any]],
+        user_preferences: Optional[Dict[str, Any]],
+        stage2_mode: str,
+        editing_extras: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> tuple[VideoInfo, Optional[Path], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Stage2: 動画レンダリング処理の共通ロジック
+
+        Returns:
+            tuple: (video_info, thumbnail_path, timeline_plan, editing_outputs)
+        """
+        thumbnail_path: Optional[Path] = None
+        timeline_plan: Optional[Dict[str, Any]] = None
+        editing_outputs: Optional[Dict[str, Any]] = None
+
+        if self.timeline_planner and self.editing_backend:
+            if progress_callback:
+                progress_callback("タイムライン計画", 0.7, "動画のタイムラインを計画します...")
+            logger.info(f"Stage2モード: {stage2_mode}")
+
+            timeline_plan = await self.timeline_planner.build_plan(
+                script=script_bundle or {"segments": transcript.segments},
+                audio=audio_info,
+                user_preferences=user_preferences,
+            )
+
+            if progress_callback:
+                progress_callback("動画レンダリング", 0.75, "MoviePyで動画をレンダリングします...")
+
+            if editing_extras is None:
+                editing_extras = {"export_outputs": {}}
+
+            video_info = await self.editing_backend.render(
+                timeline_plan=timeline_plan,
+                audio=audio_info,
+                slides=slides_pkg,
+                transcript=transcript,
+                quality=quality,
+                extras=editing_extras,
+            )
+            editing_outputs = editing_extras.get("export_outputs") or None
+
+            # サムネイル生成（オプション）
+            if self.thumbnail_generator and user_preferences and user_preferences.get("generate_thumbnail", False):
+                try:
+                    thumbnail_style = user_preferences.get("thumbnail_style", "modern")
+                    thumbnail_info = await self.thumbnail_generator.generate(
+                        video=video_info,
+                        script=script_bundle or {"title": transcript.title},
+                        slides=slides_pkg,
+                        style=thumbnail_style
+                    )
+                    thumbnail_path = thumbnail_info.file_path
+                    logger.info(f"サムネイル生成完了: {thumbnail_path}")
+                except Exception as thumb_err:
+                    logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
+                    thumbnail_path = None
+        else:
+            if progress_callback:
+                progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
+            logger.info("Stage2拡張未設定のため従来の VideoComposer を使用")
+            video_info = await self.video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
+
+        logger.info(f"動画合成完了: {video_info.file_path}")
+        if progress_callback:
+            progress_callback("動画合成", 0.8, f"動画合成完了: {video_info.file_path}")
+
+        return video_info, thumbnail_path, timeline_plan, editing_outputs
+
+    async def _run_stage3_upload(
+        self,
+        video_info: VideoInfo,
+        transcript: TranscriptInfo,
+        thumbnail_path: Optional[Path],
+        private_upload: bool,
+        stage3_mode: str,
+        user_preferences: Optional[Dict[str, Any]],
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> tuple[Optional[UploadResult], Optional[str], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """Stage3: アップロード処理の共通ロジック
+
+        Returns:
+            tuple: (upload_result, youtube_url, metadata, publishing_result)
+        """
+        if progress_callback:
+            progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
+
+        metadata = await self.metadata_generator.generate_metadata(transcript)
+        metadata["privacy_status"] = "private" if private_upload else "public"
+        metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+
+        upload_result: Optional[UploadResult] = None
+        youtube_url: Optional[str] = None
+        publishing_result: Optional[Dict[str, Any]] = None
+
+        if self.platform_adapter:
+            if progress_callback:
+                progress_callback("YouTubeアップロード", 0.95, "YouTubeに動画をアップロードします...")
+            logger.info(f"Stage3モード: {stage3_mode}")
+
+            package = {
+                "video": video_info,
+                "metadata": metadata,
+                "thumbnail": thumbnail_path,
+                "schedule": user_preferences.get("schedule") if user_preferences else None,
+            }
+
+            if self.publishing_queue:
+                queue_id = await self.publishing_queue.enqueue(
+                    package,
+                    schedule=package.get("schedule"),
+                )
+                logger.info(f"投稿キューに登録しました: {queue_id}")
+
+            publishing_result = await self.platform_adapter.publish(
+                package,
+                options={"mode": stage3_mode},
+            )
+            youtube_url = publishing_result.get("url") if publishing_result else None
+        else:
+            if progress_callback:
+                progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
+            await self.uploader.authenticate()
+            upload_result = await self.uploader.upload_video(
+                video=video_info,
+                metadata=metadata,
+                thumbnail_path=thumbnail_path,
+            )
+            youtube_url = upload_result.video_url if upload_result else None
+            logger.success(f"アップロード完了: {youtube_url}")
+
+        return upload_result, youtube_url, metadata, publishing_result

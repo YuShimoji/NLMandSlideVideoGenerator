@@ -159,6 +159,7 @@ class MockTestRunner:
         )
         
         # モック台本情報
+        from datetime import datetime
         mock_transcript = TranscriptInfo(
             title="AI技術の最新動向",
             total_duration=180.5,
@@ -169,7 +170,9 @@ class MockTestRunner:
                     end_time=30.0,
                     speaker="ナレーター1",
                     text="今日はAI技術の最新動向について解説します。",
-                    confidence=0.98
+                    key_points=["AI技術", "最新動向"],
+                    slide_suggestion="AI技術の概要",
+                    confidence_score=0.98
                 ),
                 TranscriptSegment(
                     id=2,
@@ -177,11 +180,14 @@ class MockTestRunner:
                     end_time=60.0,
                     speaker="ナレーター2",
                     text="特に機械学習の分野で注目される技術について見ていきましょう。",
-                    confidence=0.96
+                    key_points=["機械学習", "注目技術"],
+                    slide_suggestion="機械学習の技術",
+                    confidence_score=0.96
                 )
             ],
             accuracy_score=0.97,
-            language="ja"
+            created_at=datetime.now(),
+            source_audio_path=str(mock_audio.file_path)
         )
         
         with patch.object(processor, 'process_transcript', new_callable=AsyncMock) as mock_process:
@@ -201,6 +207,7 @@ class MockTestRunner:
         generator = SlideGenerator()
         
         # モック台本情報
+        from datetime import datetime
         mock_transcript = TranscriptInfo(
             title="AI技術の最新動向",
             total_duration=180.5,
@@ -211,11 +218,14 @@ class MockTestRunner:
                     end_time=90.0,
                     speaker="ナレーター1",
                     text="今日はAI技術の最新動向について解説します。",
-                    confidence=0.98
+                    key_points=["AI技術"],
+                    slide_suggestion="AI技術の概要",
+                    confidence_score=0.98
                 )
             ],
             accuracy_score=0.97,
-            language="ja"
+            created_at=datetime.now(),
+            source_audio_path=""
         )
         
         # モックスライドパッケージ
@@ -275,12 +285,14 @@ class MockTestRunner:
             created_at=None
         )
         
+        from datetime import datetime as dt_video
         mock_transcript = TranscriptInfo(
             title="AI技術の最新動向",
             total_duration=180.5,
             segments=[],
             accuracy_score=0.97,
-            language="ja"
+            created_at=dt_video.now(),
+            source_audio_path=str(mock_audio.file_path)
         )
         
         # モック動画情報
@@ -312,12 +324,14 @@ class MockTestRunner:
         generator = MetadataGenerator()
         
         # モック台本情報
+        from datetime import datetime as dt_meta
         mock_transcript = TranscriptInfo(
             title="AI技術の最新動向",
             total_duration=180.5,
             segments=[],
             accuracy_score=0.97,
-            language="ja"
+            created_at=dt_meta.now(),
+            source_audio_path=""
         )
         
         # モックメタデータ
@@ -410,9 +424,10 @@ class MockTestRunner:
                 file_path=Path("test.mp3"), duration=180, quality_score=0.95,
                 sample_rate=44100, file_size=1000000, language="ja"
             )
+            from datetime import datetime as dt_full
             mock_transcript.return_value = TranscriptInfo(
                 title="テスト", total_duration=180, segments=[], 
-                accuracy_score=0.95, language="ja"
+                accuracy_score=0.95, created_at=dt_full.now(), source_audio_path=""
             )
             mock_slides.return_value = SlidesPackage(
                 file_path=Path("test.pptx"), slides=[], total_slides=5,

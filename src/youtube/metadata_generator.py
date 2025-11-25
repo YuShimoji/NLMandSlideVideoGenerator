@@ -4,7 +4,6 @@ YouTube動画用のタイトル、概要、タグを自動生成
 """
 import asyncio
 import json
-import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
@@ -12,8 +11,7 @@ import re
 from collections import Counter
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
-
+from core.utils.logger import logger
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
 

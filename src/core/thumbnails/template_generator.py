@@ -5,14 +5,12 @@
 """
 
 import json
-import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
-logger = logging.getLogger(__name__)
-
+from ..utils.logger import logger
 from core.interfaces import IThumbnailGenerator
 from video_editor.video_composer import ThumbnailInfo, VideoInfo
 from slides.slide_generator import SlidesPackage

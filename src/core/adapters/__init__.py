@@ -5,18 +5,16 @@ NotebookLM DeepDive などの固有フォーマットを内部スキーマへ変
 from typing import Dict, Any
 from pathlib import Path
 import json
-import logging
 
 from ..interfaces import IContentAdapter
-
-logger = logging.getLogger(__name__)
+from ..utils.logger import logger
 
 
 class NotebookLMContentAdapter(IContentAdapter):
     """NotebookLM DeepDive フォーマットを内部スキーマに変換"""
 
     def __init__(self):
-        self.logger = logging.getLogger(self.__class__.__name__)
+        pass  # Use module-level logger instead of instance-level
 
     async def normalize_script(self, raw_script: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -86,7 +84,7 @@ class NotebookLMContentAdapter(IContentAdapter):
         normalized["key_insights"] = deep_dive.get("key_insights", [])
         normalized["total_duration"] = current_time
 
-        self.logger.info(f"DeepDive を正規化: {len(normalized['segments'])} セグメント")
+        logger.info(f"DeepDive を正規化: {len(normalized['segments'])} セグメント")
         return normalized
 
     def _normalize_generic_script(self, script: Dict[str, Any]) -> Dict[str, Any]:

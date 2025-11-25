@@ -1,14 +1,12 @@
 """YouTube platform adapter implementation"""
 from __future__ import annotations
 
-import logging
 from typing import Any, Dict, Optional
 
 from config.settings import settings
 from youtube.uploader import YouTubeUploader
 from ..interfaces import IPlatformAdapter
-
-logger = logging.getLogger(__name__)
+from ..utils.logger import logger
 
 
 class YouTubePlatformAdapter(IPlatformAdapter):

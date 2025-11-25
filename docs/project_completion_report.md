@@ -276,6 +276,37 @@
     - モックテストおよび Web/API テストの拡充
     - 実 API/プロバイダ切り替え UI やサムネ自動生成など UX 改善
 
+### 📌 2025年11月25日 追加リファクタリング
+
+- **リモート更新分の取得と検証**
+  - 新機能 3 コミット（YMM4エクスポート、SofTalk/AquesTalk TTS、CSV駆動動画生成）を取得・検証。
+  - 38 ファイル変更、4886 行追加、1457 行削除の大規模更新を確認。
+
+- **ロガー統一の完了**
+  - 残存していた `logging` モジュール直接使用箇所を `core.utils.logger` に統一:
+    - `core/editing/ymm4_backend.py`
+    - `core/thumbnails/template_generator.py`
+    - `core/platforms/tiktok_adapter.py`
+    - `core/platforms/youtube_adapter.py`
+    - `core/persistence/__init__.py`
+    - `core/adapters/__init__.py`
+    - `server/api_server.py`
+    - `youtube/metadata_generator.py`
+
+- **パイプラインリファクタリング**
+  - `ModularVideoPipeline` に Stage2/Stage3 共通ヘルパーメソッドを追加:
+    - `_run_stage2_video_render()`: 動画レンダリング処理の共通ロジック
+    - `_run_stage3_upload()`: アップロード処理の共通ロジック
+  - `run()` と `run_csv_timeline()` 間の重複コードを削減。
+
+- **テストコード修正**
+  - `tests/test_mock_pipeline.py` の `TranscriptSegment` / `TranscriptInfo` コンストラクタ引数をデータクラス定義に合わせて修正。
+  - モックテスト 8/8 成功を確認。
+
+- **TODO/未実装の総ざらい（24件）**
+  - NotebookLM API 連携（6件）、Google Slides API 連携（3件）、動画合成関連（3件）等を特定。
+  - 優先度付けを実施し、今後の開発ロードマップに反映。
+
 ## 📞 サポート・連絡先
 
 ### 開発チーム

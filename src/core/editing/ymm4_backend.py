@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 import shutil
 import subprocess
@@ -10,13 +9,12 @@ from typing import Any, Dict, Optional, Sequence
 
 from config.settings import settings
 from ..interfaces import IEditingBackend
+from ..utils.logger import logger
 from .moviepy_backend import MoviePyEditingBackend
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from slides.slide_generator import SlidesPackage
 from video_editor.video_composer import VideoInfo
-
-logger = logging.getLogger(__name__)
 
 
 class YMM4EditingBackend(IEditingBackend):

@@ -4,7 +4,6 @@ FastAPI ベースの運用ダッシュボードと監視機能
 """
 import asyncio
 import json
-import logging
 import os
 import time
 from datetime import datetime, timedelta
@@ -23,6 +22,7 @@ import uvicorn
 
 from config.settings import settings
 from core.pipeline import build_default_pipeline
+from core.utils.logger import logger
 
 # Prometheus メトリクス（オプション）
 try:
@@ -46,8 +46,6 @@ REQUEST_LATENCY = Histogram('api_request_duration_seconds', 'API request duratio
 ACTIVE_PIPELINES = Gauge('active_pipelines', 'Number of active pipelines')
 VIDEO_GENERATION_COUNT = Counter('video_generations_total', 'Total video generations', ['status'])
 SYSTEM_HEALTH = Gauge('system_health', 'System health status (0=unhealthy, 1=healthy)')
-
-logger = logging.getLogger(__name__)
 
 
 class OperationalAPIServer:
