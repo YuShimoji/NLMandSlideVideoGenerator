@@ -68,9 +68,28 @@ async def get_pipeline_status(job_id: str) -> Dict[str, Any]:
     Returns:
         実行状態
     """
-    # TODO: Implement status tracking
-    # This would typically query a database or cache for job status
-    return {"status": "unknown", "job_id": job_id}
+    # TODO: Implement full status tracking with real-time updates (B1-1)
+    # Currently uses db_manager for basic status lookup
+    try:
+        from core.persistence import db_manager
+        record = db_manager.get_generation_record(job_id)
+        if record:
+            return {
+                "status": record.get("status", "unknown"),
+                "job_id": job_id,
+                "topic": record.get("topic", ""),
+                "created_at": record.get("created_at"),
+                "completed_at": record.get("completed_at"),
+                "error": record.get("error_message"),
+                "artifacts": record.get("artifacts"),
+            }
+        return {"status": "not_found", "job_id": job_id}
+    except Exception:
+        return {"status": "unknown", "job_id": job_id}
+
+
+# In-memory cancellation flags (simple implementation)
+_cancellation_flags: Dict[str, bool] = {}
 
 
 async def cancel_pipeline(job_id: str) -> bool:
@@ -83,6 +102,22 @@ async def cancel_pipeline(job_id: str) -> bool:
     Returns:
         キャンセル成功フラグ
     """
-    # TODO: Implement cancellation logic
-    # This would typically send a cancellation signal to the running pipeline
-    return False
+    # TODO: Implement full cancellation logic with async task management (B1-2)
+    # Currently sets a flag that can be checked by long-running operations
+    try:
+        from core.persistence import db_manager
+        _cancellation_flags[job_id] = True
+        db_manager.update_generation_status(job_id, "cancelled", "User requested cancellation")
+        return True
+    except Exception:
+        return False
+
+
+def is_cancelled(job_id: str) -> bool:
+    """キャンセルフラグを確認"""
+    return _cancellation_flags.get(job_id, False)
+
+
+def clear_cancellation_flag(job_id: str) -> None:
+    """キャンセルフラグをクリア"""
+    _cancellation_flags.pop(job_id, None)

@@ -254,8 +254,34 @@ def show_assets_page():
 
     st.markdown("生成されたアセットの管理と閲覧")
 
-    # TODO: Implement assets management
-    st.info("アセット管理機能は開発中です")
+    # TODO: Implement full assets management (B2-1)
+    from config.settings import settings
+
+    asset_tabs = st.tabs(["🎥 動画", "🖼️ サムネイル", "🎵 音声", "📝 台本"])
+
+    asset_dirs = [
+        (asset_tabs[0], settings.VIDEOS_DIR, "*.mp4"),
+        (asset_tabs[1], settings.THUMBNAILS_DIR, "*.png"),
+        (asset_tabs[2], settings.AUDIO_DIR, "*.mp3"),
+        (asset_tabs[3], settings.TRANSCRIPTS_DIR, "*.json"),
+    ]
+
+    for tab, dir_path, pattern in asset_dirs:
+        with tab:
+            if dir_path.exists():
+                files = sorted(dir_path.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
+                if files:
+                    st.write(f"ファイル数: {len(files)}")
+                    for f in files[:10]:  # 最新 10 件
+                        col1, col2 = st.columns([3, 1])
+                        col1.text(f.name)
+                        col2.text(f"{f.stat().st_size // 1024} KB")
+                    if len(files) > 10:
+                        st.caption(f"... 他 {len(files) - 10} ファイル")
+                else:
+                    st.info("ファイルがありません")
+            else:
+                st.warning(f"ディレクトリが存在しません: {dir_path}")
 
 
 def show_documentation_page():
@@ -287,8 +313,30 @@ def show_settings_page():
 
     st.markdown("アプリケーション設定")
 
-    # TODO: Implement settings management
-    st.info("設定管理機能は開発中です")
+    # TODO: Implement full settings management (B2-2)
+    from config.settings import settings
+
+    with st.expander("📁 ディレクトリ設定", expanded=True):
+        st.text_input("データディレクトリ", value=str(settings.DATA_DIR), disabled=True)
+        st.text_input("動画出力先", value=str(settings.VIDEOS_DIR), disabled=True)
+        st.text_input("音声出力先", value=str(settings.AUDIO_DIR), disabled=True)
+
+    with st.expander("🎥 動画設定"):
+        st.write("解像度:", settings.VIDEO_SETTINGS.get("resolution", "N/A"))
+        st.write("FPS:", settings.VIDEO_SETTINGS.get("fps", "N/A"))
+        st.write("コーデック:", settings.VIDEO_SETTINGS.get("video_codec", "N/A"))
+
+    with st.expander("🗣️ TTS 設定"):
+        tts = settings.TTS_SETTINGS
+        st.write("プロバイダ:", tts.get("provider", "none"))
+        st.write("デフォルト言語:", tts.get("default_language", "ja"))
+
+    with st.expander("📺 YouTube 設定"):
+        yt = settings.YOUTUBE_SETTINGS
+        st.write("デフォルト言語:", yt.get("default_language", "ja"))
+        st.write("カテゴリ:", yt.get("default_category_id", "N/A"))
+
+    st.info("ℹ️ 設定の変更は config/settings.py または .env ファイルを編集してください。")
 
 
 def show_tests_page():
