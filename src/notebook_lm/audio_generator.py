@@ -13,6 +13,7 @@ import struct
 
 # 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
+from .gemini_integration import GeminiIntegration
 
 from config.settings import settings
 from .source_collector import SourceInfo
@@ -42,6 +43,10 @@ class AudioGenerator:
         self.max_duration = settings.NOTEBOOK_LM_SETTINGS["max_audio_duration"]
         self.output_dir = settings.AUDIO_DIR
         
+        # 代替ワークフロー用: Gemini API キー設定
+        self.gemini_api_key = settings.GEMINI_API_KEY if hasattr(settings, 'GEMINI_API_KEY') else None
+        self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
+        
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """
         ソース情報から音声を生成
@@ -55,27 +60,26 @@ class AudioGenerator:
         logger.info(f"音声生成開始: {len(sources)}件のソースから")
         
         try:
-            # NotebookLMでの音声生成プロセス
-            # 実際の実装では、NotebookLMのAPIまたはWebインターフェースを使用
-            
-            # Step 1: ソース情報をNotebookLMに送信
-            notebook_session = await self._create_notebook_session()
-            await self._upload_sources(notebook_session, sources)
-            
-            # Step 2: 音声生成リクエスト
-            audio_generation_job = await self._request_audio_generation(notebook_session)
-            
-            # Step 3: 音声生成の完了待機
-            audio_url = await self._wait_for_audio_completion(audio_generation_job)
-            
-            # Step 4: 音声ファイルのダウンロード
-            audio_file = await self._download_audio(audio_url)
-            
-            # Step 5: 音声品質の検証
-            audio_info = await self._validate_audio_quality(audio_file)
-            
-            logger.success(f"音声生成完了: {audio_info.file_path}")
-            return audio_info
+            # 代替ワークフロー: Gemini + TTS 統合
+            if self.gemini_integration:
+                logger.info("Gemini + TTS 代替ワークフローを使用")
+                
+                # Step 1: Geminiでスクリプト生成
+                script_info = await self._generate_script_with_gemini(sources)
+                
+                # Step 2: TTSで音声生成
+                audio_file = await self._generate_audio_with_tts(script_info)
+                
+                # Step 3: 音声品質の検証
+                audio_info = await self._validate_audio_quality(audio_file)
+                
+                logger.success(f"代替ワークフロー音声生成完了: {audio_info.file_path}")
+                return audio_info
+                
+            else:
+                # フォールバック: プレースホルダー実装
+                logger.warning("Gemini API キーが設定されていないため、プレースホルダー実装を使用")
+                return await self._generate_placeholder_audio()
             
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
@@ -93,16 +97,128 @@ class AudioGenerator:
         # TODO: 実際のNotebookLM API実装
         # 現在はプレースホルダー実装
         
-        # Seleniumを使用したWebブラウザ自動化の実装例
-        # from selenium import webdriver
-        # from selenium.webdriver.common.by import By
-        # from selenium.webdriver.support.ui import WebDriverWait
-        # from selenium.webdriver.support import expected_conditions as EC
+        # NOTE: 公式API未提供のため、Gemini + TTS統合で代替実装を検討
+        # 代替ワークフロー:
+        # 1. GeminiIntegrationでスクリプト生成
+        # 2. TTS統合で音声生成
+        # 3. 文字起こしはローカル処理または外部API
         
         session_id = f"notebook_session_{int(time.time())}"
         logger.debug(f"セッション作成完了: {session_id}")
         
         return session_id
+    
+    async def _generate_script_with_gemini(self, sources: List[SourceInfo]) -> 'ScriptInfo':
+        """
+        Gemini APIを使用してスクリプトを生成
+        
+        Args:
+            sources: ソース情報一覧
+            
+        Returns:
+            ScriptInfo: 生成されたスクリプト情報
+        """
+        logger.debug("Geminiでスクリプト生成開始")
+        
+        if not self.gemini_integration:
+            raise ValueError("Gemini integration is not initialized")
+        
+        # SourceInfo を GeminiIntegration 用に変換
+        gemini_sources = [
+            {
+                "title": source.title,
+                "url": source.url,
+                "content_preview": getattr(source, 'content_preview', ''),
+                "relevance_score": getattr(source, 'relevance_score', 1.0),
+                "reliability_score": getattr(source, 'reliability_score', 1.0)
+            }
+            for source in sources
+        ]
+        
+        # トピックを推測（最初のソースのタイトルを使用）
+        topic = sources[0].title if sources else "General Topic"
+        
+        # Gemini API でスクリプト生成
+        script_info = await self.gemini_integration.generate_script_from_sources(
+            sources=gemini_sources,
+            topic=topic,
+            target_duration=self.max_duration,
+            language="ja"
+        )
+        
+        logger.debug(f"Geminiスクリプト生成完了: {len(script_info.segments)}セグメント")
+        return script_info
+    
+    async def _generate_audio_with_tts(self, script_info: 'ScriptInfo') -> Path:
+        """
+        TTS統合を使用して音声を生成
+        
+        Args:
+            script_info: スクリプト情報
+            
+        Returns:
+            Path: 生成された音声ファイルのパス
+        """
+        logger.debug("TTSで音声生成開始")
+        
+        try:
+            from ..audio.tts_integration import TTSIntegration
+            
+            tts = TTSIntegration()
+            
+            # スクリプトを結合
+            full_script = "\n".join([
+                f"{segment.get('section', '')}: {segment.get('content', '')}"
+                for segment in script_info.segments
+            ])
+            
+            # TTSで音声生成
+            audio_file = await tts.generate_audio(
+                text=full_script,
+                language=script_info.language,
+                output_filename=f"gemini_tts_{int(time.time())}.wav"
+            )
+            
+            logger.debug(f"TTS音声生成完了: {audio_file}")
+            return Path(audio_file)
+            
+        except Exception as e:
+            logger.error(f"TTS音声生成失敗: {e}")
+            raise
+    
+    async def _generate_placeholder_audio(self) -> AudioInfo:
+        """
+        プレースホルダー音声ファイルを生成
+        
+        Returns:
+            AudioInfo: プレースホルダー音声情報
+        """
+        logger.warning("プレースホルダー音声生成を使用")
+        
+        # シンプルなWAVファイルを作成
+        output_path = self.output_dir / f"placeholder_audio_{int(time.time())}.wav"
+        
+        # 1秒の無音WAVファイルを作成
+        with wave.open(str(output_path), 'wb') as wav_file:
+            wav_file.setnchannels(2)  # ステレオ
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(44100)  # 44.1kHz
+            # 無音データを1秒分
+            silent_data = b'\x00\x00' * 44100 * 2  # 44100サンプル * 2チャンネル * 2バイト
+            wav_file.writeframes(silent_data)
+        
+        audio_info = AudioInfo(
+            file_path=output_path,
+            duration=1.0,
+            quality_score=0.5,
+            sample_rate=44100,
+            file_size=output_path.stat().st_size,
+            language="ja",
+            channels=2
+        )
+        
+        logger.debug(f"プレースホルダー音声生成完了: {output_path}")
+        return audio_info
     
     async def _upload_sources(self, session_id: str, sources: List[SourceInfo]):
         """
