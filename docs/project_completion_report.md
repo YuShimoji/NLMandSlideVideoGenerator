@@ -337,6 +337,33 @@
   3 files changed, 221 insertions(+), 10 deletions(-)
   ```
 
+### 📌 2025年11月28日 フェーズA-3-3 完了
+
+- **Geminiスライド検証とログ強化**
+  - `src/core/pipeline.py`: Geminiスライド生成の詳細ログを追加
+    - `prefer_gemini_slide_content` 設定値の出力
+    - 生成されたスライド枚数のログ
+    - `script_bundle` へのスライド情報追加ログ
+  - `src/slides/slide_generator.py`: スライド生成パラメータの詳細ログを追加
+    - `prefer_bundle`, `has_bundle`, `has_slides_in_bundle`, `bundle_slide_count` の出力
+
+- **テスト整備**
+  - `tests/test_gemini_slides.py`: Geminiスライド生成の検証テストを新規作成
+    - `script_bundle` 付きスライド生成テスト
+    - 従来パス（`script_bundle` なし）のテスト
+    - `prefer_gemini_slide_content` フラグ動作確認
+  - `tests/test_mock_pipeline.py`: パス解決の修正（`.resolve()` 追加）
+  - 全テスト成功を確認（モックテスト 8/8、Geminiスライドテスト 3/3）
+
+- **ドキュメント整備**
+  - `docs/spec_transcript_io.md`: Transcript/Script I/O仕様書を新規作成
+
+- **コミット・プッシュ完了**
+  ```
+  [master 0c5a879] feat(slides): Add Gemini slide validation logging and test [A-3-3]
+  6 files changed, 387 insertions(+), 5 deletions(-)
+  ```
+
 ## 📞 サポート・連絡先
 
 ### 開発チーム
@@ -345,11 +372,10 @@
 - **ドキュメント**: 技術文書作成
 
 ### 次回作業予定
-1. **フェーズ A-1**: NotebookLM API 仕様調査・代替ワークフロー検討
-2. **フェーズ A-2**: Transcript / Script I/O 仕様固定
-3. **フェーズ A-3**: Slides API 最小プロトタイプ
-4. 軽微改善（型ヒント整備・設定値集約）の継続
+1. **フェーズ A-4**: 動画合成・エフェクト実装
+2. **フェーズ B-1**: ジョブ管理機能（ステータス追跡・キャンセル）
+3. 軽微改善（型ヒント整備・設定値集約）の継続
 
 ---
 
-**プロジェクト状況**: ✅ **リファクタリング完了・次フェーズ準備完了** - コア機能実装フェーズに移行
+**プロジェクト状況**: ✅ **フェーズA-3完了** - コア機能実装フェーズ進行中
