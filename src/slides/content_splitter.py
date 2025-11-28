@@ -254,7 +254,19 @@ class ContentSplitter:
         for seg in segments:
             all_key_points.extend(seg.key_points)
         key_points = list(dict.fromkeys(all_key_points))  # 順序を保持して重複除去
-        
+
+        primary_suggestion = None
+        for seg in segments:
+            suggestion = getattr(seg, "slide_suggestion", None)
+            if suggestion:
+                suggestion = str(suggestion).strip()
+                if suggestion:
+                    primary_suggestion = suggestion
+                    break
+
+        if primary_suggestion and primary_suggestion not in key_points:
+            key_points.insert(0, primary_suggestion)
+
         # タイトル生成
         title = self._generate_slide_title(segments, key_points)
         

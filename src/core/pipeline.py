@@ -1031,6 +1031,37 @@ class ModularVideoPipeline:
                 else:
                     tts_text = script_info.content
 
+                # Geminiスライド情報の生成（任意）
+                prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
+                logger.info(f"Geminiスライド生成設定: prefer_gemini_slide_content={prefer_gemini}")
+                try:
+                    max_slides = settings.SLIDES_SETTINGS.get("max_slides_per_batch", 20)
+                    logger.info(f"Geminiスライド生成開始: max_slides={max_slides}")
+                    gemini_slides = await gemini.generate_slide_content(
+                        script_info=script_info,
+                        max_slides=max_slides,
+                    )
+
+                    if gemini_slides:
+                        logger.info(f"Geminiスライド生成成功: {len(gemini_slides)}枚")
+                        slide_payload = []
+                        for slide in gemini_slides:
+                            slide_payload.append(
+                                {
+                                    "title": slide.get("title", f"スライド {slide.get('slide_number', len(slide_payload) + 1)}"),
+                                    "content": slide.get("content", ""),
+                                    "layout": slide.get("layout", "title_and_content"),
+                                    "duration": slide.get("duration", 15.0),
+                                    "image_suggestions": slide.get("image_suggestions", []),
+                                }
+                            )
+                        script_bundle.setdefault("slides", slide_payload)
+                        logger.info(f"script_bundle にスライド情報を追加: {len(slide_payload)}枚")
+                    else:
+                        logger.warning("Geminiスライド生成結果が空でした")
+                except Exception as slide_err:
+                    logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
+
                 api_keys = {
                     "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
                     "openai": settings.OPENAI_API_KEY,

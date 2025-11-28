@@ -95,10 +95,19 @@ class SlideGenerator:
         logger.info(f"スライド生成開始: {transcript.title}")
         
         prefer_bundle = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
+        has_bundle = script_bundle is not None
+        has_slides_in_bundle = has_bundle and "slides" in script_bundle
+        bundle_slide_count = len(script_bundle.get("slides", [])) if has_slides_in_bundle else 0
+        
+        logger.info(
+            f"スライド生成パラメータ: prefer_bundle={prefer_bundle}, "
+            f"has_bundle={has_bundle}, has_slides_in_bundle={has_slides_in_bundle}, "
+            f"bundle_slide_count={bundle_slide_count}"
+        )
 
         # NotebookLM / Gemini 由来スライド情報を優先使用する場合
         if prefer_bundle and script_bundle and "slides" in script_bundle:
-            logger.info("NotebookLM/Gemini のスライド情報を優先使用します")
+            logger.info(f"NotebookLM/Gemini のスライド情報を優先使用します ({bundle_slide_count}枚)")
             return await self._generate_slides_from_bundle(script_bundle, max_slides)
         
         try:

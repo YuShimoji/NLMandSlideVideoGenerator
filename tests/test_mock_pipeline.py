@@ -9,9 +9,11 @@ import asyncio
 from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock
 
-# プロジェクトルートをパスに追加
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root / "src"))
+# プロジェクトルートをパスに追加（絶対パスで解決）
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))  # config/ 用
+sys.path.insert(0, str(project_root / "src"))  # notebook_lm/, slides/ 等用
+os.chdir(project_root)
 
 from config.settings import settings, create_directories
 from notebook_lm.source_collector import SourceCollector, SourceInfo
