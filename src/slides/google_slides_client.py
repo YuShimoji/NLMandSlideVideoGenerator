@@ -87,39 +87,39 @@ class GoogleSlidesClient:
             return None
 
     def add_slides(self, presentation_id: str, slides: List[Dict[str, Any]]) -> bool:
+        """プレゼンテーションにスライドを追加
+
+        最小プロトタイプとして、レイアウト付きの空スライドのみを作成し、
+        タイトル/本文テキストの直接挿入は行わない。
+        （プレースホルダー objectId 依存による失敗を避けるため）
+        """
+
         service = self._get_slides_service()
         if not service:
+            logger.warning("Slides API 未利用のため add_slides をスキップします")
             return False
         try:
-            requests_body = []
-            for slide in slides:
-                # スライド作成
-                requests_body.append({
-                    "createSlide": {
-                        "slideLayoutReference": {"predefinedLayout": "TITLE_AND_BODY"}
+            requests_body: List[Dict[str, Any]] = []
+
+            for _idx, _slide in enumerate(slides, start=1):
+                # スライド作成のみ実施（TITLE_AND_BODY レイアウト）
+                requests_body.append(
+                    {
+                        "createSlide": {
+                            "slideLayoutReference": {"predefinedLayout": "TITLE_AND_BODY"}
+                        }
                     }
-                })
-                # テキスト挿入（タイトル・本文）
-                title_text = slide.get("title", "")
-                content_text = slide.get("content", "")
-                # 簡易的に、直前に作成したスライドのプレースホルダーにテキスト設定
-                requests_body.append({
-                    "insertText": {
-                        "objectId": "title",
-                        "text": title_text
-                    }
-                })
-                requests_body.append({
-                    "insertText": {
-                        "objectId": "body",
-                        "text": content_text
-                    }
-                })
-            # 実行
+                )
+
+            if not requests_body:
+                logger.warning("追加対象スライドが空のため、Slides API 呼び出しをスキップします")
+                return True
+
             service.presentations().batchUpdate(
                 presentationId=presentation_id,
-                body={"requests": requests_body}
+                body={"requests": requests_body},
             ).execute()
+            logger.success(f"Slides API で {len(slides)} 枚のスライドを作成しました")
             return True
         except Exception as e:
             logger.warning(f"スライド追加失敗: {e}")

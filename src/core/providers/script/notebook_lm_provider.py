@@ -64,13 +64,16 @@ class NotebookLMScriptProvider(IScriptProvider):
         }
 
         # 文字起こし結果からセグメント構築
-        for i, segment in enumerate(transcript.segments):
+        for i, segment in enumerate(transcript.segments, 1):
             script_bundle["segments"].append({
-                "id": f"seg_{i+1}",
-                "start_time": segment.get("start", 0),
-                "end_time": segment.get("end", 0),
-                "content": segment.get("text", ""),
-                "confidence": segment.get("confidence", 1.0)
+                "id": f"seg_{i}",
+                "start_time": getattr(segment, "start_time", 0.0),
+                "end_time": getattr(segment, "end_time", 0.0),
+                "speaker": getattr(segment, "speaker", ""),
+                "content": getattr(segment, "text", ""),
+                "key_points": getattr(segment, "key_points", []),
+                "slide_suggestion": getattr(segment, "slide_suggestion", ""),
+                "confidence": getattr(segment, "confidence_score", 1.0),
             })
 
         # スクリプト保存

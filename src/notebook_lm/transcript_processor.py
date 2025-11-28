@@ -152,9 +152,15 @@ class TranscriptProcessor:
         title = self._generate_title_from_content(segments)
         
         # 台本情報作成
+        if segments:
+            last_end_time = segments[-1].end_time
+            total_duration = min(audio_info.duration, last_end_time) if audio_info.duration else last_end_time
+        else:
+            total_duration = audio_info.duration
+
         transcript_info = TranscriptInfo(
             title=title,
-            total_duration=audio_info.duration,
+            total_duration=total_duration,
             segments=segments,
             accuracy_score=0.95,  # 初期値
             created_at=datetime.now(),

@@ -97,6 +97,7 @@ class Settings:
             "long_line_target_chars_per_subslide": 60,
             "long_line_max_subslides": 3,
             "min_subslide_duration": 0.5,
+            "prefer_gemini_slide_content": os.getenv("SLIDES_USE_GEMINI_CONTENT", "false").lower() == "true",
         }
         
         # YouTube設定

@@ -94,9 +94,11 @@ class SlideGenerator:
         """
         logger.info(f"スライド生成開始: {transcript.title}")
         
-        # NotebookLM DeepDive のスライド情報がある場合は優先使用
-        if script_bundle and "slides" in script_bundle:
-            logger.info("NotebookLM DeepDive のスライド情報を検出、使用します")
+        prefer_bundle = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
+
+        # NotebookLM / Gemini 由来スライド情報を優先使用する場合
+        if prefer_bundle and script_bundle and "slides" in script_bundle:
+            logger.info("NotebookLM/Gemini のスライド情報を優先使用します")
             return await self._generate_slides_from_bundle(script_bundle, max_slides)
         
         try:
@@ -250,7 +252,10 @@ class SlideGenerator:
                 content=bundle_slide.get("content", ""),
                 layout_type=bundle_slide.get("layout", "title_and_content"),
                 estimated_duration=bundle_slide.get("duration", 15.0),
-                image_suggestions=bundle_slide.get("images", [])
+                # Gemini/NotebookLM 由来のフィールド名差異を吸収
+                image_suggestions=bundle_slide.get(
+                    "image_suggestions", bundle_slide.get("images", [])
+                ),
             )
             slides.append(slide_info)
         
