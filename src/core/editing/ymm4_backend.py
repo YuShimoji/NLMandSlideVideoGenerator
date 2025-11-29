@@ -115,6 +115,7 @@ class YMM4EditingBackend(IEditingBackend):
                         "start_time": getattr(seg, "start_time", 0.0),
                         "end_time": getattr(seg, "end_time", 0.0),
                         "text": getattr(seg, "text", ""),
+                        "speaker": getattr(seg, "speaker", ""),
                     }
                     for seg in getattr(transcript, "segments", [])
                 ],
