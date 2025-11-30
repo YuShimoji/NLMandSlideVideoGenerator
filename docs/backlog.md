@@ -8,9 +8,9 @@
 
 | フェーズ | 目的 | 状態 |
 |----------|------|------|
-| A | NotebookLM / Slides 実装・整備（コア機能） | 🟢 進行中（A-3完了） |
-| B | Web / API 運用性向上（UI・ジョブ管理） | ⚪ 待機 |
-| C | 新モード UX 向上（CSV / YMM4） | 🟢 進行中（基盤実装完了） |
+| A | NotebookLM / Slides 実装・整備（コア機能） | 🟢 進行中（A-4完了） |
+| B | Web / API 運用性向上（UI・ジョブ管理） | 🟢 進行中（B-1完了） |
+| C | 新モード UX 向上（CSV / YMM4） | 🟢 進行中（基盤完了） |
 
 ## 完了タスク（直近）
 
@@ -23,6 +23,8 @@
 | C-2 | YMM4エクスポートPoC + 仕様書 | 2025-11-30 |
 | - | SofTalk/AquesTalk TTSバッチ連携 | 2025-11-30 |
 | - | WAV検出バグ修正 + ログ強化 | 2025-11-30 |
+| A-4 | 動画合成強化（PPTX抽出/FFmpegフォールバック） | 2025-11-30 |
+| B-1 | ジョブ管理機能（進捗追跡/キャンセル） | 2025-11-30 |
 
 ---
 
@@ -57,25 +59,27 @@
 | A3-2 | `slides/slide_generator.py` | 359 | プレゼンテーション作成実装 | 高 |
 | A3-3 | `slides/slide_generator.py` | 425 | スライド作成実装 | 高 |
 
-### A-4: 動画合成・エフェクト実装
+### A-4: 動画合成・エフェクト実装 ✅ 完了 (2025-11-30)
 
-| ID | ファイル | 行 | 内容 | 優先度 |
-|----|----------|-----|------|--------|
-| A4-1 | `core/editing/moviepy_backend.py` | 32 | plan 情報を VideoComposer に渡す | 中 |
-| A4-2 | `video_editor/video_composer.py` | 138 | PPTX からの抽出（未実装） | 中 |
-| A4-3 | `video_editor/video_composer.py` | 447 | FFmpeg コマンドによる字幕合成実装 | 中 |
-| A4-4 | `video_editor/video_composer.py` | 525 | 座標処理実装 | 低 |
+| ID | ファイル | 内容 | 状態 |
+|----|----------|------|------|
+| A4-1 | `core/editing/moviepy_backend.py` | plan 情報を VideoComposer に渡す | ✅ 完了 |
+| A4-2 | `video_editor/video_composer.py` | PPTX からの抽出 | ✅ 完了 (LibreOffice/python-pptx) |
+| A4-3 | `video_editor/video_composer.py` | FFmpeg フォールバック動画合成 | ✅ 完了 |
+| A4-4 | `video_editor/video_composer.py` | 座標処理実装 | ⚪ 待機 (低優先) |
 
 ---
 
 ## フェーズ B: Web / API 運用性向上
 
-### B-1: ジョブ管理機能
+### B-1: ジョブ管理機能 ✅ 完了 (2025-11-30)
 
-| ID | ファイル | 行 | 内容 | 優先度 |
-|----|----------|-----|------|--------|
-| B1-1 | `web/logic/pipeline_manager.py` | 71 | ステータス追跡実装 | 高 |
-| B1-2 | `web/logic/pipeline_manager.py` | 86 | キャンセルロジック実装 | 高 |
+| ID | ファイル | 内容 | 状態 |
+|----|----------|------|------|
+| B1-1 | `web/logic/pipeline_manager.py` | リアルタイム進捗追跡 | ✅ 完了 |
+| B1-2 | `web/logic/pipeline_manager.py` | 非同期キャンセル対応 | ✅ 完了 |
+| B1-3 | `core/persistence/__init__.py` | 進捗保存/取得API | ✅ 完了 |
+| B1-4 | `web/logic/pipeline_manager.py` | バックグラウンドタスク実行 | ✅ 完了 |
 
 ### B-2: Web UI ページ実装
 
@@ -152,13 +156,13 @@
 
 ### 推奨優先順位
 
-1. **A-4 動画合成・エフェクト実装**
-   - MoviePyバックエンドの強化
-   - PPTX抽出、FFmpeg字幕合成
-2. **B-1 ジョブ管理機能**
-   - ステータス追跡・キャンセル実装
-3. **C-2-1 AutoHotkey連携の安定化**
-   - PoC → 実用レベルへ
+1. **B-2 Web UI ページ実装**
+   - アセット管理ページ完全実装
+   - 設定管理ページ完全実装
+2. **C-3-4 AutoHotkey実用化**
+   - YMM4連携PoC → 実用レベル
+3. **A-3 Google Slides連携**
+   - 実際のAPI実装へ着手
 
 ### 保留中
 - A-1 NotebookLM API: 公式API待ち
