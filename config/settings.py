@@ -100,6 +100,53 @@ class Settings:
             "prefer_gemini_slide_content": os.getenv("SLIDES_USE_GEMINI_CONTENT", "false").lower() == "true",
         }
         
+        # プレースホルダースライドテーマ設定
+        self.PLACEHOLDER_THEMES = {
+            "dark": {
+                "background": (20, 20, 25),
+                "title_color": (235, 235, 235),
+                "speaker_color": (180, 200, 255),
+                "body_color": (200, 200, 200),
+                "label_color": (120, 120, 130),
+                "accent_color": (100, 150, 255),
+            },
+            "light": {
+                "background": (245, 245, 250),
+                "title_color": (30, 30, 40),
+                "speaker_color": (60, 80, 180),
+                "body_color": (50, 50, 60),
+                "label_color": (140, 140, 150),
+                "accent_color": (70, 130, 220),
+            },
+            "blue": {
+                "background": (15, 25, 45),
+                "title_color": (220, 230, 255),
+                "speaker_color": (150, 200, 255),
+                "body_color": (180, 190, 210),
+                "label_color": (100, 120, 160),
+                "accent_color": (80, 160, 255),
+            },
+            "green": {
+                "background": (15, 35, 25),
+                "title_color": (220, 255, 230),
+                "speaker_color": (150, 255, 180),
+                "body_color": (180, 210, 190),
+                "label_color": (100, 140, 120),
+                "accent_color": (80, 220, 140),
+            },
+            "warm": {
+                "background": (40, 25, 20),
+                "title_color": (255, 235, 220),
+                "speaker_color": (255, 180, 140),
+                "body_color": (230, 210, 200),
+                "label_color": (160, 130, 120),
+                "accent_color": (255, 150, 100),
+            },
+        }
+        
+        # 現在のプレースホルダーテーマ（環境変数で切替可能）
+        self.PLACEHOLDER_THEME = os.getenv("PLACEHOLDER_THEME", "dark")
+        
         # YouTube設定
         self.YOUTUBE_SETTINGS = {
             "privacy_status": "private",

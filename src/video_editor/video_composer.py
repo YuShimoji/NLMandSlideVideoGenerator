@@ -155,12 +155,31 @@ class VideoComposer:
         target_width, target_height = self.video_settings["resolution"]
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+        # テーマ取得
+        theme_name = getattr(settings, "PLACEHOLDER_THEME", "dark")
+        themes = getattr(settings, "PLACEHOLDER_THEMES", {})
+        theme = themes.get(theme_name, themes.get("dark", {
+            "background": (20, 20, 25),
+            "title_color": (235, 235, 235),
+            "speaker_color": (180, 200, 255),
+            "body_color": (200, 200, 200),
+            "label_color": (120, 120, 130),
+            "accent_color": (100, 150, 255),
+        }))
+        
+        logger.info(f"プレースホルダーテーマ: {theme_name}")
+        
         for i, slide in enumerate(slides_file.slides, 1):
             image_path = self.output_dir / f"slide_{i:03d}.png"
             
             if not image_path.exists():
-                img = Image.new('RGB', (target_width, target_height), color=(20, 20, 20))
+                img = Image.new('RGB', (target_width, target_height), color=theme["background"])
                 draw = ImageDraw.Draw(img)
+                
+                # アクセントライン（上部）
+                accent_color = theme.get("accent_color", (100, 150, 255))
+                draw.rectangle([(0, 0), (target_width, 4)], fill=accent_color)
+                
                 title_text = slide.title or f"Slide {i}"
 
                 body_text = slide.content or ""
@@ -179,18 +198,22 @@ class VideoComposer:
 
                 x_margin = 40
                 y = 60
-                draw.text((x_margin, y), title_text, fill=(235, 235, 235))
+                draw.text((x_margin, y), title_text, fill=theme["title_color"])
                 y += 50
 
                 if speaker_text:
-                    draw.text((x_margin, y), speaker_text, fill=(210, 210, 210))
+                    draw.text((x_margin, y), speaker_text, fill=theme["speaker_color"])
                     y += 40
 
                 if subtitle_text:
-                    draw.text((x_margin, y), subtitle_text, fill=(200, 200, 200))
+                    draw.text((x_margin, y), subtitle_text, fill=theme["body_color"])
                     y += 40
 
-                draw.text((x_margin, target_height - 80), label_text, fill=(160, 160, 160))
+                draw.text((x_margin, target_height - 80), label_text, fill=theme["label_color"])
+                
+                # アクセントライン（下部）
+                draw.rectangle([(0, target_height - 4), (target_width, target_height)], fill=accent_color)
+                
                 img.save(image_path, format='PNG')
             
             slide_images.append(image_path)

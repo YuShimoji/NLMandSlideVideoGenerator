@@ -55,6 +55,91 @@ Stage 1: {settings.PIPELINE_STAGE_MODES['stage1']}
 Stage 2: {settings.PIPELINE_STAGE_MODES['stage2']}
 Stage 3: {settings.PIPELINE_STAGE_MODES['stage3']}
         """)
+    
+    # 環境チェックセクション
+    st.divider()
+    st.subheader("🔧 環境チェック")
+    
+    if st.button("環境をチェック"):
+        with st.spinner("環境をチェック中..."):
+            check_results = _run_environment_check()
+            
+            col_env1, col_env2 = st.columns(2)
+            
+            with col_env1:
+                st.markdown("**必須コンポーネント:**")
+                for name, (status, detail) in check_results["essential"].items():
+                    icon = "✅" if status else "❌"
+                    st.text(f"{icon} {name}: {detail}")
+            
+            with col_env2:
+                st.markdown("**オプション:**")
+                for name, (status, detail) in check_results["optional"].items():
+                    icon = "✅" if status else "⚠️"
+                    st.text(f"{icon} {name}: {detail}")
+            
+            # サマリー
+            all_essential = all(s for s, _ in check_results["essential"].values())
+            if all_essential:
+                st.success("✅ 必須コンポーネントはすべて揃っています")
+            else:
+                st.error("❌ 一部の必須コンポーネントが不足しています")
+
+
+def _run_environment_check():
+    """環境チェックを実行"""
+    import subprocess
+    import shutil
+    
+    results = {
+        "essential": {},
+        "optional": {},
+    }
+    
+    # Python パッケージ
+    packages = [
+        ("moviepy", "MoviePy"),
+        ("PIL", "Pillow"),
+        ("streamlit", "Streamlit"),
+    ]
+    for module, name in packages:
+        try:
+            __import__(module)
+            results["essential"][name] = (True, "インストール済み")
+        except ImportError:
+            results["essential"][name] = (False, "未インストール")
+    
+    # FFmpeg
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        try:
+            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+            version_line = result.stdout.split('\n')[0] if result.stdout else "バージョン不明"
+            results["optional"]["FFmpeg"] = (True, version_line[:40])
+        except Exception:
+            results["optional"]["FFmpeg"] = (True, ffmpeg_path)
+    else:
+        results["optional"]["FFmpeg"] = (False, "未インストール（winget install FFmpeg）")
+    
+    # pysrt
+    try:
+        import pysrt
+        results["optional"]["pysrt"] = (True, "字幕ハードサブ可能")
+    except ImportError:
+        results["optional"]["pysrt"] = (False, "未インストール（pip install pysrt）")
+    
+    # AutoHotkey (Windows only)
+    ahk_paths = [
+        Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
+        Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
+    ]
+    ahk_found = any(p.exists() for p in ahk_paths)
+    if ahk_found:
+        results["optional"]["AutoHotkey"] = (True, "YMM4連携可能")
+    else:
+        results["optional"]["AutoHotkey"] = (False, "YMM4自動操作に必要")
+    
+    return results
 
 
 def show_pipeline_page():
@@ -786,13 +871,32 @@ def show_csv_pipeline_page():
     
     # 詳細設定
     with st.expander("詳細設定"):
-        max_chars = st.number_input(
-            "1スライドあたり最大文字数",
-            min_value=20,
-            max_value=200,
-            value=60,
-            help="この文字数を超える行は自動分割されます"
-        )
+        col_detail1, col_detail2 = st.columns(2)
+        
+        with col_detail1:
+            max_chars = st.number_input(
+                "1スライドあたり最大文字数",
+                min_value=20,
+                max_value=200,
+                value=60,
+                help="この文字数を超える行は自動分割されます"
+            )
+        
+        with col_detail2:
+            placeholder_theme = st.selectbox(
+                "スライドテーマ",
+                ["dark", "light", "blue", "green", "warm"],
+                index=0,
+                help="プレースホルダースライドの配色テーマ"
+            )
+            theme_descriptions = {
+                "dark": "🌙 ダーク（黒系背景・白文字）",
+                "light": "☀️ ライト（白系背景・黒文字）",
+                "blue": "🔵 ブルー（紺系背景・青アクセント）",
+                "green": "🟢 グリーン（深緑背景・緑アクセント）",
+                "warm": "🟠 ウォーム（茶系背景・オレンジアクセント）",
+            }
+            st.caption(theme_descriptions.get(placeholder_theme, ""))
     
     # 入力素材プレビュー
     has_audio_input = audio_dir or (audio_files_uploaded and len(audio_files_uploaded) > 0)
@@ -908,6 +1012,9 @@ def show_csv_pipeline_page():
                 # 設定の上書き
                 if max_chars:
                     settings.SLIDES_SETTINGS["max_chars_per_slide"] = max_chars
+                
+                if placeholder_theme:
+                    settings.PLACEHOLDER_THEME = placeholder_theme
                 
                 if export_ymm4:
                     settings.PIPELINE_COMPONENTS["editing_backend"] = "ymm4"
