@@ -225,26 +225,103 @@ class YMM4EditingBackend(IEditingBackend):
         export_outputs["ymm4"] = payload
 
     async def _run_autohotkey_script(self, project_dir: Path, project_file: Path) -> None:
-        """AutoHotkeyスクリプトを実行してYMM4を操作（オプション）"""
+        """AutoHotkeyスクリプトを実行してYMM4を操作（オプション）
+
+        1. slides_payload.jsonとtimeline_plan.jsonからカスタムAHKスクリプトを生成
+        2. 生成したスクリプトを実行
+        """
         if not self.auto_hotkey_script.exists():
             logger.warning(f"AutoHotkeyスクリプトが見つかりません: {self.auto_hotkey_script}")
             return
 
         try:
-            # AutoHotkeyスクリプト実行（非同期）
-            cmd = [
-                "AutoHotkey.exe" if Path("C:/Program Files/AutoHotkey/AutoHotkey.exe").exists()
-                else "C:/Program Files/AutoHotkey/v2/AutoHotkey.exe",
-                str(self.auto_hotkey_script),
-                "--project", str(project_file)
-            ]
+            # カスタムAHKスクリプトの生成
+            custom_script_path = await self._generate_custom_ahk_script(project_dir, project_file)
+            if custom_script_path:
+                logger.info(f"カスタムAHKスクリプトを使用: {custom_script_path}")
+                script_to_run = custom_script_path
+            else:
+                logger.info("カスタムスクリプト生成失敗、テンプレートを使用")
+                script_to_run = self.auto_hotkey_script
+
+            # AutoHotkeyスクリプト実行
+            await self._execute_ahk_script(script_to_run, project_file)
+
+        except Exception as e:
+            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
+
+    async def _generate_custom_ahk_script(self, project_dir: Path, project_file: Path) -> Optional[Path]:
+        """slides_payloadとtimeline_planからカスタムAHKスクリプトを生成"""
+        try:
+            # JSONファイルの読み込み
+            slides_payload_path = project_dir / "slides_payload.json"
+            timeline_plan_path = project_dir / "timeline_plan.json"
+
+            if not slides_payload_path.exists() or not timeline_plan_path.exists():
+                logger.warning("必要なJSONファイルが見つからないため、カスタムスクリプト生成をスキップ")
+                return None
+
+            with open(slides_payload_path, 'r', encoding='utf-8') as f:
+                slides_payload = json.load(f)
+
+            with open(timeline_plan_path, 'r', encoding='utf-8') as f:
+                timeline_plan = json.load(f)
+
+            # PythonスクリプトでAHKスクリプトを生成
+            generate_script = Path(__file__).parent.parent.parent / "scripts" / "generate_ymm4_ahk.py"
+            if not generate_script.exists():
+                logger.warning(f"AHK生成スクリプトが見つかりません: {generate_script}")
+                return None
+
+            # Pythonスクリプト実行
+            import subprocess
+            result = subprocess.run([
+                sys.executable, str(generate_script), str(project_dir)
+            ], capture_output=True, text=True, cwd=project_dir)
+
+            if result.returncode == 0:
+                custom_script = project_dir / "ymm4_automation.ahk"
+                if custom_script.exists():
+                    logger.info(f"カスタムAHKスクリプト生成成功: {custom_script}")
+                    return custom_script
+                else:
+                    logger.warning("カスタムスクリプトが生成されませんでした")
+            else:
+                logger.warning(f"AHKスクリプト生成失敗: {result.stderr}")
+
+        except Exception as e:
+            logger.warning(f"カスタムAHKスクリプト生成エラー: {e}")
+
+        return None
+
+    async def _execute_ahk_script(self, script_path: Path, project_file: Path) -> None:
+        """AutoHotkeyスクリプトを実行"""
+        # AutoHotkey実行ファイルのパスを決定
+        ahk_exe_paths = [
+            Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
+            Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
+        ]
+
+        ahk_exe = None
+        for path in ahk_exe_paths:
+            if path.exists():
+                ahk_exe = path
+                break
+
+        if not ahk_exe:
+            logger.warning("AutoHotkey実行ファイルが見つかりません。手動実行してください。")
+            return
+
+        try:
+            # AutoHotkeyスクリプト実行
+            cmd = [str(ahk_exe), str(script_path), "--project", str(project_file)]
 
             logger.info(f"AutoHotkeyスクリプト実行: {' '.join(cmd)}")
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=str(project_dir)
+                cwd=str(script_path.parent)
             )
 
             # タイムアウト付きで待機（例: 5分）
