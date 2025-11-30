@@ -286,28 +286,67 @@ export YMM4_TEMPLATE_DIFF='{"subtitle_style": "bold_glow"}'
 
 ---
 
-## 6. AutoHotkey 連携（PoC）
+## 6. AutoHotkey 連携
 
-### 6.1 現状
+### 6.1 現状 ✅ 実用化完了
 
 - `scripts/generate_ymm4_ahk.py` が `slides_payload.json` / `timeline_plan.json` から AutoHotkey スクリプトを生成
 - 生成されたスクリプトは `ymm4_automation.ahk` として出力
-- **ただし、YMM4 UI への具体的な操作はプレースホルダー状態**
+- **以下の機能が実装済み:**
+  - YMM4 ウィンドウ検出・起動待ち（タイムアウト付き）
+  - エラーハンドリング・リトライロジック
+  - 詳細ログ出力（デバッグモード）
+  - 音声ファイルインポート操作
+  - 動画エクスポートダイアログ操作
 
-### 6.2 手動実行手順
+### 6.2 使用方法
 
 ```bash
-# 1. AutoHotkey がインストールされていることを確認
-# 2. 生成されたスクリプトを実行
+# スクリプト生成
+python scripts/generate_ymm4_ahk.py /path/to/ymm4_project
+
+# オプション付き生成
+python scripts/generate_ymm4_ahk.py /path/to/ymm4_project \
+  --debug \
+  --timeout 60 \
+  --delay 300 \
+  --retries 5
+
+# 生成後に即座に実行
+python scripts/generate_ymm4_ahk.py /path/to/ymm4_project --run
+
+# 生成されたスクリプトを手動実行
 AutoHotkey.exe "data/ymm4/ymm4_project_XXXXXX/ymm4_automation.ahk"
 ```
 
-### 6.3 今後の改善予定
+### 6.3 設定オプション
 
-- [ ] YMM4 ウィンドウ座標の自動検出
-- [ ] タイムラインへのアイテム配置自動化
-- [ ] 音声ファイルのインポート自動化
-- [ ] 書き出しダイアログ操作
+| オプション | デフォルト | 説明 |
+|-----------|-----------|------|
+| `--debug` | true | デバッグモード（ログ出力・ツールチップ表示） |
+| `--ymm4-exe` | `C:\Program Files\YMM4\YMM4.exe` | YMM4実行ファイルパス |
+| `--timeout` | 30 | ウィンドウ待機タイムアウト秒 |
+| `--delay` | 200 | 操作間遅延ミリ秒 |
+| `--retries` | 3 | 最大リトライ回数 |
+| `--run` | false | 生成後に即座に実行 |
+
+### 6.4 生成されるスクリプトの機能
+
+- **ユーティリティ関数**: `Log()`, `ShowError()`, `WaitForWindow()`, `ActivateWindow()`, `SafeSend()`, `SafeClick()`, `RetryOperation()`
+- **YMM4操作関数**: `LaunchYMM4()`, `WaitForYMM4Ready()`, `ImportAudioFile()`, `ExportVideo()`, `WaitForExportComplete()`
+- **ログ出力**: `ymm4_automation.log` にタイムスタンプ付きで全操作を記録
+
+### 6.5 実装状況
+
+| 機能 | 状態 | 備考 |
+|------|------|------|
+| YMM4 ウィンドウ検出 | ✅ 実装済み | `YukkuriMovieMaker` / `YMM4` 両対応 |
+| 起動待ち安定化 | ✅ 実装済み | タイムアウト・フォールバック付き |
+| エラーハンドリング | ✅ 実装済み | リトライ・致命エラー対応 |
+| ログ・デバッグ | ✅ 実装済み | ファイル出力・ツールチップ |
+| 音声インポート | ✅ 実装済み | Ctrl+Shift+I ダイアログ操作 |
+| 書き出し操作 | ✅ 実装済み | Ctrl+Shift+E ダイアログ操作 |
+| タイムライン座標 | ⚠️ 環境依存 | F6キーでフォーカス移動 |
 
 ---
 
