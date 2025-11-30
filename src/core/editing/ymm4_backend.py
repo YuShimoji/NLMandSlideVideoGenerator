@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
@@ -268,7 +269,9 @@ class YMM4EditingBackend(IEditingBackend):
                 timeline_plan = json.load(f)
 
             # PythonスクリプトでAHKスクリプトを生成
-            generate_script = Path(__file__).parent.parent.parent / "scripts" / "generate_ymm4_ahk.py"
+            # __file__ = src/core/editing/ymm4_backend.py なので 4つ上がるとリポジトリルート
+            project_root = Path(__file__).resolve().parents[3]
+            generate_script = project_root / "scripts" / "generate_ymm4_ahk.py"
             if not generate_script.exists():
                 logger.warning(f"AHK生成スクリプトが見つかりません: {generate_script}")
                 return None

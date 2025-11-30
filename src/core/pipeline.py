@@ -643,43 +643,26 @@ class ModularVideoPipeline:
         import wave
 
         def _find_audio_files(directory: Path) -> list[Path]:
-            # 複数の音声ファイル形式に対応
-            patterns = ["*.wav", "*.mp3", "*.m4a", "*.aac", "*.flac", "*.ogg"]
-            files: list[Path] = []
-            for pat in patterns:
-                files.extend(sorted(directory.glob(pat)))
-            # 重複を除去してソート
-            unique_files = sorted(set(files))
-            logger.info(f"音声ファイル検索結果: {len(unique_files)}個見つかりました (dir={directory})")
-            for f in unique_files[:10]:  # 最初の10個を表示
+            # WAV専用（仕様: 行ごとに 001.wav, 002.wav, ... を期待）
+            files = sorted(directory.glob("*.wav"))
+            logger.info(f"WAV検索結果: {len(files)}個見つかりました (dir={directory})")
+            for f in files[:10]:  # 最初の10個を表示
                 logger.info(f"  - {f.name}")
-            if len(unique_files) > 10:
-                logger.info(f"  ... 他 {len(unique_files) - 10} 個")
-            return unique_files
+            if len(files) > 10:
+                logger.info(f"  ... 他 {len(files) - 10} 個")
+            return files
 
         def _build_audio_segments(audio_files: list[Path]) -> list[AudioInfo]:
             segments: list[AudioInfo] = []
             for path in audio_files:
                 try:
-                    # WAVファイルの場合
-                    if path.suffix.lower() == ".wav":
-                        with wave.open(str(path), "rb") as wf:
-                            frames = wf.getnframes()
-                            framerate = wf.getframerate() or 1
-                            duration = frames / float(framerate)
-                    else:
-                        # 他の音声ファイル形式の場合、簡易的にファイルサイズベースで推定
-                        # TODO: ffmpegやmutagen等のライブラリで正確なdurationを取得
-                        file_size = path.stat().st_size
-                        # 簡易推定: 一般的な音声ファイルのビットレートを仮定 (128kbps = 16000 bytes/sec)
-                        estimated_duration = file_size / 16000.0
-                        duration = max(estimated_duration, 1.0)  # 最低1秒
-                        logger.info(f"{path.name}: WAV以外のためdurationを推定 ({duration:.1f}秒)")
-
+                    with wave.open(str(path), "rb") as wf:
+                        frames = wf.getnframes()
+                        framerate = wf.getframerate() or 1
+                        duration = frames / float(framerate)
                     segments.append(AudioInfo(file_path=path, duration=duration))
                 except Exception as e:
-                    logger.warning(f"音声ファイルの解析に失敗しました: {path} ({e})")
-                    # エラーが発生しても処理を継続し、デフォルトのdurationを使用
+                    logger.warning(f"WAV解析に失敗しました: {path} ({e})")
                     segments.append(AudioInfo(file_path=path, duration=1.0))
             return segments
 
@@ -768,9 +751,9 @@ class ModularVideoPipeline:
                     logger.error(f"  - {f.name} ({f.stat().st_size} bytes)")
                 if len(all_files) > 20:
                     logger.error(f"  ... 他 {len(all_files) - 20} 個")
-                logger.error("対応している拡張子: .wav, .mp3, .m4a, .aac, .flac, .ogg")
-                logger.error("TTSバッチスクリプトを使用した場合は、正しい --audio-dir を指定してください")
-                raise RuntimeError(f"音声ファイルが見つかりません (dir={audio_dir})")
+                logger.error("対応フォーマット: WAV (.wav) のみ")
+                logger.error("TTSバッチスクリプト (tts_batch_softalk_aquestalk.py) で 001.wav, 002.wav, ... を生成してください")
+                raise RuntimeError(f"WAVファイルが見つかりません (dir={audio_dir})")
 
             audio_segments = _build_audio_segments(audio_files)
 
