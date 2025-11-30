@@ -7,11 +7,12 @@ Geminiスライド生成の検証テスト
 3. prefer_gemini_slide_content フラグによる分岐が正しく動作するか
 
 実行方法:
-  cmd.exe /c "venv\Scripts\activate.bat && set PYTHONPATH=. && python tests\test_gemini_slides.py"
+  cmd.exe /c "venv\\Scripts\\activate.bat && set PYTHONPATH=. && python tests\\test_gemini_slides.py"
 """
 import asyncio
 import sys
 import os
+import pytest
 
 # パス設定（絶対パスで解決）
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,6 +109,7 @@ def create_mock_script_bundle_with_slides() -> dict:
     }
 
 
+@pytest.mark.asyncio
 async def test_slide_generator_with_bundle():
     """script_bundle付きでSlideGeneratorをテスト"""
     print("\n" + "=" * 60)
@@ -153,6 +155,7 @@ async def test_slide_generator_with_bundle():
         return False
 
 
+@pytest.mark.asyncio
 async def test_slide_generator_without_bundle():
     """script_bundleなしでSlideGeneratorをテスト（従来パス）"""
     print("\n" + "=" * 60)
@@ -187,6 +190,7 @@ async def test_slide_generator_without_bundle():
         return False
 
 
+@pytest.mark.asyncio
 async def test_prefer_gemini_flag():
     """prefer_gemini_slide_content フラグの動作確認"""
     print("\n" + "=" * 60)

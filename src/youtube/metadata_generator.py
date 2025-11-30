@@ -363,18 +363,71 @@ class MetadataGenerator:
         """
         ソース情報を抽出
         
+        台本テキストからURL、引用、参照情報を抽出
+        
         Args:
             transcript: 台本情報
             
         Returns:
             List[str]: ソース情報一覧
         """
-        # TODO: 実際のソース情報を台本から抽出
-        # 現在はプレースホルダー
-        return [
-            "※ 本動画の情報は信頼できるソースに基づいています",
-            "※ 最新情報については公式サイトをご確認ください"
+        import re
+        
+        sources = []
+        seen_urls = set()
+        
+        # 全セグメントのテキストを結合
+        full_text = " ".join(seg.text for seg in transcript.segments)
+        
+        # 1. URL抽出
+        url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+        urls = re.findall(url_pattern, full_text)
+        for url in urls:
+            # URLをクリーンアップ（末尾の句読点除去）
+            url = url.rstrip('.,;:!?）」』】')
+            if url not in seen_urls:
+                seen_urls.add(url)
+                sources.append(f"🔗 {url}")
+        
+        # 2. 引用パターン抽出（「〜によると」「〜の調査」等）
+        quote_patterns = [
+            r'「([^」]+)」によると',
+            r'「([^」]+)」の(調査|報告|発表|研究)',
+            r'([A-Za-z0-9]+(?:社|研究所|大学|機関))の',
+            r'([\u4e00-\u9fff]+(?:省|庁|委員会))(?:が|の|は)',
         ]
+        
+        for pattern in quote_patterns:
+            matches = re.findall(pattern, full_text)
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = match[0]
+                if match and len(match) >= 2 and match not in seen_urls:
+                    seen_urls.add(match)
+                    sources.append(f"📖 {match}")
+        
+        # 3. キーポイントから参照情報を抽出
+        for segment in transcript.segments:
+            for point in segment.key_points:
+                # 「〜に基づく」「〜を参照」等のパターン
+                if any(kw in point for kw in ["参照", "引用", "出典", "ソース", "データ"]):
+                    if point not in seen_urls:
+                        seen_urls.add(point)
+                        sources.append(f"📊 {point}")
+        
+        # 4. ソースが見つからない場合のデフォルト
+        if not sources:
+            sources = [
+                "※ 本動画の情報は信頼できるソースに基づいています",
+                "※ 最新情報については公式サイトをご確認ください"
+            ]
+        else:
+            # ヘッダー追加
+            sources.insert(0, "【参考情報・引用元】")
+            sources.append("")
+            sources.append("※ 情報は動画作成時点のものです")
+        
+        return sources[:10]  # 最大10件
     
     def _generate_tags(self, transcript: TranscriptInfo) -> List[str]:
         """

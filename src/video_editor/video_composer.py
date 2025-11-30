@@ -780,7 +780,113 @@ class VideoComposer:
         
         # ファイルサイズチェック
         if video_info.file_size > settings["max_file_size"]:
-            logger.warning("ファイルサイズが制限を超えています")
-            # TODO: 圧縮処理実装
+            logger.warning(f"ファイルサイズが制限を超えています: {video_info.file_size / (1024*1024):.1f}MB > {settings['max_file_size'] / (1024*1024):.1f}MB")
+            
+            # 圧縮処理
+            compressed_path = self._compress_video(
+                video_info.video_path,
+                target_size=settings["max_file_size"],
+                platform=platform
+            )
+            
+            if compressed_path and compressed_path.exists():
+                video_info.video_path = compressed_path
+                video_info.file_size = compressed_path.stat().st_size
+                logger.info(f"圧縮完了: {video_info.file_size / (1024*1024):.1f}MB")
         
         return video_info
+    
+    def _compress_video(
+        self,
+        video_path: Path,
+        target_size: int,
+        platform: str = "youtube"
+    ) -> Optional[Path]:
+        """動画を圧縮
+        
+        Args:
+            video_path: 元動画パス
+            target_size: 目標ファイルサイズ（バイト）
+            platform: プラットフォーム
+            
+        Returns:
+            圧縮後の動画パス（失敗時はNone）
+        """
+        try:
+            output_path = video_path.parent / f"{video_path.stem}_compressed{video_path.suffix}"
+            
+            # 現在のファイルサイズと目標サイズから圧縮率を計算
+            current_size = video_path.stat().st_size
+            target_bitrate = int((target_size * 8) / self._get_video_duration(video_path) * 0.9)  # 90%マージン
+            
+            # FFmpegで圧縮
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(video_path),
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-b:v", f"{target_bitrate}",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                "-movflags", "+faststart",
+                str(output_path)
+            ]
+            
+            logger.info(f"動画圧縮開始: 目標ビットレート {target_bitrate}bps")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0 and output_path.exists():
+                # 圧縮後もサイズオーバーならCRF方式で再圧縮
+                if output_path.stat().st_size > target_size:
+                    logger.warning("ビットレート指定では目標サイズに収まらず、CRF方式で再圧縮")
+                    output_path.unlink()
+                    
+                    cmd_crf = [
+                        "ffmpeg", "-y",
+                        "-i", str(video_path),
+                        "-c:v", "libx264",
+                        "-preset", "slow",
+                        "-crf", "28",  # 高圧縮
+                        "-c:a", "aac",
+                        "-b:a", "96k",
+                        "-movflags", "+faststart",
+                        str(output_path)
+                    ]
+                    
+                    result = subprocess.run(cmd_crf, capture_output=True, text=True)
+                    
+                    if result.returncode != 0 or not output_path.exists():
+                        logger.error(f"CRF圧縮失敗: {result.stderr}")
+                        return None
+                
+                logger.info(f"圧縮完了: {output_path}")
+                return output_path
+            else:
+                logger.error(f"圧縮失敗: {result.stderr}")
+                return None
+                
+        except FileNotFoundError:
+            logger.warning("FFmpegが見つかりません。圧縮をスキップします。")
+            return None
+        except Exception as e:
+            logger.error(f"圧縮エラー: {e}")
+            return None
+    
+    def _get_video_duration(self, video_path: Path) -> float:
+        """動画の長さを取得（秒）"""
+        try:
+            cmd = [
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                str(video_path)
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                return float(result.stdout.strip())
+        except Exception:
+            pass
+        
+        # フォールバック: 10分と仮定
+        return 600.0
