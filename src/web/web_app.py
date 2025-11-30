@@ -16,6 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.web.ui.pages import (
     show_home_page,
     show_pipeline_page,
+    show_csv_pipeline_page,
     show_assets_page,
     show_documentation_page,
     show_settings_page,
@@ -35,13 +36,15 @@ def main():
     # Sidebar navigation
     page = st.sidebar.selectbox(
         "Navigation",
-        ["Home", "Pipeline Execution", "Assets", "Documentation", "Settings", "Tests"]
+        ["Home", "Pipeline Execution", "CSV Pipeline", "Assets", "Documentation", "Settings", "Tests"]
     )
 
     if page == "Home":
         show_home_page()
     elif page == "Pipeline Execution":
         show_pipeline_page()
+    elif page == "CSV Pipeline":
+        show_csv_pipeline_page()
     elif page == "Assets":
         show_assets_page()
     elif page == "Documentation":

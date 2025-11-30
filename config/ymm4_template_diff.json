@@ -1,0 +1,38 @@
+{
+  "_version": "1.0",
+  "_description": "YMM4プロジェクトテンプレートに適用する差分設定（docs/ymm4_template_diff_guide.md参照）",
+  
+  "subtitle_style": {
+    "font_family": "Meiryo UI",
+    "font_size": 48,
+    "font_color": "#FFFFFF",
+    "outline_color": "#000000",
+    "outline_width": 2,
+    "position": "bottom",
+    "margin_bottom": 50
+  },
+  
+  "background": {
+    "type": "solid",
+    "color": "#1a1a2e"
+  },
+  
+  "speaker_colors": {
+    "Speaker1": "#4a90d9",
+    "Speaker2": "#e94560",
+    "ナレーター1": "#4a90d9",
+    "ナレーター2": "#e94560",
+    "default": "#FFFFFF"
+  },
+  
+  "timing": {
+    "fade_in_ms": 200,
+    "fade_out_ms": 200,
+    "slide_transition_ms": 300
+  },
+  
+  "audio": {
+    "normalize": true,
+    "target_loudness": -16
+  }
+}

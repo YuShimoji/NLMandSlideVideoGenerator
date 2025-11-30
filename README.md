@@ -171,7 +171,42 @@ NotebookLMの代替としてGoogle AI Studio Gemini APIを活用し、スライ�
 
 ## 🚀 クイックスタート
 
-### 1. 環境セットアップ
+### 方法A: APIなしで今すぐ試す（推奨）
+
+**サンプルファイルを使って、5分で動画生成を体験できます。**
+
+```bash
+# 1. リポジトリクローン & 依存関係インストール
+git clone https://github.com/yourusername/NLMandSlideVideoGenerator.git
+cd NLMandSlideVideoGenerator
+pip install -r requirements.txt
+
+# 2. サンプル音声を生成（無音のテスト用WAV）
+python scripts/generate_sample_audio.py
+
+# 3. 動画生成を実行
+python scripts/run_csv_pipeline.py \
+  --csv samples/basic_dialogue/timeline.csv \
+  --audio-dir samples/basic_dialogue/audio \
+  --topic "AI技術解説サンプル"
+
+# 4. 出力確認
+# data/videos/ に動画が出力されます
+```
+
+**Web UIを使う場合:**
+```bash
+streamlit run src/web/web_app.py
+# ブラウザで「CSV Pipeline」ページを選択
+```
+
+> 📖 詳細は [手動素材ワークフローガイド](docs/user_guide_manual_workflow.md) を参照
+
+---
+
+### 方法B: フルセットアップ（API連携あり）
+
+#### 1. 環境セットアップ
 
 ```bash
 # リポジトリクローン
@@ -182,7 +217,7 @@ cd NLMandSlideVideoGenerator
 python setup_environment.py
 ```
 
-### 2. API認証設定
+#### 2. API認証設定
 
 ```bash
 # 環境変数ファイル作成
@@ -360,10 +395,24 @@ python test_api_integration.py
 
 ## 📚 ドキュメント
 
+### ユーザー向け
+- [手動素材ワークフローガイド](docs/user_guide_manual_workflow.md) - **APIなしで動画生成**
+- [CSV入力フォーマット仕様](docs/spec_csv_input_format.md) - CSV/WAVの準備方法
+- [サンプルファイル](samples/README.md) - すぐに試せるサンプル
+
+### セットアップ
 - [API設定ガイド](docs/api_setup_guide.md)
+- [Google API設定](docs/google_api_setup.md)
+- [環境チェック](scripts/check_environment.py) - `python scripts/check_environment.py`
+
+### 開発者向け
 - [システム仕様書](docs/system_architecture.md)
 - [開発ガイド](docs/development_guide.md)
-- [プロジェクト完成報告](docs/project_completion_report.md)
+- [Transcript I/O仕様](docs/spec_transcript_io.md)
+- [YMM4エクスポート仕様](docs/ymm4_export_spec.md)
+- [バックログ](docs/backlog.md)
+
+### OpenSpec
 - [OpenSpec開発ガイド](docs/openspec_guide.md)
 - [OpenSpecコンポーネント仕様](docs/openspec_components.md)
 - [OpenSpec開発ワークフロー](docs/openspec_workflow.md)
@@ -411,13 +460,23 @@ python test_api_integration.py
 
 ## 🎯 ロードマップ
 
+### 完了済み ✅
+- [x] CSVタイムライン → 動画生成パイプライン
+- [x] Web UI実装（Streamlit）
+- [x] YMM4エクスポート連携
+- [x] フォールバック戦略（MoviePy/FFmpeg）
+- [x] 長文自動分割機能
+
+### 進行中 🚧
+- [ ] Google Slides API完全連携
+- [ ] NotebookLM代替（Gemini + TTS統合）
+
+### 将来 📋
 - [ ] リアルタイム動画生成
 - [ ] 多言語字幕対応
 - [ ] AI画像生成統合
 - [ ] ライブ配信対応
-- [ ] Web UI実装
 
 ---
 
-**作成者**: [Your Name](https://github.com/yourusername)  
-**最終更新**: 2025年8月31日
+**最終更新**: 2025年12月1日

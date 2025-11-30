@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 
 # 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
+from core.utils.ffmpeg_utils import check_ffmpeg_with_warning, FFMPEG_INSTALL_GUIDE
 
 from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo
@@ -576,10 +577,11 @@ class VideoComposer:
         resolution = self._get_resolution_from_quality(quality)
         fps = self.video_settings.get("fps", 30)
         
-        # FFmpegが利用可能か確認
-        ffmpeg_path = shutil.which("ffmpeg")
-        if not ffmpeg_path:
-            logger.error("FFmpegが見つかりません。空のファイルを作成します。")
+        # FFmpegが利用可能か確認（改善されたユーティリティを使用）
+        ffmpeg_available, ffmpeg_path = check_ffmpeg_with_warning()
+        if not ffmpeg_available:
+            logger.error("FFmpegが見つかりません。動画出力をスキップし、メタデータのみ保存します。")
+            logger.error("動画出力を有効にするには、上記のインストール手順に従ってFFmpegをインストールしてください。")
             with open(output_path, 'wb') as f:
                 f.write(b'')
             return VideoInfo(
@@ -867,6 +869,10 @@ class VideoComposer:
                 
         except FileNotFoundError:
             logger.warning("FFmpegが見つかりません。圧縮をスキップします。")
+            logger.warning("FFmpegをインストールするには、以下を参照してください:")
+            logger.warning("  Windows: winget install FFmpeg")
+            logger.warning("  macOS: brew install ffmpeg")
+            logger.warning("  Linux: sudo apt install ffmpeg")
             return None
         except Exception as e:
             logger.error(f"圧縮エラー: {e}")
@@ -890,3 +896,92 @@ class VideoComposer:
         
         # フォールバック: 10分と仮定
         return 600.0
+
+    async def generate_thumbnail(
+        self,
+        title: str,
+        first_slide_path: Optional[Path] = None,
+        output_path: Optional[Path] = None,
+    ) -> Optional[Path]:
+        """YouTube用サムネイルを生成
+        
+        Args:
+            title: 動画タイトル
+            first_slide_path: 最初のスライド画像パス（省略時は新規生成）
+            output_path: 出力パス（省略時は自動決定）
+            
+        Returns:
+            サムネイル画像パス（失敗時はNone）
+        """
+        logger.info(f"サムネイル生成開始: {title}")
+        
+        try:
+            # 出力パス決定
+            if output_path is None:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_path = settings.THUMBNAILS_DIR / f"thumbnail_{timestamp}.png"
+            
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # YouTube推奨サイズ: 1280x720
+            thumb_width, thumb_height = 1280, 720
+            
+            # ベース画像を作成または読み込み
+            if first_slide_path and first_slide_path.exists():
+                base_img = Image.open(first_slide_path)
+                base_img = base_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
+            else:
+                # グラデーション背景を生成
+                base_img = Image.new('RGB', (thumb_width, thumb_height), color=(30, 30, 40))
+                draw = ImageDraw.Draw(base_img)
+                
+                # シンプルなグラデーション効果
+                for y in range(thumb_height):
+                    alpha = int(y / thumb_height * 60)
+                    draw.line([(0, y), (thumb_width, y)], fill=(30 + alpha, 30 + alpha, 50 + alpha))
+            
+            draw = ImageDraw.Draw(base_img)
+            
+            # タイトル用の半透明オーバーレイ（下部）
+            overlay_height = 180
+            overlay = Image.new('RGBA', (thumb_width, overlay_height), (0, 0, 0, 180))
+            base_img.paste(
+                Image.alpha_composite(
+                    base_img.crop((0, thumb_height - overlay_height, thumb_width, thumb_height)).convert('RGBA'),
+                    overlay
+                ).convert('RGB'),
+                (0, thumb_height - overlay_height)
+            )
+            
+            # タイトルテキストを描画
+            draw = ImageDraw.Draw(base_img)
+            
+            # テキストを折り返し
+            max_chars_per_line = 20
+            lines = []
+            words = title
+            while words:
+                if len(words) <= max_chars_per_line:
+                    lines.append(words)
+                    break
+                else:
+                    lines.append(words[:max_chars_per_line])
+                    words = words[max_chars_per_line:]
+            
+            # テキスト描画（中央揃え）
+            text_y = thumb_height - overlay_height + 30
+            for line in lines[:3]:  # 最大3行
+                text_width = len(line) * 24  # 概算
+                text_x = (thumb_width - text_width) // 2
+                draw.text((text_x, text_y), line, fill=(255, 255, 255))
+                text_y += 50
+            
+            # 保存
+            base_img.save(output_path, format='PNG', quality=95)
+            logger.success(f"サムネイル生成完了: {output_path}")
+            
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"サムネイル生成エラー: {e}")
+            return None

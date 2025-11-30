@@ -7,6 +7,7 @@
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
+from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -222,11 +223,14 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
 
     async def _classic_template(
         self,
-        title: str,
-        subtitle: str,
-        video: VideoInfo
-    ) -> Path:
+        video: VideoInfo,
+        script: Dict[str, Any],
+        slides: SlidesPackage
+    ) -> ThumbnailInfo:
         """クラシックテンプレート"""
+        # コンテンツ抽出
+        title, subtitle = await self._extract_content_info(script, slides)
+        
         width, height = 1280, 720
 
         # 白背景
@@ -259,11 +263,14 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
 
     async def _gaming_template(
         self,
-        title: str,
-        subtitle: str,
-        video: VideoInfo
-    ) -> Path:
+        video: VideoInfo,
+        script: Dict[str, Any],
+        slides: SlidesPackage
+    ) -> ThumbnailInfo:
         """ゲーミングテンプレート"""
+        # コンテンツ抽出
+        title, subtitle = await self._extract_content_info(script, slides)
+        
         width, height = 1280, 720
 
         # ダーク背景
@@ -293,11 +300,14 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
 
     async def _educational_template(
         self,
-        title: str,
-        subtitle: str,
-        video: VideoInfo
-    ) -> Path:
+        video: VideoInfo,
+        script: Dict[str, Any],
+        slides: SlidesPackage
+    ) -> ThumbnailInfo:
         """教育テンプレート"""
+        # コンテンツ抽出
+        title, subtitle = await self._extract_content_info(script, slides)
+        
         width, height = 1280, 720
 
         # 青背景

@@ -447,16 +447,47 @@ class YMM4EditingBackend(IEditingBackend):
         """
         差分適用設定を読み込み
         
+        優先順位:
+        1. 環境変数 YMM4_TEMPLATE_DIFF (JSON文字列)
+        2. 環境変数 YMM4_TEMPLATE_DIFF_FILE (ファイルパス)
+        3. config/ymm4_template_diff.json
+        
         Returns:
             Optional[Dict[str, Any]]: 差分設定
         """
-        # プロトタイプ: 環境変数から読み込み
+        # 1. 環境変数から直接JSON
         diff_str = os.getenv("YMM4_TEMPLATE_DIFF", "")
         if diff_str:
             try:
                 return json.loads(diff_str)
             except json.JSONDecodeError:
-                logger.warning(f"無効な差分設定: {diff_str}")
+                logger.warning(f"無効な差分設定 (環境変数): {diff_str}")
+        
+        # 2. 環境変数からファイルパス
+        diff_file = os.getenv("YMM4_TEMPLATE_DIFF_FILE", "")
+        if diff_file:
+            diff_path = Path(diff_file)
+            if diff_path.exists():
+                try:
+                    with open(diff_path, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    logger.info(f"テンプレート差分設定を読み込み: {diff_path}")
+                    return config
+                except Exception as e:
+                    logger.warning(f"差分設定ファイル読み込みエラー: {e}")
+        
+        # 3. デフォルト設定ファイル
+        project_root = Path(__file__).resolve().parents[3]
+        default_diff = project_root / "config" / "ymm4_template_diff.json"
+        if default_diff.exists():
+            try:
+                with open(default_diff, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                logger.info(f"デフォルトテンプレート差分設定を読み込み: {default_diff}")
+                return config
+            except Exception as e:
+                logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
+        
         return None
 
     def _compute_template_diff(self, template_meta: Dict[str, Any], diff_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -470,22 +501,49 @@ class YMM4EditingBackend(IEditingBackend):
         Returns:
             Dict[str, Any]: 更新されたメタデータ
         """
-        # プロトタイプ: シンプルな差分適用
-        updated = template_meta.copy()
+        import copy
+        updated = copy.deepcopy(template_meta)
         
-        # 例: 字幕スタイルの更新
+        # 字幕スタイルの適用
         if "subtitle_style" in diff_config:
-            updated.setdefault("styles", {})["subtitle"] = diff_config["subtitle_style"]
-            logger.info(f"字幕スタイルを更新: {diff_config['subtitle_style']}")
+            subtitle = diff_config["subtitle_style"]
+            updated.setdefault("styles", {})["subtitle"] = subtitle
+            logger.info(f"字幕スタイルを適用: font={subtitle.get('font_family')}, size={subtitle.get('font_size')}")
         
-        # 例: 背景色の更新
-        if "background_color" in diff_config:
-            updated.setdefault("styles", {})["background"] = diff_config["background_color"]
-            logger.info(f"背景色を更新: {diff_config['background_color']}")
+        # 背景設定の適用
+        if "background" in diff_config:
+            bg = diff_config["background"]
+            updated.setdefault("styles", {})["background"] = bg
+            logger.info(f"背景を適用: type={bg.get('type')}, color={bg.get('color')}")
         
-        # 例: エフェクトの追加
+        # 話者ごとの色設定
+        if "speaker_colors" in diff_config:
+            updated["speaker_colors"] = diff_config["speaker_colors"]
+            logger.info(f"話者色を適用: {len(diff_config['speaker_colors'])}件")
+        
+        # タイミング設定
+        if "timing" in diff_config:
+            updated["timing"] = diff_config["timing"]
+            logger.info(f"タイミング設定を適用: {diff_config['timing']}")
+        
+        # 音声設定
+        if "audio" in diff_config:
+            updated["audio_settings"] = diff_config["audio"]
+            logger.info(f"音声設定を適用: {diff_config['audio']}")
+        
+        # エフェクト追加（既存に追加）
         if "effects" in diff_config:
             updated.setdefault("effects", []).extend(diff_config["effects"])
-            logger.info(f"エフェクトを追加: {diff_config['effects']}")
+            logger.info(f"エフェクトを追加: {len(diff_config['effects'])}件")
+        
+        # カスタムキーの適用（上記以外のキーをそのまま追加）
+        reserved_keys = {"$schema", "$version", "$description", 
+                        "_version", "_description",
+                        "subtitle_style", "background", "speaker_colors", 
+                        "timing", "audio", "effects"}
+        for key, value in diff_config.items():
+            if key not in reserved_keys:
+                updated[key] = value
+                logger.debug(f"カスタムキーを適用: {key}")
         
         return updated

@@ -350,14 +350,91 @@ AutoHotkey.exe "data/ymm4/ymm4_project_XXXXXX/ymm4_automation.ahk"
 
 ---
 
-## 7. テスト
+## 7. 書き出しフォールバック戦略
 
-### 7.1 関連テストファイル
+### 7.1 概要
+
+`ExportFallbackManager` クラスが複数の編集バックエンドを優先順位付きで管理し、失敗時に自動的にフォールバックする。
+
+```
+優先順位: YMM4 REST API → YMM4 AutoHotkey → MoviePy/FFmpeg
+```
+
+### 7.2 使用方法
+
+```python
+from src.core.editing import ExportFallbackManager, BackendType
+
+# マネージャー初期化（自動検出有効）
+manager = ExportFallbackManager(auto_detect=True)
+
+# レンダリング実行
+result = await manager.render(
+    timeline_plan=plan,
+    audio=audio_info,
+    slides=slides_package,
+    transcript=transcript_info,
+    quality="1080p"
+)
+
+if result.success:
+    print(f"成功: {result.used_backend.value}")
+    print(f"出力: {result.video_info.file_path}")
+else:
+    print(f"失敗: {result.errors}")
+```
+
+### 7.3 バックエンド設定
+
+```python
+from src.core.editing import BackendConfig, BackendType
+
+# カスタム設定
+configs = [
+    BackendConfig(
+        backend_type=BackendType.YMM4_AHK,
+        enabled=True,
+        priority=1,
+        timeout_seconds=300.0,
+        retry_count=2,
+    ),
+    BackendConfig(
+        backend_type=BackendType.MOVIEPY,
+        enabled=True,
+        priority=2,
+        timeout_seconds=180.0,
+    ),
+]
+
+manager = ExportFallbackManager(configs=configs)
+```
+
+### 7.4 フォールバック動作
+
+| 状況 | 動作 |
+|------|------|
+| バックエンド成功 | 結果を返却、処理終了 |
+| タイムアウト | エラー記録、次バックエンドへ |
+| 例外発生 | リトライ後、次バックエンドへ |
+| 全バックエンド失敗 | エラー一覧と共に失敗結果を返却 |
+
+### 7.5 実装ファイル
+
+- `src/core/editing/export_fallback_manager.py`
+- `tests/test_export_fallback_manager.py`
+
+---
+
+## 8. テスト
+
+### 8.1 関連テストファイル
 
 - `tests/test_csv_pipeline_mode.py`:
   - `test_run_csv_timeline_ymm4_export_payload`: slides_payload / export_outputs の検証
+- `tests/test_export_fallback_manager.py`:
+  - フォールバック戦略の動作検証（10テストケース）
 
-### 7.2 テスト実行
+### 8.2 テスト実行
 
 ```bash
 python -m pytest tests/test_csv_pipeline_mode.py -v
@@ -365,28 +442,28 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ---
 
-## 8. 今後のロードマップ
+## 9. 今後のロードマップ
 
-### 8.1 短期（安定化）
+### 9.1 短期（安定化）✅ 完了
 
-- [ ] AutoHotkey 連携の実用化
-- [ ] テンプレート差分適用の整理
-- [ ] ドキュメント整備
+- [x] AutoHotkey 連携の実用化 (C3-4)
+- [x] フォールバック戦略の完成 (C3-3)
+- [ ] テンプレート差分適用の整理 (C3-5)
 
-### 8.2 中期（API連携）
+### 9.2 中期（API連携）
 
 - [ ] YMM4 REST API (https://ymm-api-docs.vercel.app/) 調査
 - [ ] API クライアント実装
 - [ ] タイムライン挿入機能
 
-### 8.3 長期（完全自動化）
+### 9.3 長期（完全自動化）
 
 - [ ] API 経由での書き出し
-- [ ] フォールバック戦略の完成（API → AHK → MoviePy）
+- [ ] RSS連携による自動記事選定
 
 ---
 
-## 9. 関連ドキュメント
+## 10. 関連ドキュメント
 
 - `docs/tts_batch_softalk_aquestalk.md`: SofTalk/AquesTalk TTS バッチ連携仕様
 - `docs/spec_transcript_io.md`: Transcript/Script I/O 仕様
@@ -395,8 +472,10 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ---
 
-## 10. 変更履歴
+## 11. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
 | 2025-11-30 | 初版作成（現状実装ベース） |
+| 2025-11-30 | AutoHotkey連携セクション更新（C3-4完了） |
+| 2025-12-01 | フォールバック戦略セクション追加（C3-3完了） |

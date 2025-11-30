@@ -853,6 +853,27 @@ class ModularVideoPipeline:
             if progress_callback:
                 progress_callback("動画合成", 0.8, f"動画合成完了: {video_info.file_path}")
 
+            # サムネイル生成
+            if progress_callback:
+                progress_callback("サムネイル生成", 0.82, "サムネイルを生成します...")
+            try:
+                first_slide_path = None
+                if slide_contents and len(slide_contents) > 0:
+                    # 最初のスライド画像を探す
+                    slide_images_dir = settings.VIDEOS_DIR
+                    first_slide_candidate = slide_images_dir / "slide_001.png"
+                    if first_slide_candidate.exists():
+                        first_slide_path = first_slide_candidate
+                
+                thumbnail_path = await self.video_composer.generate_thumbnail(
+                    title=transcript.title,
+                    first_slide_path=first_slide_path,
+                )
+                if thumbnail_path:
+                    logger.info(f"サムネイル生成完了: {thumbnail_path}")
+            except Exception as e:
+                logger.warning(f"サムネイル生成に失敗しました: {e}")
+
             upload_result: Optional[UploadResult] = None
             youtube_url: Optional[str] = None
             metadata: Optional[Dict[str, Any]] = None

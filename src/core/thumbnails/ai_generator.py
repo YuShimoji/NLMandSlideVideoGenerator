@@ -91,7 +91,7 @@ class AIThumbnailGenerator(IThumbnailGenerator):
 
         # サムネイル画像を生成
         thumbnail_path = await self._create_thumbnail_image(
-            title_text, subtitle_text, style_config, video
+            title_text, subtitle_text, style_config, video, style
         )
 
         # ThumbnailInfoを作成
@@ -149,7 +149,8 @@ class AIThumbnailGenerator(IThumbnailGenerator):
         title: str,
         subtitle: str,
         style_config: Dict[str, Any],
-        video: VideoInfo
+        video: VideoInfo,
+        style_name: str = "modern"
     ) -> Path:
         """
         サムネイル画像を生成
@@ -220,7 +221,7 @@ class AIThumbnailGenerator(IThumbnailGenerator):
 
         # ファイル名を生成
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"thumbnail_{timestamp}_{style}.png"
+        filename = f"thumbnail_{timestamp}_{style_name}.png"
         filepath = self.output_dir / filename
 
         # 画像を保存
