@@ -122,6 +122,65 @@ class DatabaseManager:
 
             return [dict(row) for row in rows]
 
+    def get_generation_record(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """特定のジョブIDの生成履歴を取得"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM generation_history WHERE job_id = ?",
+                (job_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                record = dict(row)
+                # JSON フィールドをパース
+                if record.get('artifacts'):
+                    try:
+                        record['artifacts'] = json.loads(record['artifacts'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if record.get('metadata'):
+                    try:
+                        record['metadata'] = json.loads(record['metadata'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                return record
+            return None
+
+    def update_generation_progress(
+        self,
+        job_id: str,
+        progress: float,
+        stage: str,
+        message: str = ""
+    ):
+        """生成進捗を更新"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # メタデータを更新
+            cursor.execute(
+                "SELECT metadata FROM generation_history WHERE job_id = ?",
+                (job_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                try:
+                    metadata = json.loads(row['metadata'] or '{}')
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+                
+                metadata['progress'] = progress
+                metadata['current_stage'] = stage
+                metadata['progress_message'] = message
+                metadata['last_updated'] = datetime.now().isoformat()
+                
+                cursor.execute(
+                    "UPDATE generation_history SET metadata = ? WHERE job_id = ?",
+                    (json.dumps(metadata, ensure_ascii=False), job_id)
+                )
+                conn.commit()
+
     def update_generation_status(self, job_id: str, status: str, error_message: Optional[str] = None):
         """生成ステータスを更新"""
         with self._get_connection() as conn:

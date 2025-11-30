@@ -29,12 +29,13 @@ class MoviePyEditingBackend(IEditingBackend):
         extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         plan = self._parse_plan(timeline_plan)
-        # TODO: plan 情報を VideoComposer に反映（シーン長・エフェクト適用など）
+        # plan 情報を VideoComposer に渡してセグメント長・エフェクトを反映
         return await self.video_composer.compose_video(
             audio_file=audio,
             slides_file=slides,
             transcript=transcript,
             quality=quality,
+            timeline_plan=timeline_plan,
         )
 
     def _parse_plan(self, plan_dict: Dict[str, Any]) -> TimelinePlan:

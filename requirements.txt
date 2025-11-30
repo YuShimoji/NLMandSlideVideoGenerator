@@ -75,6 +75,9 @@ webvtt-py==0.4.6
 pathlib2==2.3.7
 python-magic==0.4.27
 
+# PPTX処理（オプション）
+python-pptx>=0.6.21
+
 # 暗号化・セキュリティ
 cryptography==41.0.4
 python-jose==3.3.0

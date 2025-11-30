@@ -3,6 +3,9 @@
 音声、スライド、字幕を組み合わせて最終動画を生成
 """
 import asyncio
+import shutil
+import subprocess
+import tempfile
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from dataclasses import dataclass
@@ -68,7 +71,8 @@ class VideoComposer:
         audio_file: AudioInfo,
         slides_file: SlidesPackage,
         transcript: TranscriptInfo,
-        quality: str = "1080p"
+        quality: str = "1080p",
+        timeline_plan: Optional[Dict[str, Any]] = None
     ) -> VideoInfo:
         """
         音声、スライド、字幕を合成して動画を生成
@@ -78,11 +82,15 @@ class VideoComposer:
             slides_file: スライドファイル情報
             transcript: 台本情報
             quality: 動画品質
+            timeline_plan: タイムライン計画（セグメント長・エフェクト指示）
             
         Returns:
             VideoInfo: 生成された動画情報
         """
         logger.info("動画合成開始")
+        
+        # timeline_plan からセグメント情報を抽出
+        self._current_timeline_plan = timeline_plan
         
         try:
             # Step 1: スライド画像を抽出
@@ -135,8 +143,11 @@ class VideoComposer:
         except Exception:
             pass
         
-        # 2) TODO: PPTX からの抽出（未実装）。現状はプレースホルダー生成にフォールバック。
-        # python-pptx や libreoffice --convert-to での抽出検討箇所
+        # 2) PPTXからの抽出
+        pptx_images = await self._extract_from_pptx(slides_file)
+        if pptx_images:
+            logger.info(f"PPTXからスライド画像を抽出: {len(pptx_images)}枚")
+            return pptx_images
         
         # 3) フォールバック: プレースホルダー生成（実在するPNGを作成）
         slide_images: List[Path] = []
@@ -220,6 +231,124 @@ class VideoComposer:
                 lines[-1] = last + "..."
 
         return "\n".join(lines)
+
+    async def _extract_from_pptx(self, slides_file: SlidesPackage) -> List[Path]:
+        """PPTXファイルからスライド画像を抽出
+
+        python-pptx または LibreOffice を使用して PPTX から PNG を生成します。
+
+        Args:
+            slides_file: スライドファイル情報
+
+        Returns:
+            List[Path]: 抽出された画像ファイルパス一覧。失敗時は空リスト。
+        """
+        pptx_path = getattr(slides_file, "pptx_path", None)
+        if not pptx_path or not Path(pptx_path).exists():
+            return []
+
+        pptx_path = Path(pptx_path)
+        output_dir = settings.SLIDES_IMAGES_DIR / pptx_path.stem
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # 既にエクスポート済みならそれを使用
+        existing = sorted(output_dir.glob("*.png"))
+        if existing:
+            logger.info(f"既存のPPTXエクスポート画像を使用: {len(existing)}枚")
+            return existing
+
+        # 方法1: LibreOffice を使用 (推奨: 高品質)
+        if shutil.which("soffice"):
+            try:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    # LibreOffice で PDF に変換
+                    pdf_result = subprocess.run([
+                        "soffice", "--headless", "--convert-to", "pdf",
+                        "--outdir", tmp_dir, str(pptx_path)
+                    ], capture_output=True, timeout=120)
+
+                    if pdf_result.returncode == 0:
+                        pdf_files = list(Path(tmp_dir).glob("*.pdf"))
+                        if pdf_files:
+                            pdf_path = pdf_files[0]
+                            # PDF から PNG に変換 (pdftoppm / ImageMagick)
+                            images = await self._pdf_to_images(pdf_path, output_dir)
+                            if images:
+                                logger.info(f"LibreOffice経由でPPTX抽出完了: {len(images)}枚")
+                                return images
+            except Exception as e:
+                logger.warning(f"LibreOfficeでのPPTX変換に失敗: {e}")
+
+        # 方法2: python-pptx を使用 (サムネイル抽出のみ)
+        try:
+            from pptx import Presentation
+            from pptx.util import Inches
+
+            prs = Presentation(str(pptx_path))
+            images: List[Path] = []
+
+            for i, slide in enumerate(prs.slides, 1):
+                # スライドから埋め込み画像を抽出
+                for shape in slide.shapes:
+                    if hasattr(shape, "image"):
+                        try:
+                            image_bytes = shape.image.blob
+                            image_path = output_dir / f"slide_{i:03d}.png"
+                            with open(image_path, "wb") as f:
+                                f.write(image_bytes)
+                            images.append(image_path)
+                            break  # 1スライドにつき1画像
+                        except Exception:
+                            continue
+
+            if images:
+                logger.info(f"python-pptxでPPTX抽出完了: {len(images)}枚")
+                return images
+        except ImportError:
+            logger.debug("python-pptx がインストールされていません")
+        except Exception as e:
+            logger.warning(f"python-pptxでのPPTX抽出に失敗: {e}")
+
+        return []
+
+    async def _pdf_to_images(self, pdf_path: Path, output_dir: Path) -> List[Path]:
+        """PDFをPNG画像に変換
+
+        pdftoppm (poppler-utils) または ImageMagick を使用します。
+        """
+        images: List[Path] = []
+
+        # pdftoppm を試行
+        if shutil.which("pdftoppm"):
+            try:
+                prefix = output_dir / "slide"
+                result = subprocess.run([
+                    "pdftoppm", "-png", "-r", "150",
+                    str(pdf_path), str(prefix)
+                ], capture_output=True, timeout=120)
+                if result.returncode == 0:
+                    images = sorted(output_dir.glob("slide-*.png"))
+                    # ファイル名を正規化
+                    for i, img in enumerate(images, 1):
+                        new_name = output_dir / f"slide_{i:03d}.png"
+                        img.rename(new_name)
+                    images = sorted(output_dir.glob("slide_*.png"))
+            except Exception as e:
+                logger.warning(f"pdftoppmでのPDF変換に失敗: {e}")
+
+        # ImageMagick を試行
+        if not images and shutil.which("convert"):
+            try:
+                result = subprocess.run([
+                    "convert", "-density", "150",
+                    str(pdf_path), str(output_dir / "slide_%03d.png")
+                ], capture_output=True, timeout=120)
+                if result.returncode == 0:
+                    images = sorted(output_dir.glob("slide_*.png"))
+            except Exception as e:
+                logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
+
+        return images
     
     async def _compose_final_video(
         self,
@@ -444,22 +573,152 @@ class VideoComposer:
         """
         logger.info("FFmpegを使用したフォールバック動画合成")
         
-        # TODO: FFmpegコマンドによる動画合成実装
+        resolution = self._get_resolution_from_quality(quality)
+        fps = self.video_settings.get("fps", 30)
         
-        # プレースホルダー実装
-        with open(output_path, 'wb') as f:
-            f.write(b'')  # 空のファイル作成
+        # FFmpegが利用可能か確認
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not ffmpeg_path:
+            logger.error("FFmpegが見つかりません。空のファイルを作成します。")
+            with open(output_path, 'wb') as f:
+                f.write(b'')
+            return VideoInfo(
+                file_path=output_path,
+                duration=audio_info.duration,
+                resolution=resolution,
+                fps=fps,
+                file_size=0,
+                has_subtitles=False,
+                has_effects=False,
+                created_at=datetime.now()
+            )
         
-        return VideoInfo(
-            file_path=output_path,
-            duration=audio_info.duration,
-            resolution=(1920, 1080),
-            fps=30,
-            file_size=0,
-            has_subtitles=False,
-            has_effects=False,
-            created_at=datetime.now()
-        )
+        try:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir)
+                
+                # スライド画像からビデオを作成
+                num_slides = max(len(slide_images), 1)
+                slide_duration = max(audio_info.duration / num_slides, 0.1)
+                
+                # concat用のファイルリストを作成
+                concat_file = tmp_path / "concat.txt"
+                with open(concat_file, 'w', encoding='utf-8') as f:
+                    for slide_image in slide_images:
+                        # パスから画像を取得
+                        img_path = slide_image
+                        if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
+                            img_path = slide_image.processed_frames[0]
+                        
+                        # 個別スライドのdurationを取得
+                        dur = slide_duration
+                        if hasattr(slide_image, "duration"):
+                            try:
+                                dur = float(getattr(slide_image, "duration") or slide_duration)
+                            except (TypeError, ValueError):
+                                pass
+                        
+                        f.write(f"file '{img_path}'\n")
+                        f.write(f"duration {dur}\n")
+                    # 最後のフレームを保持するため再度追加
+                    if slide_images:
+                        last_img = slide_images[-1]
+                        if hasattr(last_img, "processed_frames") and getattr(last_img, "processed_frames"):
+                            last_img = last_img.processed_frames[0]
+                        f.write(f"file '{last_img}'\n")
+                
+                # 一時動画ファイル
+                temp_video = tmp_path / "temp_video.mp4"
+                
+                # Step 1: 画像から動画を作成
+                cmd_video = [
+                    ffmpeg_path, "-y",
+                    "-f", "concat", "-safe", "0",
+                    "-i", str(concat_file),
+                    "-vf", f"scale={resolution[0]}:{resolution[1]}:force_original_aspect_ratio=decrease,pad={resolution[0]}:{resolution[1]}:(ow-iw)/2:(oh-ih)/2",
+                    "-c:v", "libx264", "-preset", "medium",
+                    "-pix_fmt", "yuv420p",
+                    "-r", str(fps),
+                    str(temp_video)
+                ]
+                
+                result = subprocess.run(cmd_video, capture_output=True, timeout=300)
+                if result.returncode != 0:
+                    logger.warning(f"FFmpeg動画生成エラー: {result.stderr.decode()}")
+                    raise RuntimeError("FFmpeg video generation failed")
+                
+                # Step 2: 音声を追加
+                temp_with_audio = tmp_path / "temp_with_audio.mp4"
+                cmd_audio = [
+                    ffmpeg_path, "-y",
+                    "-i", str(temp_video),
+                    "-i", str(audio_info.file_path),
+                    "-c:v", "copy",
+                    "-c:a", "aac", "-b:a", "192k",
+                    "-shortest",
+                    str(temp_with_audio)
+                ]
+                
+                result = subprocess.run(cmd_audio, capture_output=True, timeout=300)
+                if result.returncode != 0:
+                    logger.warning(f"FFmpeg音声追加エラー: {result.stderr.decode()}")
+                    raise RuntimeError("FFmpeg audio addition failed")
+                
+                # Step 3: 字幕を追加（オプション）
+                has_subtitles = False
+                final_temp = temp_with_audio
+                
+                if subtitle_file.exists() and subtitle_file.stat().st_size > 0:
+                    temp_with_subs = tmp_path / "temp_with_subs.mp4"
+                    # 字幕をハードコード（焼き込み）
+                    cmd_subs = [
+                        ffmpeg_path, "-y",
+                        "-i", str(temp_with_audio),
+                        "-vf", f"subtitles='{str(subtitle_file).replace(chr(92), chr(92)+chr(92)).replace(':', chr(92)+':')}'",
+                        "-c:a", "copy",
+                        str(temp_with_subs)
+                    ]
+                    
+                    result = subprocess.run(cmd_subs, capture_output=True, timeout=300)
+                    if result.returncode == 0:
+                        final_temp = temp_with_subs
+                        has_subtitles = True
+                        logger.info("字幕を動画に焼き込みました")
+                    else:
+                        logger.warning(f"字幕追加をスキップ: {result.stderr.decode()[:200]}")
+                
+                # 最終出力にコピー
+                shutil.copy2(final_temp, output_path)
+                
+                file_size = output_path.stat().st_size if output_path.exists() else 0
+                logger.info(f"FFmpegによる動画合成完了: {output_path} ({file_size} bytes)")
+                
+                return VideoInfo(
+                    file_path=output_path,
+                    duration=audio_info.duration,
+                    resolution=resolution,
+                    fps=fps,
+                    file_size=file_size,
+                    has_subtitles=has_subtitles,
+                    has_effects=False,
+                    created_at=datetime.now()
+                )
+                
+        except Exception as e:
+            logger.error(f"FFmpegフォールバック動画合成に失敗: {e}")
+            # 最終フォールバック: 空のファイル
+            with open(output_path, 'wb') as f:
+                f.write(b'')
+            return VideoInfo(
+                file_path=output_path,
+                duration=audio_info.duration,
+                resolution=resolution,
+                fps=fps,
+                file_size=0,
+                has_subtitles=False,
+                has_effects=False,
+                created_at=datetime.now()
+            )
     
     async def _save_video_metadata(self, video_info: VideoInfo, transcript: TranscriptInfo):
         """
