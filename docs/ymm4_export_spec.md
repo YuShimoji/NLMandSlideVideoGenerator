@@ -1,6 +1,6 @@
 # YMM4 エクスポート仕様
 
-**最終更新**: 2025-11-30  
+**最終更新**: 2025-12-02  
 **ステータス**: 実装済み（PoC段階）
 
 ---
@@ -211,6 +211,7 @@ artifacts.editing_outputs = {
         "project_file": "/path/to/project.y4mmp",
         "timeline_plan": "/path/to/timeline_plan.json",
         "slides_payload": "/path/to/slides_payload.json",
+        "template_diff": "/path/to/template_diff_applied.json",
         "audio_dir": "/path/to/audio"
     }
 }
@@ -448,7 +449,7 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 - [x] AutoHotkey 連携の実用化 (C3-4)
 - [x] フォールバック戦略の完成 (C3-3)
-- [ ] テンプレート差分適用の整理 (C3-5)
+- [x] テンプレート差分適用の整理 (C3-5)
 
 ### 9.2 中期（API連携）
 

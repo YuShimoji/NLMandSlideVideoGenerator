@@ -18,7 +18,7 @@ import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional
 
 from ..interfaces import IEditingBackend
 from ..utils.logger import logger

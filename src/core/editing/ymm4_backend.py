@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import shutil
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -222,6 +221,10 @@ class YMM4EditingBackend(IEditingBackend):
         audio_dir = project_dir / "audio"
         if audio_dir.exists():
             payload["audio_dir"] = str(audio_dir)
+
+        template_diff_path = project_dir / "template_diff_applied.json"
+        if template_diff_path.exists():
+            payload["template_diff"] = str(template_diff_path)
 
         export_outputs["ymm4"] = payload
 

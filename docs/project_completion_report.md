@@ -364,6 +364,27 @@
   6 files changed, 387 insertions(+), 5 deletions(-)
   ```
 
+## 📌 2025年12月 API連携フェーズ ラフ設計
+
+- **Stage 1: NotebookLM / Gemini 統合**
+  - 既存の `GeminiScriptProvider` と NotebookLM 由来の `ScriptBundle` を前提に、NotebookLM API/外部エクスポートを安全に差し替え可能な `IScriptProvider` 実装を検討。
+  - Web UI から「APIなし（手動CSV）/ Gemini / NotebookLM」の切替を行う設定フローを設計し、APIキー未設定時は必ずモック・手動経路にフォールバックする方針とする。
+
+- **Stage 2: Google Slides / YMM4 REST API 連携**
+  - `ContentSplitter`・`BasicTimelinePlanner`・`YMM4EditingBackend` を土台に、
+    - Google Slides API によるスライド自動生成（既存 PLACEHOLDER スライドの置き換え）、
+    - YMM4 REST API によるタイムライン・字幕・立ち絵の直接投入
+    を、それぞれ `SlideGenerator` / `IEditingBackend` の差し替えとして設計。
+  - 現行の AutoHotkey フォールバック（YMM4 GUI 自動操作）は、API 対応後も「最終手段」として残し、`ExportFallbackManager` による優先度付き選択に統合する。
+
+- **Stage 3: TTS / YouTube 実 API 切替**
+  - `audio/tts_integration.py` の `TTSIntegration` を単一の統合ポイントとし、OpenAI / ElevenLabs / Azure / Google Cloud を環境変数ベースで安全に切り替える運用設計を行う（キー未設定時は必ずモック音声にフォールバック）。
+  - `YouTubeUploader` については、現在のメタデータ自動生成 + ローカル動画出力を前提に、「API 認証済み環境では自動アップロード・未認証環境ではクリップボード用メタデータのみ」という二段構えの運用フローを設計する。
+
+- **共通方針**
+  - すべての外部 API 連携は「APIなしでも CSV + WAV 入力で動画生成が完結する」現在のワークフローを壊さないことを前提とし、設定値とフォールバック戦略で段階的に有効化できるようにする。
+  - API フェーズの実装前に、`docs/backlog.md` 側のフェーズ A/B/C のタスク粒度と本メモの設計方針を擦り合わせ、優先順位とリスク（クォータ・認証・UI変更）の観点から着手順を決定する。
+
 ## 📞 サポート・連絡先
 
 ### 開発チーム

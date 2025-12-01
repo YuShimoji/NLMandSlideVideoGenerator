@@ -341,7 +341,6 @@ def show_assets_page():
     st.markdown("生成されたアセットの管理と閲覧")
 
     from config.settings import settings
-    import base64
 
     # アセット種別の定義
     asset_types = {
@@ -611,22 +610,20 @@ def show_settings_page():
         st.subheader("TTS (音声合成) 設定")
         
         tts = settings.TTS_SETTINGS
-        
-        provider = st.selectbox(
-            "TTSプロバイダ",
-            ["gemini", "elevenlabs", "azure", "softalk", "none"],
-            index=["gemini", "elevenlabs", "azure", "softalk", "none"].index(tts.get("provider", "gemini")),
+        provider_value = (tts.get("provider") or "none").lower()
+        provider_labels = {
+            "none": "none (無効)",
+            "openai": "OpenAI",
+            "elevenlabs": "ElevenLabs",
+            "azure": "Azure Speech",
+            "google_cloud": "Google Cloud TTS",
+        }
+        st.text_input(
+            "現在のTTSプロバイダ",
+            value=provider_labels.get(provider_value, provider_value),
             disabled=True,
-            key="tts_provider"
+            key="tts_provider",
         )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text_input("デフォルト言語", value=tts.get("default_language", "ja"), disabled=True)
-            st.text_input("デフォルト音声", value=tts.get("default_voice", ""), disabled=True)
-        with col2:
-            st.number_input("話速", value=float(tts.get("speed", 1.0)), disabled=True, format="%.1f")
-            st.number_input("ピッチ", value=float(tts.get("pitch", 0)), disabled=True, format="%.1f")
         
         # 環境変数の確認
         st.divider()
@@ -653,9 +650,9 @@ def show_settings_page():
         col1, col2 = st.columns(2)
         with col1:
             st.text_input("デフォルト言語", value=yt.get("default_language", "ja"), disabled=True)
-            st.text_input("カテゴリID", value=str(yt.get("default_category_id", "22")), disabled=True)
+            st.text_input("カテゴリID", value=str(yt.get("category_id", "27")), disabled=True)
         with col2:
-            st.text_input("プライバシー設定", value=yt.get("default_privacy", "private"), disabled=True)
+            st.text_input("プライバシー設定", value=yt.get("privacy_status", "private"), disabled=True)
         
         st.divider()
         st.subheader("認証状態")
@@ -692,27 +689,34 @@ def show_settings_page():
         st.divider()
         st.markdown("**ステージモード**")
         col1, col2, col3 = st.columns(3)
+        mode_options = ["auto", "manual", "skip"]
+        stage1_value = modes.get("stage1", "auto")
+        stage2_value = modes.get("stage2", "auto")
+        stage3_value = modes.get("stage3", "auto")
+        stage1_index = mode_options.index(stage1_value) if stage1_value in mode_options else 0
+        stage2_index = mode_options.index(stage2_value) if stage2_value in mode_options else 0
+        stage3_index = mode_options.index(stage3_value) if stage3_value in mode_options else 0
         with col1:
             st.selectbox(
                 "Stage 1 (スクリプト生成)",
-                ["real", "mock", "hybrid"],
-                index=["real", "mock", "hybrid"].index(modes.get("stage1", "mock")),
+                mode_options,
+                index=stage1_index,
                 disabled=True,
                 key="stage1_mode"
             )
         with col2:
             st.selectbox(
                 "Stage 2 (編集・レンダリング)",
-                ["real", "mock", "hybrid"],
-                index=["real", "mock", "hybrid"].index(modes.get("stage2", "mock")),
+                mode_options,
+                index=stage2_index,
                 disabled=True,
                 key="stage2_mode"
             )
         with col3:
             st.selectbox(
                 "Stage 3 (公開)",
-                ["real", "mock", "hybrid"],
-                index=["real", "mock", "hybrid"].index(modes.get("stage3", "mock")),
+                mode_options,
+                index=stage3_index,
                 disabled=True,
                 key="stage3_mode"
             )

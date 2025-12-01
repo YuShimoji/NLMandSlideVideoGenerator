@@ -24,13 +24,13 @@ def main():
 
     args = parser.parse_args()
 
-    print("🚀 Starting NLMandSlideVideoGenerator Operational API Server")
-    print(f"📍 Host: {args.host}")
-    print(f"🔌 Port: {args.port}")
-    print(f"🔄 Reload: {args.reload}")
-    print(f"📊 Log Level: {args.log_level}")
+    print("Starting NLMandSlideVideoGenerator Operational API Server")
+    print(f"Host: {args.host}")
+    print(f"Port: {args.port}")
+    print(f"Reload: {args.reload}")
+    print(f"Log Level: {args.log_level}")
     print()
-    print("📋 Available endpoints:")
+    print("Available endpoints:")
     print("  GET  /health          - Health check")
     print("  GET  /metrics         - Prometheus metrics")
     print("  GET  /status          - System status")
@@ -40,7 +40,7 @@ def main():
     print("  POST /jobs/{id}/cancel - Cancel job")
     print("  POST /maintenance/cleanup - Cleanup old files")
     print()
-    print("🌐 OpenAPI docs: http://localhost:8000/docs")
+    print("OpenAPI docs: http://localhost:8000/docs")
     print()
 
     uvicorn.run(

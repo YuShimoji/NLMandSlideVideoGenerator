@@ -160,7 +160,15 @@ Host1,特に生成AIの分野が注目されています
 NotebookLMの音声は1ファイルなので、以下の方法で分割:
 
 1. **手動分割**: Audacityなどで話者交代部分でカット
-2. **自動分割**: 無音検出で分割するスクリプトを使用
+2. **自動分割**: 無音検出で分割するスクリプト (`scripts/split_audio_by_silence.py`) を使用
+
+```bash
+python scripts/split_audio_by_silence.py \
+  --input path/to/long_audio.wav \
+  --out-dir path/to/audio_dir \
+  --min-silence-sec 0.7 \
+  --silence-threshold 0.02
+```
 
 ---
 
