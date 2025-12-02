@@ -563,14 +563,18 @@ def show_assets_page():
 
 def show_documentation_page():
     """ドキュメンテーションページ表示"""
-    st.header("Documentation")
+    st.header("📖 Documentation")
 
-    PROJECT_ROOT = Path(__file__).parent.parent.parent
+    # src/web/ui/pages.py → 4階層上がプロジェクトルート
+    PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
     doc_files = {
-        "セットアップガイド": PROJECT_ROOT / "README_SETUP.md",
-        "使用方法": PROJECT_ROOT / "README.md",
-        "最終セットアップ": PROJECT_ROOT / "FINAL_SETUP_GUIDE.md"
+        "📘 クイックスタート": PROJECT_ROOT / "docs" / "user_guide_manual_workflow.md",
+        "📄 CSV入力仕様": PROJECT_ROOT / "docs" / "spec_csv_input_format.md",
+        "🔧 セットアップガイド": PROJECT_ROOT / "README_SETUP.md",
+        "📚 README": PROJECT_ROOT / "README.md",
+        "💬 字幕ハードサブガイド": PROJECT_ROOT / "docs" / "subtitle_hardsub_guide.md",
+        "🎙️ TTS/SofTalk連携": PROJECT_ROOT / "docs" / "tts_batch_softalk_aquestalk.md",
     }
 
     selected_doc = st.selectbox("ドキュメント選択", list(doc_files.keys()))
