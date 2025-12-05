@@ -1017,6 +1017,145 @@ def show_csv_pipeline_page():
                 else:
                     st.success(f"✅ CSV行数と音声ファイル数が一致しています（{csv_row_count}件）")
     
+    # ========================================
+    # 音声生成（SofTalk/AquesTalk）セクション
+    # ========================================
+    with st.expander("🎙️ 音声をまだ用意していない場合（SofTalk/AquesTalk TTS）"):
+        st.markdown("""
+        CSVから行ごとの音声ファイル（001.wav, 002.wav, ...）を自動生成できます。  
+        **SofTalk** または **AquesTalk** がインストールされている必要があります。
+        """)
+        
+        # Session state for TTS
+        if 'tts_running' not in st.session_state:
+            st.session_state.tts_running = False
+        if 'tts_generated_dir' not in st.session_state:
+            st.session_state.tts_generated_dir = None
+        if 'tts_log' not in st.session_state:
+            st.session_state.tts_log = []
+        
+        col_tts1, col_tts2 = st.columns(2)
+        
+        with col_tts1:
+            tts_engine = st.selectbox(
+                "TTSエンジン",
+                ["softalk", "aquestalk"],
+                index=0,
+                help="使用するTTSエンジンを選択"
+            )
+            
+            # 出力ディレクトリ（CSVファイル名から自動生成）
+            default_tts_out = ""
+            if csv_file:
+                csv_stem = Path(csv_file.name).stem
+                default_tts_out = f"data/audio/{csv_stem}_timeline"
+            
+            tts_out_dir = st.text_input(
+                "出力ディレクトリ",
+                value=default_tts_out,
+                help="生成したWAVファイルの保存先",
+                placeholder="例: data/audio/my_timeline"
+            )
+        
+        with col_tts2:
+            tts_speaker_map = st.text_input(
+                "話者マップJSON（任意）",
+                value="",
+                help="話者名→声プリセットのマッピングJSONファイルパス",
+                placeholder="例: config/speaker_map_yukkuri.json"
+            )
+            
+            tts_dry_run = st.checkbox(
+                "ドライラン（実行せずコマンド確認のみ）",
+                value=False,
+                help="実際にはTTSを実行せず、生成されるコマンドをログに出力"
+            )
+        
+        # 環境変数の確認表示
+        import os
+        env_var_name = "SOFTALK_EXE" if tts_engine == "softalk" else "AQUESTALK_EXE"
+        env_var_value = os.getenv(env_var_name, "")
+        
+        if env_var_value:
+            st.success(f"✅ 環境変数 `{env_var_name}` が設定されています: `{env_var_value}`")
+        else:
+            st.warning(f"⚠️ 環境変数 `{env_var_name}` が未設定です。TTS実行前に設定してください。")
+            st.code(f'$env:{env_var_name} = "C:\\Program Files\\{tts_engine.capitalize()}\\{tts_engine}.exe"', language="powershell")
+        
+        # TTS実行ボタン
+        tts_can_run = csv_file is not None and tts_out_dir and (env_var_value or tts_dry_run)
+        
+        if st.button("🔊 音声ファイルを生成", disabled=not tts_can_run or st.session_state.tts_running):
+            if not csv_file:
+                st.error("CSVファイルを先に選択してください")
+            elif not tts_out_dir:
+                st.error("出力ディレクトリを指定してください")
+            else:
+                import tempfile
+                st.session_state.tts_running = True
+                st.session_state.tts_log = []
+                
+                try:
+                    # CSVを一時ファイルに保存
+                    with tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False) as tmp:
+                        tmp.write(csv_file.getvalue())
+                        tts_csv_path = Path(tmp.name)
+                    
+                    # tts_batch スクリプトをインポートして実行
+                    import sys
+                    project_root = Path(__file__).parent.parent.parent.parent
+                    if str(project_root) not in sys.path:
+                        sys.path.insert(0, str(project_root))
+                    
+                    from scripts.tts_batch_softalk_aquestalk import run_batch
+                    
+                    tts_out_path = Path(tts_out_dir).expanduser().resolve()
+                    speaker_map_path = Path(tts_speaker_map) if tts_speaker_map else None
+                    
+                    with st.spinner(f"{'ドライラン中...' if tts_dry_run else 'TTS実行中...'}"):
+                        result = run_batch(
+                            csv_path=tts_csv_path,
+                            out_dir=tts_out_path,
+                            engine=tts_engine,
+                            voice_preset=None,
+                            text_encoding="utf-8",
+                            dry_run=tts_dry_run,
+                            speaker_map_path=speaker_map_path,
+                        )
+                    
+                    if result == 0:
+                        if tts_dry_run:
+                            st.success("✅ ドライラン完了（実際のファイルは生成されていません）")
+                            st.info("ログを確認し、問題なければドライランをオフにして再実行してください。")
+                        else:
+                            # 生成されたファイル数を確認
+                            generated_files = list(tts_out_path.glob("*.wav"))
+                            st.success(f"✅ 音声生成完了: {len(generated_files)}ファイル → `{tts_out_path}`")
+                            
+                            # 生成ディレクトリを保存（後で audio_dir に自動セット可能）
+                            st.session_state.tts_generated_dir = str(tts_out_path)
+                            
+                            st.info("💡 上の「音声ディレクトリ」欄にこのパスをコピーして使用できます。")
+                            st.code(str(tts_out_path), language="text")
+                    else:
+                        st.error(f"❌ TTS実行に失敗しました（終了コード: {result}）")
+                        st.info("環境変数の設定やTTSエンジンのインストール状況を確認してください。")
+                
+                except FileNotFoundError as e:
+                    st.error(f"❌ ファイルが見つかりません: {e}")
+                except RuntimeError as e:
+                    st.error(f"❌ 実行エラー: {e}")
+                    if "環境変数" in str(e):
+                        st.info(f"環境変数 `{env_var_name}` を設定してください。")
+                except Exception as e:
+                    st.error(f"❌ 予期せぬエラー: {e}")
+                finally:
+                    st.session_state.tts_running = False
+        
+        # 前回生成したディレクトリがあれば表示
+        if st.session_state.tts_generated_dir:
+            st.info(f"📂 前回生成: `{st.session_state.tts_generated_dir}`")
+    
     st.divider()
     
     # 実行ボタン
