@@ -124,11 +124,11 @@
 
 | ID | 内容 | 優先度 | 状態 |
 |----|------|--------|------|
-| C1-1 | CLI 専用エントリポイント作成 | 中 | |
-| C1-2 | Web フォーム（CSV + audio_dir 入力）作成 | 中 | |
-| C1-3 | CSV フォーマット仕様ドキュメント作成 | 低 | |
-| C1-4 | SofTalk/AquesTalk TTSバッチスクリプト | 中 | |
-| C1-5 | Speaker列→声プリセットマッピング | 中 | |
+| C1-1 | CLI 専用エントリポイント作成 | 中 | ✅ 完了 |
+| C1-2 | Web フォーム（CSV + audio_dir 入力）作成 | 中 | ✅ 完了 |
+| C1-3 | CSV フォーマット仕様ドキュメント作成 | 低 | ✅ 完了 |
+| C1-4 | SofTalk/AquesTalk TTSバッチスクリプト | 中 | ✅ 完了 |
+| C1-5 | Speaker列→声プリセットマッピング | 中 | ✅ 完了 |
 
 ### C-2: YMM4 エクスポート
 
@@ -214,6 +214,15 @@
 > **「APIなしワークフローの完成・安定化」** が完了。
 > 次は **API連携フェーズ** への移行準備。
 
+### 補足方針（2025-12-08追記）
+
+- CSV タイムラインモードは「`csv` + 行ごと `wav` が揃っていること」のみを前提とし、
+  どの TTS エンジンで WAV を生成するかはユーザー環境に委ねる。
+- SofTalk / AquesTalk ローカル TTS 連携（`scripts/tts_batch_softalk_aquestalk.py`）は、
+  テンプレ実装として維持するが、環境依存が大きいため **主フローではなく任意の上級者向けオプション** として扱う。
+- ゆっくり系音声については、**YMM4 に台本 CSV を読み込ませてプロジェクト内で音声生成するフロー** を最終形とし、
+  フェーズ C-2 / C-3 系タスク（AutoHotkey 連携・将来の YMM4 REST API 連携）を通じて段階的に自動化していく。
+
 ### 完了済み機能（APIなし運用）
 
 ```
@@ -239,6 +248,7 @@
 - `docs/spec_transcript_io.md` - Transcript I/O仕様
 - `docs/tts_batch_softalk_aquestalk.md` - 音声生成
 - `docs/subtitle_hardsub_guide.md` - 字幕ガイド
+ - `docs/ymm4_integration_arch.md` - YMM4 連携アーキテクチャ設計（本書）
 
 ### 次期フェーズ: API連携
 

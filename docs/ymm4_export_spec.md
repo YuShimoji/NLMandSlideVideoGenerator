@@ -470,6 +470,7 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 - `docs/spec_transcript_io.md`: Transcript/Script I/O 仕様
 - `docs/system_specification.md`: システム仕様書
 - `docs/system_architecture.md`: システムアーキテクチャ
+ - `docs/ymm4_integration_arch.md`: YMM4 連携アーキテクチャ設計（全体フローと責務分担）
 
 ---
 

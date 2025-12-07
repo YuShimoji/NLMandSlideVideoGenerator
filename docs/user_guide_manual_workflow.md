@@ -63,7 +63,8 @@ audio_folder/
 
 **音声生成方法の例:**
 - **NotebookLM**: Deep Dive Audio機能で生成
-- **SofTalk/AquesTalk**: バッチスクリプトで生成 (`scripts/tts_batch_softalk.py`)
+- **YMM4（ゆっくりMovieMaker）**: 台本CSVをプロジェクトに読み込み、YMM4側で音声生成（YMM4標準機能。将来的に自動連携を強化予定）
+- **SofTalk/AquesTalk**: バッチスクリプトで生成 (`scripts/tts_batch_softalk_aquestalk.py`) ※環境依存が大きく、現在は上級者向けのオプション扱い
 - **ElevenLabs/OpenAI TTS**: API経由で生成
 
 ### ステップ2: 動画生成の実行
@@ -118,6 +119,58 @@ data/
         ├── slides_payload.json
         └── timeline_plan.json
 ```
+
+### CSV+TTS Webフロー E2E 手順（SofTalk/AquesTalk）
+
+> ⚠️ 現在、SofTalk / AquesTalk 連携は環境依存の要素が多く、
+> 「動作すれば便利なオプション」という位置づけです。CSV タイムラインモード自体は、
+> **任意の手段で 001.wav, 002.wav... を用意できれば利用可能** であり、
+> YMM4 や他 TTS を使うワークフローも同等にサポートされます。
+
+このプロジェクトで想定している「CSV+TTS→Web UI→動画生成」の一連の流れは、次のようになります。
+
+1. **前提準備**
+   - SofTalk または AquesTalk をローカルにインストール
+   - 環境変数 `SOFTALK_EXE` または `AQUESTALK_EXE` に実行ファイルパスを設定
+   - 詳細は `docs/tts_batch_softalk_aquestalk.md` を参照
+
+2. **CSV台本の準備**
+   - 上記「1-1. CSV台本の作成」に従って、話者列 + テキスト列のCSVを用意
+   - サンプル: `docs/spec_csv_input_format.md` や Web UI のサンプルコードを参照
+
+3. **Web UI の起動と CSV Pipeline ページの表示**
+   - ターミナルで `streamlit run src/web/web_app.py` を実行
+   - ブラウザのサイドバーから **「CSV Pipeline」** を選択
+
+4. **TTSバッチ（SofTalk/AquesTalk）の実行**
+   - CSV Pipeline ページ下部の **SofTalk/AquesTalk TTS バッチセクション** を開く
+   - 入力内容の例:
+     - TTSエンジン: `SofTalk` または `AquesTalk`
+     - 出力ディレクトリ: `data/tts_outputs/例)` など任意の空ディレクトリ
+     - SpeakerマップJSON: CSVの話者名 → TTSプリセットの対応表
+   - 必要に応じて **dry-run** でコマンド内容を確認
+   - 実行後、ログエリアで各行のWAV生成結果を確認
+
+5. **audio_dir の自動反映**
+   - TTS バッチが成功すると、指定した出力ディレクトリが Web セッションに記憶されます
+   - ページ上の **「audio_dir に反映」ボタン**（名称はUIに準拠）から、
+     - 生成された音声ディレクトリパスを `audio_dir` 入力欄へワンクリックで反映
+
+6. **動画生成の実行（CSV Timeline パイプライン）**
+   - CSVファイルをアップロード
+   - `audio_dir` に TTS出力ディレクトリが設定されていることを確認
+   - トピック名・画質・YMM4出力有無などオプションを指定
+   - **「動画生成開始」** ボタンを押す
+   - 実行中はページ内の進捗バーとログを確認
+
+7. **出力物とジョブ履歴の確認**
+   - 上記「ステップ3: 出力の確認」にあるように、`data/videos/` と `data/transcripts/` を確認
+   - Web UI の結果セクションで:
+     - 出力動画のパスと簡易プレビュー
+     - 生成された字幕ファイル一覧
+     - YMM4 プロジェクト情報（エクスポート有効時）
+     - `job_id`（内部ジョブ管理用ID）
+   - ジョブIDを元に、設定ページのジョブ履歴UIから過去の実行状況を参照可能です（今後の拡張前提）。
 
 ---
 

@@ -9,6 +9,7 @@ Pipeline execution logic for web application
 """
 import asyncio
 import uuid
+from pathlib import Path
 from typing import Optional, Dict, Any, Callable, Set
 from datetime import datetime
 
@@ -137,6 +138,120 @@ async def run_pipeline_async(
             "failed_at": datetime.now().isoformat(),
         }
         raise Exception(f"パイプライン実行失敗: {str(e)}")
+    finally:
+        # クリーンアップ
+        _active_jobs.pop(job_id, None)
+        clear_cancellation_flag(job_id)
+
+
+async def run_csv_pipeline_async(
+    csv_path: Path,
+    audio_dir: Path,
+    topic: str,
+    quality: str = "1080p",
+    private_upload: bool = True,
+    upload: bool = False,
+    stage_modes: Optional[Dict[str, str]] = None,
+    user_preferences: Optional[Dict[str, Any]] = None,
+    progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """CSVタイムライン専用パイプラインを非同期で実行
+
+    `ModularVideoPipeline.run_csv_timeline` をラップし、
+    - ジョブIDの管理
+    - メモリ内の進捗トラッキング
+    - DBへの進捗書き込み
+    を行う。
+    """
+
+    # ジョブIDを生成
+    if not job_id:
+        job_id = generate_job_id()
+
+    # 進捗追跡を初期化
+    _job_progress[job_id] = {
+        "status": "running",
+        "progress": 0.0,
+        "stage": "initializing",
+        "message": "CSVタイムラインパイプライン初期化中...",
+        "started_at": datetime.now().isoformat(),
+    }
+
+    # 進捗コールバックをラップしてDB更新も行う
+    def wrapped_progress_callback(stage: str, progress: float, message: str):
+        _job_progress[job_id] = {
+            "status": "running",
+            "progress": progress,
+            "stage": stage,
+            "message": message,
+            "updated_at": datetime.now().isoformat(),
+        }
+
+        # DBにも保存
+        try:
+            from core.persistence import db_manager
+
+            db_manager.update_generation_progress(job_id, progress, stage, message)
+        except Exception:
+            # 進捗更新に失敗してもパイプライン自体は継続させる
+            pass
+
+        # 元のコールバックも呼び出し
+        if progress_callback:
+            progress_callback(stage, progress, message)
+
+    try:
+        # キャンセルチェック（開始前）
+        if is_cancelled(job_id):
+            raise asyncio.CancelledError("Job cancelled before start")
+
+        # パイプラインを構築
+        pipeline = build_default_pipeline()
+
+        # CSVタイムラインパイプラインを実行
+        result = await pipeline.run_csv_timeline(
+            csv_path=csv_path,
+            audio_dir=audio_dir,
+            topic=topic,
+            quality=quality,
+            private_upload=private_upload,
+            upload=upload,
+            stage_modes=stage_modes,
+            user_preferences=user_preferences,
+            progress_callback=wrapped_progress_callback,
+            job_id=job_id,
+        )
+
+        # 完了を記録
+        _job_progress[job_id] = {
+            "status": "completed",
+            "progress": 1.0,
+            "stage": "completed",
+            "message": "CSVタイムラインパイプライン完了",
+            "completed_at": datetime.now().isoformat(),
+        }
+
+        return result
+
+    except asyncio.CancelledError:
+        _job_progress[job_id] = {
+            "status": "cancelled",
+            "progress": _job_progress.get(job_id, {}).get("progress", 0.0),
+            "stage": "cancelled",
+            "message": "ユーザーによりキャンセルされました",
+            "cancelled_at": datetime.now().isoformat(),
+        }
+        raise
+    except Exception as e:
+        _job_progress[job_id] = {
+            "status": "failed",
+            "progress": _job_progress.get(job_id, {}).get("progress", 0.0),
+            "stage": "error",
+            "message": str(e),
+            "failed_at": datetime.now().isoformat(),
+        }
+        raise Exception(f"CSVタイムラインパイプライン実行失敗: {str(e)}")
     finally:
         # クリーンアップ
         _active_jobs.pop(job_id, None)
@@ -285,4 +400,39 @@ async def start_pipeline_task(
     # アクティブジョブに登録
     _active_jobs[job_id] = task
     
+    return job_id
+
+
+async def start_csv_pipeline_task(
+    csv_path: Path,
+    audio_dir: Path,
+    topic: str,
+    **kwargs,
+) -> str:
+    """CSVタイムラインパイプラインをバックグラウンドタスクとして開始
+
+    Args:
+        csv_path: タイムラインCSVファイルパス
+        audio_dir: 行ごとのWAVファイルディレクトリ
+        topic: 動画トピック
+        **kwargs: run_csv_pipeline_async に渡す追加引数
+
+    Returns:
+        ジョブID
+    """
+
+    job_id = kwargs.pop("job_id", None) or generate_job_id()
+
+    task = asyncio.create_task(
+        run_csv_pipeline_async(
+            csv_path=csv_path,
+            audio_dir=audio_dir,
+            topic=topic,
+            job_id=job_id,
+            **kwargs,
+        )
+    )
+
+    _active_jobs[job_id] = task
+
     return job_id

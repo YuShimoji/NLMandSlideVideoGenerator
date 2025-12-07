@@ -62,6 +62,12 @@ chore: その他の変更
 3. コードレビュー
 4. マージ
 
+### 4. 手動E2Eワークフローの確認
+
+- ユーザー視点の手動ワークフロー全体像は `docs/user_guide_manual_workflow.md` を参照してください。
+- **CSV + SofTalk/AquesTalk TTS Webフロー E2E 手順** は、同ドキュメント内の「CSV+TTS Webフロー E2E 手順（SofTalk/AquesTalk）」セクションにまとまっていますが、現在は *環境が合う場合のオプション* という位置づけです。CSVタイムラインモード自体は、YMM4 や他TTSで生成した WAV に対しても同様に動作します（詳細は `docs/backlog.md` の補足方針および `docs/tts_batch_softalk_aquestalk.md` を参照）。
+- 新機能の開発後は、可能な範囲でいずれかの **CSV + WAV 手動E2Eフロー**（例: YMM4 で音声生成 → CSVパイプラインなど）に沿って動作確認を行うことを推奨します。
+
 ## テスト実行
 
 ### 基本テスト

@@ -187,9 +187,9 @@ def _build_command(
         # SofTalk 想定の簡易テンプレート
         cmd: List[str] = [str(exe_path)]
         if voice_preset:
-            cmd.append(f"/V:{voice_preset}")
-        cmd.append(f"/T:{text}")
-        cmd.append(f"/W:{str(output_path)}")
+            cmd.append(f"/T:{voice_preset}")
+        cmd.append(f"/R:{str(output_path)}")
+        cmd.append(f"/W:{text}")
         return cmd
 
     if engine == "aquestalk":

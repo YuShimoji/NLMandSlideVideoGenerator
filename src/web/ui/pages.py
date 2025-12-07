@@ -6,6 +6,8 @@ from pathlib import Path
 from datetime import datetime
 import json
 import traceback
+import io
+from contextlib import redirect_stdout
 
 from config.settings import settings
 
@@ -853,6 +855,8 @@ def show_csv_pipeline_page():
         st.session_state.csv_pipeline_running = False
     if 'csv_pipeline_result' not in st.session_state:
         st.session_state.csv_pipeline_result = None
+    if 'csv_audio_dir' not in st.session_state:
+        st.session_state.csv_audio_dir = ""
     
     st.subheader("入力設定")
     
@@ -881,7 +885,8 @@ def show_csv_pipeline_page():
             # 音声ディレクトリ
             audio_dir = st.text_input(
                 "音声ディレクトリ",
-                value="",
+                value=st.session_state.csv_audio_dir,
+                key="csv_audio_dir",
                 help="WAVファイルが格納されたディレクトリパス（001.wav, 002.wav, ...）",
                 placeholder="例: samples/basic_dialogue/audio"
             )
@@ -1111,18 +1116,23 @@ def show_csv_pipeline_page():
                     
                     tts_out_path = Path(tts_out_dir).expanduser().resolve()
                     speaker_map_path = Path(tts_speaker_map) if tts_speaker_map else None
+
+                    log_buffer = io.StringIO()
                     
                     with st.spinner(f"{'ドライラン中...' if tts_dry_run else 'TTS実行中...'}"):
-                        result = run_batch(
-                            csv_path=tts_csv_path,
-                            out_dir=tts_out_path,
-                            engine=tts_engine,
-                            voice_preset=None,
-                            text_encoding="utf-8",
-                            dry_run=tts_dry_run,
-                            speaker_map_path=speaker_map_path,
-                        )
-                    
+                        with redirect_stdout(log_buffer):
+                            result = run_batch(
+                                csv_path=tts_csv_path,
+                                out_dir=tts_out_path,
+                                engine=tts_engine,
+                                voice_preset=None,
+                                text_encoding="utf-8",
+                                dry_run=tts_dry_run,
+                                speaker_map_path=speaker_map_path,
+                            )
+
+                    st.session_state.tts_log = log_buffer.getvalue().splitlines()
+
                     if result == 0:
                         if tts_dry_run:
                             st.success("✅ ドライラン完了（実際のファイルは生成されていません）")
@@ -1134,8 +1144,9 @@ def show_csv_pipeline_page():
                             
                             # 生成ディレクトリを保存（後で audio_dir に自動セット可能）
                             st.session_state.tts_generated_dir = str(tts_out_path)
-                            
-                            st.info("💡 上の「音声ディレクトリ」欄にこのパスをコピーして使用できます。")
+                            st.session_state.csv_audio_dir = str(tts_out_path)
+
+                            st.info("💡 上の「音声ディレクトリ」欄にこのパスを自動で設定しました。反映されない場合は下のボタンで再設定できます。")
                             st.code(str(tts_out_path), language="text")
                     else:
                         st.error(f"❌ TTS実行に失敗しました（終了コード: {result}）")
@@ -1152,9 +1163,26 @@ def show_csv_pipeline_page():
                 finally:
                     st.session_state.tts_running = False
         
-        # 前回生成したディレクトリがあれば表示
+        # 前回生成したディレクトリやログがあれば表示
         if st.session_state.tts_generated_dir:
             st.info(f"📂 前回生成: `{st.session_state.tts_generated_dir}`")
+
+            col_tts_util1, col_tts_util2 = st.columns(2)
+
+            with col_tts_util1:
+                if st.button("このディレクトリを音声ディレクトリにセット", key="set_audio_dir_from_tts"):
+                    st.session_state.csv_audio_dir = st.session_state.tts_generated_dir
+                    st.success("音声ディレクトリ欄に設定しました。")
+
+            with col_tts_util2:
+                if st.session_state.tts_log:
+                    with st.expander("TTSログを表示", expanded=tts_dry_run):
+                        for line in st.session_state.tts_log:
+                            st.text(line)
+        elif st.session_state.tts_log:
+            with st.expander("TTSログを表示", expanded=tts_dry_run):
+                for line in st.session_state.tts_log:
+                    st.text(line)
     
     st.divider()
     
@@ -1209,36 +1237,35 @@ def show_csv_pipeline_page():
                 
                 # パイプライン実行
                 from config.settings import settings, create_directories
-                from core.helpers import build_default_pipeline
-                
+                from src.web.logic.pipeline_manager import run_csv_pipeline_async
+
                 create_directories()
-                
+
                 # 設定の上書き
                 if max_chars:
                     settings.SLIDES_SETTINGS["max_chars_per_slide"] = max_chars
-                
+
                 if placeholder_theme:
                     settings.PLACEHOLDER_THEME = placeholder_theme
-                
+
                 if export_ymm4:
                     settings.PIPELINE_COMPONENTS["editing_backend"] = "ymm4"
-                
+
                 status_text.info("パイプラインを実行中...")
                 progress_bar.progress(10)
-                
+
                 # 進捗情報を格納するリスト（コールバック内で更新）
                 progress_log = []
-                
+
                 def update_progress(phase: str, progress: float, message: str):
                     """パイプラインからの進捗コールバック"""
                     pct = int(progress * 100)
                     progress_log.append({"phase": phase, "progress": pct, "message": message})
                     # Streamlitの制約上、asyncio内からのUI更新は限定的
                     # ログに記録し、完了後に表示する
-                
+
                 async def run_pipeline():
-                    pipeline = build_default_pipeline()
-                    return await pipeline.run_csv_timeline(
+                    return await run_csv_pipeline_async(
                         csv_path=csv_path,
                         audio_dir=audio_path_obj,
                         topic=topic,
@@ -1249,7 +1276,7 @@ def show_csv_pipeline_page():
                         user_preferences={},
                         progress_callback=update_progress,
                     )
-                
+
                 result = asyncio.run(run_pipeline())
                 
                 progress_bar.progress(100)
@@ -1267,6 +1294,10 @@ def show_csv_pipeline_page():
                 artifacts = result.get("artifacts")
                 if artifacts:
                     st.subheader("📦 生成結果")
+                    job_id = result.get("job_id")
+                    if job_id:
+                        st.text(f"ジョブID: {job_id}")
+                        st.caption("💡 過去のジョブ履歴は [⚙️ 設定] → [ジョブ履歴] タブで確認できます")
                     
                     # 動画ファイル
                     video_path = getattr(artifacts.video, "file_path", None) if hasattr(artifacts, 'video') else None
@@ -1364,6 +1395,10 @@ def show_csv_pipeline_page():
     # 前回の結果表示
     if st.session_state.csv_pipeline_result:
         with st.expander("前回の実行結果"):
+            job_id = st.session_state.csv_pipeline_result.get("job_id")
+            if job_id:
+                st.text(f"ジョブID: {job_id}")
+                st.caption("💡 過去のジョブ履歴は [⚙️ 設定] → [ジョブ履歴] タブで確認できます")
             st.json(st.session_state.csv_pipeline_result)
     
     st.divider()

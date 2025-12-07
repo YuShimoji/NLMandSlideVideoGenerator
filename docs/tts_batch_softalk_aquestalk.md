@@ -51,6 +51,23 @@ YMM4 仕様ドキュメントと同様に、以下のポリシーで日本語/�
 > パイプライン本体 (`run_csv_timeline`) や YMM4 エクスポートの実装には手を入れず、
 > **「行ごと WAV が既に存在する」前提を自動的に満たすための補助レイヤー** として設計します。
 
+### 2.3 現状の運用ポリシーと制約
+
+- 本ドキュメントで想定している SofTalk / AquesTalk 連携は、あくまで
+  **「ローカル環境でうまく動く場合に利用できる、任意の補助ツール」** という位置づけです。
+- 実際の検証の結果、以下のような制約があることが分かっています。
+  - インストール先ディレクトリ（`C:\Program Files` 配下かどうか）によって、
+    設定ファイル (`SofTalk.ini` 等) の保存可否が変わる。
+  - 録音時の読み上げ有無など、一部の設定が CLI 呼び出しだけでは確実に制御しづらい。
+  - バージョンや環境設定により、ウィンドウの表示/非表示や終了方法の挙動が変わる。
+- そのため、**CSV タイムラインモードの主フローは「CSV + WAV が揃っていること」だけを前提** とし、
+  どの TTS エンジンで WAV を生成するかはユーザーの環境と好みに委ねる方針とします。
+  - 例: YMM4（ゆっくりMovieMaker）で台本 CSV を読み込み、プロジェクト内で音声生成する。
+  - 例: NotebookLM / 他クラウド TTS / AquesTalk Player 等で 001.wav, 002.wav... を作成する。
+- `scripts/tts_batch_softalk_aquestalk.py` と本仕様は、
+  - SofTalk / AquesTalk を使いたいユーザー向けの **テンプレ実装・上級者向けオプション** として維持し、
+  - 将来、AquesTalk Player など他のローカル TTS への差し替えや追加を行う際の土台とします。
+
 ---
 
 ## 3. ファイル命名と行番号マッピングポリシー
@@ -157,7 +174,10 @@ for index, row in enumerate(rows, start=1):
 - **SofTalk (例)**
 
   ```bash
-  "C:/Program Files/Softalk/softalk.exe" /X:1 /V:voice_preset /T:"こんにちは" /W:"C:/out/001.wav"
+  "C:/Program Files/Softalk/SofTalk.exe" \
+    /T:voice_preset \
+    /R:"C:/out/001.wav" \
+    /W:"こんにちは"
   ```
 
 - **AquesTalk (例)**
