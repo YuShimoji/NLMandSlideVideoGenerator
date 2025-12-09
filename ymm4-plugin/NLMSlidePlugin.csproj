@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>NLMSlidePlugin</AssemblyName>
+    <RootNamespace>NLMSlidePlugin</RootNamespace>
+    <Version>0.1.0</Version>
+    <Authors>NLMandSlideVideoGenerator Project</Authors>
+    <Description>YMM4 Plugin for NLMandSlideVideoGenerator - Automates timeline and voice integration</Description>
+  </PropertyGroup>
+
+  <!-- YMM4アセンブリ参照 -->
+  <ItemGroup>
+    <Reference Include="YukkuriMovieMaker.Plugin">
+      <HintPath>$(YMM4DirPath)YukkuriMovieMaker.Plugin.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="YukkuriMovieMaker.Commons">
+      <HintPath>$(YMM4DirPath)YukkuriMovieMaker.Commons.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- ビルド後にYMM4のプラグインフォルダにコピー -->
+  <Target Name="CopyToPluginFolder" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(YMM4DirPath)user\plugin\" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).deps.json" DestinationFolder="$(YMM4DirPath)user\plugin\" Condition="Exists('$(TargetDir)$(TargetName).deps.json')" />
+  </Target>
+</Project>

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- YMM4のインストールフォルダ（末尾に\を含む） -->
+    <!-- Example: C:\Program Files\YukkuriMovieMaker\ -->
+    <YMM4DirPath>C:\Users\YourUserName\AppData\Local\YukkuriMovieMaker4\</YMM4DirPath>
+  </PropertyGroup>
+</Project>
