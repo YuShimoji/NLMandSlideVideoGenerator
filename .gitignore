@@ -186,5 +186,10 @@ uploads/
 cache/
 sessions/
 
+# .NET / C# build artifacts
+**/bin/
+**/obj/
+Directory.Build.props
+
 # OpenSpec generated documentation
 # docs/generated/

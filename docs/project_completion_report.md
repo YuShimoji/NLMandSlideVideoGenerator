@@ -372,12 +372,12 @@
   - 既存の `GeminiScriptProvider` と NotebookLM 由来の `ScriptBundle` を前提に、NotebookLM API/外部エクスポートを安全に差し替え可能な `IScriptProvider` 実装を検討。
   - Web UI から「APIなし（手動CSV）/ Gemini / NotebookLM」の切替を行う設定フローを設計し、APIキー未設定時は必ずモック・手動経路にフォールバックする方針とする。
 
-- **Stage 2: Google Slides / YMM4 REST API 連携**
+- **Stage 2: Google Slides / YMM4 プラグインAPI 連携（旧: YMM4 REST API 連携）**
   - `ContentSplitter`・`BasicTimelinePlanner`・`YMM4EditingBackend` を土台に、
     - Google Slides API によるスライド自動生成（既存 PLACEHOLDER スライドの置き換え）、
-    - YMM4 REST API によるタイムライン・字幕・立ち絵の直接投入
+    - YMM4 プラグインAPI（.NET）等によるタイムライン・字幕・立ち絵の直接投入
     を、それぞれ `SlideGenerator` / `IEditingBackend` の差し替えとして設計。
-  - 現行の AutoHotkey フォールバック（YMM4 GUI 自動操作）は、API 対応後も「最終手段」として残し、`ExportFallbackManager` による優先度付き選択に統合する。
+  - 現行の AutoHotkey フォールバック（YMM4 GUI 自動操作）は、API/プラグイン対応後も「最終手段」として残し、`ExportFallbackManager` による優先度付き選択に統合する。
 
 - **Stage 3: TTS / YouTube 実 API 切替**
   - `audio/tts_integration.py` の `TTSIntegration` を単一の統合ポイントとし、OpenAI / ElevenLabs / Azure / Google Cloud を環境変数ベースで安全に切り替える運用設計を行う（キー未設定時は必ずモック音声にフォールバック）。

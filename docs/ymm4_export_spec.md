@@ -24,7 +24,7 @@
 | テンプレート .y4mmp 複製 | ✅ 実装済み | |
 | 音声アセットコピー | ✅ 実装済み | |
 | AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
-| YMM4 REST API 連携 | ❌ 未実装 | 将来対応 |
+| YMM4 API 連携（プラグインAPI 優先, 旧: REST API） | ❌ 未実装 | 将来対応（設計は `docs/ymm4_integration_arch.md` を参照） |
 | 動画出力 | ✅ MoviePy フォールバック | YMM4 書き出しではない |
 
 ---
@@ -44,7 +44,7 @@
 ┌─────────────────────────────────────────┐
 │ YMM4EditingBackend                      │
 │  1. テンプレート .y4mmp 複製            │
-│  2. YMM4 API でタイムライン挿入         │
+│  2. YMM4 API でタイムライン挿入         │  # 主に .NET プラグインAPI を想定
 │  3. YMM4 API で書き出し                 │
 │     └─ 失敗時: AutoHotkey でGUI操作     │
 │        └─ 失敗時: MoviePy フォールバック │
@@ -358,7 +358,7 @@ AutoHotkey.exe "data/ymm4/ymm4_project_XXXXXX/ymm4_automation.ahk"
 `ExportFallbackManager` クラスが複数の編集バックエンドを優先順位付きで管理し、失敗時に自動的にフォールバックする。
 
 ```
-優先順位: YMM4 REST API → YMM4 AutoHotkey → MoviePy/FFmpeg
+優先順位: YMM4 API（プラグインAPI 等, 将来実装） → YMM4 AutoHotkey → MoviePy/FFmpeg
 ```
 
 ### 7.2 使用方法
@@ -453,8 +453,8 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ### 9.2 中期（API連携）
 
-- [ ] YMM4 REST API (https://ymm-api-docs.vercel.app/) 調査
-- [ ] API クライアント実装
+- [ ] YMM4 API / プラグインAPI (https://ymm-api-docs.vercel.app/) 調査
+- [ ] API/プラグイン クライアント実装
 - [ ] タイムライン挿入機能
 
 ### 9.3 長期（完全自動化）

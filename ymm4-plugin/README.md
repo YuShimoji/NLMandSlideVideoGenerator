@@ -11,7 +11,7 @@ YMM4（ゆっくりMovieMaker4）のプラグインAPIを使用して、Notebook
 ## 前提条件
 
 - **Windows 10/11**
-- **.NET 9 SDK**
+- **.NET 10 SDK** （YMM4 プラグインサンプルに追随）
 - **Visual Studio 2022** または互換IDE
 - **YMM4** インストール済み（v4.33.0.0以降推奨）
 
@@ -41,7 +41,7 @@ cd ymm4-plugin
 dotnet build
 ```
 
-ビルド成功後、DLLは `$(YMM4DirPath)user\plugin\` にコピーされます。
+ビルド成功後、DLLは `$(YMM4DirPath)user\plugin\NLMSlidePlugin\` にコピーされます。
 
 ### 3. 動作確認
 

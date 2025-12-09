@@ -1,4 +1,3 @@
-using System.ComponentModel.Composition;
 using YukkuriMovieMaker.Plugin;
 
 namespace NLMSlidePlugin.TextCompletionPlugin

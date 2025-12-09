@@ -3,7 +3,7 @@
 複数の編集バックエンドを優先順位付きで試行し、失敗時に自動フォールバックする
 
 フォールバック戦略:
-1. YMM4 REST API (将来実装) - 最高品質、完全自動化
+1. YMM4 API バックエンド（将来実装, 主にプラグインAPI を想定）- 最高品質、完全自動化
 2. YMM4 AutoHotkey - 中品質、GUI操作による自動化
 3. MoviePy/FFmpeg - 基本品質、確実な動作
 
@@ -144,8 +144,8 @@ class ExportFallbackManager:
                 from .moviepy_backend import MoviePyEditingBackend
                 self.backends[backend_type] = MoviePyEditingBackend()
             elif backend_type == BackendType.YMM4_API:
-                # 将来実装
-                raise NotImplementedError("YMM4 REST APIバックエンドは未実装です")
+                # 将来実装（YMM4 プラグインAPI 等のバックエンド）
+                raise NotImplementedError("YMM4 API バックエンド（プラグインAPI 等）は未実装です")
         
         return self.backends[backend_type]
     
