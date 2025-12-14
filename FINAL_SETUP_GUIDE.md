@@ -1,5 +1,7 @@
 # NLMandSlideVideoGenerator - 最終解決ガイド
-# このファイルには完全な解決手順が記載されています
+# このファイルはセットアップの補助資料です（legacy）
+
+まずは `README_SETUP.md`（推奨）と `PYTHON_INSTALL_GUIDE.md`（Windows Store エイリアス切り分け）を参照してください。
 
 ## 🚨 現在の根本問題
 - PythonがWindows Storeのリダイレクトになっている
@@ -41,7 +43,7 @@ pip 23.x.x from C:\Python311\Lib\site-packages\pip (python 3.11)
 1. コマンドプロンプトでプロジェクトフォルダへ移動:
 
 ```cmd
-cd C:\Users\PLANNER007\NLMandSlideVideoGenerator
+cd "<repo_root>"
 ```
 
 2. 仮想環境作成:
@@ -84,7 +86,7 @@ python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p --t
 
 上記の手順が面倒な場合は、以下のスクリプトを新規作成して実行してください:
 
-### setup_final.bat (新規作成)
+### setup_final.bat（同梱）
 ```batch
 @echo off
 echo ========================================

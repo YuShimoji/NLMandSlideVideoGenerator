@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from ..interfaces import IEditingBackend
 from ..utils.logger import logger
+from ..utils.tool_detection import find_autohotkey_exe, find_ymm4_exe
 from notebook_lm.audio_generator import AudioInfo
 from slides.slide_generator import SlidesPackage
 from notebook_lm.transcript_processor import TranscriptInfo
@@ -111,19 +112,8 @@ class ExportFallbackManager:
     
     def _detect_available_backends(self) -> None:
         """利用可能なバックエンドを検出"""
-        # YMM4 AutoHotkey: AutoHotkey.exeの存在確認
-        ahk_paths = [
-            Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
-            Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
-        ]
-        ahk_available = any(p.exists() for p in ahk_paths)
-        
-        # YMM4本体の確認
-        ymm4_paths = [
-            Path("C:/Program Files/YMM4/YMM4.exe"),
-            Path("D:/Program Files/YMM4/YMM4.exe"),
-        ]
-        ymm4_available = any(p.exists() for p in ymm4_paths)
+        ahk_available = find_autohotkey_exe() is not None
+        ymm4_available = find_ymm4_exe() is not None
         
         for config in self.configs:
             if config.backend_type == BackendType.YMM4_AHK:
@@ -240,6 +230,15 @@ class ExportFallbackManager:
                     result.errors[backend_type] = error_msg
                     break  # リトライ不要
                     
+                except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                    error_msg = str(e)
+                    logger.warning(f"{backend_type.value} エラー: {error_msg}")
+                    result.errors[backend_type] = error_msg
+                    
+                    if attempt < config.retry_count - 1:
+                        # リトライ前に待機
+                        await asyncio.sleep(2.0)
+
                 except Exception as e:
                     error_msg = str(e)
                     logger.warning(f"{backend_type.value} エラー: {error_msg}")

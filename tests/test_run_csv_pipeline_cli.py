@@ -33,6 +33,8 @@ def _build_basic_csv_and_audio(tmp_path: Path) -> tuple[Path, Path]:
     return csv_path, audio_dir
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_run_csv_pipeline_cli_basic(tmp_path: Path, monkeypatch):
     # 1) CSV / 音声を準備
     csv_path, audio_dir = _build_basic_csv_and_audio(tmp_path)
@@ -56,6 +58,8 @@ def test_run_csv_pipeline_cli_basic(tmp_path: Path, monkeypatch):
     assert "Generated video:" in output
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 def test_run_csv_pipeline_cli_max_chars_override(tmp_path: Path, monkeypatch):
     # 1) CSV / 音声を準備
     csv_path, audio_dir = _build_basic_csv_and_audio(tmp_path)

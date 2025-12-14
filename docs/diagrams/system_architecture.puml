@@ -48,7 +48,6 @@ package "Core System" {
     
     package "config/" {
         [settings.py] as Settings
-        [api_keys.py] as APIKeys
     }
 }
 
@@ -90,7 +89,6 @@ PodcastGen --> AudioGen : ポッドキャスト音声
 
 ' Configuration
 Main --> Settings : 設定読み込み
-Settings --> APIKeys : API認証情報
 APITest --> Settings : テスト設定
 
 ' Data flow

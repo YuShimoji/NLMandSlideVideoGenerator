@@ -222,6 +222,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             )
         )
         return 0
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
+        logger.error(f"CSVタイムライン可視化中にエラーが発生しました: {e}")
+        return 1
     except Exception as e:
         logger.error(f"CSVタイムライン可視化中にエラーが発生しました: {e}")
         return 1

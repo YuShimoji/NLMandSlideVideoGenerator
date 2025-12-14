@@ -18,6 +18,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from core.utils.ffmpeg_utils import detect_ffmpeg, FFMPEG_INSTALL_GUIDE
+from core.utils.tool_detection import find_autohotkey_exe, find_ymm4_exe
 
 
 def check_ffmpeg() -> bool:
@@ -47,17 +48,12 @@ def check_autohotkey() -> bool:
     print("AutoHotkey チェック")
     print("=" * 50)
     
-    ahk_paths = [
-        Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
-        Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
-    ]
-    
-    for path in ahk_paths:
-        if path.exists():
-            print(f"✅ AutoHotkey: インストール済み")
-            print(f"   パス: {path}")
-            return True
-    
+    ahk_exe = find_autohotkey_exe()
+    if ahk_exe:
+        print(f"✅ AutoHotkey: インストール済み")
+        print(f"   パス: {ahk_exe}")
+        return True
+     
     print("❌ AutoHotkey: 未インストール (YMM4自動操作には必要)")
     print("   インストール: https://www.autohotkey.com/")
     return False
@@ -69,17 +65,12 @@ def check_ymm4() -> bool:
     print("YMM4 (ゆっくりMovieMaker4) チェック")
     print("=" * 50)
     
-    ymm4_paths = [
-        Path("C:/Program Files/YMM4/YMM4.exe"),
-        Path("D:/Program Files/YMM4/YMM4.exe"),
-    ]
-    
-    for path in ymm4_paths:
-        if path.exists():
-            print(f"✅ YMM4: インストール済み")
-            print(f"   パス: {path}")
-            return True
-    
+    ymm4_exe = find_ymm4_exe()
+    if ymm4_exe:
+        print(f"✅ YMM4: インストール済み")
+        print(f"   パス: {ymm4_exe}")
+        return True
+     
     print("⚠️ YMM4: 標準パスに見つかりません")
     print("   ダウンロード: https://manjubox.net/ymm4/")
     print("   (MoviePyフォールバックで動画生成は可能です)")
@@ -147,6 +138,9 @@ def check_google_api() -> bool:
             elif creds.expired:
                 print("⚠️ トークン: 期限切れ（再認証が必要）")
             return True
+        except (ImportError, OSError, ValueError, TypeError) as e:
+            print(f"⚠️ トークン検証エラー: {e}")
+            return False
         except Exception as e:
             print(f"⚠️ トークン検証エラー: {e}")
             return False

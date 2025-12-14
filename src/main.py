@@ -110,6 +110,9 @@ class VideoGenerationPipeline:
             logger.success(f"動画生成完了: {youtube_url}")
             return youtube_url
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"動画生成エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"動画生成エラー: {str(e)}")
             raise
@@ -161,6 +164,8 @@ def main():
             if max_chars_per_slide > 0:
                 _settings.SLIDES_SETTINGS["max_chars_per_slide"] = max_chars_per_slide
                 logger.info(f"SLIDES_SETTINGS.max_chars_per_slide を {max_chars_per_slide} に上書きしました")
+        except (ImportError, AttributeError, TypeError, ValueError, OSError) as e:
+            logger.warning(f"max_chars_per_slide オプションの適用に失敗しました: {e}")
         except Exception as e:
             logger.warning(f"max_chars_per_slide オプションの適用に失敗しました: {e}")
     
@@ -183,6 +188,10 @@ def main():
         print(f"✅ 動画生成完了!")
         print(f"📺 YouTube URL: {youtube_url}")
         
+    except (OSError, RuntimeError, TypeError, ValueError) as e:
+        print(f"❌ エラーが発生しました: {str(e)}")
+        if debug:
+            raise
     except Exception as e:
         print(f"❌ エラーが発生しました: {str(e)}")
         if debug:

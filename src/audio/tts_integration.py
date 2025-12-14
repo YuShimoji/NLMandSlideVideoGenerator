@@ -105,6 +105,9 @@ class TTSIntegration:
             logger.info(f"音声生成完了: {audio_info.file_path}")
             return audio_info
             
+        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"音声生成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"音声生成失敗: {e}")
             raise
@@ -218,6 +221,8 @@ class ElevenLabsTTS(BaseTTS):
                     voice_id=voice_id,
                 )
                 return audio_info
+            except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as _e:
+                logger.warning(f"ElevenLabs 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"ElevenLabs 実API呼び出しに失敗したためフォールバックします: {_e}")
             
@@ -243,6 +248,9 @@ class ElevenLabsTTS(BaseTTS):
             
             return audio_info
             
+        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"ElevenLabs音声合成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"ElevenLabs音声合成失敗: {e}")
             raise
@@ -315,6 +323,8 @@ class OpenAITTS(BaseTTS):
                     voice_id=voice,
                 )
                 return audio_info
+            except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as _e:
+                logger.warning(f"OpenAI TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"OpenAI TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             
@@ -339,6 +349,9 @@ class OpenAITTS(BaseTTS):
             
             return audio_info
             
+        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"OpenAI音声合成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"OpenAI音声合成失敗: {e}")
             raise
@@ -410,6 +423,8 @@ class AzureTTS(BaseTTS):
                     voice_id=voice,
                 )
                 return audio_info
+            except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as _e:
+                logger.warning(f"Azure TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"Azure TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             
@@ -434,6 +449,9 @@ class AzureTTS(BaseTTS):
             
             return audio_info
             
+        except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"Azure音声合成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"Azure音声合成失敗: {e}")
             raise
@@ -486,6 +504,9 @@ class GoogleCloudTTS(BaseTTS):
             
             return audio_info
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"Google Cloud音声合成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"Google Cloud音声合成失敗: {e}")
             raise

@@ -1,5 +1,10 @@
 # 🐍 Python正しいインストールガイド
 
+このファイルは **Python インストールのつまずき（Windows Store エイリアス）** を解消するための補助資料です。
+
+- セットアップの入口は `README.md` / `README_SETUP.md` を推奨します。
+- 本ファイルは「Python そのものが入っていない・呼べない」場合の切り分けに使ってください。
+
 ## ⚠️ 現在の状況
 
 **問題:** 現在のシステムでは、Pythonが「Windows Store」のリダイレクトになっており、実際のPythonがインストールされていません。
@@ -71,7 +76,7 @@ Python  # ← 何も表示されない = 本体がインストールされてい
 
 ```powershell
 # プロジェクトフォルダに移動
-cd C:\Users\PLANNER007\NLMandSlideVideoGenerator
+cd "<repo_root>"
 
 # 自動セットアップ実行
 .\setup_quick.bat
@@ -170,7 +175,7 @@ python --version      # → Python 3.11.x
 pip --version         # → pip 23.x.x
 
 # プロジェクトフォルダ移動
-cd C:\Users\PLANNER007\NLMandSlideVideoGenerator
+cd "<repo_root>"
 
 # セットアップ実行
 .\setup_quick.bat     # → 自動セットアップ

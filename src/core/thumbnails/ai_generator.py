@@ -181,7 +181,7 @@ class AIThumbnailGenerator(IThumbnailGenerator):
             # システムフォントを試行
             title_font = ImageFont.truetype("arial.ttf", style_config['font_size_title'])
             subtitle_font = ImageFont.truetype("arial.ttf", style_config['font_size_subtitle'])
-        except:
+        except (OSError, TypeError, ValueError):
             # デフォルトフォントを使用
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()

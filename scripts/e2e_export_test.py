@@ -197,6 +197,11 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
             logger.error(f"エラー: {results['errors']}")
             logger.error("=" * 60)
             
+    except asyncio.CancelledError:
+        raise
+    except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError) as e:
+        results["errors"].append(str(e))
+        logger.exception(f"E2Eテスト中に例外発生: {e}")
     except Exception as e:
         results["errors"].append(str(e))
         logger.exception(f"E2Eテスト中に例外発生: {e}")

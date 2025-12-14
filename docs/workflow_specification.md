@@ -1,5 +1,10 @@
 # ワークフロー仕様書
 
+このドキュメントは **「全自動（NotebookLM/Gemini/Slides/YouTube）」の概念フロー** を記述したものです。
+
+- **現行の実運用（SSOT）**: `docs/user_guide_manual_workflow.md`（CSV + 行ごとの WAV を入力として動画生成）
+- **現行の開発優先度/未実装一覧**: `docs/backlog.md`
+
 ## 1. 全体ワークフロー概要
 
 ```mermaid

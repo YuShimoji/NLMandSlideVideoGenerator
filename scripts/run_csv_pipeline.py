@@ -49,6 +49,8 @@ async def _run(args: argparse.Namespace) -> int:
             if value > 0:
                 settings.SLIDES_SETTINGS["max_chars_per_slide"] = value
                 logger.info(f"SLIDES_SETTINGS.max_chars_per_slide を {value} に上書きしました")
+        except (TypeError, ValueError) as e:  # pragma: no cover
+            logger.warning(f"max_chars_per_slide オプションの解釈に失敗しました: {e}")
         except Exception as e:  # pragma: no cover
             logger.warning(f"max_chars_per_slide オプションの解釈に失敗しました: {e}")
 
@@ -150,6 +152,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     except KeyboardInterrupt:
         logger.warning("CSVタイムラインパイプラインがユーザーにより中断されました")
         return 130
+    except (OSError, ValueError, TypeError, RuntimeError) as e:  # pragma: no cover
+        logger.error(f"CSVタイムラインCLI実行中にエラーが発生しました: {e}")
+        return 1
     except Exception as e:  # pragma: no cover
         logger.error(f"CSVタイムラインCLI実行中にエラーが発生しました: {e}")
         return 1

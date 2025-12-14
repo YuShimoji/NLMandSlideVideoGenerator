@@ -3,14 +3,14 @@
 ## 開発環境のセットアップ
 
 ### 1. 必要な環境
-- Python 3.9以上
+- Python 3.10以上
 - Git
 - 十分なディスク容量（動画ファイル用）
 
 ### 2. プロジェクトのクローンとセットアップ
 ```bash
 # プロジェクトディレクトリに移動
-cd "c:/Users/thank/Storage/Media Contents Projects/NLMandSlideVideoGenerator"
+cd "<repo_root>"
 
 # 仮想環境作成
 python -m venv venv
@@ -25,22 +25,21 @@ pip install -r requirements.txt
 ### 3. 設定ファイルの準備
 ```bash
 # 環境変数ファイル作成
-cp .env.example .env
-
-# API設定ファイル作成
-cp config/api_keys.py.example config/api_keys.py
+copy .env.example .env
 ```
 
 ### 4. API キーの設定
-`config/api_keys.py` に以下のAPI キーを設定：
-- YouTube API キー
-- Google API キー（将来用）
-- OpenAI API キー（オプション）
+`.env` に必要なAPI キーを設定：
+- `GEMINI_API_KEY`
+- `TTS_PROVIDER` と各プロバイダのキー（例: `ELEVENLABS_API_KEY`）
+- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`（アップロードを使う場合）
+
+詳細は `docs/api_setup_guide.md` を参照してください。
 
 ## 開発フロー
 
 ### 1. ブランチ戦略
-- `main`: 本番用ブランチ
+- `master`: 本番用ブランチ（本リポジトリのデフォルト）
 - `develop`: 開発用ブランチ
 - `feature/*`: 機能開発用ブランチ
 - `hotfix/*`: 緊急修正用ブランチ
@@ -199,10 +198,10 @@ python -c "from config.settings import create_directories; create_directories()"
 ### ログの確認
 ```bash
 # アプリケーションログ
-tail -f logs/app.log
+type logs\app.log
 
 # エラーログのみ
-grep "ERROR" logs/app.log
+findstr ERROR logs\app.log
 ```
 
 ## 本番環境への展開

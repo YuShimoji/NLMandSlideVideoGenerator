@@ -18,10 +18,32 @@ def with_fallback(primary_func, fallback_func, *args, **kwargs):
     """
     try:
         return primary_func(*args, **kwargs)
+    except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+        logger.warning(f"Primary function failed: {e}. Using fallback...")
+        try:
+            return fallback_func(*args, **kwargs)
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as fallback_e:
+            logger.error(f"Fallback also failed: {fallback_e}")
+            raise PipelineError(
+                f"Both primary and fallback failed: {e} -> {fallback_e}",
+                recoverable=False
+            )
+        except Exception as fallback_e:
+            logger.error(f"Fallback also failed: {fallback_e}")
+            raise PipelineError(
+                f"Both primary and fallback failed: {e} -> {fallback_e}",
+                recoverable=False
+            )
     except Exception as e:
         logger.warning(f"Primary function failed: {e}. Using fallback...")
         try:
             return fallback_func(*args, **kwargs)
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as fallback_e:
+            logger.error(f"Fallback also failed: {fallback_e}")
+            raise PipelineError(
+                f"Both primary and fallback failed: {e} -> {fallback_e}",
+                recoverable=False
+            )
         except Exception as fallback_e:
             logger.error(f"Fallback also failed: {fallback_e}")
             raise PipelineError(

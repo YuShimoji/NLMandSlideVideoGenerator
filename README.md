@@ -4,158 +4,11 @@ YouTube解説動画自動化システム (NLMandSlideVideoGenerator)
 
 ## プロジェクト概要
 
-このプロジェクトは、YouTubeの解説動画制作プロセスを自動化するシステムです。NotebookLMとGoogle Slideを活用し、ニュース記事やトピックから高品質な解説動画を自動生成します。
+このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現在の主フローは「CSV（台本）+ 行ごとのWAV（音声）」を入力として、動画・字幕・サムネイル・（任意で）YMM4プロジェクト等を生成します。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
 
-## システム構成
+## ドキュメント
 
-### 1. 入力フェーズ
-- ニュース記事のURLまたは調査トピックを入力
-- NotebookLMによる関連ソース（最大10件）の自動収集
-
-### 2. 音声生成フェーズ
-- NotebookLMのラジオ風音声解説機能を使用
-- 生成された音声の自動ダウンロード
-- 音声の文字起こしによる台本生成
-
-### 3. スライド生成フェーズ
-- Google Slideの「スライド作成サポート」機能を活用
-- 台本を適切に分割してスライド生成
-- 文字数制限に応じた要点抽出機能
-
-### 4. 動画編集フェーズ
-- 日本語字幕の自動付与
-- スライド画像のリッチエフェクト（ズーム、パン効果）
-- 最終動画の生成
-
-### 5. アップロードフェーズ
-- YouTube APIを使用した自動アップロード
-- 概要欄の自動生成と設定
-- 投稿予約機能
-
-## 技術仕様
-
-### 開発言語
-- Python 3.9+
-
-### 主要ライブラリ
-- `google-api-python-client` - YouTube API
-- `moviepy` - 動画編集
-- `pillow` - 画像処理
-- `requests` - HTTP通信
-- `beautifulsoup4` - Webスクレイピング
-- `openai` - AI機能（必要に応じて）
-
-### API要件
-- YouTube Data API v3
-- Google Slides API（将来的な自動化用）
-
-## プロジェクト構造
-
-```
-NLMandSlideVideoGenerator/
-├── README.md
-├── requirements.txt
-├── config/
-│   ├── settings.py
-│   └── api_keys.py.example
-├── src/
-│   ├── __init__.py
-│   ├── notebook_lm/
-│   │   ├── __init__.py
-│   │   ├── source_collector.py
-│   │   ├── audio_generator.py
-│   │   └── transcript_processor.py
-│   ├── slides/
-│   │   ├── __init__.py
-│   │   ├── slide_generator.py
-│   │   └── content_splitter.py
-│   ├── video_editor/
-│   │   ├── __init__.py
-│   │   ├── subtitle_generator.py
-│   │   ├── effect_processor.py
-│   │   └── video_composer.py
-│   ├── youtube/
-│   │   ├── __init__.py
-│   │   ├── uploader.py
-│   │   └── metadata_generator.py
-│   └── main.py
-├── data/
-│   ├── audio/
-│   ├── slides/
-│   ├── videos/
-│   └── transcripts/
-├── tests/
-│   ├── __init__.py
-│   ├── test_notebook_lm.py
-│   ├── test_slides.py
-│   ├── test_video_editor.py
-│   └── test_youtube.py
-└── docs/
-    ├── api_reference.md
-    ├── user_guide.md
-    └── development_guide.md
-```
-
-## 使用方法
-
-### 基本的な使用方法
-```bash
-python src/main.py --topic "調査したいトピック" --output-dir "出力ディレクトリ"
-```
-
-### 詳細オプション
-```bash
-python src/main.py \
-  --topic "AI技術の最新動向" \
-  --max-slides 20 \
-  --video-quality 1080p \
-  --upload-schedule "2024-01-01 12:00" \
-  --private-upload
-```
-
-## 設定
-
-### API キーの設定
-1. `config/api_keys.py.example` を `config/api_keys.py` にコピー
-2. 必要なAPI キーを設定
-
-```python
-# YouTube API
-YOUTUBE_API_KEY = "your_youtube_api_key"
-YOUTUBE_CLIENT_ID = "your_client_id"
-YOUTUBE_CLIENT_SECRET = "your_client_secret"
-
-# その他のAPI設定
-OPENAI_API_KEY = "your_openai_key"  # オプション
-```
-
-## 開発ガイドライン
-
-### コーディング規約
-- PEP 8準拠
-- 型ヒントの使用を推奨
-- docstringの記述必須
-- 単体テストの実装必須
-
-### 品質管理
-- Black（コードフォーマッター）
-- isort（import整理）
-- flake8（リンター）
-- mypy（型チェック）
-
-## ライセンス
-
-MIT License
-
-## 貢献
-
-プルリクエストやイシューの報告を歓迎します。
-
-## 注意事項
-
-- NotebookLMの利用には適切な利用規約の遵守が必要
-- YouTube APIの利用制限に注意
-- 著作権に配慮したコンテンツ生成を心がける
+迷ったら `docs/INDEX.md` を起点にしてください（SSOT/導線の整理済み）。
 
 🎬 **YouTube解説動画の自動生成システム**
 
@@ -177,7 +30,7 @@ NotebookLMの代替としてGoogle AI Studio Gemini APIを活用し、スライ�
 
 ```bash
 # 1. リポジトリクローン & 依存関係インストール
-git clone https://github.com/yourusername/NLMandSlideVideoGenerator.git
+git clone https://github.com/YuShimoji/NLMandSlideVideoGenerator.git
 cd NLMandSlideVideoGenerator
 pip install -r requirements.txt
 
@@ -210,7 +63,7 @@ streamlit run src/web/web_app.py
 
 ```bash
 # リポジトリクローン
-git clone https://github.com/yourusername/NLMandSlideVideoGenerator.git
+git clone https://github.com/YuShimoji/NLMandSlideVideoGenerator.git
 cd NLMandSlideVideoGenerator
 
 # 自動セットアップ実行
@@ -221,7 +74,11 @@ python setup_environment.py
 
 ```bash
 # 環境変数ファイル作成
-cp .env.example .env
+# Windows (PowerShell)
+copy .env.example .env
+
+# macOS/Linux
+# cp .env.example .env
 
 # .envファイルを編集してAPI認証情報を設定
 # 主要項目（抜粋）:
@@ -249,10 +106,10 @@ python test_execution_demo.py
 
 ```bash
 # ヘルプ表示
-python main.py --help
+python src/main.py --help
 
 # 動画生成実行（Gemini+TTS を使用する場合は .env にキー設定 & TTS_PROVIDER を指定）
-python main.py --topic "AI技術の最新動向" --duration 300
+python src/main.py --topic "AI技術の最新動向" --duration 300
 
 # モジュラーパイプラインのデモ（Gemini+TTS と Slides 画像エクスポートに対応）
 python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
@@ -289,13 +146,13 @@ python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
 # docs/openspec_components.md に新規コンポーネントを定義
 
 # 2. インターフェース生成
-python scripts/generate_interfaces.py --spec docs/openspec_components.md --component YourComponent
+python scripts/generate_interfaces.py --spec docs/openspec_components.md --output docs/generated --component YourComponent
 
 # 3. 実装作成
 # 生成されたインターフェースを実装
 
 # 4. 仕様検証
-python scripts/validate_openspec.py --component YourComponent
+python scripts/validate_openspec.py
 
 # 5. ドキュメント生成
 python scripts/generate_docs.py
@@ -357,7 +214,7 @@ Windowsコンソールの既定コードページ（cp932）で絵文字など�
 |---------|---------------|------|
 | **Google AI Studio** | `GEMINI_API_KEY` | スクリプト生成 |
 | **YouTube API** | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` | 動画投稿 |
-| **Google Slides API** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | スライド作成 |
+| **Google Slides API** | `GOOGLE_CLIENT_SECRETS_FILE`, `GOOGLE_OAUTH_TOKEN_FILE` | スライド作成 |
 | **音声生成API** | 各プロバイダーのAPIキー | 音声合成 |
 
 ## 🏗️ システム構成
@@ -419,7 +276,7 @@ python test_api_integration.py
 
 ## 🔧 技術スタック
 
-- **Python 3.8+**
+- **Python 3.10+**
 - **Google AI Studio Gemini API** - AI台本生成
 - **YouTube Data API v3** - 動画投稿
 - **Google Slides API** - プレゼンテーション作成
@@ -455,8 +312,7 @@ python test_api_integration.py
 ## 🆘 サポート
 
 - 📖 [ドキュメント](docs/)
-- 🐛 [Issues](https://github.com/yourusername/NLMandSlideVideoGenerator/issues)
-- 💬 [Discussions](https://github.com/yourusername/NLMandSlideVideoGenerator/discussions)
+- 🐛 [Issues](https://github.com/YuShimoji/NLMandSlideVideoGenerator/issues)
 
 ## 🎯 ロードマップ
 

@@ -52,6 +52,8 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
                         template_name = json_file.stem
                         templates[template_name] = template_data
                         logger.info(f"JSON テンプレートを読み込み: {template_name}")
+                except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError, OverflowError, RecursionError) as e:
+                    logger.warning(f"テンプレート読み込みエラー {json_file}: {e}")
                 except Exception as e:
                     logger.warning(f"テンプレート読み込みエラー {json_file}: {e}")
         
@@ -125,7 +127,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         try:
             font_title = ImageFont.truetype("arial.ttf", 60)
             font_subtitle = ImageFont.truetype("arial.ttf", 36)
-        except:
+        except (OSError, TypeError, ValueError):
             font_title = ImageFont.load_default()
             font_subtitle = ImageFont.load_default()
         
@@ -139,7 +141,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
             # フォントサイズ調整
             try:
                 font = ImageFont.truetype("arial.ttf", font_size)
-            except:
+            except (OSError, TypeError, ValueError):
                 font = ImageFont.load_default()
             
             draw.text(position, text, fill=color, font=font)
@@ -203,7 +205,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル（大きなフォント、中央）
         try:
             title_font = ImageFont.truetype("arial.ttf", 72)
-        except:
+        except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, title, title_font, (255, 255, 255), height // 3)
@@ -211,7 +213,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 36)
-        except:
+        except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, subtitle, subtitle_font, (0, 255, 157), height // 3 + 120)
@@ -243,7 +245,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル
         try:
             title_font = ImageFont.truetype("arial.ttf", 64)
-        except:
+        except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, title, title_font, (0, 0, 0), height // 3)
@@ -251,7 +253,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 32)
-        except:
+        except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, subtitle, subtitle_font, (255, 69, 0), height // 3 + 100)
@@ -280,7 +282,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル（ネオン効果）
         try:
             title_font = ImageFont.truetype("arial.ttf", 68)
-        except:
+        except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
         self._draw_glowing_text(draw, title, title_font, height // 3)
@@ -288,7 +290,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 34)
-        except:
+        except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, subtitle, subtitle_font, (255, 20, 147), height // 3 + 120)
@@ -317,7 +319,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル
         try:
             title_font = ImageFont.truetype("arial.ttf", 60)
-        except:
+        except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, title, title_font, (255, 255, 255), height // 3)
@@ -325,7 +327,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 30)
-        except:
+        except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
         self._draw_centered_text(draw, subtitle, subtitle_font, (50, 205, 50), height // 3 + 100)

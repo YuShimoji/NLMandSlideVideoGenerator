@@ -51,6 +51,8 @@ class SubtitleGenerator:
                         preset_name = preset_file.stem
                         presets[preset_name] = preset_data
                         logger.info(f"字幕プリセット読み込み: {preset_name}")
+                except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+                    logger.warning(f"プリセット読み込みエラー {preset_file}: {e}")
                 except Exception as e:
                     logger.warning(f"プリセット読み込みエラー {preset_file}: {e}")
         
@@ -111,6 +113,9 @@ class SubtitleGenerator:
             logger.success(f"字幕生成完了: {srt_path}, {ass_path}")
             return srt_path
             
+        except (OSError, ValueError, TypeError, RuntimeError) as e:
+            logger.error(f"字幕生成エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"字幕生成エラー: {str(e)}")
             raise

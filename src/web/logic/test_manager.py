@@ -85,6 +85,11 @@ async def run_api_tests_async(
             "success": False,
             "error": "テスト実行がタイムアウトしました"
         }
+    except (FileNotFoundError, OSError, subprocess.SubprocessError, RuntimeError, ValueError) as e:
+        return {
+            "success": False,
+            "error": f"テスト実行中にエラーが発生しました: {str(e)}"
+        }
     except Exception as e:
         return {
             "success": False,

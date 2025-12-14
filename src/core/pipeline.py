@@ -171,6 +171,8 @@ class ModularVideoPipeline:
                 logger.info(f"ソース収集完了: {len(sources)}件")
                 if progress_callback:
                     progress_callback("ソース収集", 0.1, f"ソース収集完了: {len(sources)}件")
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                raise PipelineError(str(e), stage="sources", recoverable=True)
             except Exception as e:
                 raise PipelineError(str(e), stage="sources", recoverable=True)
 
@@ -212,6 +214,8 @@ class ModularVideoPipeline:
                         )
                 except PipelineError:
                     raise
+                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                    raise PipelineError(str(e), stage="script", recoverable=True)
                 except Exception as e:
                     raise PipelineError(str(e), stage="script", recoverable=True)
             else:
@@ -274,6 +278,9 @@ class ModularVideoPipeline:
                         )
                         thumbnail_path = thumbnail_info.file_path
                         logger.info(f"サムネイル生成完了: {thumbnail_path}")
+                    except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as thumb_err:
+                        logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
+                        thumbnail_path = None
                     except Exception as thumb_err:
                         logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
                         thumbnail_path = None
@@ -382,6 +389,11 @@ class ModularVideoPipeline:
             logger.error(f"Pipeline error (Job {job_id}): {e}")
             db_manager.update_generation_status(job_id, 'failed', str(e))
             raise
+
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"Unexpected error (Job {job_id}): {e}")
+            db_manager.update_generation_status(job_id, 'failed', str(e))
+            raise PipelineError(str(e), recoverable=False)
 
         except Exception as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
@@ -661,6 +673,9 @@ class ModularVideoPipeline:
                         framerate = wf.getframerate() or 1
                         duration = frames / float(framerate)
                     segments.append(AudioInfo(file_path=path, duration=duration))
+                except (wave.Error, EOFError, OSError, AttributeError, TypeError, ValueError) as e:
+                    logger.warning(f"WAV解析に失敗しました: {path} ({e})")
+                    segments.append(AudioInfo(file_path=path, duration=1.0))
                 except Exception as e:
                     logger.warning(f"WAV解析に失敗しました: {path} ({e})")
                     segments.append(AudioInfo(file_path=path, duration=1.0))
@@ -871,6 +886,8 @@ class ModularVideoPipeline:
                 )
                 if thumbnail_path:
                     logger.info(f"サムネイル生成完了: {thumbnail_path}")
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                logger.warning(f"サムネイル生成に失敗しました: {e}")
             except Exception as e:
                 logger.warning(f"サムネイル生成に失敗しました: {e}")
 
@@ -968,6 +985,11 @@ class ModularVideoPipeline:
             db_manager.update_generation_status(job_id, 'failed', str(e))
             raise
 
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"Unexpected error (CSV Job {job_id}): {e}")
+            db_manager.update_generation_status(job_id, 'failed', str(e))
+            raise PipelineError(str(e), recoverable=False)
+
         except Exception as e:
             logger.error(f"Unexpected error (CSV Job {job_id}): {e}")
             db_manager.update_generation_status(job_id, 'failed', str(e))
@@ -1011,6 +1033,11 @@ class ModularVideoPipeline:
         """従来 Stage1 処理（フォールバック付き）"""
         try:
             return await self._run_legacy_stage1(topic, sources)
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"Legacy Stage1 failed: {e}. Using minimal fallback...")
+            # 最小限のフォールバック
+            audio_info = await self.audio_generator.generate_audio(sources)
+            return None, audio_info
         except Exception as e:
             logger.warning(f"Legacy Stage1 failed: {e}. Using minimal fallback...")
             # 最小限のフォールバック
@@ -1094,6 +1121,8 @@ class ModularVideoPipeline:
                         logger.info(f"script_bundle にスライド情報を追加: {len(slide_payload)}枚")
                     else:
                         logger.warning("Geminiスライド生成結果が空でした")
+                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as slide_err:
+                    logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
                 except Exception as slide_err:
                     logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
 
@@ -1125,6 +1154,8 @@ class ModularVideoPipeline:
                     channels=getattr(tts_audio, "channels", 2),
                 )
                 return script_bundle, audio_info
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as exc:
+                logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
             except Exception as exc:
                 logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
 
@@ -1196,6 +1227,9 @@ class ModularVideoPipeline:
                     )
                     thumbnail_path = thumbnail_info.file_path
                     logger.info(f"サムネイル生成完了: {thumbnail_path}")
+                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as thumb_err:
+                    logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
+                    thumbnail_path = None
                 except Exception as thumb_err:
                     logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
                     thumbnail_path = None

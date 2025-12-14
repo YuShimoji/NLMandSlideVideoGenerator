@@ -76,6 +76,12 @@ class TranscriptProcessor:
             logger.success(f"文字起こし処理完了: 精度={verified_transcript.accuracy_score:.2f}")
             return verified_transcript
             
+        except asyncio.CancelledError as e:
+            logger.error(f"文字起こし処理エラー: {str(e)}")
+            raise
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"文字起こし処理エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"文字起こし処理エラー: {str(e)}")
             raise

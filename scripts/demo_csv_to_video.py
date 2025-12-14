@@ -211,6 +211,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         print(f"Generated video: {video_path}")
         return 0
+    except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError) as e:
+        logger.error(f"CSV→動画デモ実行中にエラーが発生しました: {e}")
+        return 1
     except Exception as e:
         logger.error(f"CSV→動画デモ実行中にエラーが発生しました: {e}")
         return 1

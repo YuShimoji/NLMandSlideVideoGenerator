@@ -65,6 +65,11 @@ class GeminiIntegration:
             logger.info(f"スクリプト生成完了: {len(script_info.segments)}セグメント")
             return script_info
             
+        except asyncio.CancelledError:
+            raise
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"スクリプト生成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"スクリプト生成失敗: {e}")
             raise
@@ -148,7 +153,17 @@ URL: {source.get('url', 'URL不明')}
                     if not content_str:
                         try:
                             content_str = json.dumps(resp.to_dict(), ensure_ascii=False)
-                        except Exception:
+                        except (AttributeError, TypeError, ValueError, OverflowError, RecursionError) as exc:
+                            logger.debug(f"GeminiレスポンスのJSON化に失敗（最低限JSONへフォールバック）: {exc}")
+                            # 念のため最低限のJSONを返す
+                            content_str = json.dumps({
+                                "title": "生成結果",
+                                "segments": [],
+                                "total_duration_estimate": 0,
+                                "language": "ja"
+                            }, ensure_ascii=False)
+                        except Exception as exc:
+                            logger.debug(f"GeminiレスポンスのJSON化で予期しない例外（最低限JSONへフォールバック）: {exc}")
                             # 念のため最低限のJSONを返す
                             content_str = json.dumps({
                                 "title": "生成結果",
@@ -165,6 +180,8 @@ URL: {source.get('url', 'URL不明')}
                     )
                     self.request_count += 1
                     return real_response
+                except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                    logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
                 except Exception as e:
                     logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
             
@@ -219,6 +236,11 @@ URL: {source.get('url', 'URL不明')}
             self.request_count += 1
             return mock_response
             
+        except asyncio.CancelledError:
+            raise
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"Gemini API呼び出し失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"Gemini API呼び出し失敗: {e}")
             raise
@@ -265,6 +287,9 @@ URL: {source.get('url', 'URL不明')}
             
         except json.JSONDecodeError as e:
             logger.error(f"JSONレスポンス解析失敗: {e}")
+            raise
+        except (KeyError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"スクリプトレスポンス解析失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"スクリプトレスポンス解析失敗: {e}")
@@ -349,6 +374,11 @@ URL: {source.get('url', 'URL不明')}
             logger.info(f"スライド内容生成完了: {len(slide_data.get('slides', []))}枚")
             return slide_data.get("slides", [])
             
+        except asyncio.CancelledError:
+            raise
+        except (json.JSONDecodeError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"スライド内容生成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"スライド内容生成失敗: {e}")
             raise

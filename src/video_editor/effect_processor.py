@@ -99,6 +99,9 @@ class EffectProcessor:
             logger.success(f"エフェクト処理完了: {len(processed_slides)}枚")
             return processed_slides
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"エフェクト処理エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"エフェクト処理エラー: {str(e)}")
             raise

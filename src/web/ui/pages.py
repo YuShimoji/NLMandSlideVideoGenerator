@@ -10,6 +10,8 @@ import io
 from contextlib import redirect_stdout
 
 from config.settings import settings
+from core.utils.logger import logger
+from core.utils.tool_detection import find_autohotkey_exe
 
 
 def load_markdown_file(filepath):
@@ -17,6 +19,8 @@ def load_markdown_file(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return f.read()
+    except (OSError, UnicodeError, TypeError, ValueError) as e:
+        return f"Error loading file: {str(e)}"
     except Exception as e:
         return f"Error loading file: {str(e)}"
 
@@ -169,14 +173,11 @@ def _run_environment_check():
             results["essential"][name] = (False, "未インストール")
     
     # FFmpeg
-    ffmpeg_path = shutil.which("ffmpeg")
-    if ffmpeg_path:
-        try:
-            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-            version_line = result.stdout.split('\n')[0] if result.stdout else "バージョン不明"
-            results["optional"]["FFmpeg"] = (True, version_line[:40])
-        except Exception:
-            results["optional"]["FFmpeg"] = (True, ffmpeg_path)
+    from core.utils.ffmpeg_utils import detect_ffmpeg
+    ffmpeg_info = detect_ffmpeg()
+    if ffmpeg_info.available:
+        display = f"ffmpeg {ffmpeg_info.version}" if ffmpeg_info.version else (ffmpeg_info.path or "インストール済み")
+        results["optional"]["FFmpeg"] = (True, display[:40])
     else:
         results["optional"]["FFmpeg"] = (False, "未インストール（winget install FFmpeg）")
     
@@ -188,12 +189,8 @@ def _run_environment_check():
         results["optional"]["pysrt"] = (False, "未インストール（pip install pysrt）")
     
     # AutoHotkey (Windows only)
-    ahk_paths = [
-        Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
-        Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
-    ]
-    ahk_found = any(p.exists() for p in ahk_paths)
-    if ahk_found:
+    ahk_exe = find_autohotkey_exe()
+    if ahk_exe:
         results["optional"]["AutoHotkey"] = (True, "YMM4連携可能")
     else:
         results["optional"]["AutoHotkey"] = (False, "YMM4自動操作に必要")
@@ -317,6 +314,10 @@ def show_pipeline_page():
                 st.session_state.pipeline_result = result
                 st.session_state.pipeline_running = False
                 st.rerun()
+
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                st.error(f"パイプライン実行中にエラーが発生しました: {str(e)}")
+                st.session_state.pipeline_running = False
 
             except Exception as e:
                 st.error(f"パイプライン実行中にエラーが発生しました: {str(e)}")
@@ -525,7 +526,11 @@ def show_assets_page():
                                     file_name=f.name,
                                     key=f"download_{f.name}_{id(f)}"
                                 )
-                        except Exception:
+                        except (OSError, AttributeError, TypeError, ValueError) as exc:
+                            logger.debug(f"ダウンロードボタン用のファイル読込に失敗: {exc}")
+                            st.button("⬇️ ダウンロード", disabled=True, key=f"dl_err_{id(f)}")
+                        except Exception as exc:
+                            logger.debug(f"ダウンロードボタン用のファイル読込に失敗: {exc}")
                             st.button("⬇️ ダウンロード", disabled=True, key=f"dl_err_{id(f)}")
                     
                     with col3:
@@ -535,6 +540,8 @@ def show_assets_page():
                                 f.unlink()
                                 st.success(f"削除しました: {f.name}")
                                 st.rerun()
+                            except (OSError, AttributeError, TypeError, ValueError) as e:
+                                st.error(f"削除エラー: {e}")
                             except Exception as e:
                                 st.error(f"削除エラー: {e}")
                     
@@ -556,6 +563,8 @@ def show_assets_page():
                                     st.text(content[:2000])
                                     if len(content) > 2000:
                                         st.caption("... (truncated)")
+                    except (OSError, UnicodeError, json.JSONDecodeError, ValueError, TypeError) as e:
+                        st.caption(f"プレビュー不可: {e}")
                     except Exception as e:
                         st.caption(f"プレビュー不可: {e}")
 
@@ -692,97 +701,75 @@ def show_settings_page():
         st.divider()
         st.subheader("API キー状態")
         api_keys = [
-            ("GOOGLE_API_KEY", "Gemini"),
+            ("GEMINI_API_KEY", "Gemini"),
             ("ELEVENLABS_API_KEY", "ElevenLabs"),
             ("AZURE_SPEECH_KEY", "Azure Speech"),
             ("SOFTALK_EXE", "SofTalk"),
         ]
         for env_var, label in api_keys:
             value = os.environ.get(env_var, "")
+            
             if value:
-                st.success(f"✅ {label}: 設定済み")
+                st.success(f"✅ 環境変数 `{env_var}` が設定されています: `{value}`")
             else:
-                st.warning(f"⚠️ {label}: 未設定 ({env_var})")
-
-    # YouTube設定
-    with tabs[3]:
-        st.subheader("YouTube 設定")
+                st.warning(f"⚠️ 環境変数 `{env_var}` が未設定です。TTS実行前に設定してください。")
+                example_dir = "Softalk" if env_var == "SOFTALK_EXE" else "AquesTalk"
+                example_exe = "SofTalk.exe" if env_var == "SOFTALK_EXE" else "AquesTalkPlayer.exe"
+                st.code(
+                    f'$env:{env_var} = "$env:ProgramFiles\\{example_dir}\\{example_exe}"',
+                    language="powershell",
+                )
         
-        yt = settings.YOUTUBE_SETTINGS
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text_input("デフォルト言語", value=yt.get("default_language", "ja"), disabled=True)
-            st.text_input("カテゴリID", value=str(yt.get("category_id", "27")), disabled=True)
-        with col2:
-            st.text_input("プライバシー設定", value=yt.get("privacy_status", "private"), disabled=True)
-        
-        st.divider()
-        st.subheader("認証状態")
-        credentials_path = Path("config/youtube_credentials.json")
-        token_path = Path("config/youtube_token.json")
-        
-        if credentials_path.exists():
-            st.success("✅ OAuth クレデンシャル: 設定済み")
-        else:
-            st.error("❌ OAuth クレデンシャル: 未設定")
-            st.caption("config/youtube_credentials.json を配置してください")
-        
-        if token_path.exists():
-            st.success("✅ アクセストークン: 取得済み")
-        else:
-            st.warning("⚠️ アクセストークン: 未取得（初回実行時に認証が必要）")
-
-    # パイプライン設定
-    with tabs[4]:
-        st.subheader("パイプライン設定")
-        
-        components = settings.PIPELINE_COMPONENTS
-        modes = settings.PIPELINE_STAGE_MODES
-        
-        st.markdown("**コンポーネント構成**")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.text_input("スクリプトプロバイダ", value=components.get("script_provider", ""), disabled=True)
-            st.text_input("音声パイプライン", value=components.get("voice_pipeline", ""), disabled=True)
-        with col2:
-            st.text_input("編集バックエンド", value=components.get("editing_backend", ""), disabled=True)
-            st.text_input("プラットフォームアダプタ", value=components.get("platform_adapter", ""), disabled=True)
-        
-        st.divider()
-        st.markdown("**ステージモード**")
-        col1, col2, col3 = st.columns(3)
-        mode_options = ["auto", "manual", "skip"]
-        stage1_value = modes.get("stage1", "auto")
-        stage2_value = modes.get("stage2", "auto")
-        stage3_value = modes.get("stage3", "auto")
-        stage1_index = mode_options.index(stage1_value) if stage1_value in mode_options else 0
-        stage2_index = mode_options.index(stage2_value) if stage2_value in mode_options else 0
-        stage3_index = mode_options.index(stage3_value) if stage3_value in mode_options else 0
-        with col1:
-            st.selectbox(
-                "Stage 1 (スクリプト生成)",
-                mode_options,
-                index=stage1_index,
-                disabled=True,
-                key="stage1_mode"
-            )
-        with col2:
-            st.selectbox(
-                "Stage 2 (編集・レンダリング)",
-                mode_options,
-                index=stage2_index,
-                disabled=True,
-                key="stage2_mode"
-            )
-        with col3:
-            st.selectbox(
-                "Stage 3 (公開)",
-                mode_options,
-                index=stage3_index,
-                disabled=True,
-                key="stage3_mode"
-            )
+        # パイプライン設定
+        with tabs[4]:
+            st.subheader("パイプライン設定")
+            
+            components = settings.PIPELINE_COMPONENTS
+            modes = settings.PIPELINE_STAGE_MODES
+            
+            st.markdown("**コンポーネント構成**")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.text_input("スクリプトプロバイダ", value=components.get("script_provider", ""), disabled=True)
+                st.text_input("音声パイプライン", value=components.get("voice_pipeline", ""), disabled=True)
+            with col2:
+                st.text_input("編集バックエンド", value=components.get("editing_backend", ""), disabled=True)
+                st.text_input("プラットフォームアダプタ", value=components.get("platform_adapter", ""), disabled=True)
+            
+            st.divider()
+            st.markdown("**ステージモード**")
+            col1, col2, col3 = st.columns(3)
+            mode_options = ["auto", "manual", "skip"]
+            stage1_value = modes.get("stage1", "auto")
+            stage2_value = modes.get("stage2", "auto")
+            stage3_value = modes.get("stage3", "auto")
+            stage1_index = mode_options.index(stage1_value) if stage1_value in mode_options else 0
+            stage2_index = mode_options.index(stage2_value) if stage2_value in mode_options else 0
+            stage3_index = mode_options.index(stage3_value) if stage3_value in mode_options else 0
+            with col1:
+                st.selectbox(
+                    "Stage 1 (スクリプト生成)",
+                    mode_options,
+                    index=stage1_index,
+                    disabled=True,
+                    key="stage1_mode"
+                )
+            with col2:
+                st.selectbox(
+                    "Stage 2 (編集・レンダリング)",
+                    mode_options,
+                    index=stage2_index,
+                    disabled=True,
+                    key="stage2_mode"
+                )
+            with col3:
+                st.selectbox(
+                    "Stage 3 (公開)",
+                    mode_options,
+                    index=stage3_index,
+                    disabled=True,
+                    key="stage3_mode"
+                )
 
     # ジョブ履歴
     with tabs[5]:
@@ -822,6 +809,8 @@ def show_settings_page():
             else:
                 st.info("ジョブ履歴がありません")
                 
+        except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
+            st.error(f"履歴の取得に失敗: {e}")
         except Exception as e:
             st.error(f"履歴の取得に失敗: {e}")
         
@@ -831,6 +820,8 @@ def show_settings_page():
             try:
                 db_manager.cleanup_old_records(days=90)
                 st.success("古い履歴を削除しました")
+            except (AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
+                st.error(f"削除エラー: {e}")
             except Exception as e:
                 st.error(f"削除エラー: {e}")
 
@@ -994,15 +985,17 @@ def show_csv_pipeline_page():
                         st.code('\n'.join(preview_lines), language='csv')
                         if len(lines) > 3:
                             st.caption(f"... 他 {len(lines) - 3} 行")
+                    except (UnicodeError, AttributeError, TypeError, ValueError) as e:
+                        st.error(f"CSVの読み込みに失敗: {e}")
                     except Exception as e:
                         st.error(f"CSVの読み込みに失敗: {e}")
             
             with col_preview2:
                 st.markdown("**音声ファイル:**")
                 if audio_dir:
-                    audio_path = Path(audio_dir).expanduser()
-                    if audio_path.exists() and audio_path.is_dir():
-                        wav_files = sorted(audio_path.glob("*.wav"))
+                    audio_path_obj = Path(audio_dir).expanduser()
+                    if audio_path_obj.exists() and audio_path_obj.is_dir():
+                        wav_files = sorted(audio_path_obj.glob("*.wav"))
                         audio_file_count = len(wav_files)
                         st.text(f"WAVファイル数: {audio_file_count}個")
                         for wf in wav_files[:5]:
@@ -1085,7 +1078,12 @@ def show_csv_pipeline_page():
             st.success(f"✅ 環境変数 `{env_var_name}` が設定されています: `{env_var_value}`")
         else:
             st.warning(f"⚠️ 環境変数 `{env_var_name}` が未設定です。TTS実行前に設定してください。")
-            st.code(f'$env:{env_var_name} = "C:\\Program Files\\{tts_engine.capitalize()}\\{tts_engine}.exe"', language="powershell")
+            example_dir = "Softalk" if tts_engine == "softalk" else "AquesTalk"
+            example_exe = "SofTalk.exe" if tts_engine == "softalk" else "AquesTalkPlayer.exe"
+            st.code(
+                f'$env:{env_var_name} = "$env:ProgramFiles\\{example_dir}\\{example_exe}"',
+                language="powershell",
+            )
         
         # TTS実行ボタン
         tts_can_run = csv_file is not None and tts_out_dir and (env_var_value or tts_dry_run)
@@ -1158,6 +1156,8 @@ def show_csv_pipeline_page():
                     st.error(f"❌ 実行エラー: {e}")
                     if "環境変数" in str(e):
                         st.info(f"環境変数 `{env_var_name}` を設定してください。")
+                except (OSError, AttributeError, TypeError, ValueError) as e:
+                    st.error(f"❌ 予期せぬエラー: {e}")
                 except Exception as e:
                     st.error(f"❌ 予期せぬエラー: {e}")
                 finally:
@@ -1307,6 +1307,8 @@ def show_csv_pipeline_page():
                         # 動画プレビュー
                         try:
                             st.video(str(video_path))
+                        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                            st.warning(f"動画プレビューを表示できません: {e}")
                         except Exception as e:
                             st.warning(f"動画プレビューを表示できません: {e}")
                         
@@ -1380,6 +1382,15 @@ def show_csv_pipeline_page():
                 st.error("ファイルまたはディレクトリが見つかりません。CSVファイルと音声ディレクトリのパスを確認してください。")
                 with st.expander("詳細なエラーログ"):
                     st.code(traceback.format_exc())
+            except (OSError, RuntimeError, AttributeError, TypeError, ValueError) as e:
+                message = str(e)
+                if "ffmpeg" in message.lower():
+                    st.error("FFmpeg関連のエラーが発生しました。FFmpegがインストールされているか確認してください。")
+                    st.info("コマンドラインで `python scripts/check_environment.py` を実行すると環境チェックが行えます。")
+                else:
+                    st.error("予期しないエラーが発生しました。ログを確認してください。")
+                with st.expander("詳細なエラーログ"):
+                    st.code(traceback.format_exc())
             except Exception as e:
                 message = str(e)
                 if "ffmpeg" in message.lower():
@@ -1432,6 +1443,8 @@ def show_tests_page():
                     progress_callback=lambda message: progress_placeholder.info(message)
                 )
                 result_placeholder.json(results)
+            except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+                result_placeholder.error(f"テスト実行中にエラーが発生しました: {str(e)}")
             except Exception as e:
                 result_placeholder.error(f"テスト実行中にエラーが発生しました: {str(e)}")
 

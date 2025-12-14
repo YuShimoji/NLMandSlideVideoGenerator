@@ -285,7 +285,11 @@ class OperationalAPIServer:
 
             return {"status": "healthy", "message": "File system OK"}
 
+        except (OSError, AttributeError, TypeError, ValueError) as e:
+            logger.error(f"File system error: {e}")
+            return {"status": "unhealthy", "message": f"File system error: {e}"}
         except Exception as e:
+            logger.error(f"File system error: {e}")
             return {"status": "unhealthy", "message": f"File system error: {e}"}
 
     async def check_api_keys(self) -> Dict[str, Any]:
@@ -310,7 +314,11 @@ class OperationalAPIServer:
         try:
             pipeline = build_default_pipeline()
             return {"status": "healthy", "message": "Pipeline initialized successfully"}
+        except (ImportError, AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
+            logger.error(f"Pipeline initialization failed: {e}")
+            return {"status": "unhealthy", "message": f"Pipeline initialization failed: {e}"}
         except Exception as e:
+            logger.error(f"Pipeline initialization failed: {e}")
             return {"status": "unhealthy", "message": f"Pipeline initialization failed: {e}"}
 
     async def perform_cleanup(self, days: int):
@@ -337,6 +345,9 @@ class OperationalAPIServer:
             self.log_activity(f"Cleanup completed: {len(cleaned_files)} files removed")
             logger.info(f"Cleanup completed: {len(cleaned_files)} files removed")
 
+        except (OSError, AttributeError, TypeError, ValueError, OverflowError) as e:
+            self.log_activity(f"Cleanup failed: {e}")
+            logger.error(f"Cleanup failed: {e}")
         except Exception as e:
             self.log_activity(f"Cleanup failed: {e}")
             logger.error(f"Cleanup failed: {e}")

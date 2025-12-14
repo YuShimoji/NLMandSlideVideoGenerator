@@ -108,6 +108,12 @@ def run_oauth_flow():
         print(f"トークン保存先: {token_file}")
         return True
         
+    except (ImportError, OSError, ValueError, TypeError) as e:
+        print()
+        print("=" * 50)
+        print(f"❌ 認証失敗: {e}")
+        print("=" * 50)
+        return False
     except Exception as e:
         print()
         print("=" * 50)
@@ -140,6 +146,9 @@ def verify_token():
         print("✅ トークン検証成功: Google Slides API に接続可能")
         return True
         
+    except (ImportError, OSError, ValueError, TypeError) as e:
+        print(f"❌ トークン検証失敗: {e}")
+        return False
     except Exception as e:
         print(f"❌ トークン検証失敗: {e}")
         return False

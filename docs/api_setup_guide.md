@@ -2,10 +2,10 @@
 
 ## 🔑 必要なAPI認証情報
 
-### ✅ 設定済み
-- **Google AI Studio (Gemini API)**: `AIzaSyBjkCSS4DJuajzf9zFfXGJtrrRzTAupdss`
-- **YouTube API**: クライアントID・シークレット設定済み
-- **Google Slides API**: YouTube APIと同じ認証情報を使用
+### ✅ 設定が必要（実値は書かない）
+- **Google AI Studio (Gemini API)**: `GEMINI_API_KEY`
+- **YouTube API**: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`
+- **Google Slides API**: `GOOGLE_CLIENT_SECRETS_FILE`, `GOOGLE_OAUTH_TOKEN_FILE`
 
 ### 🔧 追加設定が必要
 
@@ -17,7 +17,7 @@
 https://elevenlabs.io/
 
 # API キー取得後
-export ELEVENLABS_API_KEY="your_api_key_here"
+export ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"
 ```
 
 **代替案: OpenAI**
@@ -25,7 +25,7 @@ export ELEVENLABS_API_KEY="your_api_key_here"
 # OpenAI Platform
 https://platform.openai.com/
 
-export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_KEY="your_openai_api_key_here"
 ```
 
 **代替案: Azure Speech Services**
@@ -33,22 +33,22 @@ export OPENAI_API_KEY="your_api_key_here"
 # Azure Portal
 https://portal.azure.com/
 
-export AZURE_SPEECH_KEY="your_key_here"
-export AZURE_SPEECH_REGION="eastus"
+export AZURE_SPEECH_KEY="your_azure_speech_key_here"
+export AZURE_SPEECH_REGION="your_azure_speech_region_here"
 ```
 
 ## 🚀 セットアップ手順
 
 ### 1. 環境変数設定
 
-`.env`ファイルを作成:
+`.env`ファイルを作成（`.env.example` をコピーして編集）:
 ```env
 # Google AI Studio (Gemini API)
-GEMINI_API_KEY=AIzaSyBjkCSS4DJuajzf9zFfXGJtrrRzTAupdss
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # YouTube API
-YOUTUBE_CLIENT_ID=1066326089631-1i3fsdtksk6p7l5tq52urf41imnkfsm4.apps.googleusercontent.com
-YOUTUBE_CLIENT_SECRET=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
+YOUTUBE_CLIENT_ID=your_youtube_client_id_here
+YOUTUBE_CLIENT_SECRET=your_youtube_client_secret_here
 
 # 音声生成API（選択）
 ELEVENLABS_API_KEY=your_elevenlabs_key
@@ -80,25 +80,24 @@ ELEVENLABS_API_KEY=your_elevenlabs_key
 ### 3. 初回認証実行
 
 ```python
-# 認証テスト実行
-python config/api_keys.py
+# API統合テスト実行（キー未設定の場合はスキップされます）
+python run_api_test.py
 ```
 
-## 🧪 API動作テスト
+## API動作テスト
 
 ### Gemini API テスト
 ```python
 from src.notebook_lm.gemini_integration import GeminiIntegration
-from config.api_keys import api_keys
+from config.settings import settings
 
-gemini = GeminiIntegration(api_keys.GEMINI_API_KEY)
+gemini = GeminiIntegration(settings.GEMINI_API_KEY)
 # テスト実行
 ```
 
 ### YouTube API テスト
 ```python
 from src.youtube.uploader import YouTubeUploader
-from config.api_keys import api_keys
 
 uploader = YouTubeUploader()
 auth_result = await uploader.authenticate()
@@ -108,19 +107,21 @@ print(f"YouTube認証: {'成功' if auth_result else '失敗'}")
 ### 音声生成API テスト
 ```python
 from src.audio.tts_integration import TTSIntegration
-from config.api_keys import api_keys
+from config.settings import settings
 
 tts = TTSIntegration({
-    "elevenlabs": api_keys.ELEVENLABS_API_KEY,
-    "openai": api_keys.OPENAI_API_KEY,
-    "azure_speech": api_keys.AZURE_SPEECH_KEY
+    "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
+    "openai": settings.OPENAI_API_KEY,
+    "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
+    "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
+    "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
 })
 
 status = tts.get_provider_status()
 print("TTS プロバイダー状況:", status)
 ```
 
-## ⚠️ セキュリティ注意事項
+## セキュリティ注意事項
 
 ### 1. API キーの保護
 - `.env`ファイルを`.gitignore`に追加
@@ -173,11 +174,7 @@ print("TTS プロバイダー状況:", status)
 - **音声生成API**: 文字数、音声時間
 
 ### 監視コマンド
-```python
-# API使用状況確認
-python -c "
-from config.api_keys import api_keys
-status = api_keys.validate_keys()
-print('API状況:', status)
-"
+```bash
+# API使用状況確認（キー未設定の場合はスキップされます）
+python run_api_test.py
 ```

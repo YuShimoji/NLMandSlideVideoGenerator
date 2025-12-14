@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from .logger import logger
+from .tool_detection import find_ffmpeg_exe
 
 
 @dataclass
@@ -62,21 +63,11 @@ def detect_ffmpeg() -> FFmpegInfo:
         FFmpegInfo: FFmpegの検出結果
     """
     ffmpeg_path = shutil.which("ffmpeg")
-    
+
     if not ffmpeg_path:
-        # 一般的なインストールパスをチェック
-        common_paths = [
-            Path("C:/ffmpeg/bin/ffmpeg.exe"),
-            Path("C:/Program Files/ffmpeg/bin/ffmpeg.exe"),
-            Path("C:/tools/ffmpeg/bin/ffmpeg.exe"),
-            Path("/usr/bin/ffmpeg"),
-            Path("/usr/local/bin/ffmpeg"),
-        ]
-        
-        for path in common_paths:
-            if path.exists():
-                ffmpeg_path = str(path)
-                break
+        detected = find_ffmpeg_exe()
+        if detected:
+            ffmpeg_path = str(detected)
     
     if not ffmpeg_path:
         return FFmpegInfo(available=False)

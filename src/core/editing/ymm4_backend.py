@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Sequence
 from config.settings import settings
 from ..interfaces import IEditingBackend
 from ..utils.logger import logger
+from ..utils.tool_detection import find_autohotkey_exe
 from .moviepy_backend import MoviePyEditingBackend
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
@@ -85,6 +86,9 @@ class YMM4EditingBackend(IEditingBackend):
                 
                 # テンプレート差分適用プロトタイプ
                 self._apply_template_diff(project_dir, project_path)
+            except (OSError, shutil.Error, AttributeError, TypeError, ValueError, RuntimeError) as err:
+                logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
+                project_path.touch()
             except Exception as err:
                 logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
                 project_path.touch()
@@ -251,6 +255,8 @@ class YMM4EditingBackend(IEditingBackend):
             # AutoHotkeyスクリプト実行
             await self._execute_ahk_script(script_to_run, project_file)
 
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
         except Exception as e:
             logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
 
@@ -339,6 +345,8 @@ class YMM4EditingBackend(IEditingBackend):
                 else:
                     logger.warning(f"AHKスクリプト生成失敗: {result.stderr}")
 
+        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError, RuntimeError) as e:
+            logger.warning(f"カスタムAHKスクリプト生成エラー: {e}")
         except Exception as e:
             logger.warning(f"カスタムAHKスクリプト生成エラー: {e}")
 
@@ -346,18 +354,7 @@ class YMM4EditingBackend(IEditingBackend):
 
     async def _execute_ahk_script(self, script_path: Path, project_file: Path) -> None:
         """AutoHotkeyスクリプトを実行"""
-        # AutoHotkey実行ファイルのパスを決定
-        ahk_exe_paths = [
-            Path("C:/Program Files/AutoHotkey/AutoHotkey.exe"),
-            Path("C:/Program Files/AutoHotkey/v2/AutoHotkey.exe"),
-        ]
-
-        ahk_exe = None
-        for path in ahk_exe_paths:
-            if path.exists():
-                ahk_exe = path
-                break
-
+        ahk_exe = find_autohotkey_exe()
         if not ahk_exe:
             logger.warning("AutoHotkey実行ファイルが見つかりません。手動実行してください。")
             return
@@ -392,6 +389,8 @@ class YMM4EditingBackend(IEditingBackend):
 
         except FileNotFoundError:
             logger.warning("AutoHotkey実行ファイルが見つかりません。手動実行してください。")
+        except (asyncio.TimeoutError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
         except Exception as e:
             logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
 
@@ -443,6 +442,8 @@ class YMM4EditingBackend(IEditingBackend):
             else:
                 logger.info("適用する差分設定が見つからないため、スキップ")
                 
+        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+            logger.warning(f"テンプレート差分適用エラー: {e}")
         except Exception as e:
             logger.warning(f"テンプレート差分適用エラー: {e}")
 
@@ -476,6 +477,8 @@ class YMM4EditingBackend(IEditingBackend):
                         config = json.load(f)
                     logger.info(f"テンプレート差分設定を読み込み: {diff_path}")
                     return config
+                except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+                    logger.warning(f"差分設定ファイル読み込みエラー: {e}")
                 except Exception as e:
                     logger.warning(f"差分設定ファイル読み込みエラー: {e}")
         
@@ -488,6 +491,8 @@ class YMM4EditingBackend(IEditingBackend):
                     config = json.load(f)
                 logger.info(f"デフォルトテンプレート差分設定を読み込み: {default_diff}")
                 return config
+            except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+                logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
             except Exception as e:
                 logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
         

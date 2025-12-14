@@ -44,6 +44,8 @@ def _load_persistence():
         try:
             with open(RUNS_FILE, 'r', encoding='utf-8') as f:
                 RUNS = json.load(f)
+        except (OSError, json.JSONDecodeError, UnicodeError) as e:
+            print(f"Warning: Failed to load runs persistence: {e}")
         except Exception as e:
             print(f"Warning: Failed to load runs persistence: {e}")
     
@@ -53,6 +55,8 @@ def _load_persistence():
             execution_id = artifact_file.stem
             with open(artifact_file, 'r', encoding='utf-8') as f:
                 ARTIFACTS[execution_id] = json.load(f)
+        except (OSError, json.JSONDecodeError, UnicodeError) as e:
+            print(f"Warning: Failed to load artifact {artifact_file}: {e}")
         except Exception as e:
             print(f"Warning: Failed to load artifact {artifact_file}: {e}")
 
@@ -61,6 +65,8 @@ def _save_runs():
     try:
         with open(RUNS_FILE, 'w', encoding='utf-8') as f:
             json.dump(RUNS, f, ensure_ascii=False, indent=2)
+    except (OSError, TypeError, ValueError) as e:
+        print(f"Warning: Failed to save runs: {e}")
     except Exception as e:
         print(f"Warning: Failed to save runs: {e}")
 
@@ -70,6 +76,8 @@ def _save_artifact(execution_id: str, artifact: Any):
         artifact_file = ARTIFACTS_DIR / f"{execution_id}.json"
         with open(artifact_file, 'w', encoding='utf-8') as f:
             json.dump(artifact, f, ensure_ascii=False, indent=2, default=_convert)
+    except (OSError, TypeError, ValueError) as e:
+        print(f"Warning: Failed to save artifact {execution_id}: {e}")
     except Exception as e:
         print(f"Warning: Failed to save artifact {execution_id}: {e}")
 
@@ -94,10 +102,20 @@ def _convert(obj: Any) -> Any:
 def _to_dict(obj: Any) -> Any:
     try:
         return json.loads(json.dumps(obj, default=_convert))
+    except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
+        try:
+            if is_dataclass(obj):
+                return json.loads(json.dumps(asdict(obj), default=_convert))
+        except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
+            return str(obj)
+        except Exception:
+            return str(obj)
     except Exception:
         try:
             if is_dataclass(obj):
                 return json.loads(json.dumps(asdict(obj), default=_convert))
+        except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
+            return str(obj)
         except Exception:
             return str(obj)
 
@@ -107,6 +125,19 @@ async def get_spec():
     try:
         from api_spec_design import generate_openapi_spec  # type: ignore
         return JSONResponse(content=generate_openapi_spec())
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        # Fallback minimal spec
+        return JSONResponse(
+            content={
+                "openapi": "3.0.0",
+                "info": {"title": "NLMandSlideVideoGenerator API", "version": "1.1.0"},
+                "paths": {
+                    "/api/v1/pipeline": {"post": {"summary": "run pipeline", "responses": {"200": {"description": "OK"}}}},
+                    "/api/v1/pipeline/{execution_id}/progress": {"get": {"summary": "progress", "responses": {"200": {"description": "OK"}}}},
+                },
+                "x_warning": f"OpenSpec not available: {str(e)}",
+            }
+        )
     except Exception as e:
         # Fallback minimal spec
         return JSONResponse(
@@ -223,6 +254,8 @@ async def run_connection_tests():
             results["gemini"] = {"success": True, "message": "ok"}
         else:
             results["gemini"] = {"success": False, "message": "no key"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["gemini"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["gemini"] = {"success": False, "message": str(e)}
 
@@ -235,6 +268,8 @@ async def run_connection_tests():
             results["openai"] = {"success": True, "message": "ok"}
         else:
             results["openai"] = {"success": False, "message": "no key"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["openai"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["openai"] = {"success": False, "message": str(e)}
 
@@ -247,6 +282,8 @@ async def run_connection_tests():
             results["youtube"] = {"success": True, "message": "ok"}
         else:
             results["youtube"] = {"success": False, "message": "no key"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["youtube"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["youtube"] = {"success": False, "message": str(e)}
 
@@ -259,6 +296,8 @@ async def run_connection_tests():
             results["elevenlabs"] = {"success": r.status_code == 200, "message": f"HTTP {r.status_code}"}
         else:
             results["elevenlabs"] = {"success": False, "message": "no key"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["elevenlabs"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["elevenlabs"] = {"success": False, "message": str(e)}
 
@@ -271,10 +310,14 @@ async def run_connection_tests():
                 import azure.cognitiveservices.speech as speechsdk  # type: ignore
                 _ = speechsdk.SpeechConfig(subscription=key, region=region)
                 results["azure"] = {"success": True, "message": "ok"}
+            except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+                results["azure"] = {"success": True, "message": f"sdk missing or other: {e}"}
             except Exception as e:
                 results["azure"] = {"success": True, "message": f"sdk missing or other: {e}"}
         else:
             results["azure"] = {"success": False, "message": "no key/region"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["azure"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["azure"] = {"success": False, "message": str(e)}
 
@@ -293,6 +336,8 @@ async def run_connection_tests():
             results["gcp_tts"] = {"success": r.status_code == 200, "message": f"HTTP {r.status_code}"}
         else:
             results["gcp_tts"] = {"success": False, "message": "no key"}
+    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
+        results["gcp_tts"] = {"success": False, "message": str(e)}
     except Exception as e:
         results["gcp_tts"] = {"success": False, "message": str(e)}
 
@@ -362,6 +407,18 @@ async def run_pipeline(payload: Dict[str, Any]):
         }
         return JSONResponse(content=out)
 
+    except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+        RUNS[execution_id] = {
+            "id": execution_id,
+            "status": "failed",
+            "topic": topic,
+            "started_at": None,
+            "finished_at": datetime.now().isoformat(),
+            "error": str(e),
+            "upload_requested": upload,
+        }
+        _save_runs()
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         RUNS[execution_id] = {
             "id": execution_id,
@@ -422,6 +479,8 @@ async def inspect_csv_timeline_api(payload: Dict[str, Any]):
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except (OSError, AttributeError, TypeError, ValueError) as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -537,6 +596,21 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
             out["ymm4_export"] = editing_outputs["ymm4"]
         return JSONResponse(content=out)
 
+    except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+        RUNS[execution_id] = {
+            "id": execution_id,
+            "status": "failed",
+            "topic": topic,
+            "started_at": None,
+            "finished_at": datetime.now().isoformat(),
+            "error": str(e),
+            "upload_requested": upload,
+            "mode": "csv_timeline",
+            "csv_path": csv_path,
+            "audio_dir": audio_dir,
+        }
+        _save_runs()
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         RUNS[execution_id] = {
             "id": execution_id,

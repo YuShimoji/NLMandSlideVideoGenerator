@@ -42,11 +42,25 @@ class AudioGenerator:
         self.audio_quality_threshold = settings.NOTEBOOK_LM_SETTINGS["audio_quality_threshold"]
         self.max_duration = settings.NOTEBOOK_LM_SETTINGS["max_audio_duration"]
         self.output_dir = settings.AUDIO_DIR
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # 代替ワークフロー用: Gemini API キー設定
         self.gemini_api_key = settings.GEMINI_API_KEY if hasattr(settings, 'GEMINI_API_KEY') else None
         self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
-        
+
+    def _tts_is_available(self) -> bool:
+        provider_name = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
+        if provider_name == "none":
+            return False
+
+        api_keys = {
+            "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
+            "openai": getattr(settings, "OPENAI_API_KEY", ""),
+            "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
+            "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
+        }
+        return any(api_keys.values())
+         
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """
         ソース情報から音声を生成
@@ -61,7 +75,7 @@ class AudioGenerator:
         
         try:
             # 代替ワークフロー: Gemini + TTS 統合
-            if self.gemini_integration:
+            if self.gemini_integration and self._tts_is_available():
                 logger.info("Gemini + TTS 代替ワークフローを使用")
                 
                 # Step 1: Geminiでスクリプト生成
@@ -78,35 +92,15 @@ class AudioGenerator:
                 
             else:
                 # フォールバック: プレースホルダー実装
-                logger.warning("Gemini API キーが設定されていないため、プレースホルダー実装を使用")
+                logger.warning("Gemini/TTS 設定が不足しているため、プレースホルダー実装を使用")
                 return await self._generate_placeholder_audio()
-            
+
+        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"音声生成エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
             raise
-    
-    async def _create_notebook_session(self) -> str:
-        """
-        NotebookLMセッションを作成
-        
-        Returns:
-            str: セッションID
-        """
-        logger.debug("NotebookLMセッション作成中...")
-        
-        # TODO: 実際のNotebookLM API実装
-        # 現在はプレースホルダー実装
-        
-        # NOTE: 公式API未提供のため、Gemini + TTS統合で代替実装を検討
-        # 代替ワークフロー:
-        # 1. GeminiIntegrationでスクリプト生成
-        # 2. TTS統合で音声生成
-        # 3. 文字起こしはローカル処理または外部API
-        
-        session_id = f"notebook_session_{int(time.time())}"
-        logger.debug(f"セッション作成完了: {session_id}")
-        
-        return session_id
     
     async def _generate_script_with_gemini(self, sources: List[SourceInfo]) -> 'ScriptInfo':
         """
@@ -162,26 +156,77 @@ class AudioGenerator:
         logger.debug("TTSで音声生成開始")
         
         try:
-            from ..audio.tts_integration import TTSIntegration
-            
-            tts = TTSIntegration()
+            from audio.tts_integration import TTSIntegration, VoiceConfig, TTSProvider
+
+            api_keys = {
+                "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
+                "openai": getattr(settings, "OPENAI_API_KEY", ""),
+                "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
+                "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
+                "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
+            }
+
+            tts = TTSIntegration(api_keys)
             
             # スクリプトを結合
             full_script = "\n".join([
                 f"{segment.get('section', '')}: {segment.get('content', '')}"
                 for segment in script_info.segments
             ])
-            
-            # TTSで音声生成
-            audio_file = await tts.generate_audio(
-                text=full_script,
-                language=script_info.language,
-                output_filename=f"gemini_tts_{int(time.time())}.wav"
+
+            provider_key = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
+            if provider_key == "none" or provider_key not in settings.TTS_SETTINGS:
+                provider_key = "elevenlabs"
+
+            provider_voice = (
+                settings.TTS_SETTINGS.get(provider_key, {}).get("voice_id")
+                or settings.TTS_SETTINGS.get(provider_key, {}).get("voice")
+                or ""
             )
-            
-            logger.debug(f"TTS音声生成完了: {audio_file}")
-            return Path(audio_file)
-            
+            fallback_voice = (
+                settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id")
+                or settings.TTS_SETTINGS.get("azure", {}).get("voice")
+                or settings.TTS_SETTINGS.get("openai", {}).get("voice")
+                or settings.TTS_SETTINGS.get("google_cloud", {}).get("voice")
+                or "default"
+            )
+            voice_id = provider_voice or fallback_voice
+            language = getattr(script_info, "language", None) or "ja"
+
+            voice_config = VoiceConfig(
+                voice_id=voice_id,
+                language=language,
+                gender="female",
+                age_range="adult",
+                accent="japanese" if language == "ja" else "",
+                quality="high",
+            )
+
+            output_path = self.output_dir / f"gemini_tts_{int(time.time())}.mp3"
+
+            try:
+                provider_enum = TTSProvider(provider_key)
+            except ValueError:
+                provider_enum = None
+
+            if provider_enum is not None:
+                status = tts.get_provider_status()
+                if not status.get(provider_enum.value, False):
+                    provider_enum = None
+
+            tts_audio = await tts.generate_audio(
+                text=full_script,
+                output_path=output_path,
+                voice_config=voice_config,
+                provider=provider_enum,
+            )
+
+            logger.debug(f"TTS音声生成完了: {tts_audio.file_path}")
+            return Path(tts_audio.file_path)
+
+        except (ImportError, requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"TTS音声生成失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"TTS音声生成失敗: {e}")
             raise
@@ -350,22 +395,25 @@ class AudioGenerator:
                         f.write(chunk)
             logger.info(f"音声ダウンロード完了: {output_path}")
             return output_path
-        except Exception as e:
+        except (requests.exceptions.RequestException, OSError) as e:
             logger.warning(f"音声ダウンロードに失敗しました。ローカルWAVのフォールバックを生成します: {e}")
-            # 1秒の無音WAVを生成
-            sample_rate = 44100
-            duration_sec = 3
-            n_channels = 1
-            sampwidth = 2  # 16-bit
-            n_frames = sample_rate * duration_sec
-            with wave.open(str(output_path), 'w') as wf:
-                wf.setnchannels(n_channels)
-                wf.setsampwidth(sampwidth)
-                wf.setframerate(sample_rate)
-                silence_frame = struct.pack('<h', 0)
-                wf.writeframes(silence_frame * n_frames)
-            logger.info(f"フォールバック音声生成完了: {output_path}")
-            return output_path
+        except Exception as e:
+            logger.warning(f"音声ダウンロードで予期しない例外が発生しました。ローカルWAVのフォールバックを生成します: {e}")
+
+        # 1秒の無音WAVを生成
+        sample_rate = 44100
+        duration_sec = 3
+        n_channels = 1
+        sampwidth = 2  # 16-bit
+        n_frames = sample_rate * duration_sec
+        with wave.open(str(output_path), 'w') as wf:
+            wf.setnchannels(n_channels)
+            wf.setsampwidth(sampwidth)
+            wf.setframerate(sample_rate)
+            silence_frame = struct.pack('<h', 0)
+            wf.writeframes(silence_frame * n_frames)
+        logger.info(f"フォールバック音声生成完了: {output_path}")
+        return output_path
     
     async def _validate_audio_quality(self, audio_file: Path) -> AudioInfo:
         """
@@ -414,19 +462,29 @@ class AudioGenerator:
             
             logger.debug(f"音声品質検証完了: スコア={quality_score:.2f}")
             return audio_info
-            
+
+        except ImportError as e:
+            logger.error(f"音声品質検証エラー: {str(e)}")
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"音声品質検証エラー: {str(e)}")
         except Exception as e:
             logger.error(f"音声品質検証エラー: {str(e)}")
-            # フォールバック: 基本情報のみ
-            return AudioInfo(
-                file_path=audio_file,
-                duration=0.0,
-                quality_score=0.5,
-                sample_rate=44100,
-                file_size=audio_file.stat().st_size,
-                language=settings.YOUTUBE_SETTINGS.get("default_audio_language", "ja"),
-                channels=2,
-            )
+
+        try:
+            fallback_size = audio_file.stat().st_size
+        except OSError:
+            fallback_size = 0
+
+        # フォールバック: 基本情報のみ
+        return AudioInfo(
+            file_path=audio_file,
+            duration=0.0,
+            quality_score=0.5,
+            sample_rate=44100,
+            file_size=fallback_size,
+            language=settings.YOUTUBE_SETTINGS.get("default_audio_language", "ja"),
+            channels=2,
+        )
     
     def _calculate_audio_quality(self, audio: 'AudioSegment') -> float:
         """

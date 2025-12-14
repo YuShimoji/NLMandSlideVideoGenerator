@@ -22,6 +22,19 @@ SetTitleMatchMode, 2
 global DEBUG_MODE := true
 global LOG_FILE := A_ScriptDir . "\ymm4_template.log"
 
+EnvGet, YMM4_EXE, YMM4_EXE
+if (YMM4_EXE = "") {
+    EnvGet, ProgramFilesDir, ProgramW6432
+    if (ProgramFilesDir = "")
+        EnvGet, ProgramFilesDir, ProgramFiles
+    if (ProgramFilesDir = "")
+        EnvGet, ProgramFilesDir, ProgramFiles(x86)
+    if (ProgramFilesDir != "")
+        YMM4_EXE := ProgramFilesDir . "\YMM4\YMM4.exe"
+    else
+        YMM4_EXE := "YMM4.exe"
+}
+
 ; ============================================
 ; ユーティリティ関数
 ; ============================================
@@ -85,7 +98,7 @@ if (ErrorLevel) {
     ; YMM4 を起動
     Log("YMM4 を起動中...")
     try {
-        Run, "C:\Program Files\YMM4\YMM4.exe" "%projectFile%"
+        Run, "%YMM4_EXE%" "%projectFile%"
     } catch e {
         ShowError("YMM4 の起動に失敗しました: " . e.Message, true)
     }

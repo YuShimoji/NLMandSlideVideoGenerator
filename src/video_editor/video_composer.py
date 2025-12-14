@@ -116,6 +116,9 @@ class VideoComposer:
             logger.success(f"動画合成完了: {video_info.file_path}")
             return video_info
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"動画合成エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"動画合成エラー: {str(e)}")
             raise
@@ -141,7 +144,11 @@ class VideoComposer:
                     if exported:
                         logger.info(f"エクスポート済みスライド画像を使用: {len(exported)}枚 from {images_dir}")
                         return exported
-        except Exception:
+        except (OSError, AttributeError, TypeError, ValueError) as exc:
+            logger.debug(f"エクスポート済みスライド画像の探索に失敗（PPTX抽出へフォールバック）: {exc}")
+            pass
+        except Exception as exc:
+            logger.debug(f"エクスポート済みスライド画像の探索に失敗（PPTX抽出へフォールバック）: {exc}")
             pass
         
         # 2) PPTXからの抽出
@@ -300,6 +307,8 @@ class VideoComposer:
                             if images:
                                 logger.info(f"LibreOffice経由でPPTX抽出完了: {len(images)}枚")
                                 return images
+            except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
+                logger.warning(f"LibreOfficeでのPPTX変換に失敗: {e}")
             except Exception as e:
                 logger.warning(f"LibreOfficeでのPPTX変換に失敗: {e}")
 
@@ -322,7 +331,8 @@ class VideoComposer:
                                 f.write(image_bytes)
                             images.append(image_path)
                             break  # 1スライドにつき1画像
-                        except Exception:
+                        except (AttributeError, OSError, TypeError, ValueError) as exc:
+                            logger.debug(f"python-pptx 画像抽出に失敗（スキップ）: {exc}")
                             continue
 
             if images:
@@ -330,6 +340,8 @@ class VideoComposer:
                 return images
         except ImportError:
             logger.debug("python-pptx がインストールされていません")
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"python-pptxでのPPTX抽出に失敗: {e}")
         except Exception as e:
             logger.warning(f"python-pptxでのPPTX抽出に失敗: {e}")
 
@@ -357,6 +369,8 @@ class VideoComposer:
                         new_name = output_dir / f"slide_{i:03d}.png"
                         img.rename(new_name)
                     images = sorted(output_dir.glob("slide_*.png"))
+            except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
+                logger.warning(f"pdftoppmでのPDF変換に失敗: {e}")
             except Exception as e:
                 logger.warning(f"pdftoppmでのPDF変換に失敗: {e}")
 
@@ -369,6 +383,8 @@ class VideoComposer:
                 ], capture_output=True, timeout=120)
                 if result.returncode == 0:
                     images = sorted(output_dir.glob("slide_*.png"))
+            except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
+                logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
             except Exception as e:
                 logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
 
@@ -427,8 +443,8 @@ class VideoComposer:
                     # dataclass で processed_frames を持つ場合
                     if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
                         img_path = slide_image.processed_frames[0]
-                    # CSVタイムラインなどでは ProcessedSlide.duration に
-                    # 対応するセグメント長が入っているため、それを優先的に使用する
+                    
+                    # 個別スライドのdurationを取得
                     if hasattr(slide_image, "duration"):
                         try:
                             duration_value = float(getattr(slide_image, "duration") or 0.0)
@@ -436,7 +452,11 @@ class VideoComposer:
                                 clip_duration = duration_value
                         except (TypeError, ValueError):
                             pass
-                except Exception:
+                except (AttributeError, TypeError, ValueError) as exc:
+                    logger.debug(f"スライド情報の読み取りに失敗（フォールバック）: {exc}")
+                    img_path = slide_image
+                except Exception as exc:
+                    logger.debug(f"スライド情報の読み取りで予期しない例外（フォールバック）: {exc}")
                     img_path = slide_image
                 
                 # 画像クリップ作成
@@ -446,7 +466,6 @@ class VideoComposer:
                 
                 video_clips.append(img_clip)
             
-            # スライド動画を連結
             video_clip = concatenate_videoclips(video_clips)
             
             # 音声を設定
@@ -488,6 +507,11 @@ class VideoComposer:
         except ImportError:
             logger.error("MoviePyライブラリが見つかりません")
             # フォールバック実装
+            return await self._compose_video_fallback(
+                audio_info, slide_images, subtitle_file, quality, output_path
+            )
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"MoviePy処理で例外が発生したためフォールバックします: {e}")
             return await self._compose_video_fallback(
                 audio_info, slide_images, subtitle_file, quality, output_path
             )
@@ -555,6 +579,9 @@ class VideoComposer:
             # 字幕を動画に合成
             return CompositeVideoClip([video_clip] + subtitle_clips)
 
+        except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"字幕追加に失敗: {str(e)}")
+            return video_clip
         except Exception as e:
             logger.warning(f"字幕追加に失敗: {str(e)}")
             return video_clip
@@ -729,6 +756,21 @@ class VideoComposer:
                     created_at=datetime.now()
                 )
                 
+        except (subprocess.TimeoutExpired, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"FFmpegフォールバック動画合成に失敗: {e}")
+            # 最終フォールバック: 空のファイル
+            with open(output_path, 'wb') as f:
+                f.write(b'')
+            return VideoInfo(
+                file_path=output_path,
+                duration=audio_info.duration,
+                resolution=resolution,
+                fps=fps,
+                file_size=0,
+                has_subtitles=False,
+                has_effects=False,
+                created_at=datetime.now()
+            )
         except Exception as e:
             logger.error(f"FFmpegフォールバック動画合成に失敗: {e}")
             # 最終フォールバック: 空のファイル
@@ -897,6 +939,9 @@ class VideoComposer:
             logger.warning("  macOS: brew install ffmpeg")
             logger.warning("  Linux: sudo apt install ffmpeg")
             return None
+        except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"圧縮エラー: {e}")
+            return None
         except Exception as e:
             logger.error(f"圧縮エラー: {e}")
             return None
@@ -914,7 +959,11 @@ class VideoComposer:
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
                 return float(result.stdout.strip())
-        except Exception:
+        except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as exc:
+            logger.debug(f"ffprobe による動画長取得に失敗（フォールバック=600秒）: {exc}")
+            pass
+        except Exception as exc:
+            logger.debug(f"ffprobe による動画長取得に失敗（フォールバック=600秒）: {exc}")
             pass
         
         # フォールバック: 10分と仮定
@@ -1005,6 +1054,9 @@ class VideoComposer:
             
             return output_path
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"サムネイル生成エラー: {e}")
+            return None
         except Exception as e:
             logger.error(f"サムネイル生成エラー: {e}")
             return None

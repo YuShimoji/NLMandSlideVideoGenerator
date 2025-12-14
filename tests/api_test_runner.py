@@ -4,7 +4,7 @@ API統合テスト実行クラス
 import asyncio
 from pathlib import Path
 
-from config.api_keys import api_keys
+from config.settings import settings
 from .api_test_data import get_test_sources, get_test_slides_content, get_test_text, get_test_voice_config
 
 
@@ -46,8 +46,39 @@ class APIIntegrationTest:
         print("-" * 40)
 
         try:
-            status = api_keys.validate_keys()
-            missing = api_keys.get_missing_keys()
+            status = {
+                "gemini": bool(settings.GEMINI_API_KEY),
+                "openai": bool(settings.OPENAI_API_KEY),
+                "elevenlabs": bool(settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", "")),
+                "azure_speech": bool(settings.TTS_SETTINGS.get("azure", {}).get("key", ""))
+                and bool(settings.TTS_SETTINGS.get("azure", {}).get("region", "")),
+                "youtube": bool(settings.YOUTUBE_CLIENT_ID and settings.YOUTUBE_CLIENT_SECRET),
+                "google_oauth": bool(
+                    getattr(settings, "GOOGLE_CLIENT_SECRETS_FILE", None)
+                    and settings.GOOGLE_CLIENT_SECRETS_FILE.exists()
+                ),
+            }
+
+            missing = []
+            if not settings.GEMINI_API_KEY:
+                missing.append("GEMINI_API_KEY")
+            if not settings.OPENAI_API_KEY:
+                missing.append("OPENAI_API_KEY")
+            if not settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""):
+                missing.append("ELEVENLABS_API_KEY")
+            if not settings.TTS_SETTINGS.get("azure", {}).get("key", ""):
+                missing.append("AZURE_SPEECH_KEY")
+            if not settings.TTS_SETTINGS.get("azure", {}).get("region", ""):
+                missing.append("AZURE_SPEECH_REGION")
+            if not settings.YOUTUBE_CLIENT_ID:
+                missing.append("YOUTUBE_CLIENT_ID")
+            if not settings.YOUTUBE_CLIENT_SECRET:
+                missing.append("YOUTUBE_CLIENT_SECRET")
+            if not (
+                getattr(settings, "GOOGLE_CLIENT_SECRETS_FILE", None)
+                and settings.GOOGLE_CLIENT_SECRETS_FILE.exists()
+            ):
+                missing.append("GOOGLE_CLIENT_SECRETS_FILE")
 
             print("📊 API認証状況:")
             for service, available in status.items():
@@ -78,12 +109,12 @@ class APIIntegrationTest:
         try:
             from notebook_lm.gemini_integration import GeminiIntegration
 
-            if not api_keys.GEMINI_API_KEY:
+            if not settings.GEMINI_API_KEY:
                 print("⚠️ Gemini APIキーが設定されていません")
                 self.test_results["gemini"] = {"status": "skipped", "reason": "no_api_key"}
                 return
 
-            gemini = GeminiIntegration(api_keys.GEMINI_API_KEY)
+            gemini = GeminiIntegration(settings.GEMINI_API_KEY)
 
             test_sources = get_test_sources()
 
@@ -127,10 +158,11 @@ class APIIntegrationTest:
 
             # API キー設定
             tts_keys = {
-                "elevenlabs": api_keys.ELEVENLABS_API_KEY,
-                "openai": api_keys.OPENAI_API_KEY,
-                "azure_speech": api_keys.AZURE_SPEECH_KEY,
-                "azure_region": api_keys.AZURE_SPEECH_REGION
+                "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
+                "openai": settings.OPENAI_API_KEY,
+                "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
+                "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
+                "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
             }
 
             tts = TTSIntegration(tts_keys)
@@ -188,7 +220,7 @@ class APIIntegrationTest:
         try:
             from youtube.uploader import YouTubeUploader
 
-            if not (api_keys.YOUTUBE_CLIENT_ID and api_keys.YOUTUBE_CLIENT_SECRET):
+            if not (settings.YOUTUBE_CLIENT_ID and settings.YOUTUBE_CLIENT_SECRET):
                 print("⚠️ YouTube API認証情報が設定されていません")
                 self.test_results["youtube"] = {"status": "skipped", "reason": "no_credentials"}
                 return
@@ -235,9 +267,12 @@ class APIIntegrationTest:
         try:
             from slides.slide_generator import SlideGenerator
 
-            if not (api_keys.GOOGLE_CLIENT_ID and api_keys.GOOGLE_CLIENT_SECRET):
-                print("⚠️ Google Slides API認証情報が設定されていません")
-                self.test_results["slides"] = {"status": "skipped", "reason": "no_credentials"}
+            if not (
+                getattr(settings, "GOOGLE_CLIENT_SECRETS_FILE", None)
+                and settings.GOOGLE_CLIENT_SECRETS_FILE.exists()
+            ):
+                print("⚠️ Google Slides API認証ファイルが設定されていません")
+                self.test_results["slides"] = {"status": "skipped", "reason": "no_credentials_file"}
                 return
 
             generator = SlideGenerator()

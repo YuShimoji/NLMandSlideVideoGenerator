@@ -54,6 +54,8 @@ class MetadataGenerator:
                         template_name = template_file.stem
                         templates[template_name] = template_data
                         logger.info(f"メタデータテンプレート読み込み: {template_name}")
+                except (OSError, json.JSONDecodeError, UnicodeError) as e:
+                    logger.warning(f"テンプレート読み込みエラー {template_file}: {e}")
                 except Exception as e:
                     logger.warning(f"テンプレート読み込みエラー {template_file}: {e}")
         
@@ -116,6 +118,9 @@ class MetadataGenerator:
             logger.success("YouTubeメタデータ生成完了")
             return metadata
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"メタデータ生成エラー: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"メタデータ生成エラー: {str(e)}")
             raise

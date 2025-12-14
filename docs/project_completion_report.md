@@ -180,13 +180,13 @@
    - API キー取得
    - 利用制限確認
 
-3. **認証ファイル配置**
-   ```
-   config/
-   ├── google_credentials.json
-   ├── youtube_credentials.json
-   └── api_keys.py
-   ```
+3. **認証ファイル配置（例）**
+    ```
+    .env
+    google_client_secret.json
+    token.json
+    ```
+    ※ パスは `GOOGLE_CLIENT_SECRETS_FILE` / `GOOGLE_OAUTH_TOKEN_FILE` で変更できます
 
 ### 🧪 実環境テスト（優先度: 高）
 1. **API連携テスト**

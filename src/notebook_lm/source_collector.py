@@ -119,6 +119,12 @@ class SourceCollector:
                 source_type=source_type
             )
             
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"URL処理失敗: {url} - {str(e)}")
+            return None
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"URL処理失敗: {url} - {str(e)}")
+            return None
         except Exception as e:
             logger.warning(f"URL処理失敗: {url} - {str(e)}")
             return None

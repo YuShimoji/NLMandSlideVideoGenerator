@@ -14,11 +14,18 @@ YMM4 のタイムライン自動構築を行う AutoHotkey スクリプトを生
 
 from __future__ import annotations
 
+import os
 import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core.utils.tool_detection import find_autohotkey_exe, find_ymm4_exe
 
 
 # AutoHotkey スクリプトのコア部分
@@ -358,6 +365,22 @@ def generate_ahk_script(
         生成されたAutoHotkeyスクリプトの内容
     """
     config = config or {}
+
+    if not config.get("ymm4_exe"):
+        detected_ymm4 = find_ymm4_exe()
+        if detected_ymm4:
+            config["ymm4_exe"] = str(detected_ymm4)
+        else:
+            program_files = (
+                os.getenv("ProgramW6432")
+                or os.getenv("ProgramFiles")
+                or os.getenv("ProgramFiles(x86)")
+                or ""
+            ).strip()
+            if program_files:
+                config["ymm4_exe"] = str(Path(program_files) / "YMM4" / "YMM4.exe")
+            else:
+                config["ymm4_exe"] = "YMM4.exe"
     
     # 設定値
     project_file = project_dir / "project.y4mmp"
@@ -403,7 +426,7 @@ def generate_ahk_script(
         project_dir=str(project_dir).replace("\\", "\\\\"),
         debug_mode="true" if config.get("debug", True) else "false",
         log_file=str(log_file).replace("\\", "\\\\"),
-        ymm4_exe=config.get("ymm4_exe", "C:\\\\Program Files\\\\YMM4\\\\YMM4.exe"),
+        ymm4_exe=str(config.get("ymm4_exe") or "").replace("\\", "\\\\"),
         project_file=str(project_file).replace("\\", "\\\\"),
         window_timeout=config.get("window_timeout", 30),
         operation_delay=config.get("operation_delay", 200),
@@ -428,13 +451,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="YMM4 AutoHotkeyスクリプト生成",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog="""\
 使用例:
   python generate_ymm4_ahk.py /path/to/ymm4_project
   python generate_ymm4_ahk.py /path/to/ymm4_project --debug --timeout 60
   
 設定オプション:
-  --ymm4-exe: YMM4実行ファイルパス（デフォルト: C:\\Program Files\\YMM4\\YMM4.exe）
+  --ymm4-exe: YMM4実行ファイルパス（未指定時は自動検出。例: %ProgramFiles%\\YMM4\\YMM4.exe）
   --timeout: ウィンドウ待機タイムアウト秒数（デフォルト: 30）
   --delay: 操作間の遅延ミリ秒（デフォルト: 200）
   --retries: 最大リトライ回数（デフォルト: 3）
@@ -467,6 +490,8 @@ def main():
             with open(slides_payload_path, 'r', encoding='utf-8') as f:
                 slides_payload = json.load(f)
             print(f"✓ slides_payload.json を読み込みました")
+        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+            print(f"⚠ slides_payload.json の読み込みに失敗: {e}")
         except Exception as e:
             print(f"⚠ slides_payload.json の読み込みに失敗: {e}")
     else:
@@ -479,6 +504,8 @@ def main():
             with open(timeline_plan_path, 'r', encoding='utf-8') as f:
                 timeline_plan = json.load(f)
             print(f"✓ timeline_plan.json を読み込みました")
+        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+            print(f"⚠ timeline_plan.json の読み込みに失敗: {e}")
         except Exception as e:
             print(f"⚠ timeline_plan.json の読み込みに失敗: {e}")
     else:
@@ -503,7 +530,10 @@ def main():
 
     print(f"\n✓ AutoHotkeyスクリプトを生成しました: {ahk_path}")
     print(f"\n実行コマンド:")
-    print(f"  AutoHotkey.exe \"{ahk_path}\"")
+
+    detected_ahk = find_autohotkey_exe()
+    ahk_exe_display = str(detected_ahk) if detected_ahk else "AutoHotkey.exe"
+    print(f"  {ahk_exe_display} \"{ahk_path}\"")
     
     # セグメント情報の表示
     segments = slides_payload.get("segments", [])
@@ -519,10 +549,16 @@ def main():
         import subprocess
         print(f"\nAutoHotkeyスクリプトを実行中...")
         try:
-            subprocess.Popen(["AutoHotkey.exe", str(ahk_path)])
+            ahk_exe = find_autohotkey_exe()
+            if not ahk_exe:
+                print("✗ AutoHotkey.exe が見つかりません。PATH に追加してください。")
+                return
+            subprocess.Popen([str(ahk_exe), str(ahk_path)])
             print("✓ 実行を開始しました")
         except FileNotFoundError:
             print("✗ AutoHotkey.exe が見つかりません。PATH に追加してください。")
+        except (OSError, ValueError, TypeError) as e:
+            print(f"✗ 実行エラー: {e}")
         except Exception as e:
             print(f"✗ 実行エラー: {e}")
 

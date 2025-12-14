@@ -137,6 +137,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         srt_path = asyncio.run(run_demo(csv_path, audio_dir, output_dir=output_dir, style=args.style))
         print(f"Generated subtitles (SRT): {srt_path}")
         return 0
+    except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError) as e:
+        logger.error(f"字幕デモ実行中にエラーが発生しました: {e}")
+        return 1
     except Exception as e:
         logger.error(f"字幕デモ実行中にエラーが発生しました: {e}")
         return 1

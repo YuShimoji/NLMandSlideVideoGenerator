@@ -67,6 +67,13 @@ class TikTokPlatformAdapter(IPlatformAdapter):
             logger.info("TikTok 投稿完了")
             return result
 
+        except (FileNotFoundError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"TikTok 投稿エラー: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'platform': 'tiktok'
+            }
         except Exception as e:
             logger.error(f"TikTok 投稿エラー: {e}")
             return {

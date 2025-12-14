@@ -47,6 +47,12 @@ class GoogleSlidesClient:
             from googleapiclient.discovery import build
             self._slides_service = build("slides", "v1", credentials=creds, cache_discovery=False)
             return self._slides_service
+        except ImportError as e:
+            logger.warning(f"Slides API クライアント初期化失敗: {e}")
+            return None
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"Slides API クライアント初期化失敗: {e}")
+            return None
         except Exception as e:
             logger.warning(f"Slides API クライアント初期化失敗: {e}")
             return None
@@ -61,6 +67,12 @@ class GoogleSlidesClient:
             from googleapiclient.discovery import build
             self._drive_service = build("drive", "v3", credentials=creds, cache_discovery=False)
             return self._drive_service
+        except ImportError as e:
+            logger.warning(f"Drive API クライアント初期化失敗: {e}")
+            return None
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"Drive API クライアント初期化失敗: {e}")
+            return None
         except Exception as e:
             logger.warning(f"Drive API クライアント初期化失敗: {e}")
             return None
@@ -82,6 +94,9 @@ class GoogleSlidesClient:
                 pres_id = pres.get("presentationId") or pres.get("presentationId")
             logger.success(f"プレゼン作成: {pres_id}")
             return pres.get("presentationId") or pres.get("presentationId") or pres.get("presentationId")
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"プレゼン作成失敗: {e}")
+            return None
         except Exception as e:
             logger.warning(f"プレゼン作成失敗: {e}")
             return None
@@ -121,6 +136,9 @@ class GoogleSlidesClient:
             ).execute()
             logger.success(f"Slides API で {len(slides)} 枚のスライドを作成しました")
             return True
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"スライド追加失敗: {e}")
+            return False
         except Exception as e:
             logger.warning(f"スライド追加失敗: {e}")
             return False
@@ -157,6 +175,9 @@ class GoogleSlidesClient:
                 saved.append(img_path)
             logger.success(f"スライド画像保存: {len(saved)}枚 -> {out_dir}")
             return saved
+        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"サムネイル取得失敗: {e}")
+            return []
         except Exception as e:
             logger.warning(f"サムネイル取得失敗: {e}")
             return []
@@ -179,6 +200,9 @@ class GoogleSlidesClient:
                 status, done = downloader.next_chunk()
             logger.success(f"PPTXエクスポート完了: {out_path}")
             return True
+        except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"PPTXエクスポート失敗: {e}")
+            return False
         except Exception as e:
             logger.warning(f"PPTXエクスポート失敗: {e}")
             return False

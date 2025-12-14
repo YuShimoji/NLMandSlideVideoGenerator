@@ -228,12 +228,18 @@ def run_batch(
     if speaker_map_path is not None:
         try:
             speaker_voice_map = _load_speaker_voice_map(speaker_map_path)
+        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
+            logger.error(f"話者マッピング JSON の読み込みに失敗しました: {e}")
+            return 1
         except Exception as e:
             logger.error(f"話者マッピング JSON の読み込みに失敗しました: {e}")
             return 1
 
     try:
         exe_path = _get_engine_executable(engine)
+    except (FileNotFoundError, OSError, ValueError, RuntimeError, TypeError) as e:
+        logger.error(f"TTS 実行ファイルの取得に失敗しました: {e}")
+        return 1
     except Exception as e:
         logger.error(f"TTS 実行ファイルの取得に失敗しました: {e}")
         return 1
@@ -267,7 +273,10 @@ def run_batch(
         logger.info(f"[TTS] 行 {index} を合成: speaker={speaker}, out={output_path}")
         try:
             subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
+        except subprocess.SubprocessError as e:
+            logger.error(f"TTS 実行に失敗しました (row={index}): {e}")
+            return 1
+        except Exception as e:
             logger.error(f"TTS 実行に失敗しました (row={index}): {e}")
             return 1
 
@@ -313,6 +322,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             dry_run=args.dry_run,
             speaker_map_path=speaker_map_path,
         )
+    except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError, subprocess.SubprocessError) as e:  # pragma: no cover
+        logger.error(f"TTS バッチ実行中に予期せぬエラーが発生しました: {e}")
+        return 1
     except Exception as e:  # pragma: no cover
         logger.error(f"TTS バッチ実行中に予期せぬエラーが発生しました: {e}")
         return 1

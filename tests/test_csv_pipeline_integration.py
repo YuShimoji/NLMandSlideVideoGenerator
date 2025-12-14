@@ -51,9 +51,9 @@ def ensure_sample_audio():
                     wav_file.setsampwidth(2)
                     wav_file.setframerate(sample_rate)
                     
-                    # 無音データ
-                    for _ in range(num_samples):
-                        wav_file.writeframes(struct.pack('<h', 0))
+                    # 無音データ（まとめて書き込んで高速化）
+                    silent_frame = struct.pack('<h', 0)
+                    wav_file.writeframes(silent_frame * num_samples)
         except Exception as e:
             pytest.skip(f"サンプル音声生成に失敗: {e}")
     
@@ -98,6 +98,7 @@ class TestCSVPipelineIntegration:
             assert text.strip(), f"行{i+1}: テキストが空です"
     
     @pytest.mark.asyncio
+    @pytest.mark.integration
     async def test_pipeline_initialization(self, ensure_sample_audio):
         """パイプラインの初期化が成功することを確認"""
         try:
@@ -112,6 +113,8 @@ class TestCSVPipelineIntegration:
             pytest.fail(f"パイプライン初期化に失敗: {e}")
     
     @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.slow
     async def test_csv_timeline_execution(self, ensure_sample_audio, temp_output_dir):
         """CSVタイムラインパイプラインの実行テスト"""
         try:

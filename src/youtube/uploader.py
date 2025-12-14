@@ -59,6 +59,9 @@ class YouTubeUploader:
             logger.info("YouTube API認証成功")
             return True
             
+        except (AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
+            logger.error(f"YouTube API認証失敗: {e}")
+            return False
         except Exception as e:
             logger.error(f"YouTube API認証失敗: {e}")
             return False
@@ -119,6 +122,9 @@ class YouTubeUploader:
             logger.info(f"動画アップロード完了: {upload_result.video_id}")
             return upload_result
             
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.error(f"動画アップロード失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"動画アップロード失敗: {e}")
             raise
@@ -206,6 +212,9 @@ class YouTubeUploader:
             logger.info("サムネイルアップロード完了")
             return True
             
+        except (AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
+            logger.error(f"サムネイルアップロード失敗: {e}")
+            return False
         except Exception as e:
             logger.error(f"サムネイルアップロード失敗: {e}")
             return False
@@ -230,6 +239,9 @@ class YouTubeUploader:
             
             return status
             
+        except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
+            logger.error(f"アップロード状況取得失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"アップロード状況取得失敗: {e}")
             raise
@@ -252,6 +264,9 @@ class YouTubeUploader:
             logger.info("メタデータ更新完了")
             return True
             
+        except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
+            logger.error(f"メタデータ更新失敗: {e}")
+            return False
         except Exception as e:
             logger.error(f"メタデータ更新失敗: {e}")
             return False
@@ -267,6 +282,9 @@ class YouTubeUploader:
             logger.info("動画削除完了")
             return True
             
+        except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
+            logger.error(f"動画削除失敗: {e}")
+            return False
         except Exception as e:
             logger.error(f"動画削除失敗: {e}")
             return False
@@ -291,6 +309,9 @@ class YouTubeUploader:
             
             return channel_info
             
+        except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
+            logger.error(f"チャンネル情報取得失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"チャンネル情報取得失敗: {e}")
             raise
@@ -348,6 +369,9 @@ class YouTubeUploader:
                 "total": len(video_metadata_pairs)
             }
             
+        except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
+            logger.error(f"一括アップロード失敗: {e}")
+            raise
         except Exception as e:
             logger.error(f"一括アップロード失敗: {e}")
             raise

@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any, Callable, Set
 from datetime import datetime
 
 from src.core.pipeline import build_default_pipeline
-
+from src.core.utils.logger import logger
 
 # アクティブなジョブを追跡
 _active_jobs: Dict[str, asyncio.Task] = {}
@@ -81,7 +81,11 @@ async def run_pipeline_async(
         try:
             from core.persistence import db_manager
             db_manager.update_generation_progress(job_id, progress, stage, message)
-        except Exception:
+        except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as exc:
+            logger.debug(f"DB更新失敗は無視: {exc}")
+            pass  # DB更新失敗は無視
+        except Exception as exc:
+            logger.debug(f"DB更新失敗は無視: {exc}")
             pass  # DB更新失敗は無視
         
         # 元のコールバックも呼び出し
@@ -129,6 +133,15 @@ async def run_pipeline_async(
             "cancelled_at": datetime.now().isoformat(),
         }
         raise
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
+        _job_progress[job_id] = {
+            "status": "failed",
+            "progress": _job_progress.get(job_id, {}).get("progress", 0.0),
+            "stage": "error",
+            "message": str(e),
+            "failed_at": datetime.now().isoformat(),
+        }
+        raise Exception(f"パイプライン実行失敗: {str(e)}")
     except Exception as e:
         _job_progress[job_id] = {
             "status": "failed",
@@ -193,7 +206,12 @@ async def run_csv_pipeline_async(
             from core.persistence import db_manager
 
             db_manager.update_generation_progress(job_id, progress, stage, message)
-        except Exception:
+        except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as exc:
+            logger.debug(f"DB更新失敗（進捗更新は無視して継続）: {exc}")
+            # 進捗更新に失敗してもパイプライン自体は継続させる
+            pass
+        except Exception as exc:
+            logger.debug(f"DB更新失敗（進捗更新は無視して継続）: {exc}")
             # 進捗更新に失敗してもパイプライン自体は継続させる
             pass
 
@@ -243,6 +261,15 @@ async def run_csv_pipeline_async(
             "cancelled_at": datetime.now().isoformat(),
         }
         raise
+    except (OSError, ValueError, TypeError, RuntimeError) as e:
+        _job_progress[job_id] = {
+            "status": "failed",
+            "progress": _job_progress.get(job_id, {}).get("progress", 0.0),
+            "stage": "error",
+            "message": str(e),
+            "failed_at": datetime.now().isoformat(),
+        }
+        raise Exception(f"CSVタイムラインパイプライン実行失敗: {str(e)}")
     except Exception as e:
         _job_progress[job_id] = {
             "status": "failed",
@@ -303,7 +330,11 @@ async def get_pipeline_status(job_id: str) -> Dict[str, Any]:
                 "is_active": False,
             }
         return {"status": "not_found", "job_id": job_id, "is_active": False}
+    except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
+        logger.debug(f"ジョブ状態取得に失敗（unknownで返却）: {e}")
+        return {"status": "unknown", "job_id": job_id, "error": str(e), "is_active": False}
     except Exception as e:
+        logger.debug(f"ジョブ状態取得で予期しない例外（unknownで返却）: {e}")
         return {"status": "unknown", "job_id": job_id, "error": str(e), "is_active": False}
 
 
@@ -324,7 +355,11 @@ def list_recent_jobs(limit: int = 20) -> list:
         from core.persistence import db_manager
         records = db_manager.get_generation_history(limit=limit)
         return records
-    except Exception:
+    except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as exc:
+        logger.debug(f"ジョブ履歴取得に失敗（空リストで継続）: {exc}")
+        return []
+    except Exception as exc:
+        logger.debug(f"ジョブ履歴取得に失敗（空リストで継続）: {exc}")
         return []
 
 
@@ -345,24 +380,28 @@ async def cancel_pipeline(job_id: str) -> bool:
     try:
         # キャンセルフラグを設定
         _cancellation_flags[job_id] = True
-        
+
         # アクティブなタスクがあればキャンセル
         if job_id in _active_jobs:
             task = _active_jobs[job_id]
             if not task.done():
                 task.cancel()
-        
+
         # 進捗情報を更新
         if job_id in _job_progress:
             _job_progress[job_id]["status"] = "cancelling"
             _job_progress[job_id]["message"] = "キャンセル処理中..."
-        
+
         # DBステータスを更新
         from core.persistence import db_manager
         db_manager.update_generation_status(job_id, "cancelled", "User requested cancellation")
-        
+
         return True
-    except Exception:
+    except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as exc:
+        logger.debug(f"キャンセル処理に失敗: {exc}")
+        return False
+    except Exception as exc:
+        logger.debug(f"キャンセル処理に失敗: {exc}")
         return False
 
 

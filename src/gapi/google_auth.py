@@ -34,14 +34,23 @@ class GoogleAuthHelper:
     def get_credentials(self):  # -> Optional[Credentials]
         try:
             from google.oauth2.credentials import Credentials
-        except Exception:
+        except ImportError:
             logger.warning("google-auth ライブラリが見つからないため、認証をスキップします")
             return None
-
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"google-auth の読み込みに失敗したため、認証をスキップします: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"google-auth の読み込みに失敗したため、認証をスキップします: {e}")
+            return None
+ 
         creds = None
         if self.token_file.exists():
             try:
                 creds = Credentials.from_authorized_user_file(str(self.token_file), self.scopes)
+            except (OSError, AttributeError, TypeError, ValueError, KeyError, RuntimeError) as e:
+                logger.warning(f"トークンファイルの読み込みに失敗しました: {e}")
+                creds = None
             except Exception as e:
                 logger.warning(f"トークンファイルの読み込みに失敗しました: {e}")
                 creds = None
@@ -61,5 +70,7 @@ class GoogleAuthHelper:
             self.token_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.token_file, "w", encoding="utf-8") as f:
                 f.write(creds.to_json())
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"トークンの保存に失敗: {e}")
         except Exception as e:
             logger.warning(f"トークンの保存に失敗: {e}")
