@@ -28,8 +28,8 @@ Google Slides API を使用するための設定手順です。
 1. 作成した OAuth クライアント ID の右側の「ダウンロード」アイコンをクリック
 2. ダウンロードしたファイルを以下の場所に配置:
 
-```
-config/client_secrets.json
+```text
+google_client_secret.json
 ```
 
 ## 5. 初回認証（トークン取得）
@@ -41,7 +41,7 @@ python scripts/google_auth_setup.py
 ```
 
 ブラウザが開き、Googleアカウントでの認証を求められます。
-認証完了後、トークンが `config/token.json` に保存されます。
+認証完了後、トークンが `token.json` に保存されます。
 
 ## 6. 認証状態の確認
 
@@ -75,10 +75,12 @@ pip install google-auth google-auth-oauthlib google-api-python-client
 
 | ファイル | パス | 説明 |
 |---------|------|------|
-| クライアントシークレット | `config/client_secrets.json` | Google Cloud Console からダウンロード |
-| OAuthトークン | `config/token.json` | 初回認証後に自動生成 |
+| クライアントシークレット | `google_client_secret.json` | Google Cloud Console からダウンロード |
+| OAuthトークン | `token.json` | 初回認証後に自動生成 |
+
+※ 既定パスは `.env` の `GOOGLE_CLIENT_SECRETS_FILE` / `GOOGLE_OAUTH_TOKEN_FILE` で変更できます。
 
 ## セキュリティ注意事項
 
-- `client_secrets.json` と `token.json` は `.gitignore` に追加してください
+- `google_client_secret.json` と `token.json` は `.gitignore` に追加してください
 - これらのファイルをリポジトリにコミットしないでください
