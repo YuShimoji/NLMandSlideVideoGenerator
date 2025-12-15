@@ -11,15 +11,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from config.settings import settings
-
-
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 
 class GoogleAuthHelper:
@@ -54,6 +46,22 @@ class GoogleAuthHelper:
             except Exception as e:
                 logger.warning(f"トークンファイルの読み込みに失敗しました: {e}")
                 creds = None
+
+        if creds and getattr(creds, "expired", False) and getattr(creds, "refresh_token", None):
+            try:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+                self.save_token(creds)
+            except ImportError:
+                logger.warning("google-auth の refresh 依存が見つからないため、トークン更新をスキップします")
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                logger.warning(f"トークン更新に失敗しました: {e}")
+            except Exception as e:
+                logger.warning(f"トークン更新に失敗しました: {e}")
+
+        if creds and not getattr(creds, "valid", True):
+            logger.warning("OAuth トークンが無効なため、認証をスキップします")
+            creds = None
 
         # 新規フローは行わない（非対話環境を想定）。
         if not creds:

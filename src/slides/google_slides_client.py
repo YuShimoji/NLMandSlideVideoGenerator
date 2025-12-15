@@ -19,16 +19,7 @@ import requests
 
 from config.settings import settings
 from gapi.google_auth import GoogleAuthHelper
-
-
-class SimpleLogger:
-    def info(self, msg): print(f"[INFO] {msg}")
-    def success(self, msg): print(f"[SUCCESS] {msg}")
-    def warning(self, msg): print(f"[WARNING] {msg}")
-    def error(self, msg): print(f"[ERROR] {msg}")
-
-
-logger = SimpleLogger()
+from core.utils.logger import logger
 
 
 class GoogleSlidesClient:
@@ -78,7 +69,21 @@ class GoogleSlidesClient:
             return None
 
     def is_available(self) -> bool:
-        return self._get_slides_service() is not None
+        creds = self.auth.get_credentials()
+        if not creds:
+            return False
+        try:
+            import googleapiclient.discovery  # noqa: F401
+            return True
+        except ImportError as e:
+            logger.warning(f"google-api-python-client が見つからないため Slides API を使用できません: {e}")
+            return False
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.warning(f"Slides API 利用可否チェックに失敗: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"Slides API 利用可否チェックに失敗: {e}")
+            return False
 
     def create_presentation(self, title: str) -> Optional[str]:
         service = self._get_slides_service()
@@ -88,12 +93,9 @@ class GoogleSlidesClient:
         try:
             body = {"title": title}
             pres = service.presentations().create(body=body).execute()
-            pres_id = pres.get("presentationId") or pres.get("presentationId") or pres.get("presentationId")
-            if not pres_id:
-                # 一部環境でキー名が異なる場合
-                pres_id = pres.get("presentationId") or pres.get("presentationId")
+            pres_id = pres.get("presentationId")
             logger.success(f"プレゼン作成: {pres_id}")
-            return pres.get("presentationId") or pres.get("presentationId") or pres.get("presentationId")
+            return pres_id
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.warning(f"プレゼン作成失敗: {e}")
             return None
