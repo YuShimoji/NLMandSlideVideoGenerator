@@ -364,19 +364,30 @@ class ModularVideoPipeline:
                 progress_callback("完了", 1.0, "パイプライン実行完了")
 
             # 成功時の更新
-            db_manager.update_generation_status(job_id, 'completed')
-            db_manager.save_generation_record({
-                'job_id': job_id,
-                'topic': topic,
-                'status': 'completed',
-                'completed_at': datetime.now(),
-                'artifacts': {
-                    'youtube_url': youtube_url,
-                    'video_file': str(artifacts.video.file_path) if artifacts.video else None,
-                    'audio_file': str(artifacts.audio.file_path) if artifacts.audio else None,
-                    'script_file': None,
-                }
-            })
+            try:
+                db_manager.update_generation_status(job_id, 'completed')
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                logger.debug(f"DB更新失敗（完了ステータス、処理は継続）: {e}")
+            except Exception as e:
+                logger.debug(f"DB更新失敗（完了ステータス、処理は継続）: {e}")
+
+            try:
+                db_manager.save_generation_record({
+                    'job_id': job_id,
+                    'topic': topic,
+                    'status': 'completed',
+                    'completed_at': datetime.now(),
+                    'artifacts': {
+                        'youtube_url': youtube_url,
+                        'video_file': str(artifacts.video.file_path) if artifacts.video else None,
+                        'audio_file': str(artifacts.audio.file_path) if artifacts.audio else None,
+                        'script_file': None,
+                    }
+                })
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                logger.debug(f"DB保存失敗（完了レコード、処理は継続）: {e}")
+            except Exception as e:
+                logger.debug(f"DB保存失敗（完了レコード、処理は継続）: {e}")
 
             return {
                 "success": True,
@@ -654,9 +665,23 @@ class ModularVideoPipeline:
 
         import wave
 
+        def _wav_sort_key(path: Path) -> tuple[int, int, str]:
+            stem = path.stem
+            if stem.isdigit():
+                return (0, int(stem), stem)
+            head_digits = ""
+            for ch in stem:
+                if ch.isdigit():
+                    head_digits += ch
+                else:
+                    break
+            if head_digits:
+                return (0, int(head_digits), stem)
+            return (1, 0, stem)
+
         def _find_audio_files(directory: Path) -> list[Path]:
             # WAV専用（仕様: 行ごとに 001.wav, 002.wav, ... を期待）
-            files = sorted(directory.glob("*.wav"))
+            files = sorted(directory.glob("*.wav"), key=_wav_sort_key)
             logger.info(f"WAV検索結果: {len(files)}個見つかりました (dir={directory})")
             for f in files[:10]:  # 最初の10個を表示
                 logger.info(f"  - {f.name}")
@@ -723,25 +748,32 @@ class ModularVideoPipeline:
             raise FileNotFoundError(f"CSVファイルが見つかりません: {csv_path}")
         if not audio_dir.exists():
             raise FileNotFoundError(f"音声ディレクトリが見つかりません: {audio_dir}")
+        if not audio_dir.is_dir():
+            raise NotADirectoryError(f"音声ディレクトリではありません: {audio_dir}")
 
         topic = topic or csv_path.stem
 
-        db_manager.save_generation_record({
-            'job_id': job_id,
-            'topic': topic,
-            'status': 'running',
-            'created_at': datetime.now(),
-            'metadata': {
-                'quality': quality,
-                'private_upload': private_upload,
-                'upload': upload,
-                'stage_modes': stage_modes or {},
-                'user_preferences': user_preferences or {},
-                'mode': 'csv_timeline',
-                'csv_path': str(csv_path),
-                'audio_dir': str(audio_dir),
-            }
-        })
+        try:
+            db_manager.save_generation_record({
+                'job_id': job_id,
+                'topic': topic,
+                'status': 'running',
+                'created_at': datetime.now(),
+                'metadata': {
+                    'quality': quality,
+                    'private_upload': private_upload,
+                    'upload': upload,
+                    'stage_modes': stage_modes or {},
+                    'user_preferences': user_preferences or {},
+                    'mode': 'csv_timeline',
+                    'csv_path': str(csv_path),
+                    'audio_dir': str(audio_dir),
+                }
+            })
+        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+            logger.debug(f"DB保存失敗（開始レコード、処理は継続）: {e}")
+        except Exception as e:
+            logger.debug(f"DB保存失敗（開始レコード、処理は継続）: {e}")
 
         logger.info(f"CSVタイムラインパイプライン開始: {csv_path} (Job ID: {job_id})")
         create_directories()
@@ -775,7 +807,7 @@ class ModularVideoPipeline:
             loader = CsvTranscriptLoader()
             transcript = await loader.load_from_csv(csv_path, audio_segments=audio_segments)
 
-            combined_audio_path = settings.AUDIO_DIR / f"{csv_path.stem}_combined.wav"
+            combined_audio_path = settings.AUDIO_DIR / f"{csv_path.stem}_{job_id}_combined.wav"
             total_duration = _combine_wav_files(audio_files, combined_audio_path)
             audio_info = AudioInfo(
                 file_path=combined_audio_path,
@@ -982,17 +1014,32 @@ class ModularVideoPipeline:
 
         except PipelineError as e:
             logger.error(f"Pipeline error (CSV Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
+            try:
+                db_manager.update_generation_status(job_id, 'failed', str(e))
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
+            except Exception as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
             raise
 
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"Unexpected error (CSV Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
+            try:
+                db_manager.update_generation_status(job_id, 'failed', str(e))
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
+            except Exception as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
             raise PipelineError(str(e), recoverable=False)
 
         except Exception as e:
             logger.error(f"Unexpected error (CSV Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
+            try:
+                db_manager.update_generation_status(job_id, 'failed', str(e))
+            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
+            except Exception as db_e:
+                logger.debug(f"DB更新失敗（失敗ステータス、処理は継続）: {db_e}")
             raise PipelineError(str(e), recoverable=False)
 
     @retry_on_failure()
