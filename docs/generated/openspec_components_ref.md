@@ -24,9 +24,10 @@ async def render(
 - YMM4EditingBackend
 
 **Quality Options**:
+- 480p
 - 720p
 - 1080p
-- 4k
+
 
 **Validation Rules**:
 - timeline_plan must be valid structure

@@ -31,7 +31,7 @@ pipeline_request_schema = Schema(
         },
         "quality": {
             "type": "string",
-            "enum": ["720p", "1080p", "4K"],
+            "enum": ["480p", "720p", "1080p"],
             "default": "1080p",
             "description": "動画品質設定"
         },

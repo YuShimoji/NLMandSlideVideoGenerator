@@ -57,7 +57,7 @@ def main():
     parser = argparse.ArgumentParser(description="モジュラーパイプライン デモ")
     parser.add_argument("--topic", required=False, default="AI技術の最新動向", help="トピック")
     parser.add_argument("--urls", nargs="*", help="ソースURL")
-    parser.add_argument("--quality", choices=["720p", "1080p", "4k"], default="1080p")
+    parser.add_argument("--quality", choices=["1080p", "720p", "480p"], default="1080p")
     parser.add_argument("--upload", action="store_true", help="YouTubeへアップロードする")
     parser.add_argument("--public", action="store_true", help="公開アップロード (デフォルトは非公開)")
     parser.add_argument("--thumbnail", action="store_true", help="サムネイルを自動生成する")

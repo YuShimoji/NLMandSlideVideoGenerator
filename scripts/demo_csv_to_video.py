@@ -184,7 +184,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--audio-dir", required=True, help="行ごとの音声ファイル(WAV)があるディレクトリ")
     parser.add_argument(
         "--video-quality",
-        choices=["720p", "1080p", "4k"],
+        choices=["1080p", "720p", "480p"],
         default="1080p",
         help="動画品質",
     )

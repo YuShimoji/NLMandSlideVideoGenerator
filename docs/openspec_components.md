@@ -45,9 +45,9 @@ implementations:
   - MoviePyEditingBackend
   - YMM4EditingBackend
 quality_options:
+  - 480p
   - 720p
   - 1080p
-  - 4k
 validation:
   - timeline_plan must be valid structure
   - all inputs must be present and valid
