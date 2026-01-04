@@ -67,7 +67,33 @@ IN_PROGRESS
   - プロジェクト概要と主要決定事項を記載済み
 
 ### Phase 6: 変更をコミット
-- [ ] セットアップ差分をコミット
+- [x] セットアップ差分をコミット
+  - コミットメッセージ: "chore: 初期セットアップ完了 - shared-workflows submodule追加、SSOT配置、運用ストレージ作成"
+  - コミット完了
+
+## 完了報告
+
+### 作成・更新したファイル/ディレクトリ
+- `.gitmodules` - submodule設定
+- `.shared-workflows/` - shared-workflows submodule（コミット: dbe734c9d1443eb794e6baaef8a24ac999eb9305）
+- `.cursor/MISSION_LOG.md` - ミッションログ
+- `docs/HANDOVER.md` - 作業申し送り（GitHubAutoApprove: true 設定済み）
+- `docs/Windsurf_AI_Collab_Rules_latest.md` - SSOT最新版
+- `docs/Windsurf_AI_Collab_Rules_v2.0.md` - SSOT v2.0
+- `docs/inbox/` - インボックスディレクトリ（.gitkeep含む）
+- `docs/tasks/` - タスクディレクトリ（.gitkeep含む）
+
+### Complete Gate 初期状態
+- [x] `.shared-workflows/` submodule 追加済み
+- [x] `docs/inbox/` 空（.gitkeepのみ）
+- [x] `docs/tasks/` 空（.gitkeepのみ）
+- [x] `docs/HANDOVER.md` 更新済み（GitHubAutoApprove: true）
+- [x] SSOT ファイル配置済み（latest, v2.0, v1.1）
+- [x] `sw-doctor.js` 実行済み（基本構造正常）
+- [x] CLI 類確認済み（report-orch-cli.js, report-validator.js, todo-sync.js, sw-doctor.js）
+
+### 次のステップ
+Orchestrator Metaprompt を実行して、以降の Orchestrator/Worker が自律的に動作できる状態です。
 
 ## エラー・復旧ログ
 （エラー発生時に記録）
