@@ -1,5 +1,13 @@
 # Windsurf AI Collaboration Rules v1.1
 
+> [!CAUTION]
+> **本ファイルはレガシー（非推奨）です。**
+> 最新のルールおよびエントリポイントは [Windsurf_AI_Collab_Rules_latest.md](./Windsurf_AI_Collab_Rules_latest.md) を参照してください。
+> 以降のアップデートは `latest.md` に対してのみ行われます。
+
+> **注意**: 本ドキュメントは **旧版の参考資料** です。  
+> 現在の規範（SSOT）は常に `docs/Windsurf_AI_Collab_Rules_latest.md` を参照してください。
+
 ## 0. 位置づけと参照ドキュメント
 
 - 本ドキュメントは、Windsurf 環境における AI 協働（Cascade を含む）運用の **SSOT（Single Source of Truth）** です。

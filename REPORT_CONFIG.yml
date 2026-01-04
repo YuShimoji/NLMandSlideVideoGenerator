@@ -1,0 +1,89 @@
+change_summary:
+  - version: v2.0
+    applied_projects: all
+    changes: |
+      - Worker同期強化：AI_CONTEXT.mdにWorker完了ステータスを追加。uncompleted Workerで中断。
+      - 非同期モードオプション：async_mode trueでcritical Workerのみ同期、非criticalは並行実行。
+      - タイムアウト設定：Workerにtimeout（デフォルト30分）を追加。超過でerror。
+      - 優先度分類：Workerをcritical/non-criticalに分類。
+      - スクリプト拡張：orchestrator-audit.jsにWorkerチェック追加、新スクリプトworker-monitor.jsで監視。
+      - コマンド安全性チェック：command-safety-check.jsで自動判定。
+
+default_style: standard
+strict_mode: true
+banned_phrases:
+  - 了解しました
+  - 続けてください
+  - 特にありません
+  - 完了しました
+  - 向上されました
+  - 問題ありません
+style_presets:
+  standard:
+    headers:
+      - 概要
+      - 現状
+      - 次のアクション
+    notes: |-
+      目的・現状・次のアクションを含む標準的な報告。必要に応じて箇条書きを使用。
+  concise:
+    headers:
+      - 要点
+      - 次のアクション
+    notes: |-
+      200文字程度で要点のみを伝える。重複した情報は省略。
+  narrative:
+    headers:
+      - 今日の旅路
+      - 発見
+      - 次に挑むこと
+    notes: |-
+      物語調で経緯を説明し、学びや気付きも記載。
+  creative:
+    headers:
+      - 状況
+      - ハイライト
+      - 次の一歩
+    notes: |-
+      比喩や比喩的表現を交えて、感情や勢いを含めた報告。禁止表現には注意。
+  custom_innovation:
+    headers:
+      - Vision
+      - Options
+      - Commitments
+    notes: |-
+      未来志向の提案や大胆な仮説検証を行う際に使用。リスクと成功条件を明示する。
+  handover:
+    headers:
+      - 進捗
+      - 次の中断可能点
+      - 決定事項
+      - リスク/懸念
+      - Backlog（将来提案）
+    notes: |-
+      HANDOVER用のレイアウト。標準レポートの必須ヘッダー（概要/現状/次のアクション）は要求しない。
+
+creativity_triggers:
+  default:
+    - 代替案を最低2件提示する。
+    - リスクとメリットを併記する。
+  standard:
+    - リスクとメリットを表形式で整理する。
+  concise:
+    - 主要ポイントを3行以内でまとめる。
+  narrative:
+    - 比喩を1つ用いて状況を説明する。
+    - 学びを1つ抽出し、次回への示唆を述べる。
+  creative:
+    - 代替案を3件提示する。
+    - 人間とAIの協働アイデアを1つ提案する。
+  custom_innovation:
+    - 未来志向の大胆な提案を行い、成功条件を定義する。
+
+prompt_overrides: {}
+
+adaptation:
+  score_threshold:
+    creativity: 7
+    clarity: 7
+  fallback_style: standard
