@@ -1,10 +1,10 @@
 # Task: プロジェクト状態確認と環境診断
-Status: OPEN
+Status: DONE
 Tier: 1
 Branch: main
 Owner: Orchestrator → Worker
 Created: 2026-01-05T01:14:04Z
-Report: 
+Report: docs/inbox/REPORT_20260105_ProjectStatusAudit.md
 
 ## Objective
 - プロジェクトの現在の状態を確認し、環境診断を実施する
@@ -42,13 +42,13 @@ Report:
 - 調査結果はレポートとして `docs/inbox/` に保存
 
 ## DoD
-- [ ] プロジェクトの現在の状態が確認されている
-- [ ] 環境診断（sw-doctor）が実行され、結果が記録されている
-- [ ] テストスイートの実行結果が確認されている
-- [ ] バックログと実装状況の整合性が確認されている
-- [ ] 次の開発タスクの優先順位が提案されている
-- [ ] docs/inbox/ にレポート（REPORT_...md）が作成されている
-- [ ] 本チケットの Report 欄にレポートパスが追記されている
+- [x] プロジェクトの現在の状態が確認されている
+- [x] 環境診断（sw-doctor）が実行され、結果が記録されている
+- [x] テストスイートの実行結果が確認されている
+- [x] バックログと実装状況の整合性が確認されている
+- [x] 次の開発タスクの優先順位が提案されている
+- [x] docs/inbox/ にレポート（REPORT_...md）が作成されている
+- [x] 本チケットの Report 欄にレポートパスが追記されている
 
 ## Notes
 - Status は OPEN / IN_PROGRESS / BLOCKED / DONE を想定
