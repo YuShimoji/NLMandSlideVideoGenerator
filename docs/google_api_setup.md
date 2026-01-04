@@ -80,6 +80,33 @@ pip install google-auth google-auth-oauthlib google-api-python-client
 
 ※ 既定パスは `.env` の `GOOGLE_CLIENT_SECRETS_FILE` / `GOOGLE_OAUTH_TOKEN_FILE` で変更できます。
 
+## フォールバック動作
+
+Google Slides APIの認証ファイルが未設定の場合でも、システムは正常に動作します：
+
+- **モックモード**: API未設定時は`python-pptx`を使用してPPTXファイルを生成
+- **エラー回避**: APIなしワークフロー（CSV + WAV → 動画生成）は維持されます
+- **段階的有効化**: OAuth認証を設定することで、Google Slides APIの機能を有効化できます
+
+### 動作確認
+
+認証ファイル未設定時でも、以下のコマンドでスライド生成が可能です：
+
+```bash
+python scripts/check_environment.py
+```
+
+「Google Slides API: 未設定 (モックモードで動作)」と表示されれば、フォールバック動作が有効です。
+
+## 環境変数設定（オプション）
+
+設定ファイルのパスを変更する場合は、`.env`ファイルに以下を追加：
+
+```env
+GOOGLE_CLIENT_SECRETS_FILE=path/to/google_client_secret.json
+GOOGLE_OAUTH_TOKEN_FILE=path/to/token.json
+```
+
 ## セキュリティ注意事項
 
 - `google_client_secret.json` と `token.json` は `.gitignore` に追加してください
