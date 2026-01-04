@@ -39,6 +39,9 @@ async def _run(args: argparse.Namespace) -> int:
     if not audio_dir.exists():
         logger.error(f"音声ディレクトリが見つかりません: {audio_dir}")
         return 1
+    if not audio_dir.is_dir():
+        logger.error(f"音声ディレクトリではありません: {audio_dir}")
+        return 1
 
     create_directories()
 
@@ -116,7 +119,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--topic", help="任意のトピック名 (省略時はCSVファイル名)")
     parser.add_argument(
         "--video-quality",
-        choices=["720p", "1080p", "4k"],
+        choices=["1080p", "720p", "480p"],
         default="1080p",
         help="動画品質",
     )

@@ -31,7 +31,8 @@ celery==5.3.1
 redis==4.6.0
 
 # Web フレームワーク
-fastapi==0.103.0
+fastapi==0.123.0
+starlette==0.50.0
 uvicorn==0.23.0
 
 # データベース

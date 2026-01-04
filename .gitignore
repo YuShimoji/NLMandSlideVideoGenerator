@@ -186,6 +186,10 @@ uploads/
 cache/
 sessions/
 
+# Local helper scripts
+git_commit*.bat
+tests/debug_path.py
+
 # .NET / C# build artifacts
 **/bin/
 **/obj/

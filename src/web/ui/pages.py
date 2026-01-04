@@ -664,8 +664,8 @@ def show_settings_page():
             resolution = video.get("resolution", (1920, 1080))
             st.selectbox(
                 "解像度",
-                ["1920x1080 (1080p)", "1280x720 (720p)", "3840x2160 (4K)"],
-                index=0 if resolution == (1920, 1080) else 1 if resolution == (1280, 720) else 2,
+                ["1920x1080 (1080p)", "1280x720 (720p)", "854x480 (480p)"],
+                index=0 if resolution == (1920, 1080) else 1 if resolution == (1280, 720) else 2 if resolution == (854, 480) else 0,
                 disabled=True,
                 key="video_resolution"
             )

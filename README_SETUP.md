@@ -129,7 +129,7 @@ python -c "import moviepy.editor as mp; print('OK')"
 
 | 項目 | 仕様 |
 |------|------|
-| 解像度 | 720p / 1080p / 4K |
+| 解像度 | 480p / 720p / 1080p |
 | フレームレート | 30fps |
 | コーデック | H.264 + AAC |
 | 字幕 | SRT形式（自動生成） |

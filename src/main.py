@@ -131,7 +131,7 @@ def main():
     parser.add_argument('--urls', nargs='*', help='ソースURL（複数指定可能）')
     parser.add_argument('--output-dir', help='出力ディレクトリ')
     parser.add_argument('--max-slides', type=int, default=20, help='最大スライド数')
-    parser.add_argument('--video-quality', choices=['720p', '1080p', '4k'], default='1080p', help='動画品質')
+    parser.add_argument('--video-quality', choices=['1080p', '720p', '480p'], default='1080p', help='動画品質')
     parser.add_argument('--max-chars-per-slide', type=int, default=None, help='1スライドあたりの最大文字数 (省略時は設定値を使用)')
     parser.add_argument('--upload-schedule', help='アップロードスケジュール (YYYY-MM-DD HH:MM)')
     parser.add_argument('--private-upload', action='store_true', default=True, help='非公開アップロード')

@@ -275,11 +275,17 @@ class VideoComposer:
             List[Path]: 抽出された画像ファイルパス一覧。失敗時は空リスト。
         """
         pptx_path = getattr(slides_file, "pptx_path", None)
-        if not pptx_path or not Path(pptx_path).exists():
+        if not pptx_path:
+            pptx_path = getattr(slides_file, "file_path", None)
+        if not pptx_path:
             return []
 
         pptx_path = Path(pptx_path)
-        output_dir = settings.SLIDES_IMAGES_DIR / pptx_path.stem
+        if not pptx_path.exists():
+            return []
+
+        presentation_id = getattr(slides_file, "presentation_id", "") or pptx_path.stem
+        output_dir = settings.SLIDES_IMAGES_DIR / presentation_id
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # 既にエクスポート済みならそれを使用
@@ -532,9 +538,9 @@ class VideoComposer:
             tuple: 解像度 (width, height)
         """
         quality_map = {
+            "480p": (854, 480),
             "720p": (1280, 720),
             "1080p": (1920, 1080),
-            "4k": (3840, 2160)
         }
         return quality_map.get(quality, (1920, 1080))
     

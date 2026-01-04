@@ -350,7 +350,13 @@ async def run_pipeline(payload: Dict[str, Any]):
     if not topic:
         raise HTTPException(status_code=400, detail="'topic' is required")
     urls = payload.get("urls") or []
-    quality = payload.get("quality") or "1080p"
+    quality_raw = payload.get("quality") or "1080p"
+    if not isinstance(quality_raw, str):
+        raise HTTPException(status_code=400, detail="'quality' must be a string")
+    quality = quality_raw.lower()
+    allowed_qualities = {"1080p", "720p", "480p"}
+    if quality not in allowed_qualities:
+        raise HTTPException(status_code=400, detail=f"'quality' must be one of {sorted(allowed_qualities)}")
     editing_backend = payload.get("editing_backend") or settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
     private_upload = payload.get("private_upload", True)
     upload = payload.get("upload", False)  # New: control actual upload
@@ -520,7 +526,13 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="'csv_path' and 'audio_dir' are required")
 
     topic = payload.get("topic")
-    quality = payload.get("quality") or "1080p"
+    quality_raw = payload.get("quality") or "1080p"
+    if not isinstance(quality_raw, str):
+        raise HTTPException(status_code=400, detail="'quality' must be a string")
+    quality = quality_raw.lower()
+    allowed_qualities = {"1080p", "720p", "480p"}
+    if quality not in allowed_qualities:
+        raise HTTPException(status_code=400, detail=f"'quality' must be one of {sorted(allowed_qualities)}")
     export_ymm4 = bool(payload.get("export_ymm4"))
     editing_backend = payload.get("editing_backend")
     if not editing_backend:
