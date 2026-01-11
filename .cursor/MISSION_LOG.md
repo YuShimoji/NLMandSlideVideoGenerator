@@ -165,3 +165,18 @@ COMPLETED
 
 ## 次のステップ
 - Phase 3: Strategy (NotebookLM代替機能の設計)
+
+### リモート更新確認と対応 (2026-01-07)
+- [x] リモートとの差分確認
+  - ローカルがリモートより1コミット先行（`4338b24 chore(orch): Phase 6 completed, transitioned to Phase 3`）
+  - リモートには新しいコミットなし
+- [x] submodule更新の確認と反映
+  - `.shared-workflows` submoduleに新しいコミット（`c85b1b8 docs: デプロイメントサマリを追加`）を確認
+  - submodule更新をコミット済み
+- [x] 未コミット変更の確認
+  - `docs/Windsurf_AI_Collab_Rules_v1.1.md` - 改行コード変更のみ（自動処理）
+  - `docs/google_api_setup.md` - 改行コード変更のみ（自動処理）
+  - これらは`core.autocrlf=true`により自動処理されるため、実質的な変更なし
+- [x] 変更のコミット
+  - コミットメッセージ: "chore: shared-workflows submodule更新 - デプロイメントサマリ追加"
+  - コミット完了
