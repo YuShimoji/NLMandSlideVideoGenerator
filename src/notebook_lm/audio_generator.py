@@ -267,26 +267,25 @@ class AudioGenerator:
     
     async def _upload_sources(self, session_id: str, sources: List[SourceInfo]):
         """
-        ソース情報をNotebookLMにアップロード
+        ソース情報をNotebookLMにアップロード (現在はシミュレーション)
         
         Args:
             session_id: NotebookLMセッションID
             sources: アップロードするソース一覧
         """
-        logger.debug(f"ソースアップロード開始: {len(sources)}件")
+        logger.debug(f"ソースアップロード開始: {len(sources)}件 (セッション: {session_id})")
         
         for i, source in enumerate(sources, 1):
             logger.debug(f"アップロード中 ({i}/{len(sources)}): {source.title}")
             
-            # TODO: 実際のアップロード処理実装
-            # NotebookLMの検索機能にURLを入力
-            await asyncio.sleep(0.5)  # レート制限対応
+            # 実際の実装ではブラウザ操作でURLを入力し、追加ボタンをクリックする
+            await asyncio.sleep(0.5)  # アップロード時間のシミュレーション
         
-        logger.debug("ソースアップロード完了")
+        logger.debug("全ソースのアップロード完了")
     
     async def _request_audio_generation(self, session_id: str) -> str:
         """
-        音声生成をリクエスト
+        音声生成をリクエスト (現在はシミュレーション)
         
         Args:
             session_id: NotebookLMセッションID
@@ -294,12 +293,12 @@ class AudioGenerator:
         Returns:
             str: 音声生成ジョブID
         """
-        logger.debug("音声生成リクエスト送信中...")
+        logger.debug(f"音声生成リクエスト送信中... (セッション: {session_id})")
         
-        # TODO: 実際の音声生成リクエスト実装
-        # NotebookLMの「音声」オプションを選択
+        # 実際の実装ではNotebookLMの「Audio Overview」機能を実行する
+        await asyncio.sleep(1.0)
         
-        job_id = f"audio_job_{int(time.time())}"
+        job_id = f"audio_job_{int(time.time())}_{session_id[-4:]}"
         logger.debug(f"音声生成ジョブ開始: {job_id}")
         
         return job_id
@@ -338,7 +337,7 @@ class AudioGenerator:
     
     async def _check_generation_status(self, job_id: str) -> str:
         """
-        音声生成状況を確認
+        音声生成状況を確認 (現在はシミュレーション)
         
         Args:
             job_id: ジョブID
@@ -346,14 +345,18 @@ class AudioGenerator:
         Returns:
             str: 生成状況 ("processing", "completed", "failed")
         """
-        # TODO: 実際の状況確認実装
-        # プレースホルダーとして、一定時間後に完了とする
-        await asyncio.sleep(1)
+        # 生成状況確認のシミュレーション
+        # 実際にはブラウザ上のプログレスバーやテキストを確認する
+        
+        # ジョブIDに基づいて完了したことにする（デモ・テスト用）
+        logger.debug(f"ジョブ状況確認: {job_id}")
+        await asyncio.sleep(0.5)
+        
         return "completed"
     
     async def _get_audio_download_url(self, job_id: str) -> str:
         """
-        音声ダウンロードURLを取得
+        音声ダウンロードURLを取得 (現在はシミュレーション)
         
         Args:
             job_id: ジョブID
@@ -361,8 +364,13 @@ class AudioGenerator:
         Returns:
             str: ダウンロードURL
         """
-        # TODO: 実際のURL取得実装
-        return f"https://example.com/audio/{job_id}.mp3"
+        # 実際の実装では「Download」ボタンのリンク先を取得するか、
+        # 生成されたファイルの直接URLを探査する
+        
+        mock_url = f"https://example.com/audio/notebook_lm_{job_id}.mp3"
+        logger.debug(f"ダウンロードURL取得: {mock_url}")
+        
+        return mock_url
     
     async def _download_audio(self, audio_url: str) -> Path:
         """

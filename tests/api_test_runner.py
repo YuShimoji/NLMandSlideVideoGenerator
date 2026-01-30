@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 
 from config.settings import settings
-from .api_test_data import get_test_sources, get_test_slides_content, get_test_text, get_test_voice_config
+from tests.api_test_data import get_test_sources, get_test_slides_content, get_test_text, get_test_voice_config
 
 
 class APIIntegrationTest:
@@ -402,3 +402,7 @@ class APIIntegrationTest:
             print("🟡 一部のテストが成功しました")
         else:
             print("❌ 多くのテストが失敗しました")
+
+if __name__ == "__main__":
+    test = APIIntegrationTest()
+    asyncio.run(test.run_all_tests())

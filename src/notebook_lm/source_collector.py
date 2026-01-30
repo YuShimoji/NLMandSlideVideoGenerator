@@ -131,7 +131,7 @@ class SourceCollector:
     
     async def _search_sources(self, topic: str, count: int) -> List[SourceInfo]:
         """
-        トピックに基づいてソースを自動検索
+        トピックに基づいてソースを自動検索 (現在はシミュレーション)
         
         Args:
             topic: 検索トピック
@@ -140,16 +140,28 @@ class SourceCollector:
         Returns:
             List[SourceInfo]: 検索されたソース一覧
         """
-        # 実際の実装では、NotebookLMのAPIまたはWeb検索APIを使用
-        # ここではプレースホルダー実装
-        logger.info(f"自動検索: {topic} ({count}件)")
+        logger.info(f"自動検索実行中: {topic} (要求件数: {count})")
         
-        # TODO: 実際の検索API実装
-        # - Google Search API
-        # - Bing Search API
-        # - ニュースAPI等を使用
+        # 実際の実装では、ここで Google Search API や Bing Search API 等を使用して
+        # 関連するURLを取得し、_process_url を呼び出す
         
-        return []
+        # 検索シミュレーション
+        await asyncio.sleep(1.0)
+        
+        simulated_sources = []
+        for i in range(count):
+            source = SourceInfo(
+                url=f"https://example.com/simulated-source-{i+1}",
+                title=f"{topic} に関する詳細レポート {i+1}",
+                content_preview=f"{topic} の重要性について解説しているシミュレーションソースです。データの裏付けとともに詳しく説明されています。",
+                relevance_score=0.85 - (i * 0.05),
+                reliability_score=0.9 - (i * 0.02),
+                source_type="article"
+            )
+            simulated_sources.append(source)
+            
+        logger.info(f"自動検索完了: {len(simulated_sources)}件のシミュレーションソースを生成")
+        return simulated_sources
     
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """HTMLからタイトルを抽出"""

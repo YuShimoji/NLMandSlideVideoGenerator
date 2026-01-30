@@ -91,7 +91,7 @@ class TranscriptProcessor:
     
     async def _upload_audio_to_notebook(self, audio_path: Path) -> str:
         """
-        音声ファイルをNotebookLMにアップロード
+        音声ファイルをNotebookLMにアップロード (現在はシミュレーション)
         
         Args:
             audio_path: 音声ファイルパス
@@ -99,19 +99,22 @@ class TranscriptProcessor:
         Returns:
             str: アップロードセッションID
         """
-        logger.debug("NotebookLMに音声アップロード中...")
+        logger.debug(f"NotebookLMに音声アップロード中: {audio_path.name}")
         
-        # TODO: 実際のNotebookLM音声アップロード実装
-        # Seleniumまたは専用APIを使用
+        # 実際の実装では、ここでSelenium等を使用してブラウザ操作を行い、ファイルをアップロードする
+        # または、将来的に公開される可能性のあるAPIを介してリクエストを送信する
         
-        session_id = f"transcript_session_{int(datetime.now().timestamp())}"
+        # アップロードのシミュレーション
+        await asyncio.sleep(1.5)
+        
+        session_id = f"transcript_session_{int(datetime.now().timestamp())}_{hash(str(audio_path)) % 10000}"
         logger.debug(f"音声アップロード完了: {session_id}")
         
         return session_id
     
     async def _execute_transcription(self, session_id: str) -> str:
         """
-        文字起こしを実行
+        文字起こしを実行 (現在はシミュレーション)
         
         Args:
             session_id: アップロードセッションID
@@ -119,24 +122,26 @@ class TranscriptProcessor:
         Returns:
             str: 生の文字起こしテキスト
         """
-        logger.info("文字起こし実行中...")
+        logger.info(f"文字起こし実行中: {session_id}")
         
-        # TODO: 実際の文字起こし実装
-        # NotebookLMの文字起こし機能を使用
+        # 文字起こし処理のシミュレーション
+        # 実際にはNotebookLMの生成完了を待機する
+        await asyncio.sleep(2.0)
         
-        # プレースホルダー実装
-        await asyncio.sleep(2)
-        
-        # サンプル文字起こしテキスト
+        # シミュレーション用の文字起こしテキスト
+        # 将来的にはGemini APIなどを使用して、実際の音声ファイルから文字起こしを生成するように拡張可能
         sample_transcript = """
         [00:00] ナレーター1: こんにちは、今日はAI技術の最新動向について解説します。
         [00:15] ナレーター2: まず、機械学習の基本概念から始めましょう。
         [00:30] ナレーター1: 機械学習とは、データから自動的にパターンを学習する技術です。
         [01:00] ナレーター2: 特に深層学習は、近年大きな注目を集めています。
+        [01:30] ナレーター1: 深層学習の発展により、画像認識や自然言語処理の精度が飛躍的に向上しました。
+        [02:00] ナレーター2: そうですね。今後はマルチモーダルなAIの活用が期待されています。
+        [02:30] ナレーター1: 本日はありがとうございました。
         """
         
         logger.info("文字起こし完了")
-        return sample_transcript
+        return sample_transcript.strip()
     
     async def _structure_transcript(self, raw_transcript: str, audio_info: AudioInfo) -> TranscriptInfo:
         """
@@ -393,7 +398,7 @@ class TranscriptProcessor:
     
     async def _correct_low_accuracy_transcript(self, transcript_info: TranscriptInfo) -> TranscriptInfo:
         """
-        低精度台本の修正
+        低精度台本の修正 (現在はシミュレーション)
         
         Args:
             transcript_info: 台本情報
@@ -401,20 +406,27 @@ class TranscriptProcessor:
         Returns:
             TranscriptInfo: 修正済み台本情報
         """
-        logger.info("低精度台本の修正実行中...")
+        logger.info(f"低精度台本の修正実行中... (現在の精度: {transcript_info.accuracy_score:.2f})")
         
-        # TODO: 実際の修正処理実装
-        # - 音声の再解析
-        # - 手動修正インターフェースの提供
-        # - AI による自動修正
+        # 実際の実装では、ここでAI（Gemini 等）を使用して台本を再構成したり、
+        # 人間の修正を待機したりする
         
-        # プレースホルダー: 信頼度スコアを調整
+        # 修正シミュレーション
+        await asyncio.sleep(1.0)
+        
+        # 信頼度スコアを強制的に引き上げるシミュレーション
         for segment in transcript_info.segments:
-            if segment.confidence_score < 0.8:
-                segment.confidence_score = 0.8
+            if segment.confidence_score < self.accuracy_threshold:
+                # わずかに向上させる（再解析したという体裁）
+                segment.confidence_score = min(segment.confidence_score + 0.1, 0.99)
+                # テキストの正規化などのエミュレーション
+                segment.text = segment.text.strip()
         
         # 精度スコア再計算
+        old_score = transcript_info.accuracy_score
         transcript_info.accuracy_score = self._calculate_transcript_accuracy(transcript_info)
+        
+        logger.info(f"台本修正完了: {old_score:.2f} -> {transcript_info.accuracy_score:.2f}")
         
         return transcript_info
     
