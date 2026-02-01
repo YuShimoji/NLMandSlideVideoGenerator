@@ -1,10 +1,22 @@
 # Task: NotebookLM/Gemini API実装の完成と動作確認
-Status: OPEN
+Status: IN_PROGRESS
 Tier: 1
 Branch: main
 Owner: Orchestrator → Worker
 Created: 2026-01-11T15-25-22Z
-Report: 
+Report: docs/inbox/REPORT_TASK_003_NotebookLMGeminiAPI_2026-01-30.md
+
+## 概要
+
+- NotebookLM/Gemini API 周辺の実装を完成させ、動作確認と証跡（テスト/レポート）を整える。
+
+## 現状
+
+- 状態整理と検証ログは Report に集約している（`docs/inbox/REPORT_TASK_003_NotebookLMGeminiAPI_2026-01-30.md`）。
+
+## 次のアクション
+
+- DoD の未達項目（外部サービス依存の動作確認/手順整理）を、停止条件に従って進めるかを判断する。
 
 ## Objective
 - NotebookLM/Gemini API実装を完成させ、動作確認とテストを実施する
@@ -84,3 +96,4 @@ Report:
 - BLOCKED の場合は、事実/根拠/次手（候補）を本文に追記し、Report に docs/inbox/REPORT_...md を必ず設定
 - NotebookLM APIの実装は外部サービス（NotebookLM）へのアクセスが必要な場合、設定できない場合は停止条件として扱う
 - Gemini API Keyの設定は外部サービス（Google AI Studio）へのアクセスが必要なため、設定できない場合は停止条件として扱う
+- Branch 表記（main/master）の整合は `TASK_006_BranchAndPromptSSOTSync` で扱う。
