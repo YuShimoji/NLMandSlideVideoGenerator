@@ -4,9 +4,10 @@ YMM4（ゆっくりMovieMaker4）のプラグインAPIを使用して、Notebook
 
 ## ステータス
 
-🚧 **開発中 - スケルトン段階**
+✅ **シナリオZero実装完了**
 
-現在はプロジェクト構造とスタブ実装のみ。実際の機能は今後のPoCで実装予定。
+基本プラグイン（IPlugin）実装済み。YMM4でのロード確認が可能です。  
+音声・字幕連携機能は今後のPoCで実装予定。
 
 ## 前提条件
 
@@ -15,50 +16,53 @@ YMM4（ゆっくりMovieMaker4）のプラグインAPIを使用して、Notebook
 - **Visual Studio 2022** または互換IDE
 - **YMM4** インストール済み（v4.33.0.0以降推奨）
 
-## セットアップ手順
+## クイックスタート
 
-### 1. Directory.Build.props の設定
+**詳細なセットアップ手順は [`SETUP_GUIDE.md`](./SETUP_GUIDE.md) を参照してください。**
 
-```powershell
-# サンプルをコピー
-cp Directory.Build.props.sample Directory.Build.props
-```
+### 1. 前提条件
 
-`Directory.Build.props` を編集し、YMM4のインストールフォルダを設定:
+- .NET 10 SDK以降
+- YMM4 v4.33.0.0以降
 
-```xml
-<Project>
-  <PropertyGroup>
-    <YMM4DirPath>C:\Users\YourUserName\AppData\Local\YukkuriMovieMaker4\</YMM4DirPath>
-  </PropertyGroup>
-</Project>
-```
+### 2. セットアップ（自動）
 
-### 2. ビルド
-
-```powershell
+```cmd
 cd ymm4-plugin
-dotnet build
+setup_build_props.bat
 ```
 
-ビルド成功後、DLLは `$(YMM4DirPath)user\plugin\NLMSlidePlugin\` にコピーされます。
+YMM4のインストールパスを入力してください。
 
-### 3. 動作確認
+### 3. ビルド
+
+```cmd
+build_plugin.bat
+```
+
+### 4. 動作確認
 
 1. YMM4を起動
 2. `設定` → `プラグイン` → `プラグイン一覧` で「NLM Slide Plugin」を確認
+
+**トラブルシューティング**: [`SETUP_GUIDE.md`](./SETUP_GUIDE.md) のトラブルシューティングセクションを参照
 
 ## プロジェクト構成
 
 ```
 ymm4-plugin/
-├── NLMSlidePlugin.csproj        # プロジェクト定義
-├── Directory.Build.props.sample # 設定テンプレート
-├── PluginInfo.cs                # プラグインメタデータ
+├── NLMSlidePlugin.csproj           # プロジェクト定義
+├── Directory.Build.props.sample    # 設定テンプレート
+├── Directory.Build.props           # ビルド設定（gitignore対象）
+├── PluginInfo.cs                   # プラグインメタデータ（IPlugin実装）
 ├── VoicePlugin/
 │   └── CsvTimelineVoicePlugin.cs   # IVoicePlugin実装（スケルトン）
-└── TextCompletionPlugin/
-    └── CsvScriptCompletionPlugin.cs # ITextCompletionPlugin実装（スケルトン）
+├── TextCompletionPlugin/
+│   └── CsvScriptCompletionPlugin.cs # ITextCompletionPlugin実装（スケルトン）
+├── setup_build_props.bat           # セットアップスクリプト
+├── build_plugin.bat                # ビルドスクリプト
+├── SETUP_GUIDE.md                  # 詳細セットアップガイド
+└── README.md                       # 本ドキュメント
 ```
 
 ## 実装予定のプラグインインターフェース
