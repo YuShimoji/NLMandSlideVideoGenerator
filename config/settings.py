@@ -4,6 +4,7 @@
 from pathlib import Path
 from typing import Dict, Any
 import os
+from dotenv import load_dotenv
 
 # プロジェクトルートディレクトリ
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -12,6 +13,9 @@ class Settings:
     """アプリケーション設定"""
     
     def __init__(self):
+        # Load environment variables from .env file
+        load_dotenv()
+        
         # 基本設定
         self.APP_NAME = "NLMandSlideVideoGenerator"
         self.VERSION = "1.0.0"
