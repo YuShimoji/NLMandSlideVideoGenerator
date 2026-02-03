@@ -1,5 +1,5 @@
 # Task: NotebookLM/Gemini API実装の完成と動作確認
-Status: IN_PROGRESS
+Status: DONE
 Tier: 1
 Branch: main
 Owner: Orchestrator → Worker
