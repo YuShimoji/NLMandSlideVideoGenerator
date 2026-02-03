@@ -1,9 +1,16 @@
-using YukkuriMovieMaker.Plugin;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using NLMSlidePlugin.Core;
+using NLMSlidePlugin.TimelinePlugin;
 
 namespace NLMSlidePlugin.VoicePlugin
 {
     /// <summary>
-    /// IVoicePlugin の実装スケルトン
+    /// CSVタイムラインボイスプラグイン（シナリオA実装）
     /// CSVタイムラインの行に対応する音声アイテムを生成
     /// </summary>
     /// <remarks>
@@ -12,17 +19,23 @@ namespace NLMSlidePlugin.VoicePlugin
     /// - 既存のYMM4ボイス（AquesTalk等）との連携
     /// - 外部TTS音声ファイルのインポート
     /// </remarks>
-    // [Export(typeof(IVoicePlugin))]  // PoC完了後に有効化
-    public class CsvTimelineVoicePlugin // : IVoicePlugin
+    public class CsvTimelineVoicePlugin
     {
         public string Name => "CSV Timeline Voice";
-        public string Description => "CSVタイムラインからボイスアイテムを生成";
+        public string Author => "NLMandSlideVideoGenerator Project";
+        public string Description => "CSVタイムラインからボイスアイテムを生成（シナリオA実装）";
+        public string Version => "0.2.1";
 
-        // TODO: IVoicePlugin インターフェースの実装
-        // 必要なプロパティとメソッド:
-        // - SupportedVoiceTypes
-        // - CreateVoiceAsync(string text, VoiceSettings settings, CancellationToken ct)
-        // - 設定UI
+        private CsvImportSettings _settings = new();
+
+        /// <summary>
+        /// CSVインポートダイアログを表示
+        /// </summary>
+        public void ShowImportDialog()
+        {
+            var dialog = new CsvImportDialog();
+            dialog.ShowDialog();
+        }
 
         /// <summary>
         /// CSVから音声生成するスタブ
@@ -48,6 +61,15 @@ namespace NLMSlidePlugin.VoicePlugin
         {
             // TODO: YMM4から利用可能なボイスを取得
             return new[] { "れいむ", "まりさ", "ゆかり", "ずんだもん" };
+        }
+
+        /// <summary>
+        /// CSVファイルからタイムラインを読み込み
+        /// </summary>
+        public List<CsvTimelineItem> LoadTimelineFromCsv(string csvPath, string? audioDir = null)
+        {
+            var reader = new CsvTimelineReader(csvPath, audioDir);
+            return reader.ReadTimeline();
         }
     }
 }

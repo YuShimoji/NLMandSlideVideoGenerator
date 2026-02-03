@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetFramework>net9.0-windows</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
@@ -9,9 +9,9 @@
 		<!-- メタ情報 -->
 		<AssemblyName>NLMSlidePlugin</AssemblyName>
 		<RootNamespace>NLMSlidePlugin</RootNamespace>
-		<Version>0.1.0</Version>
+		<Version>0.2.0</Version>
 		<Authors>NLMandSlideVideoGenerator Project</Authors>
-		<Description>YMM4 Plugin for NLMandSlideVideoGenerator - Automates timeline and voice integration</Description>
+		<Description>YMM4 Plugin for NLMandSlideVideoGenerator - CSV Timeline Import (Scenario A)</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
