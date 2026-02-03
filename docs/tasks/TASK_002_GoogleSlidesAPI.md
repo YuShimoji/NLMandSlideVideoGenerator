@@ -1,7 +1,7 @@
 # Task: Google Slides API実装の完成とOAuth認証設定
 Status: DONE
 Tier: 2
-Branch: main
+Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-05T05:36:25Z
 Report: docs/inbox/REPORT_20260105_GoogleSlidesAPI.md 

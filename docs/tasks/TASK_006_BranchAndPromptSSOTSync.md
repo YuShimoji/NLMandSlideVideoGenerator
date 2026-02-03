@@ -1,10 +1,10 @@
 # Task: Branch/Prompt/SSOT の整合性修正（main vs master など）
-Status: OPEN
+Status: DONE
 Tier: 2
 Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-30T16:00:00Z
-Report: 
+Report: docs/inbox/REPORT_TASK_006_BranchPromptSSOTSync_2026-02-03.md 
 
 ## Objective
 - チケット/WORKER_PROMPT/HANDOVER/MISSION_LOG に記載されたブランチ名や前提の不整合を解消し、運用ミスを防ぐ
@@ -24,5 +24,5 @@ Report:
 - 実装の追加（このタスクは整合性修正のみ）
 
 ## DoD
-- [ ] `docs/HANDOVER.md` / `docs/tasks/*.md` / `docs/inbox/WORKER_PROMPT_*.md` のブランチ表記が矛盾しない
-- [ ] 修正の根拠がレポートに記載されている
+- [x] `docs/HANDOVER.md` / `docs/tasks/*.md` / `docs/inbox/WORKER_PROMPT_*.md` のブランチ表記が矛盾しない
+- [x] 修正の根拠がレポートに記載されている

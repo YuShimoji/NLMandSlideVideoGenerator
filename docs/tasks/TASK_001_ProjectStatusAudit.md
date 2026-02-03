@@ -1,7 +1,7 @@
 # Task: プロジェクト状態確認と環境診断
 Status: DONE
 Tier: 1
-Branch: main
+Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-05T01:14:04Z
 Report: docs/inbox/REPORT_20260105_ProjectStatusAudit.md
