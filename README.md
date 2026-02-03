@@ -55,6 +55,35 @@ streamlit run src/web/web_app.py
 
 > 📖 詳細は [手動素材ワークフローガイド](docs/user_guide_manual_workflow.md) を参照
 
+### 方法A-2: SofTalk / AquesTalk 連携（ローカルTTS）
+
+**Windows環境でSofTalkやAquesTalkを使ってCSVから自動で音声を生成できます。**
+
+```bash
+# 1. SofTalkをインストール（別途ダウンロード）
+# 2. 環境変数を設定（オプション - デフォルトパスも自動検出）
+set SOFTALK_EXE=C:\Program Files\Softalk\SofTalk.exe
+
+# 3. CSVから音声を一括生成
+python scripts/tts_batch_softalk_aquestalk.py \
+  --engine softalk \
+  --csv samples/basic_dialogue/timeline.csv \
+  --out-dir samples/basic_dialogue/audio
+
+# 4. 生成された音声で動画を作成
+python scripts/run_csv_pipeline.py \
+  --csv samples/basic_dialogue/timeline.csv \
+  --audio-dir samples/basic_dialogue/audio
+```
+
+**オプション:**
+- `--no-skip`: 既存ファイルを強制再生成
+- `--max-retries 3`: 失敗時のリトライ回数
+- `--speaker-map speakers.json`: 話者別声質設定
+- `--dry-run`: 実際には実行せずコマンド確認のみ
+
+> 📖 詳細は [SofTalk連携仕様](docs/tts_batch_softalk_aquestalk.md) を参照
+
 ---
 
 ### 方法B: フルセットアップ（API連携あり）
@@ -242,6 +271,9 @@ src/
 ```bash
 # 基本テスト
 python -m pytest tests/
+
+# SofTalk連携テスト
+python -m pytest tests/test_tts_batch_softalk_aquestalk.py -v
 
 # モックテスト
 python test_simple_mock.py

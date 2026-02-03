@@ -1,9 +1,10 @@
 # Task: SofTalk連携実装
-Status: OPEN
+Status: CLOSED
 Tier: 2
 Branch: feature/softalk-integration
 Owner: Worker
 Created: 2026-02-02T03:59:00Z
+Completed: 2026-02-03T05:55:00Z
 Report: 
 
 ## Objective
@@ -37,13 +38,47 @@ Report:
 - 設定ファイル（YAML/JSON）で音声パラメータ（話速、音量等）を指定可能
 
 ## DoD
-- [ ] SofTalk実行ファイルパスの設定機能
-- [ ] CSV タイムラインから音声ファイル一括生成
-- [ ] 生成済みファイルのスキップ機能
-- [ ] エラーハンドリングとログ出力
-- [ ] pytestテストケース追加
-- [ ] README.md にセットアップと使用方法を記載
+- [x] SofTalk実行ファイルパスの設定機能
+- [x] CSV タイムラインから音声ファイル一括生成
+- [x] 生成済みファイルのスキップ機能
+- [x] エラーハンドリングとログ出力
+- [x] pytestテストケース追加
+- [x] README.md にセットアップと使用方法を記載
 
 ## Notes
 - 将来的には他の音声合成エンジン（VOICEVOX等）にも対応できるよう、抽象化を検討
 - 音声ファイルの命名規則は既存のYMM4連携と整合性を保つ
+
+## Implementation Summary
+
+### 変更ファイル
+- `scripts/tts_batch_softalk_aquestalk.py`
+  - デフォルトパス自動検出機能追加
+  - `--no-skip` / `--max-retries` オプション追加
+  - リトライ機構実装
+  - 成功/スキップ/エラーカウントのログ出力
+
+- `tests/test_tts_batch_softalk_aquestalk.py`
+  - スキップ機能テスト追加
+  - リトライ機構テスト追加
+  - 話者マッピングテスト追加
+
+- `README.md`
+  - SofTalk連携セクション追加
+  - 使用方法とオプション説明追加
+  - テストコマンド追加
+
+### 使用方法
+```bash
+# CSVから音声を一括生成
+python scripts/tts_batch_softalk_aquestalk.py \
+  --engine softalk \
+  --csv samples/basic_dialogue/timeline.csv \
+  --out-dir samples/basic_dialogue/audio
+
+# 既存ファイルを強制再生成
+python scripts/tts_batch_softalk_aquestalk.py ... --no-skip
+
+# リトライ回数を変更
+python scripts/tts_batch_softalk_aquestalk.py ... --max-retries 5
+```

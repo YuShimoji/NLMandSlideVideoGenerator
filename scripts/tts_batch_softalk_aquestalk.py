@@ -143,28 +143,58 @@ def _select_voice_preset(
 
 
 def _get_engine_executable(engine: str) -> Path:
-    """エンジンごとの実行ファイルパスを環境変数から取得
+    """エンジンごとの実行ファイルパスを取得
 
-    - softalk:   `SOFTALK_EXE`
-    - aquestalk: `AQUESTALK_EXE`
+    優先順位:
+    1. 環境変数 (SOFTALK_EXE / AQUESTALK_EXE)
+    2. デフォルトインストールパスの検索
+    3. エラー
     """
+    import shutil
 
     if engine == "softalk":
         env_name = "SOFTALK_EXE"
+        default_paths = [
+            Path(r"C:\Program Files\Softalk\SofTalk.exe"),
+            Path(r"C:\Program Files (x86)\Softalk\SofTalk.exe"),
+            Path(os.path.expandvars(r"%USERPROFILE%\AppData\Local\Softalk\SofTalk.exe")),
+        ]
     elif engine == "aquestalk":
         env_name = "AQUESTALK_EXE"
+        default_paths = [
+            Path(r"C:\Program Files\AquesTalk\AquesTalkPlayer.exe"),
+            Path(r"C:\Program Files (x86)\AquesTalk\AquesTalkPlayer.exe"),
+        ]
     else:
         raise ValueError(f"Unsupported engine: {engine}")
 
+    # 1. 環境変数を確認
     exe = os.getenv(env_name)
-    if not exe:
-        raise RuntimeError(f"環境変数 {env_name} が設定されていません。実行ファイルパスを指定してください。")
+    if exe:
+        exe_path = Path(exe)
+        if exe_path.exists():
+            return exe_path
+        raise FileNotFoundError(f"環境変数 {env_name} に指定されたパスが存在しません: {exe_path}")
 
-    exe_path = Path(exe)
-    if not exe_path.exists():
-        raise FileNotFoundError(f"TTS 実行ファイルが見つかりません: {exe_path}")
+    # 2. デフォルトパスを検索
+    for default_path in default_paths:
+        if default_path.exists():
+            logger.info(f"デフォルトパスから {engine} を検出しました: {default_path}")
+            return default_path
 
-    return exe_path
+    # 3. PATH内の実行ファイルを検索
+    exe_name = "SofTalk.exe" if engine == "softalk" else "AquesTalkPlayer.exe"
+    found = shutil.which(exe_name)
+    if found:
+        return Path(found)
+
+    raise RuntimeError(
+        f"{engine} の実行ファイルが見つかりません。"
+        f"以下のいずれかで指定してください:\n"
+        f"  1. 環境変数 {env_name} を設定\n"
+        f"  2. デフォルトインストール先にインストール: {default_paths[0]}\n"
+        f"  3. PATHに追加"
+    )
 
 
 def _build_command(
@@ -212,8 +242,14 @@ def run_batch(
     text_encoding: str = "utf-8",
     dry_run: bool = False,
     speaker_map_path: Optional[Path] = None,
+    skip_existing: bool = True,
+    max_retries: int = 3,
 ) -> int:
     """タイムライン CSV から行ごと TTS を実行するメイン処理
+
+    Args:
+        skip_existing: Trueの場合、既に存在するWAVファイルはスキップ
+        max_retries: TTS実行失敗時の最大リトライ回数
 
     Returns:
         int: 0=success, 非0=エラー
@@ -244,8 +280,18 @@ def run_batch(
         logger.error(f"TTS 実行ファイルの取得に失敗しました: {e}")
         return 1
 
+    success_count = 0
+    skip_count = 0
+    error_count = 0
+
     for index, (speaker, text) in enumerate(rows, start=1):
         output_path = _build_output_path(out_dir, index)
+
+        # 既存ファイルのスキップチェック
+        if skip_existing and output_path.exists():
+            logger.info(f"行 {index}: 既存ファイルをスキップ {output_path}")
+            skip_count += 1
+            continue
 
         if not text:
             logger.info(f"行 {index} はテキストが空のためスキップします: speaker={speaker}")
@@ -271,16 +317,26 @@ def run_batch(
             continue
 
         logger.info(f"[TTS] 行 {index} を合成: speaker={speaker}, out={output_path}")
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.SubprocessError as e:
-            logger.error(f"TTS 実行に失敗しました (row={index}): {e}")
-            return 1
-        except Exception as e:
-            logger.error(f"TTS 実行に失敗しました (row={index}): {e}")
-            return 1
 
-    return 0
+        # リトライ付き実行
+        for attempt in range(max_retries):
+            try:
+                subprocess.run(cmd, check=True)
+                success_count += 1
+                break
+            except subprocess.SubprocessError as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"TTS 実行失敗 (row={index}, attempt={attempt+1}): {e}. リトライします...")
+                else:
+                    logger.error(f"TTS 実行に失敗しました (row={index}): {e}")
+                    error_count += 1
+            except Exception as e:
+                logger.error(f"TTS 実行中に予期せぬエラーが発生しました (row={index}): {e}")
+                error_count += 1
+                break
+
+    logger.info(f"TTSバッチ完了: 成功={success_count}, スキップ={skip_count}, エラー={error_count}")
+    return 0 if error_count == 0 else 1
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -305,6 +361,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="Speaker 列から声プリセットを解決する JSON マップのパス",
         default=None,
     )
+    parser.add_argument(
+        "--no-skip",
+        action="store_true",
+        default=False,
+        help="既存ファイルをスキップしない（強制的に再生成）",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="TTS実行失敗時の最大リトライ回数 (デフォルト: 3)",
+    )
 
     args = parser.parse_args(argv)
 
@@ -321,6 +389,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             text_encoding=args.text_encoding,
             dry_run=args.dry_run,
             speaker_map_path=speaker_map_path,
+            skip_existing=not args.no_skip,
+            max_retries=args.max_retries,
         )
     except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError, subprocess.SubprocessError) as e:  # pragma: no cover
         logger.error(f"TTS バッチ実行中に予期せぬエラーが発生しました: {e}")

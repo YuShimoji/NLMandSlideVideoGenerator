@@ -16,6 +16,19 @@ Report: docs/inbox/REPORT_TASK_007_YMM4Plugin_2026-02-02.md
 - [x] .NET 9.0対応確認
 - [x] Git反映完了（コミット: 556591d）
 
+### シナリオA実装完了
+- [x] CsvTimelineReader.cs - UTF-8対応CSVパーサー、ダブルクォート対応
+- [x] CsvTimelineItem.cs - タイムライン行データモデル
+- [x] CsvImportDialog.xaml/.cs - WPFインポートダイアログ
+- [x] Ymm4TimelineImporter.cs - YMM4連携ロジック
+- [x] CsvTimelineVoicePlugin.cs - ボイスプラグイン更新
+- [x] CSV読み込み（話者,テキスト形式）
+- [x] WAVファイル紐付け（001.wav～行番号対応）
+- [x] タイムライン時刻自動計算
+- [x] 話者→ボイスマッピング
+- [x] プレビュー表示
+- [x] Git反映完了（コミット: a797c80）
+
 ## Objective
 - YMM4（ゆっくりムービーメーカー4）プラグインを実装し、CSV タイムラインから自動的に音声・字幕をインポートできる仕組みを構築する
 - プラグインAPI（.NET 9）を優先し、必要に応じてAutoHotkeyを代替手段として検討する
