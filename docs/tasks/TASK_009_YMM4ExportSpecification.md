@@ -1,10 +1,11 @@
 # Task: YMM4エクスポート仕様策定
-Status: OPEN
+Status: COMPLETED
 Tier: 1
 Branch: master
 Owner: Worker
 Created: 2026-02-02T03:59:00Z
-Report: 
+Completed: 2026-02-03T14:55:00Z
+Report: docs/specs/ymm4_export_spec.md 
 
 ## Objective
 - YMM4（ゆっくりムービーメーカー4）へのエクスポート仕様を策定し、CSV タイムラインとの対応関係を明確化する
@@ -39,11 +40,11 @@ Report:
 - 手動でのYMM4編集も可能な状態を維持（プラグイン依存を最小化）
 
 ## DoD
-- [ ] エクスポート仕様書を `docs/specs/ymm4_export_spec.md` として作成
-- [ ] データマッピング表（CSV ↔ YMM4）を含む
-- [ ] エクスポートフロー図（mermaidまたは図版）を含む
-- [ ] エラーハンドリング方針を明記
-- [ ] TASK_007（プラグイン実装）の実装ガイドとして機能する内容
+- [x] エクスポート仕様書を `docs/specs/ymm4_export_spec.md` として作成
+- [x] データマッピング表（CSV ↔ YMM4）を含む
+- [x] エクスポートフロー図（mermaidまたは図版）を含む
+- [x] エラーハンドリング方針を明記
+- [x] TASK_007（プラグイン実装）の実装ガイドとして機能する内容
 - [ ] レビュー済み（オーナー確認）
 
 ## Notes
