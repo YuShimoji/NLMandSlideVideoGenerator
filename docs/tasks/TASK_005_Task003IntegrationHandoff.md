@@ -4,7 +4,7 @@ Tier: 1
 Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-30T16:00:00Z
-Report: docs/inbox/REPORT_TASK_003_NotebookLMGeminiAPI_2026-01-30.md
+Report: docs/reports/REPORT_TASK_003_NotebookLMGeminiAPI_2026-01-30.md
 
 ## 概要
 

@@ -4,7 +4,7 @@ Tier: 2
 Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-30T16:00:00Z
-Report: docs/inbox/REPORT_TASK_006_BranchPromptSSOTSync_2026-02-03.md 
+Report: docs/reports/REPORT_TASK_006_BranchPromptSSOTSync_2026-02-03.md 
 
 ## Objective
 - チケット/WORKER_PROMPT/HANDOVER/MISSION_LOG に記載されたブランチ名や前提の不整合を解消し、運用ミスを防ぐ
