@@ -13,7 +13,9 @@ Report: docs/inbox/REPORT_TASK_003_NotebookLMGeminiAPI_2026-01-30.md
 
 ## 現状
 
-- `TASK_003` の Report は上記レポートへ紐付け済み。
+- `TASK_003` の Report は `docs/inbox/REPORT_ORCH_2026-02-03T14-35-00Z.md` へ紐付け済み。
+- `TASK_003` の Status を DONE → BLOCKED（外部API未設定のため）に更新済み。
+- DoD項目を実達成状況に合わせて更新済み。
 - commit/push 方針は本チケットの `Commit/Push` セクションで確定済み。
 
 ## 次のアクション
