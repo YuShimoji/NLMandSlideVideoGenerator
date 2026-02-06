@@ -1,7 +1,7 @@
 # 作業申し送り (HANDOVER)
 
 ## 最終更新
-2026-02-06T13:30:00+09:00
+2026-02-06T13:45:00+09:00
 
 ## 運用フラグ
 - **GitHubAutoApprove**: true
@@ -70,6 +70,12 @@ SSOT:
   - commit → `git push origin master`
   - push 後に `git status -sb` が clean であることを確認
   - `git log -1` と `git ls-remote origin master` の SHA が一致することを確認
+
+## アーカイブ済みファイル（2026-02-06整理）
+- レガシーHANDOVER: `docs/archive/HANDOVER_2025*.md`
+- セッションハンドオーバー: `docs/archive/SESSION_HANDOVER_20251201_*.md`
+- 旧協働ルール: `docs/archive/Windsurf_AI_Collab_Rules_v1.1.md`, `v2.0.md`
+- 旧レポート/プロンプト: `docs/archive/REPORT_ORCH_*.md`, `WORKER_PROMPT_*.md`
 
 ## 詳細な履歴
 過去の詳細な作業履歴は `docs/archive/HANDOVER_20251214.md` 等を参照してください。

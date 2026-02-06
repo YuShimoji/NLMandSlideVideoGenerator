@@ -2,7 +2,7 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-02-06T13:30:00+09:00
+- **最終更新**: 2026-02-06T13:45:00+09:00
 - **更新者**: Cascade
 
 ## レポート設定（推奨）
@@ -13,15 +13,15 @@
 
 ## 現在のミッション
 
-- **タイトル**: Windsurf/Antigravity IDE最適化 & shared-workflows v3 統合
-- **Issue**: shared-workflows v3 への移行とIDE設定の最適化
+- **タイトル**: プロジェクトクリーンアップ & 次フェーズプラン策定
+- **Issue**: ドキュメント整合性修正・レガシーファイル整理・開発計画策定
 - **ブランチ**: master
 - **関連PR**: なし
-- **進捗**: 完了
+- **進捗**: 進行中
 
 ## 次の中断可能点
 
-- 全IDE設定ファイル更新済み、テスト通過確認済み
+- クリーンアップ完了後、コミット＆プッシュ済みの状態
 
 ## 決定事項
 
@@ -46,7 +46,7 @@
 
 ### 短期（Next）
 
-- IDE最適化完了後のプロジェクト本体開発再開（Gemini+TTS API連携 or SSOT堅牢化）
+- プロジェクトクリーンアップ完了後、Gemini+TTS API連携 or SSOT堅牢化に着手
 
 ### 中期（Later）
 
@@ -62,9 +62,9 @@
 ## Backlog
 
 - [ ] `src/` 内 catch-all `except Exception` の段階的細分化
-- [ ] `ymm4-plugin/obj` 等のビルド成果物が .gitignore に含まれているか確認
+- [x] `ymm4-plugin/obj` 等のビルド成果物が .gitignore に含まれているか確認（`**/obj/` `**/bin/` で対応済み）
 - [ ] `orchestrator-audit.js` を CI へ統合
-- [ ] docs/ 内のレガシーHANDOVER（日付付き）のアーカイブ整理
+- [x] docs/ 内のレガシーHANDOVER（日付付き）のアーカイブ整理
 
 ## 備考（自由記述）
 
@@ -78,3 +78,4 @@
 - 2025-12-16: CSV+WAV E2E安定化、品質SSOT統一（480p/720p/1080p）
 - 2026-01-xx: broad except Exception の想定例外中心への分割（全主要モジュール対応済み）
 - 2026-02-06: shared-workflows v3 統合、IDE最適化（.windsurf/workflows/ 新設、.cursorrules v3化、AI_CONTEXT v3化）
+- 2026-02-06: プロジェクトクリーンアップ（レガシーファイルアーカイブ、ドキュメント整合性修正）

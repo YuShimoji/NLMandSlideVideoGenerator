@@ -2,7 +2,7 @@
 
 ## まず読む（現行SSOT）
 
-- **協働ルール（SSOT）**: `docs/Windsurf_AI_Collab_Rules_v1.1.md`
+- **協働ルール（SSOT）**: `docs/Windsurf_AI_Collab_Rules_latest.md`
 
 - **開発バックログ / 方針**: `docs/backlog.md`
 - **手動素材ワークフロー（CSV+WAV）**: `docs/user_guide_manual_workflow.md`
@@ -36,4 +36,5 @@
 ## 参考（履歴/スナップショット）
 
 - **完成報告書（時系列スナップショット）**: `docs/project_completion_report.md`
-- **申し送り（セッションログ）**: `docs/HANDOVER_*.md`
+- **申し送り（最新）**: `docs/HANDOVER.md`
+- **過去の申し送り**: `docs/archive/HANDOVER_*.md`
