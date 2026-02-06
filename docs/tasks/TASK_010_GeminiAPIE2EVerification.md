@@ -1,9 +1,11 @@
 # Task: Gemini API 実動作確認 (E2E Verification)
-Status: IN_PROGRESS
+Status: DONE
 Tier: 1
 Branch: master
 Owner: Worker
 Created: 2026-02-06T13:50:00+09:00
+Completed: 2026-02-06T18:17:00+09:00
+Report: `scripts/test_gemini_e2e.py`実行結果
 
 ## 概要
 
@@ -15,21 +17,28 @@ Gemini APIキー設定済み環境で、台本生成→スライド生成→(TTS
 - `google-generativeai` v0.8.5 インストール済み
 - `.env` ファイル作成済み（APIキーはプレースホルダー → 実キー設定が必要）
 
-## 現状 (2026-02-06)
+## 現状 (2026-02-06) ✅ DONE
 
 - ✅ E2Eテストスクリプト作成: `scripts/test_gemini_e2e.py`
 - ✅ モックフォールバック動作確認: 全PASS
-- ⏳ 実APIキー未設定: `.env` の `GEMINI_API_KEY` にプレースホルダー値のみ
-- ⏳ TTS未設定: `TTS_PROVIDER=none`
+- ✅ GEMINI_API_KEY設定済み: 実APIキーで接続成功
+- ⏳ TTS未設定: `TTS_PROVIDER=none`（フォールバック動作でOK）
+
+## 完了報告
+
+- **実API台本生成**: PASS（Gemini APIでPython 3.12新機能の台本生成、5セグメント取得）
+- **実APIスライド生成**: PASS（台本からスライド内容生成）
+- **AudioGenerator E2E**: PASS（Gemini統合active、TTS未設定でplaceholder音声フォールバック）
+- **既存テスト**: 109 passed, 7 skipped, 4 deselected（維持）
 
 ## サブタスク
 
 - [x] E2Eテストスクリプト作成 (`scripts/test_gemini_e2e.py`)
 - [x] モックフォールバック動作確認
-- [ ] GEMINI_API_KEY を実キーに設定
-- [ ] 実API台本生成テスト（Step 1）
-- [ ] 実APIスライド生成テスト（Step 2）
-- [ ] AudioGenerator E2E（Gemini台本→placeholder音声）
+- [x] GEMINI_API_KEY を実キーに設定
+- [x] 実API台本生成テスト（Step 1）
+- [x] 実APIスライド生成テスト（Step 2）
+- [x] AudioGenerator E2E（Gemini台本→placeholder音声）
 - [ ] (Optional) TTS設定後のフルE2E
 
 ## 検証手順
@@ -47,10 +56,10 @@ Gemini APIキー設定済み環境で、台本生成→スライド生成→(TTS
 
 ## DoD
 
-- [ ] 実APIで台本生成が成功する（モックではなく実レスポンス）
-- [ ] 実APIでスライド生成が成功する
-- [ ] 既存テスト（109 passed）が維持される
-- [ ] 結果をドキュメントに記録
+- [x] 実APIで台本生成が成功する（モックではなく実レスポンス）
+- [x] 実APIでスライド生成が成功する
+- [x] 既存テスト（109 passed）が維持される
+- [x] 結果をドキュメントに記録
 
 ## Forbidden Area
 
