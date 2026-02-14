@@ -5,7 +5,7 @@ Branch: master
 Owner: Worker
 Created: 2026-02-06T13:50:00+09:00
 Completed: 2026-02-06T18:17:00+09:00
-Report: `scripts/test_gemini_e2e.py`実行結果
+Report: scripts/test_gemini_e2e.py
 
 ## 概要
 

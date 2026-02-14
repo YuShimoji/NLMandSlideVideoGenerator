@@ -46,11 +46,12 @@
 
 ### 短期（Next）
 
-- TASK_010: Gemini API実動作確認完了 ✅（2026-02-06）
+- [in_progress] YMM4プラグイン連携実装 (ref: docs/tasks/TASK_007_YMM4PluginIntegration.md, Status: IN_PROGRESS)
+- [pending] SofTalk連携実装 (ref: docs/tasks/TASK_008_SofTalkIntegration.md, Status: CLOSED)
+- [pending] YMM4エクスポート仕様策定 (ref: docs/tasks/TASK_009_YMM4ExportSpecification.md, Status: COMPLETED)
 
 ### 中期（Later）
 
-- CI パイプラインに orchestrator-audit を統合
 - broad `except Exception` の残存箇所をさらに細分化
 - YMM4 プラグインAPI仕様が判明次第、C3-1/C3-2 再開
 
@@ -63,7 +64,7 @@
 
 - [ ] `src/` 内 catch-all `except Exception` の段階的細分化
 - [x] `ymm4-plugin/obj` 等のビルド成果物が .gitignore に含まれているか確認（`**/obj/` `**/bin/` で対応済み）
-- [ ] `orchestrator-audit.js` を CI へ統合
+- [x] `orchestrator-audit.js` を CI へ統合（`.github/workflows/orchestrator-audit.yml`）
 - [x] docs/ 内のレガシーHANDOVER（日付付き）のアーカイブ整理
 
 ## 備考（自由記述）
@@ -79,3 +80,9 @@
 - 2026-01-xx: broad except Exception の想定例外中心への分割（全主要モジュール対応済み）
 - 2026-02-06: shared-workflows v3 統合、IDE最適化（.windsurf/workflows/ 新設、.cursorrules v3化、AI_CONTEXT v3化）
 - 2026-02-06: プロジェクトクリーンアップ（レガシーファイルアーカイブ、ドキュメント整合性修正）
+
+## Worker完了ステータス
+
+- task_004_report_fix: completed, priority: critical, timeout: 30
+- task_010_report_fix: completed, priority: critical, timeout: 30
+- handover_ai_context_alignment: completed, priority: critical, timeout: 30

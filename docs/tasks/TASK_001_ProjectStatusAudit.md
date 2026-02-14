@@ -4,8 +4,7 @@ Tier: 1
 Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-05T01:14:04Z
-Report: docs/inbox/REPORT_20260105_ProjectStatusAudit.md
-
+Report: docs/reports/REPORT_20260105_ProjectStatusAudit.md
 ## Objective
 - プロジェクトの現在の状態を確認し、環境診断を実施する
 - shared-workflows 統合後の整合性を確認する

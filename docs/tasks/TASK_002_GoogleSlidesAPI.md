@@ -4,8 +4,7 @@ Tier: 2
 Branch: master
 Owner: Orchestrator → Worker
 Created: 2026-01-05T05:36:25Z
-Report: docs/inbox/REPORT_20260105_GoogleSlidesAPI.md 
-
+Report: docs/reports/REPORT_20260105_GoogleSlidesAPI.md
 ## Objective
 - Google Slides API実装を完成させ、OAuth認証の設定とテストを実施する
 - 既存実装の確認と改善を行い、統合テストを実行して検証する
