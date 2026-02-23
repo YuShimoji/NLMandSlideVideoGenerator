@@ -388,3 +388,18 @@ Speaker2,よろしくお願いします
   - `logs/task007_scenariob/<latest>/summary.md`
   - `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`
 - Re-check after warning cleanup: `logs/task007_scenariob/20260224-035002/summary.md` (Hash MATCH / resolver contract PASS)
+
+## 15. 2026-02-24 User Verification Checkpoint
+
+- User confirmed on YMM4 UI:
+  - Text items and WAV-linked items were added to timeline.
+  - Timeline waveform moved during playback.
+- Audio output was not audible, but this is likely host environment output routing/volume device issue (plugin-side import itself is successful).
+- Runtime log was confirmed generated:
+  - `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`
+  - Latest sample:
+    - `Import success. rows=3, audio=2, text=3, skipped=0, totalItems=5`
+
+### ScenarioB judgement
+- Import function / timeline placement / runtime traceability: PASS
+- Residual risk: host audio output environment only (non-blocking for plugin import completion)

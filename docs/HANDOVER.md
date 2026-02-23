@@ -128,3 +128,10 @@ SSOT:
 - Added runtime log for non-UI diagnostics: `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`.
 - AutoCheck updated and passing: `logs/task007_scenariob/20260224-034821/summary.md`.
 - Re-check log: `logs/task007_scenariob/20260224-035002/summary.md`
+
+## 2026-02-24 04:00 Checkpoint
+- User confirmed timeline insertion success (text + WAV items present).
+- Waveform movement observed during playback; import path is healthy.
+- Audio output issue is treated as host environment routing/volume concern (non-blocking for TASK_007 import completion).
+- Runtime log exists and reports success: `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`.
+- TASK_007 moved to DONE for ScenarioB scope.

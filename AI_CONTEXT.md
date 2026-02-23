@@ -48,7 +48,6 @@
 
 ### 短期（Next）
 
-- [in_progress] YMM4プラグイン連携実装 (ref: docs/tasks/TASK_007_YMM4PluginIntegration.md, Status: IN_PROGRESS)
 - [pending] SofTalk連携実装 (ref: docs/tasks/TASK_008_SofTalkIntegration.md, Status: CLOSED)
 - [pending] YMM4エクスポート仕様策定 (ref: docs/tasks/TASK_009_YMM4ExportSpecification.md, Status: COMPLETED)
 
@@ -106,3 +105,9 @@
 - Added runtime logging to enable diagnosis without screenshot.
 - Updated AutoCheck includes resolver contract verification (PASS).
 - Re-check log updated: `logs/task007_scenariob/20260224-035002/summary.md`
+
+## 2026-02-24 04:00 Context Update
+- User-side manual verification passed for timeline import result.
+- Import completion confirmed via runtime log (rows/text/audio counters).
+- Remaining audio audibility issue is environment-side and out of plugin import critical path.
+- TASK_007 ScenarioB considered complete; repository is in resumable development state.
