@@ -1,111 +1,116 @@
 using Microsoft.Win32;
+using NLMSlidePlugin.Core;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
-using NLMSlidePlugin.Core;
+using YukkuriMovieMaker.Project;
+using YukkuriMovieMaker.Project.Items;
 
 namespace NLMSlidePlugin.TimelinePlugin
 {
     /// <summary>
-    /// CSVインポートダイアログのコードビハインド
+    /// CSV import dialog for timeline import.
     /// </summary>
     public partial class CsvImportDialog : Window, INotifyPropertyChanged
     {
-        private string _csvPath = string.Empty;
-        private string _audioDirectory = string.Empty;
-        private string _statusMessage = "CSVファイルを選択してください";
-        private bool _addSubtitles = true;
-        private List<CsvTimelineItem> _previewItems = new();
+        private readonly Timeline? timeline;
+        private string csvPath = string.Empty;
+        private string audioDirectory = string.Empty;
+        private string statusMessage = "Select a CSV file.";
+        private bool addSubtitles = true;
+        private List<CsvTimelineItem> previewItems = new();
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public CsvImportDialog()
+        public CsvImportDialog(Timeline? timeline = null)
         {
+            this.timeline = timeline;
             InitializeComponent();
             DataContext = this;
         }
 
-        #region Properties
-
         public string CsvPath
         {
-            get => _csvPath;
-            set { _csvPath = value; OnPropertyChanged(); }
+            get => csvPath;
+            set
+            {
+                csvPath = value;
+                OnPropertyChanged();
+            }
         }
 
         public string AudioDirectory
         {
-            get => _audioDirectory;
-            set { _audioDirectory = value; OnPropertyChanged(); }
+            get => audioDirectory;
+            set
+            {
+                audioDirectory = value;
+                OnPropertyChanged();
+            }
         }
 
         public string StatusMessage
         {
-            get => _statusMessage;
-            set { _statusMessage = value; OnPropertyChanged(); }
+            get => statusMessage;
+            set
+            {
+                statusMessage = value;
+                OnPropertyChanged();
+            }
         }
 
         public bool AddSubtitles
         {
-            get => _addSubtitles;
-            set { _addSubtitles = value; OnPropertyChanged(); }
+            get => addSubtitles;
+            set
+            {
+                addSubtitles = value;
+                OnPropertyChanged();
+            }
         }
 
         public List<CsvTimelineItem> PreviewItems
         {
-            get => _previewItems;
+            get => previewItems;
             set
             {
-                _previewItems = value;
+                previewItems = value;
                 PreviewDataGrid.ItemsSource = value;
                 OnPropertyChanged();
             }
         }
 
-        #endregion
-
-        #region Event Handlers
-
         private void BrowseCsvButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog
             {
-                Filter = "CSVファイル (*.csv)|*.csv|すべてのファイル (*.*)|*.*",
-                Title = "タイムラインCSVを選択",
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                Title = "Select CSV File",
                 CheckFileExists = true
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog() != true)
             {
-                CsvPath = dialog.FileName;
-                
-                // 音声ディレクトリを自動設定（CSVと同じフォルダ/audio）
-                var csvDir = Path.GetDirectoryName(CsvPath);
-                var defaultAudioDir = Path.Combine(csvDir, "audio");
-                if (Directory.Exists(defaultAudioDir))
-                {
-                    AudioDirectory = defaultAudioDir;
-                }
-                else
-                {
-                    AudioDirectory = csvDir;
-                }
-
-                StatusMessage = "プレビューボタンをクリックして内容を確認してください";
+                return;
             }
+
+            CsvPath = dialog.FileName;
+
+            var csvDir = Path.GetDirectoryName(CsvPath) ?? string.Empty;
+            var defaultAudioDir = Path.Combine(csvDir, "audio");
+            AudioDirectory = Directory.Exists(defaultAudioDir) ? defaultAudioDir : csvDir;
+            StatusMessage = "CSV selected. Click Preview.";
         }
 
         private void BrowseAudioButton_Click(object sender, RoutedEventArgs e)
         {
-            // FolderBrowserDialogの代わりにOpenFileDialogを使用
             var dialog = new OpenFileDialog
             {
-                Title = "音声ファイルを含むフォルダを選択（ファイルは無視されます）",
+                Title = "Select Any File in Audio Directory",
                 Filter = "All Files (*.*)|*.*",
                 CheckFileExists = false,
                 FileName = "Select Folder"
@@ -119,15 +124,15 @@ namespace NLMSlidePlugin.TimelinePlugin
 
         private void PreviewButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(CsvPath))
+            if (string.IsNullOrWhiteSpace(CsvPath))
             {
-                StatusMessage = "CSVファイルを選択してください";
+                StatusMessage = "Please select a CSV file.";
                 return;
             }
 
             if (!File.Exists(CsvPath))
             {
-                StatusMessage = "指定されたCSVファイルが見つかりません";
+                StatusMessage = "CSV file does not exist.";
                 return;
             }
 
@@ -138,20 +143,20 @@ namespace NLMSlidePlugin.TimelinePlugin
                 PreviewItems = items;
 
                 int audioFound = items.Count(i => !string.IsNullOrEmpty(i.AudioFilePath));
-                StatusMessage = $"{items.Count}件のデータを読み込みました（音声: {audioFound}件）";
+                StatusMessage = $"Preview loaded: {items.Count} rows, audio found: {audioFound}.";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"読み込みエラー: {ex.Message}";
                 PreviewItems = new List<CsvTimelineItem>();
+                StatusMessage = $"Preview failed: {ex.Message}";
             }
         }
 
-        private async void ImportButton_Click(object sender, RoutedEventArgs e)
+        private void ImportButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(CsvPath) || !File.Exists(CsvPath))
+            if (string.IsNullOrWhiteSpace(CsvPath) || !File.Exists(CsvPath))
             {
-                StatusMessage = "CSVファイルを選択してください";
+                StatusMessage = "Please select a valid CSV file.";
                 return;
             }
 
@@ -160,7 +165,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 PreviewButton_Click(sender, e);
                 if (PreviewItems.Count == 0)
                 {
-                    StatusMessage = "インポートするデータがありません";
+                    StatusMessage = "No rows available to import.";
                     return;
                 }
             }
@@ -168,27 +173,37 @@ namespace NLMSlidePlugin.TimelinePlugin
             try
             {
                 ImportButton.IsEnabled = false;
-                StatusMessage = "インポート中...";
+                StatusMessage = "Importing...";
 
-                // TODO: YMM4 APIを使用して実際にタイムラインに追加
-                await Task.Delay(500); // シミュレーション
+                var result = ImportToTimeline(PreviewItems, AddSubtitles);
+                if (result.ImportedRows <= 0)
+                {
+                    throw new InvalidOperationException("No items were added to the timeline.");
+                }
 
-                StatusMessage = $"{PreviewItems.Count}件のインポートが完了しました";
-                
-                // 成功ダイアログ
-                MessageBox.Show($"{PreviewItems.Count}件のデータをインポートしました。\n\n" +
-                              $"音声ファイル: {PreviewItems.Count(i => !string.IsNullOrEmpty(i.AudioFilePath))}件\n" +
-                              $"字幕: {(AddSubtitles ? "追加" : "スキップ")}",
-                              "インポート完了", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusMessage = $"Imported {result.ImportedRows} rows (audio: {result.AudioItems}, text: {result.TextItems}, skipped: {result.SkippedRows}, timeline items: {result.TimelineItemsAfterImport})";
+
+                MessageBox.Show(
+                    $"Imported {result.ImportedRows} rows to timeline.\n\n" +
+                    $"Audio items: {result.AudioItems}\n" +
+                    $"Text items: {result.TextItems}\n" +
+                    $"Skipped rows: {result.SkippedRows}\n" +
+                    $"Timeline total items: {result.TimelineItemsAfterImport}",
+                    "CSV Import Result",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
 
                 DialogResult = true;
                 Close();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"インポートエラー: {ex.Message}";
-                MessageBox.Show($"インポート中にエラーが発生しました:\n{ex.Message}", 
-                              "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = $"Import failed: {ex.Message}";
+                MessageBox.Show(
+                    $"Import failed:\n{ex.Message}",
+                    "CSV Import Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
             finally
             {
@@ -196,15 +211,109 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
-        #endregion
+        private ImportExecutionResult ImportToTimeline(IEnumerable<CsvTimelineItem> items, bool shouldAddSubtitles)
+        {
+            if (timeline is null)
+            {
+                throw new InvalidOperationException("Timeline context is not available.");
+            }
 
-        #region INotifyPropertyChanged
+            int fps = Math.Max(1, timeline.VideoInfo.FPS);
+            int baseLayer = GetImportBaseLayer(timeline);
+
+            int importedRows = 0;
+            int audioItems = 0;
+            int textItems = 0;
+            int skippedRows = 0;
+
+            foreach (var csvItem in items)
+            {
+                int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
+                int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
+
+                var timelineItems = new List<IItem>();
+                bool hasAudio = false;
+                bool hasText = false;
+
+                if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
+                {
+                    var audio = new AudioItem(csvItem.AudioFilePath)
+                    {
+                        Frame = 0,
+                        Layer = 0,
+                        Length = lengthFrames,
+                        PlaybackRate = 1.0
+                    };
+                    timelineItems.Add(audio);
+                    hasAudio = true;
+                }
+
+                if (shouldAddSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
+                {
+                    var text = new TextItem
+                    {
+                        Frame = 0,
+                        Layer = 1,
+                        Length = lengthFrames,
+                        PlaybackRate = 1.0,
+                        Text = csvItem.Text
+                    };
+                    timelineItems.Add(text);
+                    hasText = true;
+                }
+
+                if (timelineItems.Count == 0)
+                {
+                    skippedRows++;
+                    continue;
+                }
+
+                int beforeCount = timeline.Items.Count;
+                bool added = timeline.TryAddItems(timelineItems.ToArray(), startFrame, baseLayer, true);
+                int afterCount = timeline.Items.Count;
+                if (!added || afterCount <= beforeCount)
+                {
+                    skippedRows++;
+                    continue;
+                }
+
+                importedRows++;
+                if (hasAudio)
+                {
+                    audioItems++;
+                }
+
+                if (hasText)
+                {
+                    textItems++;
+                }
+            }
+
+            timeline.RefreshTimelineLengthAndMaxLayer();
+            return new ImportExecutionResult(importedRows, audioItems, textItems, skippedRows, timeline.Items.Count);
+        }
+
+        private static int GetImportBaseLayer(Timeline timeline)
+        {
+            var selectedLayers = timeline.LayerSelection.GetSelectedLayers().ToArray();
+            if (selectedLayers.Length > 0)
+            {
+                return Math.Max(0, selectedLayers.Min());
+            }
+
+            return Math.Max(0, timeline.MaxLayer + 1);
+        }
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null!)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        #endregion
+        private readonly record struct ImportExecutionResult(
+            int ImportedRows,
+            int AudioItems,
+            int TextItems,
+            int SkippedRows,
+            int TimelineItemsAfterImport);
     }
 }

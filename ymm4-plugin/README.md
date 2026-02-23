@@ -71,7 +71,8 @@ ymm4-plugin/
 | インターフェース | 用途 | ステータス |
 |-----------------|------|-----------|
 | `IPlugin` | 基本プラグイン情報 | ✅ 実装済み |
-| `IPluginMenuItem` | メニュー統合 | ✅ 実装済み |
+| `IToolPlugin` | ツールウィンドウ統合 | ✅ 実装済み |
+| `IPluginMenuItem` | 旧メニュー統合（v4.33+非推奨） | ⏸ 廃止 |
 | `IVoicePlugin` | ボイス生成 | 🚧 スケルトン |
 | `ITextCompletionPlugin` | テキスト補完・校正 | 🚧 スケルトン |
 | `IAudioFileSourcePlugin` | 外部WAVインポート | ⏳ 予定 |

@@ -1,12 +1,12 @@
 # 作業申し送り (HANDOVER)
 
-Timestamp: 2026-02-14T22:45:00+09:00
+Timestamp: 2026-02-24T01:16:43+09:00
 Actor: Codex (Orchestrator)
 Type: Handover
-Mode: Driver(P1.5_audit)
+Mode: Driver(P5_worker)
 
 ## 最終更新
-2026-02-06T13:45:00+09:00
+2026-02-24T01:16:43+09:00
 
 ## 運用フラグ
 - **GitHubAutoApprove**: true
@@ -50,7 +50,7 @@ SSOT:
 - result: 109 passed, 7 skipped, 4 deselected (2026-02-06)
 
 ## タスクポートフォリオ
-- **DONE**: TASK_001, TASK_002, TASK_003, TASK_004, TASK_005, TASK_006
+- **DONE**: TASK_001, TASK_002, TASK_003, TASK_004, TASK_005, TASK_006, TASK_011（方針転換ゲート整備）
 - **COMPLETED**: TASK_009
 - **CLOSED**: TASK_008
 - **IN_PROGRESS**: TASK_007（YMM4プラグイン統合、シナリオZero+A完了、シナリオB待ち）
@@ -89,15 +89,31 @@ SSOT:
 ## リスク
 - `docs/tasks/TASK_007_YMM4PluginIntegration.md` は実機確認系DoDが未完了のため、統合完了判定は未達。
 - `orchestrator-audit` は anomaly 0 だが、運用文書更新時の表記揺れで warning が再発しやすい。
+- YMM4ツール起動時の `InvalidCastException` は修正済みだが、GUI再検証完了までは再発リスクを残す。
 
 ## Proposals
 - HANDOVER と AI_CONTEXT の監査必須キーをテンプレート化し、更新時の漏れを防止する。
 - `docs/tasks/*` の `Report:` 存在検証を pre-commit で自動化する。
 
 ## Outlook
-- Short-term: P1.5のwarning収束確認後に P1.75（Complete Gate）へ遷移する。
-- Mid-term: `TASK_007` の未完DoD（実機検証・証跡化）を Worker 委譲で完了させる。
+- Short-term: `TASK_007` の `INotifyPropertyChanged` 例外修正を反映済み。シナリオBのGUI最終確認を優先実行する。
+- Mid-term: `TASK_011` の境界定義・ロールバック条件に従って方針転換チェックポイントを適用する。
 - Long-term: `orchestrator-audit` strict 運用を CI で標準化し、運用監査を継続自動化する。
+
+## 2026-02-23 同期更新
+- `docs/tasks/TASK_011_PolicyPivotGatePreparation.md`: Status `DONE`、DoD 6/6 チェック済み
+- `docs/inbox/REPORT_TASK_011_PolicyPivotGatePreparation.md`: 受領・内容確認済み
+- `MISSION_LOG` / `AI_CONTEXT` へ TASK_011 完了を反映済み
+
+## 2026-02-24 TASK_007 更新
+- `ymm4-plugin/ToolPlugin/CsvImportToolPlugin.cs`: `IToolPlugin` 実装を再作成、ViewModelへ `INotifyPropertyChanged` を実装
+- `scripts/test_task007_scenariob.ps1`: build/配置/契約チェックを半自動化
+- `docs/inbox/REPORT_TASK_007_ScenarioB_2026-02-23.md`: 例外追記と半自動検証結果を反映
 
 ## 最新 Orchestrator レポート
 - REPORT_ORCH_2026-02-14T13-35-23Z.md
+
+## 2026-02-24 01:47 Follow-up
+- TASK_007 ScenarioB issue investigated: import success message with empty timeline.
+- Latest plugin build is ready, but deployment is blocked by DLL lock while YMM4 process is running.
+- Next required step: close YMM4, rebuild/deploy, then re-run GUI import verification.

@@ -4,7 +4,7 @@ Tier: 2
 Branch: feature/ymm4-plugin
 Owner: Worker
 Created: 2026-02-02T03:59:00Z
-Report: docs/inbox/REPORT_TASK_007_YMM4Plugin_2026-02-02.md
+Report: docs/inbox/REPORT_TASK_007_ScenarioB_2026-02-23.md
 
 ## 完了した作業
 

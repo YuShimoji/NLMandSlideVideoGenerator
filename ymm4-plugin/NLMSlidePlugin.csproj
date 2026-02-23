@@ -15,11 +15,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Compile Remove="tests/**" />
+		<Compile Remove="tests_backup/**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="YukkuriMovieMaker">
+			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.dll</HintPath>
+		</Reference>
 		<Reference Include="YukkuriMovieMaker.Controls">
 			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.Controls.dll</HintPath>
 		</Reference>
 		<Reference Include="YukkuriMovieMaker.Plugin">
 			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.Plugin.dll</HintPath>
+		</Reference>
+		<Reference Include="YukkuriMovieMaker.Plugin.Community">
+			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.Plugin.Community.dll</HintPath>
 		</Reference>
 		<Reference Include="SharpGen.Runtime">
 			<HintPath>$(YMM4DirPath)SharpGen.Runtime.dll</HintPath>
@@ -39,7 +50,7 @@
 	</ItemGroup>
 
 	<!-- ビルド後にYMM4のプラグインフォルダにdllをコピーする -->
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipPluginCopy)' != 'true'">
 	  <Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
 	</Target>
 

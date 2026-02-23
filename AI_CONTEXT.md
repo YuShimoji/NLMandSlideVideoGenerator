@@ -2,8 +2,8 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-02-06T18:17:00+09:00
-- **更新者**: Cascade
+- **最終更新**: 2026-02-24T01:16:43+09:00
+- **更新者**: Codex (Orchestrator)
 
 ## レポート設定（推奨）
 
@@ -13,15 +13,15 @@
 
 ## 現在のミッション
 
-- **タイトル**: TASK_010 Gemini API E2E Verification - **COMPLETED**
-- **Issue**: Gemini API実動作確認（台本生成→スライド生成→動画生成）
+- **タイトル**: TASK_007 YMM4PluginIntegration - Scenario B Verification（進行中）
+- **Issue**: YMM4実機でのプラグイン動作検証と証跡化
 - **ブランチ**: master
 - **関連PR**: なし
-- **進捗**: **完了** - 実APIで台本生成・スライド生成・AudioGenerator E2E成功
+- **進捗**: **進行中** - シナリオZero+A完了、シナリオB待ち
 
 ## 次の中断可能点
 
-- **TASK_010完了** - E2Eテストスクリプト作成・実API動作確認済み・109 passed維持
+- **TASK_011完了同期済み** - 方針転換ゲート整備（境界定義/ロールバック条件）反映完了
 
 ## 決定事項
 
@@ -30,12 +30,14 @@
 - 外部実行ファイル検出は `src/core/utils/tool_detection.py` に集約（`AUTOHOTKEY_EXE` / `YMM4_EXE` / `FFMPEG_EXE`）。
 - 品質SSOTは 480p/720p/1080p に統一（4K未対応）。
 - CSV + 行ごとのWAV → CSVパイプラインで動画/字幕/サムネ/メタデータ生成が現行SSOT。
+- TASK_011で方針転換ゲートを整備し、評価スキーマ（★★★/★★☆/★☆☆）とロールバック条件（4トリガー）を採用。
 
 ## リスク/懸念
 
 - `src/` 内に残っている `except Exception` は特定例外後の catch-all。必要に応じて細分化/削除を検討（挙動維持が前提）。
 - 生成物/ビルド成果物（例: `ymm4-plugin/obj`）が意図せず管理対象になっていないか確認。
 - YMM4連携は .NET プラグインAPI優先へ方針転換済みだが、IVoicePlugin/ITextCompletionPlugin 詳細仕様不足のため保留中。
+- 実機で確認された `InvalidCastException` は修正済みだが、YMM4 GUIでの再検証完了までは最終確定できない。
 
 ## テスト
 
@@ -86,3 +88,10 @@
 - task_004_report_fix: completed, priority: critical, timeout: 30
 - task_010_report_fix: completed, priority: critical, timeout: 30
 - handover_ai_context_alignment: completed, priority: critical, timeout: 30
+- task_011_policy_pivot_gate: completed, priority: high, timeout: 30
+
+## 2026-02-24 01:47 Context Update
+- TASK_007 ScenarioB: runtime behavior mismatch traced to old deployed plugin DLL.
+- Local build succeeded with latest import logic (`SkipPluginCopy=true`).
+- Blocker: YMM4 process lock prevents replacing deployed DLL.
+- Next action: close YMM4 -> deploy latest DLL -> re-test timeline import.
