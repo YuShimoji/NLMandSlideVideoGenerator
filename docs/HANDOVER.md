@@ -117,3 +117,8 @@ SSOT:
 - TASK_007 ScenarioB issue investigated: import success message with empty timeline.
 - Latest plugin build is ready, but deployment is blocked by DLL lock while YMM4 process is running.
 - Next required step: close YMM4, rebuild/deploy, then re-run GUI import verification.
+
+## 2026-02-24 03:39 Follow-up
+- TASK_007 ScenarioB の再配置を実施（YMM4停止後に Release build で deploy 更新）。
+- 自動検証 PASS: `logs/task007_scenariob/20260224-033929/summary.md`
+- 現在の残件は GUI 手動確認（インポート実行とタイムライン反映確認）のみ。

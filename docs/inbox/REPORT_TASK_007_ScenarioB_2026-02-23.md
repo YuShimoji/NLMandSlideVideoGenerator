@@ -342,3 +342,26 @@ Speaker2,よろしくお願いします
   1. Close YMM4.
   2. Rebuild without `SkipPluginCopy` to deploy latest DLL.
   3. Re-run ScenarioB import and confirm "Timeline total items" increases.
+
+---
+
+## 13. 2026-02-24 進捗反映（区切り）
+
+### 実施内容
+- YMM4プロセス停止後に `dotnet build -c Release` を実行し、配置先DLLを更新。
+- 自動検証を再実行:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test_task007_scenariob.ps1 -ProjectRoot . -Configuration Release -LaunchYmm4`
+- 検証サマリ: `logs/task007_scenariob/20260224-033929/summary.md`
+
+### 結果
+- Built/Deployed DLL サイズ一致: `33792` bytes
+- SHA256一致: `MATCH`
+- 契約チェック:
+  - `CsvImportToolPlugin : IToolPlugin` PASS
+  - `CsvImportToolViewModel : INotifyPropertyChanged` PASS
+- YMM4起動まで確認済み（GUI最終確認待ち）。
+
+### 次の確認（手動）
+1. プラグイン一覧で `NLMSlidePlugin` 表示確認
+2. ツールメニューから CSV インポート実行
+3. タイムラインへの音声/字幕反映を確認
