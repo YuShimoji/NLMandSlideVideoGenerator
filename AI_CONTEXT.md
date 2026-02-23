@@ -100,3 +100,9 @@
 - TASK_007 ScenarioB: deploy DLL を最新版へ同期完了（hash match）。
 - AutoCheck PASS（build/deploy/contract）。
 - Next: GUI manual verification only.
+
+## 2026-02-24 03:49 Context Update
+- Fixed import blocker: timeline context is now resolved via MainWindow reflection fallback.
+- Added runtime logging to enable diagnosis without screenshot.
+- Updated AutoCheck includes resolver contract verification (PASS).
+- Re-check log updated: `logs/task007_scenariob/20260224-035002/summary.md`

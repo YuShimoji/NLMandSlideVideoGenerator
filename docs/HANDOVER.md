@@ -122,3 +122,9 @@ SSOT:
 - TASK_007 ScenarioB の再配置を実施（YMM4停止後に Release build で deploy 更新）。
 - 自動検証 PASS: `logs/task007_scenariob/20260224-033929/summary.md`
 - 現在の残件は GUI 手動確認（インポート実行とタイムライン反映確認）のみ。
+
+## 2026-02-24 03:49 Follow-up
+- Timeline context unavailable failure addressed with reflection fallback in CsvImportDialog.
+- Added runtime log for non-UI diagnostics: `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`.
+- AutoCheck updated and passing: `logs/task007_scenariob/20260224-034821/summary.md`.
+- Re-check log: `logs/task007_scenariob/20260224-035002/summary.md`

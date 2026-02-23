@@ -59,6 +59,23 @@ function Test-PluginContractsFromSource([string]$ToolSourcePath) {
     }
 }
 
+function Test-TimelineResolverCompatibility([string]$ToolSourcePath) {
+    if (-not (Test-Path $ToolSourcePath)) {
+        throw "Tool source not found: $ToolSourcePath"
+    }
+
+    $content = Get-Content -Raw -Encoding UTF8 $ToolSourcePath
+    if ($content -notmatch "TryResolveTimelineFromMainWindow") {
+        throw "TryResolveTimelineFromMainWindow implementation is missing."
+    }
+    if ($content -notmatch "TimelineAreaViewModel") {
+        throw "TimelineAreaViewModel reflection path is missing."
+    }
+    if ($content -notmatch 'GetFieldValue\(timelineViewModel, "timeline"\)') {
+        throw "Timeline field reflection path is missing."
+    }
+}
+
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $root = Resolve-Path $ProjectRoot
 $pluginRoot = Join-Path $root "ymm4-plugin"
@@ -106,6 +123,8 @@ $deployedHash = (Get-FileHash $deployedDll -Algorithm SHA256).Hash
 
 Write-Step "Checking plugin contracts..."
 Test-PluginContractsFromSource -ToolSourcePath $toolSource
+Write-Step "Checking timeline resolver compatibility..."
+Test-TimelineResolverCompatibility -ToolSourcePath (Join-Path $pluginRoot "TimelinePlugin\CsvImportDialog.xaml.cs")
 
 if ($LaunchYmm4) {
     $ymm4Exe = Join-Path $ymm4Dir "YukkuriMovieMaker.exe"
@@ -133,6 +152,7 @@ $summary = @"
 - Hash Match: $hashState
 - Contract(Source): CsvImportToolPlugin implements IToolPlugin = PASS
 - Contract(Source): CsvImportToolViewModel implements INotifyPropertyChanged = PASS
+- Contract(Runtime): Timeline resolver reflection path = PASS
 
 ## Next Manual Checks
 1. Open YMM4 and confirm NLMSlidePlugin in plugin list.

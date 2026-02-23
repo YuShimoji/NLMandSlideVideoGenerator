@@ -365,3 +365,26 @@ Speaker2,よろしくお願いします
 1. プラグイン一覧で `NLMSlidePlugin` 表示確認
 2. ツールメニューから CSV インポート実行
 3. タイムラインへの音声/字幕反映を確認
+
+## 14. 2026-02-24 Hotfix: Timeline Context Auto-Resolution
+
+- Trigger: Import failed with `Timeline context is not available.`
+- Root cause: YMM4 did not inject timeline context into plugin ViewModel in current runtime path.
+- Fix:
+  - `ymm4-plugin/TimelinePlugin/CsvImportDialog.xaml.cs`
+    - Added fallback resolver from `Application.Current.MainWindow.DataContext`
+    - Reflection path: `MainViewModel.TimelineAreaViewModel -> AreaViewModel.ViewModel.Value -> TimelineViewModel.timeline`
+    - Added runtime log output to `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`
+- Automation reinforcement:
+  - `scripts/test_task007_scenariob.ps1` now checks resolver implementation contract in source.
+- Validation:
+  - `logs/task007_scenariob/20260224-034821/summary.md`
+  - Build/Deploy hash: MATCH
+  - Contract(Source): PASS
+  - Contract(Runtime resolver path): PASS
+
+### Operational note
+- Next failure can be diagnosed without screenshot by sharing:
+  - `logs/task007_scenariob/<latest>/summary.md`
+  - `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`
+- Re-check after warning cleanup: `logs/task007_scenariob/20260224-035002/summary.md` (Hash MATCH / resolver contract PASS)

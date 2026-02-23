@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Windows;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
@@ -17,7 +18,7 @@ namespace NLMSlidePlugin.TimelinePlugin
     /// </summary>
     public partial class CsvImportDialog : Window, INotifyPropertyChanged
     {
-        private readonly Timeline? timeline;
+        private Timeline? timeline;
         private string csvPath = string.Empty;
         private string audioDirectory = string.Empty;
         private string statusMessage = "Select a CSV file.";
@@ -174,6 +175,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             {
                 ImportButton.IsEnabled = false;
                 StatusMessage = "Importing...";
+                WriteRuntimeLog($"Import start. csv={CsvPath}, audioDir={AudioDirectory}, addSubtitles={AddSubtitles}");
 
                 var result = ImportToTimeline(PreviewItems, AddSubtitles);
                 if (result.ImportedRows <= 0)
@@ -192,6 +194,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     "CSV Import Result",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+                WriteRuntimeLog($"Import success. rows={result.ImportedRows}, audio={result.AudioItems}, text={result.TextItems}, skipped={result.SkippedRows}, totalItems={result.TimelineItemsAfterImport}");
 
                 DialogResult = true;
                 Close();
@@ -199,6 +202,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             catch (Exception ex)
             {
                 StatusMessage = $"Import failed: {ex.Message}";
+                WriteRuntimeLog($"Import failed. error={ex}");
                 MessageBox.Show(
                     $"Import failed:\n{ex.Message}",
                     "CSV Import Error",
@@ -213,13 +217,13 @@ namespace NLMSlidePlugin.TimelinePlugin
 
         private ImportExecutionResult ImportToTimeline(IEnumerable<CsvTimelineItem> items, bool shouldAddSubtitles)
         {
-            if (timeline is null)
+            if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
             {
-                throw new InvalidOperationException("Timeline context is not available.");
+                throw new InvalidOperationException($"Timeline context is not available. {resolveError}");
             }
 
-            int fps = Math.Max(1, timeline.VideoInfo.FPS);
-            int baseLayer = GetImportBaseLayer(timeline);
+            int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
+            int baseLayer = GetImportBaseLayer(activeTimeline);
 
             int importedRows = 0;
             int audioItems = 0;
@@ -268,9 +272,9 @@ namespace NLMSlidePlugin.TimelinePlugin
                     continue;
                 }
 
-                int beforeCount = timeline.Items.Count;
-                bool added = timeline.TryAddItems(timelineItems.ToArray(), startFrame, baseLayer, true);
-                int afterCount = timeline.Items.Count;
+                int beforeCount = activeTimeline.Items.Count;
+                bool added = activeTimeline.TryAddItems(timelineItems.ToArray(), startFrame, baseLayer, true);
+                int afterCount = activeTimeline.Items.Count;
                 if (!added || afterCount <= beforeCount)
                 {
                     skippedRows++;
@@ -289,8 +293,114 @@ namespace NLMSlidePlugin.TimelinePlugin
                 }
             }
 
-            timeline.RefreshTimelineLengthAndMaxLayer();
-            return new ImportExecutionResult(importedRows, audioItems, textItems, skippedRows, timeline.Items.Count);
+            activeTimeline.RefreshTimelineLengthAndMaxLayer();
+            return new ImportExecutionResult(importedRows, audioItems, textItems, skippedRows, activeTimeline.Items.Count);
+        }
+
+        private bool TryEnsureTimeline(out Timeline activeTimeline, out string detail)
+        {
+            if (timeline is not null)
+            {
+                activeTimeline = timeline;
+                detail = "source=viewmodel-injection";
+                WriteRuntimeLog($"Timeline resolved via injection.");
+                return true;
+            }
+
+            if (TryResolveTimelineFromMainWindow(out activeTimeline, out detail))
+            {
+                timeline = activeTimeline;
+                WriteRuntimeLog($"Timeline resolved via reflection. detail={detail}");
+                return true;
+            }
+
+            WriteRuntimeLog($"Timeline resolution failed. detail={detail}");
+            activeTimeline = null!;
+            return false;
+        }
+
+        private static bool TryResolveTimelineFromMainWindow(out Timeline timeline, out string detail)
+        {
+            timeline = null!;
+            detail = string.Empty;
+
+            var mainWindow = Application.Current?.MainWindow;
+            if (mainWindow?.DataContext is null)
+            {
+                detail = "main-window-datacontext-missing";
+                return false;
+            }
+
+            var mainViewModel = mainWindow.DataContext!;
+            var timelineAreaViewModel = GetPropertyValue(mainViewModel, "TimelineAreaViewModel");
+            if (timelineAreaViewModel is null)
+            {
+                detail = "timeline-area-viewmodel-missing";
+                return false;
+            }
+
+            var reactiveViewModel = GetPropertyValue(timelineAreaViewModel, "ViewModel");
+            if (reactiveViewModel is null)
+            {
+                detail = "timeline-area-reactive-viewmodel-missing";
+                return false;
+            }
+
+            var timelineViewModel = GetPropertyValue(reactiveViewModel, "Value");
+            if (timelineViewModel is null)
+            {
+                detail = "timeline-viewmodel-value-missing";
+                return false;
+            }
+
+            var timelineCandidate =
+                GetPropertyValue(timelineViewModel, "Timeline") as Timeline ??
+                GetFieldValue(timelineViewModel, "timeline") as Timeline;
+
+            if (timelineCandidate is null)
+            {
+                detail = "timeline-field-missing";
+                return false;
+            }
+
+            timeline = timelineCandidate;
+            detail = "source=main-window-reflection";
+            return true;
+        }
+
+        private static object? GetPropertyValue(object instance, string propertyName)
+        {
+            var property = instance.GetType().GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            return property?.GetValue(instance);
+        }
+
+        private static object? GetFieldValue(object instance, string fieldName)
+        {
+            var field = instance.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            return field?.GetValue(instance);
+        }
+
+        private static void WriteRuntimeLog(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "NLMSlidePlugin",
+                    "logs");
+                Directory.CreateDirectory(dir);
+                var path = Path.Combine(dir, "csv_import_runtime.log");
+                var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
+                File.AppendAllText(path, line);
+            }
+            catch
+            {
+                // Ignore logging failures.
+            }
         }
 
         private static int GetImportBaseLayer(Timeline timeline)
