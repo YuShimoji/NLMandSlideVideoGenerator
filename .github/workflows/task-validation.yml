@@ -1,0 +1,94 @@
+name: Task Report Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'docs/tasks/**'
+  workflow_dispatch:
+
+jobs:
+  validate-task-reports:
+    runs-on: ubuntu-latest
+    name: Validate Task Report References
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Validate Task Reports
+        id: validate-reports
+        run: |
+          echo "🔍 Validating task report references..."
+          
+          # Run the validation script
+          node scripts/check_task_reports.js > validation-output.txt 2>&1 || true
+          
+          # Capture output for summary
+          VALIDATION_OUTPUT=$(cat validation-output.txt)
+          echo "validation_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$VALIDATION_OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Check if validation passed - look for explicit markers
+          if echo "$VALIDATION_OUTPUT" | grep -q "VALIDATION_OK"; then
+            echo "✅ All task reports are valid"
+            echo "validation_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Task report validation failed"
+            echo "validation_status=failed" >> $GITHUB_OUTPUT
+            echo "$VALIDATION_OUTPUT"
+            exit 1
+          fi
+
+      - name: Generate Validation Summary
+        if: always()
+        run: |
+          echo "# Task Report Validation Summary" > validation-summary.md
+          echo "" >> validation-summary.md
+          echo "**PR:** #${{ github.event.pull_request.number }}" >> validation-summary.md
+          echo "**Branch:** ${{ github.head_ref }}" >> validation-summary.md
+          echo "**Status:** ${{ steps.validate-reports.outputs.validation_status == 'success' && '✅ Passed' || '❌ Failed' }}" >> validation-summary.md
+          echo "" >> validation-summary.md
+          echo "## Validation Details" >> validation-summary.md
+          echo '```' >> validation-summary.md
+          echo "${{ steps.validate-reports.outputs.validation_output }}" >> validation-summary.md
+          echo '```' >> validation-summary.md
+
+      - name: Comment on PR (Failure)
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('validation-summary.md', 'utf8');
+            
+            const commentBody = summary + '\n\n---\n\n**🛠️ 修正方法:**\n' +
+              '1. `docs/tasks/` 配下の該当タスクファイルを開く\n' +
+              '2. `Report:` 行の参照先ファイルが存在することを確認\n' +
+              '3. `## DoD` セクションが存在することを確認\n' +
+              '4. 修正後、PRを更新して再検証';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: task-validation-${{ github.run_number }}
+          path: |
+            validation-output.txt
+            validation-summary.md
+          retention-days: 30

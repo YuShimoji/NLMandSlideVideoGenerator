@@ -3,6 +3,20 @@
 ## テスト概要
 TASK_007 シナリオB実機検証 - NLMSlidePlugin動作確認
 
+## タスクレポート整合性チェック
+### 自動検証
+- **GitHub Actions**: `docs/tasks/` 配下の変更時に自動実行
+- **手動実行**: `node scripts/check_task_reports.js`
+- **検証内容**: 
+  - DONEタスクのReport参照先が存在するか
+  - DoDセクションが存在するか
+
+### 修正方法
+検証失敗時は以下を確認：
+1. 該当タスクファイルの `Report:` 行を確認
+2. 参照先ファイルが存在することを確認  
+3. `## DoD` セクションが存在することを確認
+
 ## 前提条件
 - ✅ YMM4起動済み
 - ✅ プラグイン配置済み: `C:\Users\thank\Downloads\.petmpBE8C53\user\plugin\NLMSlidePlugin\NLMSlidePlugin.dll`

@@ -11,43 +11,13 @@ namespace NLMSlidePlugin.Core
     /// </summary>
     public class CsvTimelineItem
     {
-        /// <summary>
-        /// 行番号（1-based、WAVファイル紐付け用）</summary>
         public int LineNumber { get; set; }
-        
-        /// <summary>
-        /// 話者名
-        /// </summary>
         public string Speaker { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// テロップテキスト
-        /// </summary>
         public string Text { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// 対応する音声ファイル名（001.wav形式）
-        /// </summary>
         public string? AudioFileName => $"{LineNumber:D3}.wav";
-        
-        /// <summary>
-        /// 音声ファイルのフルパス
-        /// </summary>
         public string? AudioFilePath { get; set; }
-        
-        /// <summary>
-        /// 音声の長さ（秒）
-        /// </summary>
         public double? Duration { get; set; }
-        
-        /// <summary>
-        /// タイムライン上の開始時刻（秒）
-        /// </summary>
         public double StartTime { get; set; }
-        
-        /// <summary>
-        /// タイムライン上の終了時刻（秒）
-        /// </summary>
         public double EndTime => StartTime + (Duration ?? 0);
 
         public override string ToString()
@@ -58,7 +28,7 @@ namespace NLMSlidePlugin.Core
 
     /// <summary>
     /// CSVタイムラインリーダー
-    /// UTF-8エンコーディング、カンマ区切り、ヘッダーなし
+    /// UTF-8エンコーディング（BOM自動検出）、カンマ区切り、ヘッダーなし
     /// </summary>
     public class CsvTimelineReader
     {
@@ -72,72 +42,188 @@ namespace NLMSlidePlugin.Core
         }
 
         /// <summary>
-        /// CSVファイルを読み込み、タイムラインアイテムのリストを返す
+        /// CSVファイルを読み込み、タイムラインアイテムのリストを返す（後方互換）
         /// </summary>
         public List<CsvTimelineItem> ReadTimeline()
         {
-            var items = new List<CsvTimelineItem>();
-            
+            return ReadTimelineWithErrors().Items;
+        }
+
+        /// <summary>
+        /// CSVファイルを読み込み、エラー情報付きの結果を返す
+        /// </summary>
+        public CsvReadResult ReadTimelineWithErrors(
+            IProgress<CsvReadProgress>? progress = null,
+            CancellationToken cancellationToken = default)
+        {
             if (!File.Exists(_csvFilePath))
             {
                 throw new FileNotFoundException($"CSVファイルが見つかりません: {_csvFilePath}");
             }
 
-            var lines = File.ReadAllLines(_csvFilePath, Encoding.UTF8);
-            int lineNumber = 1;
+            var encoding = DetectEncoding(_csvFilePath);
+            var items = new List<CsvTimelineItem>();
+            var errors = new List<CsvReadError>();
+            int lineNumber = 0;
+            int totalLines = CountLines(_csvFilePath, encoding);
 
-            foreach (var line in lines)
+            // 音声ファイルを一括スキャン
+            var audioFiles = ScanAudioDirectory(_audioDirectoryPath);
+
+            using var reader = new StreamReader(_csvFilePath, encoding);
+            string? line;
+            while ((line = reader.ReadLine()) != null)
             {
-                // 空行をスキップ
+                cancellationToken.ThrowIfCancellationRequested();
+                lineNumber++;
+
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
-                var item = ParseLine(line, lineNumber);
+                var item = ParseLine(line, lineNumber, errors);
                 if (item != null)
                 {
-                    // 音声ファイルの存在確認
-                    if (!string.IsNullOrEmpty(_audioDirectoryPath))
+                    // 音声ファイルの存在確認（HashSet で O(1)）
+                    if (audioFiles.Count > 0 && item.AudioFileName != null &&
+                        audioFiles.TryGetValue(item.AudioFileName, out var fullAudioPath))
                     {
-                        var audioPath = Path.Combine(_audioDirectoryPath, item.AudioFileName!);
-                        if (File.Exists(audioPath))
-                        {
-                            item.AudioFilePath = audioPath;
-                            // TODO: 音声ファイルの長さを取得（NAudio等が必要）
-                            item.Duration = 3.0; // 仮の値
-                        }
+                        item.AudioFilePath = fullAudioPath;
+                        item.Duration = WavDurationReader.GetDuration(fullAudioPath);
                     }
-                    
+                    else
+                    {
+                        item.Duration = 3.0;
+                    }
+
                     items.Add(item);
                 }
-                
-                lineNumber++;
+
+                if (lineNumber % 100 == 0)
+                {
+                    progress?.Report(new CsvReadProgress
+                    {
+                        LinesProcessed = lineNumber,
+                        TotalLines = totalLines,
+                        ItemsCreated = items.Count,
+                        ErrorCount = errors.Count
+                    });
+                }
             }
 
             // タイムライン時刻を計算
             CalculateTimeline(items);
-            
-            return items;
+
+            // 最終進捗
+            progress?.Report(new CsvReadProgress
+            {
+                LinesProcessed = lineNumber,
+                TotalLines = totalLines,
+                ItemsCreated = items.Count,
+                ErrorCount = errors.Count
+            });
+
+            return new CsvReadResult
+            {
+                Items = items,
+                Errors = errors,
+                TotalLinesRead = lineNumber,
+                DetectedEncoding = encoding
+            };
         }
 
         /// <summary>
-        /// 1行をパースしてCsvTimelineItemを作成
+        /// BOMスニッフィングによるエンコーディング検出
         /// </summary>
-        private CsvTimelineItem? ParseLine(string line, int lineNumber)
+        private static Encoding DetectEncoding(string filePath)
         {
-            // CSVパース（簡易実装：カンマ区切り、ダブルクォート対応）
+            var bom = new byte[4];
+            using (var fs = File.OpenRead(filePath))
+            {
+                int read = fs.Read(bom, 0, 4);
+                if (read < 2)
+                    return new UTF8Encoding(false);
+            }
+
+            if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF)
+                return new UTF8Encoding(true);
+            if (bom[0] == 0xFF && bom[1] == 0xFE)
+                return Encoding.Unicode;
+            if (bom[0] == 0xFE && bom[1] == 0xFF)
+                return Encoding.BigEndianUnicode;
+
+            return new UTF8Encoding(false);
+        }
+
+        /// <summary>
+        /// 行数カウント（進捗計算用）
+        /// </summary>
+        private static int CountLines(string filePath, Encoding encoding)
+        {
+            int count = 0;
+            using var reader = new StreamReader(filePath, encoding);
+            while (reader.ReadLine() != null) count++;
+            return count;
+        }
+
+        /// <summary>
+        /// 音声ディレクトリのWAVファイルを一括スキャンしてHashSetに格納
+        /// </summary>
+        private static Dictionary<string, string> ScanAudioDirectory(string? audioDir)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (string.IsNullOrEmpty(audioDir) || !Directory.Exists(audioDir))
+                return result;
+
+            foreach (var file in Directory.GetFiles(audioDir, "*.wav"))
+            {
+                var fileName = Path.GetFileName(file);
+                if (fileName != null)
+                    result[fileName] = file;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 1行をパースしてCsvTimelineItemを作成。エラーはリストに追加。
+        /// </summary>
+        private CsvTimelineItem? ParseLine(string line, int lineNumber, List<CsvReadError> errors)
+        {
             var parts = ParseCsvLine(line);
-            
+
             if (parts.Count < 2)
             {
-                // 列数が足りない場合はスキップ
+                errors.Add(new CsvReadError
+                {
+                    LineNumber = lineNumber,
+                    RawLine = line.Length > 100 ? line.Substring(0, 100) + "..." : line,
+                    ErrorMessage = $"列数不足（{parts.Count}列、最低2列必要）",
+                    Severity = CsvErrorSeverity.Warning
+                });
+                return null;
+            }
+
+            var speaker = parts[0].Trim();
+            var text = parts[1].Trim();
+
+            if (string.IsNullOrWhiteSpace(speaker) && string.IsNullOrWhiteSpace(text))
+            {
+                errors.Add(new CsvReadError
+                {
+                    LineNumber = lineNumber,
+                    RawLine = line.Length > 100 ? line.Substring(0, 100) + "..." : line,
+                    ErrorMessage = "話者とテキストが両方空です",
+                    Severity = CsvErrorSeverity.Warning
+                });
                 return null;
             }
 
             return new CsvTimelineItem
             {
                 LineNumber = lineNumber,
-                Speaker = parts[0].Trim(),
-                Text = parts[1].Trim()
+                Speaker = speaker,
+                Text = text
             };
         }
 
@@ -158,7 +244,6 @@ namespace NLMSlidePlugin.Core
                 {
                     if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
                     {
-                        // エスケープされたダブルクォート
                         current.Append('"');
                         i++;
                     }
@@ -188,19 +273,17 @@ namespace NLMSlidePlugin.Core
         private void CalculateTimeline(List<CsvTimelineItem> items)
         {
             double currentTime = 0;
-            
+
             foreach (var item in items)
             {
                 item.StartTime = currentTime;
-                
-                // 次のアイテムの開始時刻を更新
+
                 if (item.Duration.HasValue)
                 {
                     currentTime += item.Duration.Value;
                 }
                 else
                 {
-                    // 音声ファイルがない場合はデフォルト3秒
                     currentTime += 3.0;
                 }
             }

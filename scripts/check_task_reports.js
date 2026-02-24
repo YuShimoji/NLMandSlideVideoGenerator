@@ -53,14 +53,23 @@ function main() {
     }
   }
 
+  // Standard output for summary
   console.log(`[check-task-reports] checked DONE tasks: ${checked}`);
+  
+  // Error output for problems
   if (errors.length > 0) {
-    console.error("[check-task-reports] errors:");
-    for (const e of errors) console.error(`- ${e}`);
+    console.error("[check-task-reports] VALIDATION_FAILED");
+    for (const e of errors) {
+      console.error(`ERROR: ${e}`);
+    }
+    console.error("FIX_INSTRUCTIONS:");
+    console.error("1. 該当タスクファイルの 'Report:' 行を確認");
+    console.error("2. 参照先ファイルが存在することを確認");
+    console.error("3. '## DoD' セクションが存在することを確認");
     process.exit(2);
   }
 
-  console.log("[check-task-reports] OK");
+  console.log("[check-task-reports] VALIDATION_OK");
 }
 
 main();
