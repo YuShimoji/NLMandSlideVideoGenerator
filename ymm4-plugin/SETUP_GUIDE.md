@@ -68,7 +68,9 @@
    - （音声ファイルがない場合は、プレビュー時に「音声: 0件」と表示される）
 
 3. **インポート実行**
-   - YMM4で `ファイル` → `インポート` → `CSVタイムラインをインポート...` を選択
+   - まずは YMM4で `ツール` → `CSV Timeline Import` を確認
+   - もし `ツール` に表示されない場合は `ツール` → `設定` → `CSV Timeline Import` を開く
+   - 設定画面またはツール画面の `Open CSV Import Dialog` をクリック
    - CSVファイルを選択
    - 音声ディレクトリを確認
    - 「プレビュー」ボタンをクリック
@@ -136,6 +138,13 @@
 3. **プラグインログの確認**
    - YMM4のログ出力を確認（設定→詳細設定→ログ）
 
+### `CSV Timeline Import` がツールに表示されない場合
+
+1. `ツール` → `設定` を開く
+2. 設定一覧に `CSV Timeline Import` があるか確認する
+3. 表示されていれば、設定画面内の `Open CSV Import Dialog` から起動する
+4. どちらにも表示されない場合は、YMM4 を再起動して再確認する
+
 ### 音声ファイルが認識されない場合
 
 1. **ファイル名の確認**
@@ -170,6 +179,41 @@ dotnet test tests/
 
 ```
 Test Run Successful.
-Total tests: 7
-     Passed: 7
+Total tests: 13
+     Passed: 13
 ```
+
+---
+
+## デプロイ
+
+自動デプロイスクリプトを使用してプラグインをビルド・配置・検証できます。
+
+```powershell
+# Release ビルド + YMM4 プラグインフォルダへ配置 + SHA256 検証
+.\scripts\deploy_ymm4_plugin.ps1
+
+# DryRun（ビルドと検証のみ、コピーなし）
+.\scripts\deploy_ymm4_plugin.ps1 -DryRun
+
+# Debug ビルド
+.\scripts\deploy_ymm4_plugin.ps1 -Configuration Debug
+```
+
+スクリプトは以下を自動実行します:
+1. `dotnet build` で Release ビルド
+2. ビルド成果物の SHA256 ハッシュ取得
+3. `$(YMM4DirPath)\user\plugin\NLMSlidePlugin\` へコピー
+4. コピー先の SHA256 を照合
+
+---
+
+## ベンチマーク
+
+大規模CSV（1000行）の読み込みテスト:
+
+```powershell
+dotnet test ymm4-plugin/tests/ --filter "ReadTimeline_1000Lines" --verbosity normal
+```
+
+期待される結果: 1000行読み込みが数十ミリ秒で完了。

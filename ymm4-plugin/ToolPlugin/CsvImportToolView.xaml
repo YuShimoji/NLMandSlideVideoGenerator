@@ -1,0 +1,16 @@
+<UserControl x:Class="NLMSlidePlugin.ToolPlugin.CsvImportToolView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="10">
+        <TextBlock Text="CSV Timeline Import"
+                   FontSize="16" FontWeight="Bold"
+                   Margin="0,0,0,10"/>
+        <TextBlock Text="CSVファイルと音声ファイルをタイムラインにインポートします。"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,20"/>
+        <Button Content="CSVインポートダイアログを開く"
+                Width="320" Height="40"
+                HorizontalAlignment="Center"
+                Click="OpenImportDialog_Click"/>
+    </StackPanel>
+</UserControl>

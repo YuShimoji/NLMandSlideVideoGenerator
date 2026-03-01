@@ -1,9 +1,8 @@
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using NLMSlidePlugin.TimelinePlugin;
+using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.UndoRedo;
@@ -12,6 +11,7 @@ namespace NLMSlidePlugin.ToolPlugin
 {
     /// <summary>
     /// CSV timeline import tool plugin for YMM4.
+    /// Appears in the Tools menu as an AvalonDock pane.
     /// </summary>
     public sealed class CsvImportToolPlugin : IToolPlugin
     {
@@ -22,14 +22,12 @@ namespace NLMSlidePlugin.ToolPlugin
 
     /// <summary>
     /// Tool window view model for CSV timeline import.
+    /// Inherits from YMM4's Bindable to avoid AssemblyLoadContext type mismatch
+    /// with INotifyPropertyChanged (InvalidCastException).
+    /// Timeline, Scenes, UndoRedoManager are injected by YMM4 via property setters.
     /// </summary>
-    public sealed class CsvImportToolViewModel : INotifyPropertyChanged
+    public sealed class CsvImportToolViewModel : Bindable
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        public string Title => "CSV Timeline Import";
-        public string Description => "Import CSV rows and matching WAV files into the active timeline.";
-
         public Timeline Timeline { get; set; } = null!;
         public Scenes Scenes { get; set; } = null!;
         public UndoRedoManager UndoRedoManager { get; set; } = null!;
@@ -47,7 +45,6 @@ namespace NLMSlidePlugin.ToolPlugin
                 }
 
                 isBusy = value;
-                OnPropertyChanged();
             }
         }
 
@@ -77,77 +74,41 @@ namespace NLMSlidePlugin.ToolPlugin
                 IsBusy = false;
             }
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
     }
 
     /// <summary>
-    /// Tool window view.
+    /// Tool window view (XAML-backed UserControl).
     /// </summary>
-    public sealed class CsvImportToolView : UserControl
+    public sealed partial class CsvImportToolView : UserControl
     {
-        private readonly TextBlock titleText;
-        private readonly TextBlock descriptionText;
-
         public CsvImportToolView()
         {
-            Width = 420;
-            Height = 220;
+            InitializeComponent();
+        }
 
-            titleText = new TextBlock
+        private void OpenImportDialog_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is CsvImportToolViewModel vm)
             {
-                FontSize = 16,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-
-            descriptionText = new TextBlock
-            {
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 20)
-            };
-
-            var importButton = new Button
-            {
-                Content = "Open CSV Import Dialog",
-                Width = 320,
-                Height = 40,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-            importButton.Click += (_, _) => ResolveViewModel().ShowImportDialog();
-
-            var stackPanel = new StackPanel
-            {
-                Margin = new Thickness(10)
-            };
-            stackPanel.Children.Add(titleText);
-            stackPanel.Children.Add(descriptionText);
-            stackPanel.Children.Add(importButton);
-            Content = stackPanel;
-
-            DataContextChanged += (_, _) => ApplyViewModelText();
-
-            if (DataContext is null)
-            {
-                DataContext = new CsvImportToolViewModel();
+                vm.ShowImportDialog();
             }
-
-            ApplyViewModelText();
-        }
-
-        private CsvImportToolViewModel ResolveViewModel()
-        {
-            return DataContext as CsvImportToolViewModel ?? new CsvImportToolViewModel();
-        }
-
-        private void ApplyViewModelText()
-        {
-            var viewModel = DataContext as CsvImportToolViewModel;
-            titleText.Text = viewModel?.Title ?? "CSV Timeline Import";
-            descriptionText.Text = viewModel?.Description ?? "CSV import tool";
+            else
+            {
+                // Fallback: open dialog without Timeline injection
+                try
+                {
+                    var dialog = new CsvImportDialog();
+                    dialog.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Failed to open CSV import dialog.\n{ex.Message}",
+                        "CSV Import Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
         }
     }
 }

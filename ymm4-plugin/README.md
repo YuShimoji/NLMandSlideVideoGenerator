@@ -52,6 +52,8 @@ dotnet build
 
 1. YMM4を起動
 2. `設定` → `プラグイン` → `プラグイン一覧` で「NLM Slide Plugin」を確認
+3. `ツール` → `CSV Timeline Import` を確認
+4. `ツール` に表示されない場合は `ツール` → `設定` → `CSV Timeline Import` から `Open CSV Import Dialog` を使う
 
 ## プロジェクト構成
 
