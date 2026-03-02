@@ -4,11 +4,19 @@ YouTube解説動画自動化システム (NLMandSlideVideoGenerator)
 
 ## プロジェクト概要
 
-このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現在の主フローは「CSV（台本）+ 行ごとのWAV（音声）」を入力として、動画・字幕・サムネイル・（任意で）YMM4プロジェクト等を生成します。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
+このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現行の本番SSOTは 2 パス構成です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` の主経路、Path B は `CSV + 行ごとのWAV -> run_csv_pipeline.py -> mp4` の副経路です。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
 
 ## ドキュメント
 
 迷ったら `docs/INDEX.md` を起点にしてください（SSOT/導線の整理済み）。
+
+## 現在の制作パス
+
+- **Path A（Primary）**: CSV を YMM4 に取り込み、YMM4 内でゆっくりボイス音声を生成してそのまま mp4 をレンダリングする
+- **Path B（Secondary）**: SofTalk / AquesTalk 等で `001.wav`, `002.wav`, ... を用意し、`scripts/run_csv_pipeline.py` で mp4 を生成する
+- **Research workflow**: Web 資料収集と台本整合は前工程として分離し、最終的に CSV を出力して Path A/B に接続する
+
+> 補足: この README のクイックスタートは主に Path B を対象にしています。YMM4 制作の手順は `docs/user_guide_manual_workflow.md` と `docs/HANDOVER.md` を参照してください。
 
 🎬 **YouTube解説動画の自動生成システム**
 

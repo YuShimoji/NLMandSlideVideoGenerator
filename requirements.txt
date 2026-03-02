@@ -90,3 +90,4 @@ ipython==8.15.0
 
 # GUI・Web UI
 streamlit==1.28.1
+playwright==1.58.0
