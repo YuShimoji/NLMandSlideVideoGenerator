@@ -37,7 +37,7 @@ class GeminiIntegration:
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-2.5-flash"
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.request_count = 0
         self.max_requests_per_minute = 60

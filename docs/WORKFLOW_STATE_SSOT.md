@@ -1,27 +1,30 @@
 # WORKFLOW STATE SSOT
 
-Updated: 2026-02-24T04:40:00+09:00
-Owner: Orchestrator
+## Mission
 
-## Current Phase
-P6: 統合レポートと再開発準備
+NLM台本調整ワークフローと動画生成パイプライン全体の統合および安定運用
 
-## In-Progress
-- TASK_013_YMM4PluginProduction（本番化の実装フェーズ）
+## Done 条件
 
-## Blockers
-- 重大ブロッカーなし
-- 注意: `Ymm4TimelineImporter.cs` に既存の `CS1998` 警告あり（挙動影響なし、後続で解消予定）
+- [x] SSOTファイルの作成と運用開始
+- [x] プロンプト内からハードコードされた旧ルールの撤廃を完了する
+- [x] TASK_017 (多言語照合の精度向上) の完了
+- [x] TASK_018 (YMM4連携・手動運用の最終化) の完了
+- [x] TASK_019 (パイプライン統合) の完了
+- [x] TASK_020 (Research UI磨き込み) の完了
 
-## Next Action
-1. TASK_013 の残DoD（Dialog非同期化、テスト拡張、デプロイスクリプト、運用ドキュメント）を完了し、レポート化する
+## 選別規則
 
-## Ticket Queue
-1. [In Progress] `docs/tasks/TASK_013_YMM4PluginProduction.md`
-2. [Open] `docs/tasks/TASK_015_CiCdIntegration.md`
-3. [Open] `docs/tasks/TASK_014_AudioOutputOptimization.md`
+当面は以下の作業分類に従い、D（将来のための品質や汎化）は凍結とします。
 
-## Worker Dispatch Order
-1. Worker-B: TASK_013（本番化）
-2. Worker-A: TASK_015（CI/CD強化）
-3. Worker-A/B: TASK_014（音声最適化）
+- A. コア機能・目的の達成
+- B. 制作/開発速度の向上・互換設定
+- C. 失敗からの復旧しやすさ
+- D. テスト拡充、過度なレポート、当面に直結しないリファクタリング → **凍結**
+
+## 禁止事項
+
+- いきなり本番用の大規模クローラ実装に踏み込むこと
+- 動画生成・レンダリング（YMM4等）と、資料収集・台本調整の責務を混ぜること
+- 出典不明の要約だけで台本を確定・進行させること
+- プロジェクトの目標やルールをプロンプト内にハードコードすること（すべてこのSSOTで管理する）

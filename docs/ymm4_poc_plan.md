@@ -1,5 +1,9 @@
 # YMM4 自動化 PoC 計画 (Y3)
 
+> **DEPRECATED (2026-03-01)**: この文書は「YMM4 から個別WAVを書き出す」前提で設計されているが、
+> YMM4 は個別WAVエクスポートができないため、この前提は誤りである。
+> 現在の正しいアーキテクチャは `docs/PROJECT_ALIGNMENT_SSOT.md` を参照。
+
 最終更新: 2025-12-10
 関連ドキュメント: `docs/ymm4_integration_arch.md`, `docs/ymm4_export_spec.md`, `docs/backlog.md`
 

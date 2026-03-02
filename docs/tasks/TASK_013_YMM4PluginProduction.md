@@ -1,5 +1,5 @@
 # Task: YMM4プラグイン本番化
-Status: IN_PROGRESS
+Status: DONE
 Tier: 2
 Branch: master
 Owner: Worker-B
@@ -39,17 +39,17 @@ Report: docs/inbox/REPORT_TASK_013_YMM4PluginProduction.md
 - [x] CSV読み込み結果モデル追加（`ymm4-plugin/Core/CsvReadResult.cs`）
 - [x] WAV再生時間取得ユーティリティ追加（`ymm4-plugin/Core/WavDurationReader.cs`）
 - [x] `CsvTimelineReader` のストリーミング読み込み・エラー収集を実装
-- [ ] Dialog UI/非同期化・進捗表示
-- [ ] テストプロジェクト再構成と本番テスト追加
-- [ ] 自動デプロイスクリプト実装
-- [ ] ドキュメント更新と最終レポート
+- [x] Dialog UI/非同期化・進捗表示（CsvImportDialog.xaml 実装済み）
+- [x] テストプロジェクト再構成と本番テスト追加（13テスト全通過）
+- [x] 自動デプロイスクリプト実装（scripts/deploy_ymm4_plugin.ps1）
+- [x] ドキュメント更新と最終レポート（SETUP_GUIDE.md + REPORT）
 
 ## DoD
-- [ ] 1000行CSVインポートが30秒以内で完了
-- [ ] エラーハンドリング（欠損/形式不正/エンコーディング）を検証済み
-- [ ] 自動デプロイスクリプトが実行可能
-- [ ] パフォーマンスベンチマークを実施・記録
-- [ ] 運用ドキュメント更新
+- [x] 1000行CSVインポートが30秒以内で完了
+- [x] エラーハンドリング（欠損/形式不正/エンコーディング）を検証済み
+- [x] 自動デプロイスクリプトが実行可能
+- [x] パフォーマンスベンチマークを実施・記録
+- [x] 運用ドキュメント更新
 
 ## Verification Commands
 ```bash

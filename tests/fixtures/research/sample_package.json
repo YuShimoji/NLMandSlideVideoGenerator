@@ -1,0 +1,22 @@
+{
+  "package_id": "rp_playwright_smoke",
+  "topic": "AIの将来",
+  "created_at": "2026-02-28T19:20:00+09:00",
+  "sources": [
+    {
+      "url": "https://example.com/source1",
+      "title": "AIの将来に関する資料",
+      "content_preview": "AI導入率は2026年に42%へ上昇した。",
+      "relevance_score": 0.9,
+      "reliability_score": 0.95,
+      "source_type": "article",
+      "adoption_status": "pending",
+      "adoption_reason": "",
+      "key_claims": [
+        "AI導入率は2026年に42%へ上昇した"
+      ]
+    }
+  ],
+  "summary": "",
+  "review_status": "pending"
+}

@@ -1,137 +1,112 @@
-# 作業申し送り (HANDOVER)
+# HANDOVER
 
-Timestamp: 2026-02-24T01:16:43+09:00
+Timestamp: 2026-03-01T00:16:00+09:00
 Actor: Codex (Orchestrator)
 Type: Handover
-Mode: Driver(P5_worker)
+Mode: Driver(P6_report)
 
-## 最終更新
-2026-02-24T01:16:43+09:00
+## Current Status
 
-## 運用フラグ
-- **GitHubAutoApprove**: true
 - GitHubAutoApprove: true
-- **shared-workflows**: v3.0（コミット 4ad0a0a）
-- **IDE**: Windsurf / Antigravity（Mermaid対応）
+- **DONE**: `TASK_013` YMM4プラグイン本番化
+- **DONE**: `TASK_014` ゆっくりボイス経路整理
+- **DONE**: `TASK_016` Web資料収集とNLM台本調整ワークフロー
+- **IN_PROGRESS_PARKED**: `TASK_015` CI/CD強化
+- **NEXT**: `data/input/e2e_iran_20260301/timeline.csv` を YMM4 へ NLMSlidePlugin 経由でインポートし、YMM4 内で音声生成→動画レンダリング（YMM4 が最終レンダラー）
 
-## プロジェクト概要
-NLMandSlideVideoGenerator - NotebookLMとスライドから動画を生成するシステム
+## Project Policy
 
-## 主要な決定事項
-- 外部実行ファイル検出は `src/core/utils/tool_detection.py` に集約（`AUTOHOTKEY_EXE` / `YMM4_EXE` / `FFMPEG_EXE`）
-- 品質SSOTは 480p/720p/1080p に統一（4K未対応）
-- shared-workflows v3 採用。ORCHESTRATOR_DRIVER.txt を毎回のエントリポイントとする
-- 表示ルールは `.shared-workflows/data/presentation.json` v3 を SSOT とする
+- 最終出力ターゲットは `16:9 の汎用スライド動画`
+- 音声は `ゆっくりボイスを使えること` を優先
+- キャラクター表示は任意
+- 背景動画は加点要素であり必須ではない
+- Research Workflow と動画生成 Workflow は分離する
+- Windows 実運用を優先し、Linux 差分は非ブロッカー
 
-## 現在のシステムの「実動作」期待
+## Current Production SSOT
 
-### 主フロー（現行 SSOT: CSV + WAV）
+- 入力: `speaker,text` 形式の CSV
+- 出力: 最終 mp4（YMM4 からレンダリング）
+- 制作パス:
+  - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → レンダリング）
+  - **Path B（Secondary）**: CSV + WAV群 → `scripts/run_csv_pipeline.py`（SofTalk/AquesTalk 等で WAV を別途生成）
+  - Web UI: `src/web/web_app.py`（Path B 用）
+- 主参照:
+  - `docs/PROJECT_ALIGNMENT_SSOT.md`
+  - `docs/user_guide_manual_workflow.md`
+  - `docs/voice_path_comparison.md`
 
-入力:
-- CSV（話者名 + テキスト）
-- 音声ディレクトリ（`001.wav`, `002.wav` ...）
+## Confirmed Manual Gate
 
-期待される出力:
-- `data/videos/` に mp4
-- `data/transcripts/` に SRT/VTT/ASS
-- オプションで `data/ymm4/` に YMM4 プロジェクト出力（テンプレ差分適用＋補助JSON）
-- サムネイル/メタデータも「APIなし」で生成可能（テンプレ/ルールベース）
+- YMM4 GUI 最終確認は完了
+- ユーザー確認結果:
+  - プラグインOK
+  - CSVインポートOK
+  - 音声生成OK
+  - `run_csv_pipeline.py` OK
 
-実行手段:
-- CLI: `scripts/run_csv_pipeline.py`
-- Web UI: `src/web/web_app.py`（Streamlit）→ 「CSV Pipeline」ページ
+## Selected Topic
 
-SSOT:
-- `docs/user_guide_manual_workflow.md`
-- `docs/spec_csv_input_format.md`
+- Topic: `US and Israel launch strikes on Iran – What has happened so far`
+- Seed URL: `http://www.euronews.com/2026/02/28/us-and-israel-launch-strikes-on-iran-what-has-happened-so-far`
+- Route: `B`
+- Note: breaking news のため、単一ソースでは確定しない
+- Package: `data/research/rp_20260301_000417/package.json`
+- AlignmentReport: `data/research/rp_20260301_000417/alignment_report.json`
+- Reviewed report: `data/research/rp_20260301_000417/alignment_report_adopted_all.json`
+- Final CSV: `output_csv/final_script_rp_20260301_000417.csv`
+- Handoff dir: `data/input/e2e_iran_20260301/`
+- Auto result: `supported=0 / orphaned=139 / missing=18`
+- Delivery result: 139 セグメントを `adopted` 扱いにして final CSV を生成済み
 
-## テスト
-- command: `.\venv\Scripts\python.exe -m pytest -q -m "not slow and not integration" --tb=short`
-- result: 109 passed, 7 skipped, 4 deselected (2026-02-06)
+## Why CI Is Parked
 
-## タスクポートフォリオ
-- **DONE**: TASK_001, TASK_002, TASK_003, TASK_004, TASK_005, TASK_006, TASK_011（方針転換ゲート整備）
-- **COMPLETED**: TASK_009
-- **CLOSED**: TASK_008
-- **IN_PROGRESS**: TASK_007（YMM4プラグイン統合、シナリオZero+A完了、シナリオB待ち）
+- `TASK_015` Layer A で Playwright smoke と監査ガードの最小導入は完了
+- 以降の GitHub Actions 側初回実行確認は Windows 実制作を止める必須条件ではない
+- ユーザー判断により、CI 深掘りを止めて Windows 実制作側を優先している
 
-## 作業再開のためのチェックリスト
-1. `node .shared-workflows/scripts/sw-update-check.js` でサブモジュール最新確認
-2. `node .shared-workflows/scripts/sw-doctor.js --profile shared-orch-bootstrap --format text` で環境診断
-3. スモークテスト: `.\venv\Scripts\python.exe -m pytest -q -m "not slow and not integration" --tb=short`
-4. `.shared-workflows/docs/windsurf_workflow/OPEN_HERE.md` を起点に運用開始
-5. 動作確認（最短）:
-   - `.\venv\Scripts\python.exe scripts/generate_sample_audio.py`
-   - `.\venv\Scripts\python.exe scripts/run_csv_pipeline.py --csv samples/basic_dialogue/timeline.csv --audio-dir samples/basic_dialogue/audio --topic "sample"`
+## Immediate Runbook
 
-## IDE設定ファイル
-- `.cursorrules`: v3 グローバルルール
-- `.windsurf/workflows/`: Windsurf用ワークフロー定義（5ファイル）
-- `.cursor/MISSION_LOG.md`: 現在のミッション状態
-- `AI_CONTEXT.md`: プロジェクトAIコンテキスト（v3フォーマット）
+### 次の実務（Path A: YMM4 制作）
 
-## Git / 反映
-- ブランチ: `master`（origin/master がデフォルト）
-- 反映手順:
-  - commit → `git push origin master`
-  - push 後に `git status -sb` が clean であることを確認
-  - `git log -1` と `git ls-remote origin master` の SHA が一致することを確認
+| Step | 操作 | 目的 |
+|---|---|---|
+| 1 | YMM4 を起動し、新規プロジェクトを作成 | 制作環境を準備する |
+| 2 | NLMSlidePlugin で `data/input/e2e_iran_20260301/timeline.csv` をインポート | タイムラインにCSV行を反映する |
+| 3 | YMM4 内でゆっくりボイス音声を生成 | 各行の音声を自動生成する |
+| 4 | レイアウト・音声を確認・調整 | 品質を確認する |
+| 5 | YMM4 で動画をレンダリング（書き出し） | 最終 mp4 を生成する |
 
-## アーカイブ済みファイル（2026-02-06整理）
-- レガシーHANDOVER: `docs/archive/HANDOVER_2025*.md`
-- セッションハンドオーバー: `docs/archive/SESSION_HANDOVER_20251201_*.md`
-- 旧協働ルール: `docs/archive/Windsurf_AI_Collab_Rules_v1.1.md`, `v2.0.md`
-- 旧レポート/プロンプト: `docs/archive/REPORT_ORCH_*.md`, `WORKER_PROMPT_*.md`
+> **注**: `RUN_AFTER_YMM4.ps1` と `audio_dir` は Path B（Batch TTS）用。Path A では不要。
 
-## 詳細な履歴
-過去の詳細な作業履歴は `docs/archive/HANDOVER_20251214.md` 等を参照してください。
+## Verification Snapshot
+
+- Python: `109 passed, 7 skipped, 4 deselected`
+- .NET: `13 passed, 0 failed`
+- Research UI Playwright smoke: `SMOKE_OK`
+- `orchestrator-audit --no-fail`: `OK`
+- YMM4 GUI: user verified
+
+## Risks
+
+- 実トピック E2E は題材と素材の品質に依存する
+- 現 package は英語ソース、台本は日本語のため、現行照合ロジックでは `supported` が立ちにくい
+- 今回の final CSV は手動採否相当で作っており、自動根拠一致ではない
+- CI を止めたため、GitHub 側実行結果は未確認
+- ただし上記 CI 未確認は Windows 実制作の即時ブロッカーではない
 
 ## リスク
-- `docs/tasks/TASK_007_YMM4PluginIntegration.md` は実機確認系DoDが未完了のため、統合完了判定は未達。
-- `orchestrator-audit` は anomaly 0 だが、運用文書更新時の表記揺れで warning が再発しやすい。
-- YMM4ツール起動時の `InvalidCastException` は修正済みだが、GUI再検証完了までは再発リスクを残す。
+
+- 実トピック E2E の題材選定が未固定
+- GitHub 側 CI 実行結果は未確認だが非ブロッカー
 
 ## Proposals
-- HANDOVER と AI_CONTEXT の監査必須キーをテンプレート化し、更新時の漏れを防止する。
-- `docs/tasks/*` の `Report:` 存在検証を pre-commit で自動化する。
+
+- 次は実トピック1本で end-to-end の制作入口を固定する
+- その後に必要なら `TASK_015` を再開する
 
 ## Outlook
-- Short-term: `TASK_007` の `INotifyPropertyChanged` 例外修正を反映済み。シナリオBのGUI最終確認を優先実行する。
-- Mid-term: `TASK_011` の境界定義・ロールバック条件に従って方針転換チェックポイントを適用する。
-- Long-term: `orchestrator-audit` strict 運用を CI で標準化し、運用監査を継続自動化する。
 
-## 2026-02-23 同期更新
-- `docs/tasks/TASK_011_PolicyPivotGatePreparation.md`: Status `DONE`、DoD 6/6 チェック済み
-- `docs/inbox/REPORT_TASK_011_PolicyPivotGatePreparation.md`: 受領・内容確認済み
-- `MISSION_LOG` / `AI_CONTEXT` へ TASK_011 完了を反映済み
-
-## 2026-02-24 TASK_007 更新
-- `ymm4-plugin/ToolPlugin/CsvImportToolPlugin.cs`: `IToolPlugin` 実装を再作成、ViewModelへ `INotifyPropertyChanged` を実装
-- `scripts/test_task007_scenariob.ps1`: build/配置/契約チェックを半自動化
-- `docs/inbox/REPORT_TASK_007_ScenarioB_2026-02-23.md`: 例外追記と半自動検証結果を反映
-
-## 最新 Orchestrator レポート
-- REPORT_ORCH_2026-02-14T13-35-23Z.md
-
-## 2026-02-24 01:47 Follow-up
-- TASK_007 ScenarioB issue investigated: import success message with empty timeline.
-- Latest plugin build is ready, but deployment is blocked by DLL lock while YMM4 process is running.
-- Next required step: close YMM4, rebuild/deploy, then re-run GUI import verification.
-
-## 2026-02-24 03:39 Follow-up
-- TASK_007 ScenarioB の再配置を実施（YMM4停止後に Release build で deploy 更新）。
-- 自動検証 PASS: `logs/task007_scenariob/20260224-033929/summary.md`
-- 現在の残件は GUI 手動確認（インポート実行とタイムライン反映確認）のみ。
-
-## 2026-02-24 03:49 Follow-up
-- Timeline context unavailable failure addressed with reflection fallback in CsvImportDialog.
-- Added runtime log for non-UI diagnostics: `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`.
-- AutoCheck updated and passing: `logs/task007_scenariob/20260224-034821/summary.md`.
-- Re-check log: `logs/task007_scenariob/20260224-035002/summary.md`
-
-## 2026-02-24 04:00 Checkpoint
-- User confirmed timeline insertion success (text + WAV items present).
-- Waveform movement observed during playback; import path is healthy.
-- Audio output issue is treated as host environment routing/volume concern (non-blocking for TASK_007 import completion).
-- Runtime log exists and reports success: `%LOCALAPPDATA%\NLMSlidePlugin\logs\csv_import_runtime.log`.
-- TASK_007 moved to DONE for ScenarioB scope.
+- Short-term: final CSV を YMM4 へインポートし、YMM4 内で音声生成→動画レンダリングまで完結させる
+- Mid-term: 背景動画の扱いと実制作テンプレートを整理する
+- Long-term: CI strict 化と自動素材調達の成熟度を上げる

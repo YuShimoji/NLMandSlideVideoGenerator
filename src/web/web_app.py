@@ -5,6 +5,7 @@ Streamlit-based dashboard for pipeline management and documentation
 
 import streamlit as st
 import sys
+import os
 from pathlib import Path
 
 # Add project root to path
@@ -30,6 +31,41 @@ st.set_page_config(
 )
 
 
+PAGE_OPTIONS = [
+    "🏠 ホーム",
+    "🔍 リサーチ・台本照合",
+    "📹 動画を作る（CSV）",
+    "🤖 AI生成（API設定後）",
+    "📁 生成物一覧",
+    "📖 ドキュメント",
+    "⚙️ 設定",
+    "🧪 テスト",
+]
+
+PAGE_ALIASES = {
+    "home": "🏠 ホーム",
+    "research": "🔍 リサーチ・台本照合",
+    "csv": "📹 動画を作る（CSV）",
+    "pipeline": "🤖 AI生成（API設定後）",
+    "assets": "📁 生成物一覧",
+    "docs": "📖 ドキュメント",
+    "settings": "⚙️ 設定",
+    "tests": "🧪 テスト",
+}
+
+
+def _resolve_initial_page() -> str:
+    """クエリまたは環境変数から初期ページを解決する。"""
+    page_key = os.getenv("NLM_WEB_DEFAULT_PAGE", "").strip().lower()
+    try:
+        query_params = st.experimental_get_query_params()
+        page_key = (query_params.get("page") or [page_key])[0].strip().lower()
+    except Exception:
+        pass
+
+    return PAGE_ALIASES.get(page_key, PAGE_OPTIONS[0])
+
+
 def main():
     st.title("🎬 NLMandSlide Video Generator")
 
@@ -38,23 +74,20 @@ def main():
     
     # 主要機能
     st.sidebar.markdown("**動画生成**")
+    initial_page = _resolve_initial_page()
     page = st.sidebar.selectbox(
         "ページ選択",
-        [
-            "🏠 ホーム",
-            "📹 動画を作る（CSV）",
-            "🤖 AI生成（API設定後）",
-            "📁 生成物一覧",
-            "📖 ドキュメント",
-            "⚙️ 設定",
-            "🧪 テスト",
-        ],
+        PAGE_OPTIONS,
+        index=PAGE_OPTIONS.index(initial_page),
         label_visibility="collapsed"
     )
     
     # ページ表示
     if page == "🏠 ホーム":
         show_home_page()
+    elif page == "🔍 リサーチ・台本照合":
+        from src.web.ui.pages import show_research_page
+        show_research_page()
     elif page == "📹 動画を作る（CSV）":
         show_csv_pipeline_page()
     elif page == "🤖 AI生成（API設定後）":

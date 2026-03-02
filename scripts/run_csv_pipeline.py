@@ -27,6 +27,9 @@ if str(SRC_PATH) not in sys.path:
 from config.settings import settings, create_directories  # noqa: E402
 from core.helpers import build_default_pipeline  # noqa: E402
 from core.utils.logger import logger  # noqa: E402
+from notebook_lm.script_alignment import ScriptAlignmentAnalyzer  # noqa: E402
+from notebook_lm.research_models import ResearchPackage  # noqa: E402
+import json  # noqa: E402
 
 
 async def _run(args: argparse.Namespace) -> int:
@@ -73,6 +76,43 @@ async def _run(args: argparse.Namespace) -> int:
     if export_ymm4:
         settings.PIPELINE_COMPONENTS["editing_backend"] = "ymm4"
         logger.info("YMM4エクスポートを有効化: editing_backend=ymm4")
+
+    # アライメント事前検証
+    if args.package:
+        package_path = Path(args.package).expanduser().resolve()
+        if not package_path.exists():
+            logger.error(f"Packageファイルが見つかりません: {package_path}")
+            return 1
+        
+        logger.info(f"アライメント事前検証を開始します: {package_path}")
+        try:
+            with open(package_path, "r", encoding="utf-8") as handle:
+                package_data = json.load(handle)
+            package = ResearchPackage.from_dict(package_data)
+
+            analyzer = ScriptAlignmentAnalyzer()
+            normalized_script = await analyzer.load_script(csv_path)
+            report = await analyzer.analyze(package, normalized_script)
+            
+            supported = report.summary.get('supported', 0)
+            orphaned = report.summary.get('orphaned', 0)
+            missing = report.summary.get('missing', 0)
+            conflict = report.summary.get('conflict', 0)
+            
+            logger.info("=== アライメント事前検証 結果 ===")
+            logger.info(f"Supported: {supported}, Orphaned: {orphaned}, Missing: {missing}, Conflict: {conflict}")
+            
+            if missing > 0:
+                logger.warning(f"アライメント警告: 根拠のない文(missing)が {missing} 件存在します。")
+                if args.strict_alignment:
+                    logger.error("--strict-alignment が指定されているため、パイプラインの実行を中断します。")
+                    return 1
+            else:
+                logger.info("アライメントに重大な問題は検出されませんでした。")
+
+        except Exception as e:
+            logger.error(f"アライメント事前検証中にエラーが発生しました: {e}")
+            return 1
 
     try:
         pipeline = build_default_pipeline()
@@ -147,6 +187,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         default=False,
         help="YMM4 編集プロジェクトを書き出し (editing_backend=YMM4 を強制)",
     )
+    parser.add_argument(
+        "--package",
+        help="事前にResearch CLIで収集した package.json へのパス (指定時、アライメント検証を実施)",
+    )
+    parser.add_argument(
+        "--strict-alignment",
+        action="store_true",
+        default=False,
+        help="アライメントで missing が1件以上あった場合、動画生成せずに異常終了する",
+    )
 
     args = parser.parse_args(argv)
 
@@ -159,6 +209,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         logger.error(f"CSVタイムラインCLI実行中にエラーが発生しました: {e}")
         return 1
     except Exception as e:  # pragma: no cover
+        import traceback
+        traceback.print_exc()
         logger.error(f"CSVタイムラインCLI実行中にエラーが発生しました: {e}")
         return 1
 

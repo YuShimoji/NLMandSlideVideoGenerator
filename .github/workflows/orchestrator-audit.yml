@@ -27,3 +27,9 @@ jobs:
 
       - name: Run orchestrator audit (warning mode)
         run: node .shared-workflows/scripts/orchestrator-audit.js --no-fail
+
+      - name: Validate DONE task report references
+        run: node scripts/check_task_reports.js
+
+      - name: Validate operational reports
+        run: node scripts/validate_operational_reports.js

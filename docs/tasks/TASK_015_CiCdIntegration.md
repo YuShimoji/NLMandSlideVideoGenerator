@@ -1,10 +1,10 @@
 # Task: CI/CD統合と監査自動化強化
-Status: OPEN
+Status: IN_PROGRESS
 Tier: 2
 Branch: master
 Owner: Worker-A
 Created: 2026-02-25T02:20:00+09:00
-Report: docs/inbox/REPORT_TASK_015_CiCdIntegration.md
+Report: docs/reports/REPORT_TASK_015_CiCdIntegration_LayerA_2026-02-28.md
 
 ## Objective
 - CI/CD統合と監査自動化を強化する
@@ -14,6 +14,7 @@ Report: docs/inbox/REPORT_TASK_015_CiCdIntegration.md
 - TASK_011: DONE（方針転換ゲート整備済み）
 - TASK_012B: DONE（Report参照整合ガード導入済み）
 - orchestrator-audit warningが現在の開発ブロッカー
+- 本プロジェクトの実運用前提は Windows であり、Linux 対応自体はプロダクト要件ではない
 
 ## Focus Area
 - orchestrator-audit warning収束：現在の監査警告を解消
@@ -34,14 +35,15 @@ Report: docs/inbox/REPORT_TASK_015_CiCdIntegration.md
 - CI実行時間は15分以内
 - 既存pytest基準（109 passed）を維持
 - shared-workflowsとの互換性を保持
+- Windows 優先。非Windows runner 対応は CI 実装上の副次効果に留め、主要DoDにしない
 
 ## DoD
-- [ ] orchestrator-audit warningが0件になる
+- [x] orchestrator-audit warningが0件になる
 - [ ] CIパイプラインが15分以内に完了
-- [ ] 監査自動化スクリプトが動作
+- [x] 監査自動化スクリプトが動作
 - [ ] ロールバック自動化が機能
 - [ ] 通知システムが動作
-- [ ] docs/inbox/REPORT_TASK_015_CiCdIntegration.md に証跡を保存
+- [x] Report に証跡を保存
 
 ## 検証コマンド
 ```bash
@@ -58,3 +60,8 @@ python -m pytest -q -m "not slow and not integration" && node .shared-workflows/
 - 更新されたCIパイプライン定義
 - 監査自動化スクリプト
 - ロールバック自動化システム
+- Research UI Playwright smoke workflow
+- operational report validation script
+- Windows 優先方針への CI 調整
+- CI diagnostics artifact
+- current operational report targets manifest

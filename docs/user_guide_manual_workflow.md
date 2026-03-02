@@ -6,27 +6,29 @@
 
 ## 概要
 
-**想定フロー:**
+**2つの制作パス:**
+
 ```
-[NotebookLM等で素材準備] → [このアプリに提出] → [動画生成]
+Path A (Primary): CSV → YMM4 → 最終 mp4
+Path B (Secondary): CSV + WAV群 → Python pipeline → mp4
 ```
 
-**必要な素材:**
-1. **台本/テロップ** - CSV形式 または テキスト
-2. **音声ファイル** - WAV形式（行ごとに分割）
+**Path A（YMM4 制作）の必要素材:**
+1. **台本/テロップ** - CSV形式（speaker, text）
+
+**Path B（Batch TTS + Python pipeline）の必要素材:**
+1. **台本/テロップ** - CSV形式（speaker, text）
+2. **音声ファイル** - WAV形式（001.wav, 002.wav, ... 行ごとに分割）
 
 **出力:**
-- 動画ファイル (.mp4)
-- 字幕ファイル (SRT/ASS/VTT)
-- (オプション) YMM4プロジェクト
+- **Path A**: YMM4 からレンダリングした最終 mp4
+- **Path B**: 動画ファイル (.mp4) + 字幕ファイル (SRT/ASS/VTT)
 
 ---
 
-## 方法1: CSVタイムラインパイプライン（推奨）
+## 方法1: YMM4 制作フロー（推奨 / Path A）
 
-### ステップ1: 素材の準備
-
-#### 1-1. CSV台本の作成
+### ステップ1: CSV台本の作成
 
 CSVファイルを作成します。フォーマット:
 
@@ -41,9 +43,26 @@ Speaker1,3行目のテロップです
 | A列 | 話者名 | Speaker1, ナレーター, ずんだもん |
 | B列 | テロップテキスト | セリフ内容 |
 
-**注意:**
-- 1行 = 1つの音声ファイルに対応
-- 長い行は自動的に複数スライドに分割されます（デフォルト60文字）
+### ステップ2: YMM4 で制作
+
+1. YMM4 を起動し、新規プロジェクトを作成
+2. NLMSlidePlugin の「CSVタイムラインをインポート」からCSVを読み込む
+3. YMM4 内でゆっくりボイス音声を自動生成
+4. レイアウト・音声を確認・調整
+5. YMM4 で動画をレンダリング（書き出し）→ 最終 mp4
+
+> **重要**: YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
+> YMM4 が最終レンダラーとして CSV→音声→動画を一貫処理する。
+
+---
+
+## 方法2: CSVタイムライン + Batch TTS パイプライン（Path B）
+
+### ステップ1: 素材の準備
+
+#### 1-1. CSV台本の作成
+
+方法1と同じフォーマットでCSVを作成します。
 
 #### 1-2. 音声ファイルの準備
 
@@ -61,13 +80,17 @@ audio_folder/
 - `001.wav`, `002.wav`, `003.wav`, ...
 - 3桁のゼロ埋め番号
 
-**音声生成方法の例:**
-- **NotebookLM**: Deep Dive Audio機能で生成
-- **YMM4（ゆっくりMovieMaker）**: 台本CSVをプロジェクトに読み込み、YMM4側で音声生成（YMM4標準機能。将来的に自動連携を強化予定）
-- **SofTalk/AquesTalk**: バッチスクリプトで生成 (`scripts/tts_batch_softalk_aquestalk.py`) ※環境依存が大きく、現在は上級者向けのオプション扱い
-- **ElevenLabs/OpenAI TTS**: API経由で生成
+**音声生成方法（YMM4以外）:**
 
-### ステップ2: 動画生成の実行
+1. **SofTalk/AquesTalk** [自動化可・環境依存]
+   - バッチスクリプト: `scripts/tts_batch_softalk_aquestalk.py`
+   - 詳細: `docs/tts_batch_softalk_aquestalk.md`
+2. **手動準備** [常時利用可]
+   - 棒読みちゃん、VOICEVOX等で音声生成 → 連番WAVにリネーム
+3. **NotebookLM**: Deep Dive Audio → 分割 (ゆっくりボイスではない)
+4. **ElevenLabs/OpenAI TTS**: API経由 (ゆっくりボイスではない)
+
+### ステップ2: 動画生成の実行（Path B のみ）
 
 #### 方法A: コマンドライン (CLI)
 
@@ -174,7 +197,7 @@ data/
 
 ---
 
-## 方法2: 通常パイプライン（トピックベース）
+## 方法3: 通常パイプライン（トピックベース）
 
 トピックを指定して、AI生成を含む完全自動化パイプラインを実行します。
 
@@ -260,6 +283,7 @@ sudo apt install ffmpeg
 
 ## 関連ドキュメント
 
+- `docs/voice_path_comparison.md` - ゆっくりボイス経路比較・推奨
 - `docs/tts_batch_softalk_aquestalk.md` - SofTalk/AquesTalk連携
 - `docs/ymm4_export_spec.md` - YMM4エクスポート仕様
 - `docs/spec_transcript_io.md` - 台本I/O仕様

@@ -1,0 +1,20 @@
+{
+  "targets": [
+    {
+      "path": "docs/HANDOVER.md",
+      "args": ["--profile", "handover"]
+    },
+    {
+      "path": "docs/inbox/REPORT_TASK_013_YMM4PluginProduction.md"
+    },
+    {
+      "path": "docs/inbox/REPORT_TASK_014_AudioOutputOptimization.md"
+    },
+    {
+      "path": "docs/inbox/REPORT_TASK_016_SourceResearchAndScriptAlignment.md"
+    },
+    {
+      "path": "docs/reports/REPORT_TASK_015_CiCdIntegration_LayerA_2026-02-28.md"
+    }
+  ]
+}

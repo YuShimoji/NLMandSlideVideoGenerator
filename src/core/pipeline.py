@@ -1277,7 +1277,6 @@ class ModularVideoPipeline:
 
             if editing_extras is None:
                 editing_extras = {"export_outputs": {}}
-
             video_info = await self.editing_backend.render(
                 timeline_plan=timeline_plan,
                 audio=audio_info,

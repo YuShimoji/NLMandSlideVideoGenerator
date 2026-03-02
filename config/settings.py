@@ -88,6 +88,14 @@ class Settings:
             "transcript_accuracy_threshold": 0.98,
             "max_audio_duration": 1800  # 30分
         }
+
+        # リサーチ設定 (TASK_016)
+        self.RESEARCH_SETTINGS = {
+            "data_dir": self.DATA_DIR / "research",
+            "max_sources": 15,
+            "google_search_api_key": os.getenv("GOOGLE_SEARCH_API_KEY", ""),
+            "google_search_cx": os.getenv("GOOGLE_SEARCH_CX", ""),
+        }
         
         # Google Slides設定
         self.SLIDES_SETTINGS = {
@@ -259,6 +267,7 @@ def create_directories():
         settings.SCRIPTS_DIR,
         settings.TEMPLATES_DIR,
         settings.THUMBNAILS_DIR,
+        settings.RESEARCH_SETTINGS["data_dir"],
         settings.LOG_FILE.parent
     ]
     

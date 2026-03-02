@@ -1,47 +1,51 @@
-# Task: 音声出力環境最適化
-Status: OPEN
+# Task: ゆっくりボイス利用経路最適化
+Status: DONE
 Tier: 2
 Branch: master
 Owner: Worker-A/B
 Created: 2026-02-25T02:20:00+09:00
 Report: docs/inbox/REPORT_TASK_014_AudioOutputOptimization.md
 
+> Policy Note (2026-03-01): 現行 SSOT は Path A/B 構造です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング`、Path B は `CSV + WAV -> run_csv_pipeline.py -> mp4` です。YMM4 は個別 WAV 供給元ではありません。
+
 ## Objective
-- 音声出力環境の最適化とSofTalk連携の再評価を行う
-- 環境依存問題を解消し、安定した音声出力を実現する
+- ゆっくりボイスを利用できる経路を最優先で安定化する
+- 音声の「自然さ」より、YMM4 / SofTalk / AquesTalk 等で `001.wav` を確実に用意できることを優先する
+- 汎用スライド動画の標準出力（16:9）に対し、音声素材準備の再現性を高める
 
 ## Context
-- TASK_008: クローズド（SofTalk連携は未解決）
-- TASK_012C: DONE（実行バックログ起票済み）
-- 音声環境の自動検出とフォールバックが必要
+- TASK_008: SofTalk/AquesTalk 連携は実装済みだが、環境依存が大きく安定度が不足
+- `docs/ymm4_integration_arch.md` では YMM4 をゆっくり系音声のハブとする方針が整理済み
+- 現在の最終出力ターゲットは「16:9 の汎用スライド動画」であり、キャラクター表示は必須ではない
+- 背景動画は加点要素であり、本タスクの必須DoDには含めない
 
 ## Focus Area
-- 音声環境自動検出：デフォルトデバイス検出、フォールバック処理
-- SofTalk連携再評価：TASK_008のクローズドステータスを見直し、実装可能性を再検討
-- 音声出力診断：環境診断ツール、トラブルシューティングガイド
-- YMM4音声パス：YMM4内音声出力ルートの最適化
+- YMM4 / SofTalk / AquesTalk のどの経路で `audio_dir` を最も安定供給できるかを比較し、優先順を決める
+- `001.wav`, `002.wav`, ... の素材準備経路を再現可能にする
+- 音声生成から CSV パイプライン投入までの確認手順を明確化する
+- 失敗時のフォールバック手順とログの見方を整備する
 
 ## Layer分割
-- **Layer A（AI完結）**: 音声環境診断ツール実装、デフォルトデバイス検出ロジック、SofTalk連携技術調査、トラブルシューティングガイド作成
-- **Layer B（手動実測）**: 実機での音声出力テスト、環境依存症例の再現検証、SofTalk代替案の実機評価
+- **Layer A（AI完結）**: 音声経路比較、推奨経路の選定、ログ/フォールバック手順整理、ドキュメント更新
+- **Layer B（手動実測）**: YMM4 / SofTalk / AquesTalk の実機確認、`audio_dir` 生成成功率確認
 
 ## Forbidden Area
-- サードパーティ音声ライブラリの新規依存
-- OSレベルのオーディオドライバ改修
-- YMM4本体の音声システム改修
+- 音声の自然さ改善を主目的にした大規模TTS比較
+- OSレベルのオーディオドライバ解析
+- キャラクター立ち絵や縦動画対応を前提にしたUI改修
 
 ## Constraints
-- Windows標準音声APIのみ使用
-- 既存音声ファイル形式（WAV）を維持
-- Realtekドライバ環境に依存しない
+- Windows 環境で再現可能であること
+- 既存の WAV 入力仕様（`001.wav` 形式）を維持すること
+- 既存 CSV + WAV パイプラインの挙動を壊さないこと
 
 ## DoD
-- [ ] 音声環境診断ツールが動作
-- [ ] デフォルトデバイス自動検出が機能
-- [ ] SofTalk連携の可否判定が完了
-- [ ] トラブルシューティングガイドが完成
-- [ ] 実機で3種類以上の音声環境をテスト
-- [ ] docs/inbox/REPORT_TASK_014_AudioOutputOptimization.md に証跡を保存
+- [x] ゆっくりボイス利用経路の優先順位が確定
+- [x] 推奨経路で `audio_dir` を再現可能に作成できる
+- [x] 代替経路のフォールバック手順が整理されている
+- [x] `docs/user_guide_manual_workflow.md` または関連ガイドに反映されている
+- [x] 実機で少なくとも1経路の成功証跡がある
+- [x] docs/inbox/REPORT_TASK_014_AudioOutputOptimization.md に証跡を保存
 
 ## 検証コマンド
 ```bash
@@ -49,12 +53,13 @@ python scripts/test_audio_output.py -device auto -fallback true
 ```
 
 ## ロールバック条件
-- 音声出力が完全に不能になる
-- Windows音声API以外の依存が必要
-- SofTalk連携が技術的に不可能と判断
+- 推奨経路でも `001.wav` 形式の出力が安定しない
+- 実機依存が大きすぎて再現手順を定義できない
+- 既存 CSV + WAV パイプラインの前提を壊す必要がある
 
 ## Deliverables
-- 音声環境診断ツール
-- デフォルトデバイス検出ロジック
-- SofTalk連携技術評価レポート
-- トラブルシューティングガイド
+- 音声経路比較メモ
+- 推奨経路の手順書
+- フォールバック手順
+- 実機確認レポート
+- ユーザーによる YMM4 実画面の最終確認メモ
