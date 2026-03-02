@@ -24,6 +24,7 @@ class TTSProvider(Enum):
     OPENAI = "openai"
     AZURE = "azure"
     GOOGLE_CLOUD = "google_cloud"
+    VOICEVOX = "voicevox"
 
 @dataclass
 class AudioInfo:
@@ -61,6 +62,7 @@ class TTSIntegration:
             "openai": TTSProvider.OPENAI,
             "azure": TTSProvider.AZURE,
             "google_cloud": TTSProvider.GOOGLE_CLOUD,
+            "voicevox": TTSProvider.VOICEVOX,
         }.get(provider_name, TTSProvider.ELEVENLABS)
         self._initialize_providers()
     

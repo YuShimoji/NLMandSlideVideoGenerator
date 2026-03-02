@@ -178,7 +178,7 @@ class Settings:
 
         # TTS 設定
         self.TTS_SETTINGS = {
-            "provider": os.getenv("TTS_PROVIDER", "none"),  # none | openai | elevenlabs | azure
+            "provider": os.getenv("TTS_PROVIDER", "none"),  # none | openai | elevenlabs | azure | voicevox
             "openai": {
                 "model": os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
                 "voice": os.getenv("OPENAI_TTS_VOICE", "alloy"),
@@ -199,6 +199,14 @@ class Settings:
                 "api_key": os.getenv("GOOGLE_CLOUD_TTS_KEY", ""),
                 "voice": os.getenv("GOOGLE_CLOUD_TTS_VOICE", "ja-JP-Neural2-B"),
                 "speaking_rate": float(os.getenv("GOOGLE_CLOUD_TTS_RATE", "1.0")),
+            },
+            "voicevox": {
+                "engine_url": os.getenv("VOICEVOX_ENGINE_URL", "http://localhost:50021"),
+                "speaker_id": os.getenv("VOICEVOX_SPEAKER_ID", "3"),
+                "speed": os.getenv("VOICEVOX_SPEED", "1.0"),
+                "pitch": os.getenv("VOICEVOX_PITCH", "0.0"),
+                "intonation": os.getenv("VOICEVOX_INTONATION", "1.0"),
+                "timeout": os.getenv("VOICEVOX_TIMEOUT", "30"),
             },
         }
 
