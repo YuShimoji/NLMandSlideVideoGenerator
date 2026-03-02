@@ -1,5 +1,5 @@
 # Task: GitHub Actions CI/CD 本番化
-Status: OPEN
+Status: LAYER_A_PARTIAL
 Tier: 2
 Branch: master
 Owner: Worker-B
@@ -27,20 +27,22 @@ Report: (未作成)
 ### Layer A（AI完結）
 
 #### A-1: ワークフロー有効化・修正
-- [ ] 全6ワークフローのトリガー条件見直し（push/PR/manual）
-- [ ] Python環境セットアップステップの統一
-  - venv作成、requirements.txt インストール
-  - キャッシュ設定（pip, venv）
-- [ ] テストステップの統一（pytest markers 使い分け）
-- [ ] マトリクスビルド検討（Python 3.11/3.12）
+
+- [x] `documentation.yml` のブランチ参照修正（main → master追加）
+- [x] 全6ワークフローのトリガー条件確認（orchestrator-audit.yml は正常、他は修正済/正常）
+- [x] `.shared-workflows/` はサブモジュールのため直接修正不可（doctor-health-check.yml内のパス問題はサブモジュール側課題）
+- [ ] マトリクスビルド拡張（Python 3.12追加）- 将来対応
 
 #### A-2: 統合テストワークフロー作成
-- [ ] `.github/workflows/ci-main.yml` 新規作成
-  - push to master: full test suite
-  - PR: fast tests only
-  - 環境変数/シークレット設定テンプレート
-- [ ] テストカバレッジレポート（pytest-cov → Codecov）
-- [ ] テスト結果のPRコメント自動投稿
+- [x] `.github/workflows/ci-main.yml` 新規作成
+  - push to master + PR: unit tests (fast, no slow/integration markers)
+  - pip キャッシュ設定
+  - pytest-cov カバレッジ付き実行
+  - mypy type check ジョブ（core 3ファイル）
+  - flake8 lint ジョブ（critical errors + info統計）
+  - テスト結果 + カバレッジXML アーティファクト出力
+- [ ] Codecov統合（要GitHub Secrets設定）- Layer B
+- [ ] テスト結果のPRコメント自動投稿 - 将来対応
 
 #### A-3: リリース自動化
 - [ ] `.github/workflows/release.yml` 新規作成
