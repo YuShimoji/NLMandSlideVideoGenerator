@@ -172,9 +172,12 @@ class ModularVideoPipeline:
                 if progress_callback:
                     progress_callback("ソース収集", 0.1, f"ソース収集完了: {len(sources)}件")
             except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                logger.error(f"ソース収集失敗 (recoverable): {e}")
                 raise PipelineError(str(e), stage="sources", recoverable=True)
             except Exception as e:
-                raise PipelineError(str(e), stage="sources", recoverable=True)
+                import traceback
+                logger.error(f"ソース収集で予期せぬエラー: {e}\n{traceback.format_exc()}")
+                raise PipelineError(str(e), stage="sources", recoverable=False)
 
             stage1_mode = self.stage_modes.get("stage1", "auto")
             stage2_mode = self.stage_modes.get("stage2", "auto")
@@ -215,9 +218,12 @@ class ModularVideoPipeline:
                 except PipelineError:
                     raise
                 except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
+                    logger.error(f"Stage1処理失敗: {e}")
                     raise PipelineError(str(e), stage="script", recoverable=True)
                 except Exception as e:
-                    raise PipelineError(str(e), stage="script", recoverable=True)
+                    import traceback
+                    logger.error(f"Stage1で予期せぬエラー: {e}\n{traceback.format_exc()}")
+                    raise PipelineError(str(e), stage="script", recoverable=False)
             else:
                 if progress_callback:
                     progress_callback("従来処理", 0.2, "従来の処理方式を使用します...")
@@ -279,10 +285,11 @@ class ModularVideoPipeline:
                         thumbnail_path = thumbnail_info.file_path
                         logger.info(f"サムネイル生成完了: {thumbnail_path}")
                     except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as thumb_err:
-                        logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
+                        logger.warning(f"サムネイル生成に失敗しました（本編は続行）: {thumb_err}")
                         thumbnail_path = None
                     except Exception as thumb_err:
-                        logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
+                        import traceback
+                        logger.warning(f"サムネイル生成で予期せぬエラー（本編は続行）: {thumb_err}\n{traceback.format_exc()}")
                         thumbnail_path = None
             else:
                 if progress_callback:
@@ -367,9 +374,10 @@ class ModularVideoPipeline:
             try:
                 db_manager.update_generation_status(job_id, 'completed')
             except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.debug(f"DB更新失敗（完了ステータス、処理は継続）: {e}")
+                logger.debug(f"DB更新失敗: {e}")
             except Exception as e:
-                logger.debug(f"DB更新失敗（完了ステータス、処理は継続）: {e}")
+                import traceback
+                logger.debug(f"DB更新失敗 (Unexpected): {e}\n{traceback.format_exc()}")
 
             try:
                 db_manager.save_generation_record({
@@ -385,9 +393,10 @@ class ModularVideoPipeline:
                     }
                 })
             except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.debug(f"DB保存失敗（完了レコード、処理は継続）: {e}")
+                logger.debug(f"DB生成記録失敗: {e}")
             except Exception as e:
-                logger.debug(f"DB保存失敗（完了レコード、処理は継続）: {e}")
+                import traceback
+                logger.debug(f"DB生成記録失敗 (Unexpected): {e}\n{traceback.format_exc()}")
 
             return {
                 "success": True,
@@ -798,6 +807,7 @@ class ModularVideoPipeline:
                     logger.error(f"  - {f.name} ({f.stat().st_size} bytes)")
                 if len(all_files) > 20:
                     logger.error(f"  ... 他 {len(all_files) - 20} 個")
+                
                 logger.error("対応フォーマット: WAV (.wav) のみ")
                 logger.error("TTSバッチスクリプト (tts_batch_softalk_aquestalk.py) で 001.wav, 002.wav, ... を生成してください")
                 raise RuntimeError(f"WAVファイルが見つかりません (dir={audio_dir})")
@@ -870,6 +880,15 @@ class ModularVideoPipeline:
             registered_assets: Optional[Dict[str, Any]] = None
             editing_outputs: Optional[Dict[str, Any]] = None
 
+            # BGM自動検出 (bgm.mp3 or bgm.wav)
+            bgm_path = None
+            for ext in [".mp3", ".wav"]:
+                candidate = audio_dir / f"bgm{ext}"
+                if candidate.exists():
+                    bgm_path = candidate
+                    logger.info(f"BGMを検出しました: {bgm_path}")
+                    break
+
             if self.timeline_planner and self.editing_backend:
                 if progress_callback:
                     progress_callback("タイムライン計画", 0.6, "動画のタイムラインを計画します...")
@@ -881,6 +900,11 @@ class ModularVideoPipeline:
                 )
                 if progress_callback:
                     progress_callback("動画レンダリング", 0.7, "MoviePyで動画をレンダリングします...")
+                
+                # BGMがあればextrasに追加
+                if bgm_path:
+                    editing_extras["bgm_path"] = str(bgm_path)
+
                 video_info = await self.editing_backend.render(
                     timeline_plan=timeline_plan,
                     audio=audio_info,
@@ -894,7 +918,9 @@ class ModularVideoPipeline:
                 if progress_callback:
                     progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
                 logger.info("Stage2拡張未設定のため従来の VideoComposer を使用 (CSVタイムライン)")
-                video_info = await self.video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
+                video_info = await self.video_composer.compose_video(
+                    audio_info, slides_pkg, transcript, quality, bgm_path=bgm_path
+                )
 
             logger.info(f"動画合成完了: {video_info.file_path}")
             if progress_callback:

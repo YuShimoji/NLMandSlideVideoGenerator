@@ -13,6 +13,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- CSVファイル選択 -->
@@ -48,31 +49,43 @@
             <StackPanel Margin="5">
                 <CheckBox x:Name="AddSubtitlesCheckBox" Content="字幕を追加"
                           IsChecked="{Binding AddSubtitles, Mode=TwoWay}"/>
-                <CheckBox x:Name="OverwriteExistingCheckBox" Content="既存アイテムを上書き"
-                          Margin="0,5,0,0"/>
             </StackPanel>
         </GroupBox>
 
-        <!-- プレビュー -->
-        <GroupBox Grid.Row="3" Header="プレビュー" Margin="0,0,0,10">
-            <DataGrid x:Name="PreviewDataGrid" AutoGenerateColumns="False" 
-                      IsReadOnly="True" GridLinesVisibility="Horizontal">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="行" Binding="{Binding LineNumber}" Width="40"/>
-                    <DataGridTextColumn Header="話者" Binding="{Binding Speaker}" Width="100"/>
-                    <DataGridTextColumn Header="テキスト" Binding="{Binding Text}" Width="*"/>
-                    <DataGridTextColumn Header="音声" Binding="{Binding AudioFileName}" Width="80"/>
-                    <DataGridTextColumn Header="長さ" Binding="{Binding Duration, StringFormat={}{0:F1}s}" Width="60"/>
-                </DataGrid.Columns>
-            </DataGrid>
+        <!-- プレビュー/ログ -->
+        <GroupBox Grid.Row="3" Header="インポート情報" Margin="0,0,0,10">
+            <TabControl>
+                <TabItem Header="プレビュー">
+                    <DataGrid x:Name="PreviewDataGrid" AutoGenerateColumns="False" 
+                              IsReadOnly="True" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="行" Binding="{Binding LineNumber}" Width="40"/>
+                            <DataGridTextColumn Header="話者" Binding="{Binding Speaker}" Width="100"/>
+                            <DataGridTextColumn Header="テキスト" Binding="{Binding Text}" Width="*"/>
+                            <DataGridTextColumn Header="音声" Binding="{Binding AudioFileName}" Width="80"/>
+                            <DataGridTextColumn Header="長さ" Binding="{Binding Duration, StringFormat={}{0:F1}s}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+                <TabItem Header="ログ/エラー">
+                    <TextBox x:Name="LogTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" 
+                             HorizontalScrollBarVisibility="Auto" AcceptsReturn="True"
+                             Text="{Binding LogContent, Mode=OneWay}"
+                             FontFamily="Consolas" FontSize="11"/>
+                </TabItem>
+            </TabControl>
         </GroupBox>
 
+        <!-- 進捗 -->
+        <ProgressBar x:Name="ImportProgressBar" Grid.Row="4" Height="15" Margin="0,5"
+                     Minimum="0" Maximum="100" Value="{Binding ProgressValue}"/>
+
         <!-- ステータス -->
-        <TextBlock x:Name="StatusTextBlock" Grid.Row="4" Text="{Binding StatusMessage}" 
+        <TextBlock x:Name="StatusTextBlock" Grid.Row="5" Text="{Binding StatusMessage}" 
                    Margin="0,5" TextWrapping="Wrap"/>
 
         <!-- ボタン -->
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
             <Button x:Name="PreviewButton" Content="プレビュー" Padding="20,5" 
                     Margin="0,0,10,0" Click="PreviewButton_Click"/>
             <Button x:Name="ImportButton" Content="インポート" Padding="20,5" 

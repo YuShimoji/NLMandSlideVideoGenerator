@@ -28,7 +28,11 @@ class MoviePyEditingBackend(IEditingBackend):
         quality: str = "1080p",
         extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
-        plan = self._parse_plan(timeline_plan)
+        """VideoComposer を呼び出してレンダリング実行"""
+        bgm_path = None
+        if extras and "bgm_path" in extras:
+            bgm_path = Path(extras["bgm_path"])
+
         # plan 情報を VideoComposer に渡してセグメント長・エフェクトを反映
         return await self.video_composer.compose_video(
             audio_file=audio,
@@ -36,6 +40,7 @@ class MoviePyEditingBackend(IEditingBackend):
             transcript=transcript,
             quality=quality,
             timeline_plan=timeline_plan,
+            bgm_path=bgm_path,
         )
 
     def _parse_plan(self, plan_dict: Dict[str, Any]) -> TimelinePlan:

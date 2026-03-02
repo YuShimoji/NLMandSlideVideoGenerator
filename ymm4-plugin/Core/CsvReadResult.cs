@@ -17,6 +17,17 @@ namespace NLMSlidePlugin.Core
 
         public bool HasErrors => Errors.Any(e => e.Severity == CsvErrorSeverity.Error);
         public bool HasWarnings => Errors.Any(e => e.Severity == CsvErrorSeverity.Warning);
+
+        /// <summary>
+        /// Warning severity のエラーのみを返す（UI表示用）
+        /// </summary>
+        public List<CsvReadError> Warnings => Errors.Where(e => e.Severity == CsvErrorSeverity.Warning).ToList();
+
+        /// <summary>
+        /// Error severity のエラーのみを返す（UI表示用）
+        /// </summary>
+        public List<CsvReadError> CriticalErrors => Errors.Where(e => e.Severity == CsvErrorSeverity.Error).ToList();
+
         public int AudioFoundCount => Items.Count(i => !string.IsNullOrEmpty(i.AudioFilePath));
         public int AudioMissingCount => Items.Count(i => string.IsNullOrEmpty(i.AudioFilePath));
     }

@@ -22,8 +22,13 @@ namespace NLMSlidePlugin.Core
                 using var stream = File.OpenRead(filePath);
                 return ParseWavDuration(stream);
             }
-            catch
+            catch (FileNotFoundException)
             {
+                return DefaultDurationSeconds;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WavDurationReader] Failed to parse: {filePath} - {ex.Message}");
                 return DefaultDurationSeconds;
             }
         }

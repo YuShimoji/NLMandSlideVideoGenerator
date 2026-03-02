@@ -100,24 +100,22 @@ def _convert(obj: Any) -> Any:
 
 
 def _to_dict(obj: Any) -> Any:
+    """オブジェクトをJSON-serializable な dict に変換する"""
+    # 1st attempt: direct serialization
     try:
         return json.loads(json.dumps(obj, default=_convert))
     except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
+        pass
+
+    # 2nd attempt: dataclass conversion
+    if is_dataclass(obj):
         try:
-            if is_dataclass(obj):
-                return json.loads(json.dumps(asdict(obj), default=_convert))
+            return json.loads(json.dumps(asdict(obj), default=_convert))
         except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
-            return str(obj)
-        except Exception:
-            return str(obj)
-    except Exception:
-        try:
-            if is_dataclass(obj):
-                return json.loads(json.dumps(asdict(obj), default=_convert))
-        except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
-            return str(obj)
-        except Exception:
-            return str(obj)
+            pass
+
+    # Fallback: string representation
+    return str(obj)
 
 
 @app.get("/api/v1/spec")
@@ -183,16 +181,24 @@ async def update_settings(payload: Dict[str, Any]):
     if isinstance(modes, dict):
         settings.PIPELINE_STAGE_MODES.update(modes)
 
-    # Apply API keys (runtime only)
+    # Apply API keys (runtime only, with validation)
     api_keys = payload.get("api_keys", {})
     if isinstance(api_keys, dict):
-        if api_keys.get("gemini"):
+        def _validate_api_key(key: str, name: str) -> bool:
+            """API キーの基本バリデーション（空白・制御文字排除）"""
+            if not isinstance(key, str) or not key.strip():
+                return False
+            if any(c in key for c in ('\n', '\r', '\t', '\0')):
+                return False
+            return True
+
+        if api_keys.get("gemini") and _validate_api_key(api_keys["gemini"], "gemini"):
             settings.GEMINI_API_KEY = api_keys["gemini"]
             os.environ["GEMINI_API_KEY"] = api_keys["gemini"]
-        if api_keys.get("openai"):
+        if api_keys.get("openai") and _validate_api_key(api_keys["openai"], "openai"):
             settings.OPENAI_API_KEY = api_keys["openai"]
             os.environ["OPENAI_API_KEY"] = api_keys["openai"]
-        if api_keys.get("youtube"):
+        if api_keys.get("youtube") and _validate_api_key(api_keys["youtube"], "youtube"):
             settings.YOUTUBE_API_KEY = api_keys["youtube"]
             os.environ["YOUTUBE_API_KEY"] = api_keys["youtube"]
         # TTS providers
@@ -222,10 +228,17 @@ async def list_assets(kind: str = FPath(..., description="audio|videos|slides"),
     }
     if kind not in base_map:
         raise HTTPException(status_code=400, detail="Unsupported kind")
-    base = base_map[kind]
+    base = base_map[kind].resolve()
     items = []
     if base.exists():
         for p in sorted(base.glob("*"), key=lambda x: x.stat().st_mtime, reverse=True):
+            # Prevent symlink escape outside base directory
+            try:
+                resolved = p.resolve()
+                if not str(resolved).startswith(str(base)):
+                    continue
+            except OSError:
+                continue
             if p.is_file():
                 items.append(
                     {

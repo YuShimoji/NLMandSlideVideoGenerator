@@ -73,10 +73,11 @@ class VideoComposer:
         slides_file: SlidesPackage,
         transcript: TranscriptInfo,
         quality: str = "1080p",
-        timeline_plan: Optional[Dict[str, Any]] = None
+        timeline_plan: Optional[Dict[str, Any]] = None,
+        bgm_path: Optional[Path] = None,
     ) -> VideoInfo:
         """
-        音声、スライド、字幕を合成して動画を生成
+        音声、スライド、字幕、BGMを合成して動画を生成
         
         Args:
             audio_file: 音声ファイル情報
@@ -84,6 +85,7 @@ class VideoComposer:
             transcript: 台本情報
             quality: 動画品質
             timeline_plan: タイムライン計画（セグメント長・エフェクト指示）
+            bgm_path: BGMファイルパス（オプション）
             
         Returns:
             VideoInfo: 生成された動画情報
@@ -105,21 +107,22 @@ class VideoComposer:
                 slide_images, transcript
             )
             
-            # Step 4: 動画合成実行
+            # Step 4: トランジションを適用（オプション）
+            if self.video_settings.get("enable_transitions", True):
+                processed_slides = self.effect_processor.add_transition_effects(processed_slides)
+            
+            # Step 5: 動画合成実行
             video_info = await self._compose_final_video(
-                audio_file, processed_slides, subtitle_file, quality
+                audio_file, processed_slides, subtitle_file, quality, bgm_path=bgm_path
             )
             
-            # Step 5: メタデータ保存
+            # Step 6: メタデータ保存
             await self._save_video_metadata(video_info, transcript)
             
             logger.success(f"動画合成完了: {video_info.file_path}")
             return video_info
             
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"動画合成エラー: {str(e)}")
-            raise
-        except Exception as e:
             logger.error(f"動画合成エラー: {str(e)}")
             raise
     
@@ -146,10 +149,6 @@ class VideoComposer:
                         return exported
         except (OSError, AttributeError, TypeError, ValueError) as exc:
             logger.debug(f"エクスポート済みスライド画像の探索に失敗（PPTX抽出へフォールバック）: {exc}")
-            pass
-        except Exception as exc:
-            logger.debug(f"エクスポート済みスライド画像の探索に失敗（PPTX抽出へフォールバック）: {exc}")
-            pass
         
         # 2) PPTXからの抽出
         pptx_images = await self._extract_from_pptx(slides_file)
@@ -315,8 +314,6 @@ class VideoComposer:
                                 return images
             except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
                 logger.warning(f"LibreOfficeでのPPTX変換に失敗: {e}")
-            except Exception as e:
-                logger.warning(f"LibreOfficeでのPPTX変換に失敗: {e}")
 
         # 方法2: python-pptx を使用 (サムネイル抽出のみ)
         try:
@@ -348,8 +345,6 @@ class VideoComposer:
             logger.debug("python-pptx がインストールされていません")
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.warning(f"python-pptxでのPPTX抽出に失敗: {e}")
-        except Exception as e:
-            logger.warning(f"python-pptxでのPPTX抽出に失敗: {e}")
 
         return []
 
@@ -377,8 +372,6 @@ class VideoComposer:
                     images = sorted(output_dir.glob("slide_*.png"))
             except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
                 logger.warning(f"pdftoppmでのPDF変換に失敗: {e}")
-            except Exception as e:
-                logger.warning(f"pdftoppmでのPDF変換に失敗: {e}")
 
         # ImageMagick を試行
         if not images and shutil.which("convert"):
@@ -391,8 +384,6 @@ class VideoComposer:
                     images = sorted(output_dir.glob("slide_*.png"))
             except (subprocess.TimeoutExpired, OSError, ValueError, TypeError, RuntimeError) as e:
                 logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
-            except Exception as e:
-                logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
 
         return images
     
@@ -401,7 +392,8 @@ class VideoComposer:
         audio_info: AudioInfo,
         slide_images: List[Path],
         subtitle_file: Path,
-        quality: str
+        quality: str,
+        bgm_path: Optional[Path] = None
     ) -> VideoInfo:
         """
         最終動画を合成
@@ -411,6 +403,7 @@ class VideoComposer:
             slide_images: スライド画像一覧
             subtitle_file: 字幕ファイル
             quality: 動画品質
+            bgm_path: BGMファイルパス（オプション）
             
         Returns:
             VideoInfo: 生成された動画情報
@@ -461,9 +454,6 @@ class VideoComposer:
                 except (AttributeError, TypeError, ValueError) as exc:
                     logger.debug(f"スライド情報の読み取りに失敗（フォールバック）: {exc}")
                     img_path = slide_image
-                except Exception as exc:
-                    logger.debug(f"スライド情報の読み取りで予期しない例外（フォールバック）: {exc}")
-                    img_path = slide_image
                 
                 # 画像クリップ作成
                 img_clip = ImageClip(str(img_path))
@@ -474,8 +464,24 @@ class VideoComposer:
             
             video_clip = concatenate_videoclips(video_clips)
             
-            # 音声を設定
-            final_clip = video_clip.set_audio(audio_clip)
+            # 音声を設定 & BGM合成
+            final_audio = audio_clip
+            if bgm_path and bgm_path.exists():
+                try:
+                    from moviepy.audio.AudioClip import CompositeAudioClip
+                    bgm_clip = AudioFileClip(str(bgm_path)).volumex(0.1) # デフォルトで10%音量
+                    if bgm_clip.duration < audio_clip.duration:
+                        # BGMが短い場合はループ（MoviePyのループ機能は不安定な事があるため簡易対応）
+                        from moviepy.audio.fx.all import audio_loop
+                        bgm_clip = audio_loop(bgm_clip, duration=audio_clip.duration)
+                    else:
+                        bgm_clip = bgm_clip.set_duration(audio_clip.duration)
+                    
+                    final_audio = CompositeAudioClip([audio_clip, bgm_clip])
+                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as bgm_err:
+                    logger.warning(f"BGM合成に失敗しました: {bgm_err}")
+
+            final_clip = video_clip.set_audio(final_audio)
             
             # 字幕を追加
             if subtitle_file.exists():
@@ -521,11 +527,6 @@ class VideoComposer:
             return await self._compose_video_fallback(
                 audio_info, slide_images, subtitle_file, quality, output_path
             )
-        except Exception as e:
-            logger.warning(f"MoviePy処理で例外が発生したためフォールバックします: {e}")
-            return await self._compose_video_fallback(
-                audio_info, slide_images, subtitle_file, quality, output_path
-            )
     
     def _get_resolution_from_quality(self, quality: str) -> tuple:
         """
@@ -551,46 +552,70 @@ class VideoComposer:
         - `pysrt` が無い場合: 処理をスキップし、外部字幕ファイル(SRT/ASS/VTT)のみを利用する
         """
         try:
-            from moviepy.editor import CompositeVideoClip, TextClip
+            from moviepy.editor import CompositeVideoClip, TextClip, ColorClip
 
             try:
                 import pysrt
             except ImportError:
-                # 環境に pysrt が無い場合は動画への埋め込みを行わず、外部字幕としての利用に限定する
                 logger.info(
                     "pysrt がインストールされていないため、動画への字幕オーバーレイをスキップします。"
-                    "SRT/ASS/VTT ファイルは外部字幕として再生ソフト側で利用できます。"
                 )
                 return video_clip
 
-            # SRTファイル読み込み
             subs = pysrt.open(str(subtitle_file))
-
             subtitle_clips = []
+            
+            # 字幕設定を取得
+            sub_settings = settings.SUBTITLE_SETTINGS
+            font_size = sub_settings.get("font_size", 48)
+            font_color = sub_settings.get("font_color", "white")
+            font_family = sub_settings.get("font_family", "Arial")
+            bg_color = sub_settings.get("background_color", "black")
+            bg_opacity = sub_settings.get("background_opacity", 0.6)
+
             for sub in subs:
-                # 時間変換
                 start_time = self._srt_time_to_seconds(sub.start)
                 end_time = self._srt_time_to_seconds(sub.end)
+                duration = end_time - start_time
+                if duration <= 0: continue
 
-                # テキストクリップ作成
+                # テキストクリップ
                 txt_clip = TextClip(
                     sub.text,
-                    fontsize=settings.SUBTITLE_SETTINGS["font_size"],
-                    color=settings.SUBTITLE_SETTINGS["font_color"],
-                    font=settings.SUBTITLE_SETTINGS["font_family"],
-                ).set_position(("center", "bottom")).set_start(start_time).set_end(end_time)
+                    fontsize=font_size,
+                    color=font_color,
+                    font=font_family,
+                    method='caption',
+                    size=(video_clip.w * 0.8, None)
+                ).set_start(start_time).set_duration(duration).set_position(("center", "bottom"))
 
+                # 背景ボックス（半透明）
+                bg_w = video_clip.w * 0.9
+                bg_h = txt_clip.h + 20
+                bg_clip = ColorClip(
+                    size=(int(bg_w), int(bg_h)),
+                    color=self._name_to_rgb(bg_color)
+                ).set_opacity(bg_opacity).set_start(start_time).set_duration(duration).set_position(("center", video_clip.h - bg_h - 10))
+
+                subtitle_clips.append(bg_clip)
                 subtitle_clips.append(txt_clip)
 
-            # 字幕を動画に合成
             return CompositeVideoClip([video_clip] + subtitle_clips)
 
         except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.warning(f"字幕追加に失敗: {str(e)}")
             return video_clip
-        except Exception as e:
-            logger.warning(f"字幕追加に失敗: {str(e)}")
-            return video_clip
+
+    def _name_to_rgb(self, name: str) -> tuple:
+        """色名からRGB変換（簡易版）"""
+        colors = {
+            "black": (0, 0, 0),
+            "white": (255, 255, 255),
+            "red": (255, 0, 0),
+            "blue": (0, 0, 255),
+            "green": (0, 255, 0),
+        }
+        return colors.get(name.lower(), (0, 0, 0))
     
     def _srt_time_to_seconds(self, srt_time) -> float:
         """
@@ -777,21 +802,6 @@ class VideoComposer:
                 has_effects=False,
                 created_at=datetime.now()
             )
-        except Exception as e:
-            logger.error(f"FFmpegフォールバック動画合成に失敗: {e}")
-            # 最終フォールバック: 空のファイル
-            with open(output_path, 'wb') as f:
-                f.write(b'')
-            return VideoInfo(
-                file_path=output_path,
-                duration=audio_info.duration,
-                resolution=resolution,
-                fps=fps,
-                file_size=0,
-                has_subtitles=False,
-                has_effects=False,
-                created_at=datetime.now()
-            )
     
     async def _save_video_metadata(self, video_info: VideoInfo, transcript: TranscriptInfo):
         """
@@ -948,9 +958,6 @@ class VideoComposer:
         except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"圧縮エラー: {e}")
             return None
-        except Exception as e:
-            logger.error(f"圧縮エラー: {e}")
-            return None
     
     def _get_video_duration(self, video_path: Path) -> float:
         """動画の長さを取得（秒）"""
@@ -967,10 +974,6 @@ class VideoComposer:
                 return float(result.stdout.strip())
         except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as exc:
             logger.debug(f"ffprobe による動画長取得に失敗（フォールバック=600秒）: {exc}")
-            pass
-        except Exception as exc:
-            logger.debug(f"ffprobe による動画長取得に失敗（フォールバック=600秒）: {exc}")
-            pass
         
         # フォールバック: 10分と仮定
         return 600.0
@@ -1061,8 +1064,5 @@ class VideoComposer:
             return output_path
             
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"サムネイル生成エラー: {e}")
-            return None
-        except Exception as e:
             logger.error(f"サムネイル生成エラー: {e}")
             return None

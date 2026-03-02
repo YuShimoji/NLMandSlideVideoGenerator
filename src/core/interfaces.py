@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from notebook_lm.audio_generator import AudioInfo
     from notebook_lm.transcript_processor import TranscriptInfo
     from slides.slide_generator import SlidesPackage
-    from video_editor.video_composer import VideoInfo
+    from video_editor.video_composer import VideoInfo, ThumbnailInfo
     from youtube.uploader import UploadResult, UploadMetadata
 
 

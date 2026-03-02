@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any, Union
 from dataclasses import dataclass
 
 from core.utils.logger import logger
+from core.exceptions import UploadError, QuotaExceededError, APIAuthenticationError
 
 @dataclass
 class UploadResult:
@@ -62,9 +63,6 @@ class YouTubeUploader:
         except (AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
             logger.error(f"YouTube API認証失敗: {e}")
             return False
-        except Exception as e:
-            logger.error(f"YouTube API認証失敗: {e}")
-            return False
     
     async def upload_video(
         self,
@@ -98,7 +96,7 @@ class YouTubeUploader:
             
             # クォータチェック
             if self.upload_quota_used >= self.max_daily_quota:
-                raise Exception("YouTube APIの1日あたりのクォータ制限に達しました")
+                raise QuotaExceededError("YouTube APIの1日あたりのクォータ制限に達しました")
             
             # ファイル存在チェック
             if not video_path.exists():
@@ -108,7 +106,7 @@ class YouTubeUploader:
             file_size = video_path.stat().st_size
             max_size = 256 * 1024 * 1024 * 1024  # 256GB
             if file_size > max_size:
-                raise Exception(f"ファイルサイズが制限を超えています: {file_size/1024/1024/1024:.1f}GB")
+                raise UploadError(f"ファイルサイズが制限を超えています: {file_size/1024/1024/1024:.1f}GB")
             
             # メタデータ検証
             await self._validate_metadata(metadata)
@@ -122,12 +120,11 @@ class YouTubeUploader:
             logger.info(f"動画アップロード完了: {upload_result.video_id}")
             return upload_result
             
+        except (UploadError, QuotaExceededError):
+            raise
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"動画アップロード失敗: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"動画アップロード失敗: {e}")
-            raise
+            raise UploadError(str(e))
     
     async def _validate_metadata(self, metadata: UploadMetadata) -> None:
         """メタデータを検証"""
@@ -215,9 +212,6 @@ class YouTubeUploader:
         except (AttributeError, TypeError, OSError, ValueError, RuntimeError) as e:
             logger.error(f"サムネイルアップロード失敗: {e}")
             return False
-        except Exception as e:
-            logger.error(f"サムネイルアップロード失敗: {e}")
-            return False
     
     async def get_upload_status(self, video_id: str) -> Dict[str, Any]:
         """アップロード状況を取得"""
@@ -241,10 +235,7 @@ class YouTubeUploader:
             
         except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
             logger.error(f"アップロード状況取得失敗: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"アップロード状況取得失敗: {e}")
-            raise
+            raise UploadError(str(e))
     
     async def update_video_metadata(
         self, 
@@ -267,9 +258,6 @@ class YouTubeUploader:
         except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
             logger.error(f"メタデータ更新失敗: {e}")
             return False
-        except Exception as e:
-            logger.error(f"メタデータ更新失敗: {e}")
-            return False
     
     async def delete_video(self, video_id: str) -> bool:
         """動画を削除"""
@@ -283,9 +271,6 @@ class YouTubeUploader:
             return True
             
         except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
-            logger.error(f"動画削除失敗: {e}")
-            return False
-        except Exception as e:
             logger.error(f"動画削除失敗: {e}")
             return False
     
@@ -311,10 +296,7 @@ class YouTubeUploader:
             
         except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
             logger.error(f"チャンネル情報取得失敗: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"チャンネル情報取得失敗: {e}")
-            raise
+            raise UploadError(str(e))
     
     def get_quota_usage(self) -> Dict[str, int]:
         """クォータ使用状況を取得"""
@@ -371,7 +353,4 @@ class YouTubeUploader:
             
         except (TypeError, ValueError, OSError, AttributeError, RuntimeError) as e:
             logger.error(f"一括アップロード失敗: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"一括アップロード失敗: {e}")
-            raise
+            raise UploadError(str(e))

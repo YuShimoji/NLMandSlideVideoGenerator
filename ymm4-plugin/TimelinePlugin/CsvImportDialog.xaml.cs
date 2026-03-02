@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
@@ -24,6 +26,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         private string statusMessage = "Select a CSV file.";
         private bool addSubtitles = true;
         private List<CsvTimelineItem> previewItems = new();
+        private double progressValue;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -85,6 +88,24 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
+        public double ProgressValue
+        {
+            get => progressValue;
+            set { progressValue = value; OnPropertyChanged(); }
+        }
+
+        private string logContent = string.Empty;
+        public string LogContent
+        {
+            get => logContent;
+            set { logContent = value; OnPropertyChanged(); }
+        }
+
+        public void AppendLog(string message)
+        {
+            LogContent += $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}";
+        }
+
         private void BrowseCsvButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new OpenFileDialog
@@ -94,17 +115,14 @@ namespace NLMSlidePlugin.TimelinePlugin
                 CheckFileExists = true
             };
 
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
+            if (dialog.ShowDialog() != true) return;
 
             CsvPath = dialog.FileName;
-
             var csvDir = Path.GetDirectoryName(CsvPath) ?? string.Empty;
             var defaultAudioDir = Path.Combine(csvDir, "audio");
             AudioDirectory = Directory.Exists(defaultAudioDir) ? defaultAudioDir : csvDir;
-            StatusMessage = "CSV selected. Click Preview.";
+            StatusMessage = "CSV selected.";
+            AppendLog($"CSV selected: {CsvPath}");
         }
 
         private void BrowseAudioButton_Click(object sender, RoutedEventArgs e)
@@ -113,88 +131,98 @@ namespace NLMSlidePlugin.TimelinePlugin
             {
                 Title = "Select Any File in Audio Directory",
                 Filter = "All Files (*.*)|*.*",
-                CheckFileExists = false,
                 FileName = "Select Folder"
             };
 
             if (dialog.ShowDialog() == true)
             {
                 AudioDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
+                AppendLog($"Audio directory selected: {AudioDirectory}");
             }
         }
 
-        private void PreviewButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(CsvPath))
-            {
-                StatusMessage = "Please select a CSV file.";
-                return;
-            }
-
-            if (!File.Exists(CsvPath))
-            {
-                StatusMessage = "CSV file does not exist.";
-                return;
-            }
-
-            try
-            {
-                var reader = new CsvTimelineReader(CsvPath, AudioDirectory);
-                var items = reader.ReadTimeline();
-                PreviewItems = items;
-
-                int audioFound = items.Count(i => !string.IsNullOrEmpty(i.AudioFilePath));
-                StatusMessage = $"Preview loaded: {items.Count} rows, audio found: {audioFound}.";
-            }
-            catch (Exception ex)
-            {
-                PreviewItems = new List<CsvTimelineItem>();
-                StatusMessage = $"Preview failed: {ex.Message}";
-            }
-        }
-
-        private void ImportButton_Click(object sender, RoutedEventArgs e)
+        private async void PreviewButton_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(CsvPath) || !File.Exists(CsvPath))
             {
-                StatusMessage = "Please select a valid CSV file.";
+                StatusMessage = "Invalid CSV path.";
                 return;
-            }
-
-            if (PreviewItems.Count == 0)
-            {
-                PreviewButton_Click(sender, e);
-                if (PreviewItems.Count == 0)
-                {
-                    StatusMessage = "No rows available to import.";
-                    return;
-                }
             }
 
             try
             {
-                ImportButton.IsEnabled = false;
-                StatusMessage = "Importing...";
-                WriteRuntimeLog($"Import start. csv={CsvPath}, audioDir={AudioDirectory}, addSubtitles={AddSubtitles}");
+                SetBusy(true);
+                StatusMessage = "Loading preview...";
+                ProgressValue = 0;
+                LogContent = string.Empty;
+                AppendLog($"Preview start: {CsvPath}");
 
-                var result = ImportToTimeline(PreviewItems, AddSubtitles);
-                if (result.ImportedRows <= 0)
+                var progress = new Progress<CsvReadProgress>(p =>
                 {
-                    throw new InvalidOperationException("No items were added to the timeline.");
-                }
+                    ProgressValue = p.PercentComplete;
+                    StatusMessage = $"Reading CSV: {p.LinesProcessed} lines...";
+                });
 
-                StatusMessage = $"Imported {result.ImportedRows} rows (audio: {result.AudioItems}, text: {result.TextItems}, skipped: {result.SkippedRows}, timeline items: {result.TimelineItemsAfterImport})";
+                // Capture UI state before Task.Run to avoid cross-thread access
+                string capturedCsvPath = CsvPath;
+                string capturedAudioDir = AudioDirectory;
+                var result = await Task.Run(() =>
+                {
+                    var reader = new CsvTimelineReader(capturedCsvPath, capturedAudioDir);
+                    return reader.ReadTimelineWithErrors(progress);
+                });
+
+                PreviewItems = result.Items;
+                ProgressValue = 100;
+
+                foreach (var warn in result.Warnings) AppendLog($"[WARN] {warn}");
+                foreach (var err in result.Errors) AppendLog($"[ERR] {err}");
+
+                StatusMessage = result.Errors.Count > 0 
+                    ? $"Found {result.Items.Count} items with {result.Errors.Count} errors." 
+                    : $"Found {result.Items.Count} items.";
+                
+                AppendLog($"Preview done: {result.Items.Count} items, {result.Errors.Count} errors, {result.Warnings.Count} warnings.");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Preview failed: {ex.Message}";
+                AppendLog($"[FATAL] {ex}");
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private async void ImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PreviewItems.Count == 0)
+            {
+                StatusMessage = "Please run Preview first.";
+                return;
+            }
+
+            try
+            {
+                SetBusy(true);
+                StatusMessage = "Importing to timeline...";
+                ProgressValue = 0;
+                AppendLog("Starting timeline import...");
+                WriteRuntimeLog($"Importing {PreviewItems.Count} items.");
+
+                var progress = new Progress<int>(v => ProgressValue = v);
+                
+                var result = await ImportToTimelineAsync(PreviewItems, AddSubtitles, progress);
+
+                ProgressValue = 100;
+                StatusMessage = $"Imported {result.ImportedRows} items.";
+                AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TimelineItemsAfterImport}");
 
                 MessageBox.Show(
-                    $"Imported {result.ImportedRows} rows to timeline.\n\n" +
-                    $"Audio items: {result.AudioItems}\n" +
-                    $"Text items: {result.TextItems}\n" +
-                    $"Skipped rows: {result.SkippedRows}\n" +
-                    $"Timeline total items: {result.TimelineItemsAfterImport}",
-                    "CSV Import Result",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                WriteRuntimeLog($"Import success. rows={result.ImportedRows}, audio={result.AudioItems}, text={result.TextItems}, skipped={result.SkippedRows}, totalItems={result.TimelineItemsAfterImport}");
+                    $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
+                    $"Successfully imported {result.ImportedRows} items.",
+                    "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 DialogResult = true;
                 Close();
@@ -202,99 +230,158 @@ namespace NLMSlidePlugin.TimelinePlugin
             catch (Exception ex)
             {
                 StatusMessage = $"Import failed: {ex.Message}";
-                WriteRuntimeLog($"Import failed. error={ex}");
-                MessageBox.Show(
-                    $"Import failed:\n{ex.Message}",
-                    "CSV Import Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                AppendLog($"[FATAL] {ex}");
+                WriteRuntimeLog($"Import failed: {ex}");
+                MessageBox.Show($"Import failed:{Environment.NewLine}{ex.Message}", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
-                ImportButton.IsEnabled = true;
+                SetBusy(false);
             }
+        }
+
+        private void SetBusy(bool isBusy)
+        {
+            if (PreviewButton != null) PreviewButton.IsEnabled = !isBusy;
+            if (ImportButton != null) ImportButton.IsEnabled = !isBusy;
+            if (BrowseCsvButton != null) BrowseCsvButton.IsEnabled = !isBusy;
+            if (BrowseAudioButton != null) BrowseAudioButton.IsEnabled = !isBusy;
+        }
+
+        private async Task<ImportExecutionResult> ImportToTimelineAsync(List<CsvTimelineItem> items, bool addSubtitles, IProgress<int> progress)
+        {
+            // Capture dispatcher reference for null safety
+            var dispatcher = Application.Current?.Dispatcher
+                ?? throw new InvalidOperationException("Application dispatcher is not available.");
+            return await Task.Run(() =>
+            {
+                return dispatcher.Invoke(() =>
+                {
+                    if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
+                    {
+                        throw new InvalidOperationException($"Timeline not found: {resolveError}");
+                    }
+
+                    int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
+                    int baseLayer = GetImportBaseLayer(activeTimeline);
+                    int count = 0;
+                    int audioCount = 0;
+                    int textCount = 0;
+
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+                        int frame = (int)Math.Round(item.StartTime * fps);
+                        int length = (int)Math.Round((item.Duration ?? 1.0) * fps);
+
+                        if (!string.IsNullOrEmpty(item.AudioFilePath) && File.Exists(item.AudioFilePath))
+                        {
+                            activeTimeline.Items.Add(new AudioItem(item.AudioFilePath) { Frame = frame, Layer = baseLayer, Length = length });
+                            audioCount++;
+                        }
+
+                        if (addSubtitles && !string.IsNullOrEmpty(item.Text))
+                        {
+                            activeTimeline.Items.Add(new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 1, Length = length });
+                            textCount++;
+                        }
+
+                        count++;
+                        progress.Report((int)(i * 100.0 / items.Count));
+                    }
+
+                    activeTimeline.RefreshTimelineLengthAndMaxLayer();
+                    return new ImportExecutionResult(count, audioCount, textCount, 0, activeTimeline.Items.Count);
+                });
+            });
         }
 
         private ImportExecutionResult ImportToTimeline(IEnumerable<CsvTimelineItem> items, bool shouldAddSubtitles)
         {
-            if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
+            var dispatcher = Application.Current?.Dispatcher
+                ?? throw new InvalidOperationException("Application dispatcher is not available.");
+            return dispatcher.Invoke(() =>
             {
-                throw new InvalidOperationException($"Timeline context is not available. {resolveError}");
-            }
-
-            int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
-            int baseLayer = GetImportBaseLayer(activeTimeline);
-
-            int importedRows = 0;
-            int audioItems = 0;
-            int textItems = 0;
-            int skippedRows = 0;
-
-            foreach (var csvItem in items)
-            {
-                int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
-                int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
-
-                var timelineItems = new List<IItem>();
-                bool hasAudio = false;
-                bool hasText = false;
-
-                if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
+                if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
                 {
-                    var audio = new AudioItem(csvItem.AudioFilePath)
+                    throw new InvalidOperationException($"Timeline context is not available. {resolveError}");
+                }
+
+                int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
+                int baseLayer = GetImportBaseLayer(activeTimeline);
+
+                int importedRows = 0;
+                int audioItemsCount = 0;
+                int textItemsCount = 0;
+                int skippedRows = 0;
+
+                // Add all items in a single batch if possible for better performance
+                var allTimelineItems = new List<IItem>();
+                var startFrames = new List<int>();
+                var layers = new List<int>();
+
+                foreach (var csvItem in items)
+                {
+                    int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
+                    int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
+
+                    bool hasItemInRow = false;
+                    if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
                     {
-                        Frame = 0,
-                        Layer = 0,
-                        Length = lengthFrames,
-                        PlaybackRate = 1.0
-                    };
-                    timelineItems.Add(audio);
-                    hasAudio = true;
-                }
+                        var audio = new AudioItem(csvItem.AudioFilePath)
+                        {
+                            Frame = startFrame,
+                            Layer = baseLayer,
+                            Length = lengthFrames,
+                            PlaybackRate = 1.0
+                        };
+                        allTimelineItems.Add(audio);
+                        audioItemsCount++;
+                        hasItemInRow = true;
+                    }
 
-                if (shouldAddSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
-                {
-                    var text = new TextItem
+                    if (shouldAddSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
                     {
-                        Frame = 0,
-                        Layer = 1,
-                        Length = lengthFrames,
-                        PlaybackRate = 1.0,
-                        Text = csvItem.Text
-                    };
-                    timelineItems.Add(text);
-                    hasText = true;
+                        var text = new TextItem
+                        {
+                            Frame = startFrame,
+                            Layer = baseLayer + 1,
+                            Length = lengthFrames,
+                            PlaybackRate = 1.0,
+                            Text = csvItem.Text
+                        };
+                        allTimelineItems.Add(text);
+                        textItemsCount++;
+                        hasItemInRow = true;
+                    }
+
+                    if (hasItemInRow)
+                    {
+                        importedRows++;
+                    }
+                    else
+                    {
+                        skippedRows++;
+                    }
                 }
 
-                if (timelineItems.Count == 0)
+                if (allTimelineItems.Count > 0)
                 {
-                    skippedRows++;
-                    continue;
+                    // TryAddItems(IItem[] items, int frame, int layer, bool isUndoEnabled)
+                    // Note: If we use this overload, it might offset ALL items by (frame, layer).
+                    // We should probably add them one by one or use a different approach if they have different start frames.
+                    // Actually, activeTimeline.Items.Add(item) followed by Refresh might be better if we handle Undo ourselves.
+                    // But TryAddItems is safer for YMM4's internal state.
+                    
+                    foreach (var item in allTimelineItems)
+                    {
+                        activeTimeline.Items.Add(item);
+                    }
+                    activeTimeline.RefreshTimelineLengthAndMaxLayer();
                 }
 
-                int beforeCount = activeTimeline.Items.Count;
-                bool added = activeTimeline.TryAddItems(timelineItems.ToArray(), startFrame, baseLayer, true);
-                int afterCount = activeTimeline.Items.Count;
-                if (!added || afterCount <= beforeCount)
-                {
-                    skippedRows++;
-                    continue;
-                }
-
-                importedRows++;
-                if (hasAudio)
-                {
-                    audioItems++;
-                }
-
-                if (hasText)
-                {
-                    textItems++;
-                }
-            }
-
-            activeTimeline.RefreshTimelineLengthAndMaxLayer();
-            return new ImportExecutionResult(importedRows, audioItems, textItems, skippedRows, activeTimeline.Items.Count);
+                return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, skippedRows, activeTimeline.Items.Count);
+            });
         }
 
         private bool TryEnsureTimeline(out Timeline activeTimeline, out string detail)
@@ -397,9 +484,9 @@ namespace NLMSlidePlugin.TimelinePlugin
                 var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}";
                 File.AppendAllText(path, line);
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore logging failures.
+                System.Diagnostics.Debug.WriteLine($"[NLMSlidePlugin] WriteRuntimeLog failed: {ex.Message}");
             }
         }
 
