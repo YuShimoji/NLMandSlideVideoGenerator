@@ -1,0 +1,75 @@
+{
+    "name": "nlm-slide-video-generator",
+    "version": "1.0.0",
+    "description": "NLM Slide Video Generator — Desktop App",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder --win portable",
+        "build:dir": "electron-builder --win dir"
+    },
+    "author": "YuShimoji",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^33.0.0",
+        "electron-builder": "^25.1.0"
+    },
+    "build": {
+        "appId": "com.nlmslide.videogenerator",
+        "productName": "NLM Slide Video Generator",
+        "directories": {
+            "output": "dist"
+        },
+        "win": {
+            "target": "portable",
+            "icon": "build/icon.ico"
+        },
+        "portable": {
+            "artifactName": "NLMSlideVideoGenerator-${version}.exe"
+        },
+        "extraResources": [
+            {
+                "from": "../venv",
+                "to": "venv",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../src",
+                "to": "src",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../config",
+                "to": "config",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../scripts",
+                "to": "scripts",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../data",
+                "to": "data",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../samples",
+                "to": "samples",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ]
+    }
+}
