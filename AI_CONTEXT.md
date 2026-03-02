@@ -2,7 +2,7 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-03-03T01:00:00+09:00
+- **最終更新**: 2026-03-03T02:00:00+09:00
 - **更新者**: AI Worker (Opus 4.6)
 
 ## レポート設定（推奨）
@@ -13,11 +13,11 @@
 
 ## 現在のミッション
 
-- **タイトル**: TASK_021 Layer A完了 - 次タスク着手可能
-- **Issue**: TASK_021 コード品質ハードニング Layer A全完了。CI mypy統合済。
+- **タイトル**: TASK_021/022/023 Layer A完了 - Layer B検証フェーズ
+- **Issue**: 3タスク Layer A同時完了。品質強化+CI+VOICEVOX統合。
 - **ブランチ**: master
 - **関連PR**: なし
-- **進捗**: **TASK_021 Layer A完了** - 例外ドメイン化、重複catch削除、mypy CI統合、型エラー修正。
+- **進捗**: **3タスク Layer A完了** - TASK_021(品質), TASK_022(VOICEVOX), TASK_023(CI)。
 
 ## 次の中断可能点
 
@@ -44,7 +44,7 @@
 ## テスト
 
 - **command**: `.\venv\Scripts\python.exe -m pytest -q -m "not slow and not integration" --tb=short`
-- **result**: 109 passed, 7 skipped, 4 deselected (2026-03-03 01:00)
+- **result**: 122 passed, 7 skipped, 4 deselected (2026-03-03 02:00)
 
 ## タスク管理（短期/中期/長期）
 
@@ -53,10 +53,10 @@
 | **短期** | TASK_013 | YMM4プラグイン本番化（UI/Async/エラー処理） | ✅ Layer A完了 + バグ修正済 | 高 |
 | **短期** | TASK_014 | 音声出力環境最適化（診断ツール/SofTalk評価） | ✅ Layer A完了 | 中 |
 | **短期** | TASK_015 | CI/CD統合と監査自動化強化（警告ゼロ化） | ✅ 完了 | 高 |
-| **短期** | TASK_021 | コード品質ハードニング（例外/型/静的解析） | ✅ Layer A完了 | **高** |
+| **短期** | TASK_021 | コード品質ハードニング（例外/型/静的解析） | ✅ Layer A完了 | 高 |
 | **短期** | Layer B検証 | TASK_013/014の実機検証 | ⏸️ 待機中 | 高 |
-| **中期** | TASK_022 | VOICEVOX TTS統合 | 📋 起票済 | 中 |
-| **中期** | TASK_023 | GitHub Actions CI/CD本番化 | 📋 起票済 | 中 |
+| **中期** | TASK_022 | VOICEVOX TTS統合 | ✅ Layer A完了 | 中 |
+| **中期** | TASK_023 | GitHub Actions CI/CD本番化 | ✅ Layer A部分完了 | 中 |
 | **中期** | TASK_024 | パイプラインリファクタリング | 📋 起票済 | 中 |
 | **長期** | TASK_025 | クラウドレンダリング対応 | 📋 起票済 | 低 |
 
@@ -151,9 +151,21 @@
 - **bare catch-all監査**: 73箇所全て正当な2段パターン確認、追加修正不要
 - **テスト**: 109 passed, 7 skipped, 4 deselected (14.2秒)
 
+### 2026-03-03 深夜 TASK_022/023 Layer A完了
+
+- **TASK_022 VOICEVOX統合**:
+  - `src/audio/voicevox_client.py`: Engine REST APIクライアント
+  - `src/core/voice_pipelines/voicevox_pipeline.py`: IVoicePipeline準拠アダプタ
+  - TTSProvider.VOICEVOX追加、config設定セクション追加
+  - 19テスト追加（全モックベース）
+- **TASK_023 CI/CD**:
+  - `.github/workflows/ci-main.yml`: テスト+mypy+lint 3ジョブCI
+  - `documentation.yml`: ブランチ参照修正
+- **テスト**: 122 passed, 7 skipped, 4 deselected (10.0秒)
+
 ### 次のステップ
 
-1. ~~TASK_021 残作業~~ → ✅ 完了
-2. Layer B 実機検証 (人間オペレータ)
-3. TASK_023 GitHub Actions CI/CD本番化
-4. TASK_022 VOICEVOX統合
+1. Layer B 実機検証 (人間オペレータ)
+2. TASK_024 パイプラインリファクタリング
+3. TASK_023 残作業（リリース自動化、ブランチ保護）
+4. TASK_025 クラウドレンダリング（Backlog）

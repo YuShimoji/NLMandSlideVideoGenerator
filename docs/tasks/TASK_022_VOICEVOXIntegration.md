@@ -1,5 +1,5 @@
 # Task: VOICEVOX TTS統合
-Status: OPEN
+Status: LAYER_A_DONE
 Tier: 2
 Branch: master
 Owner: Worker-B
