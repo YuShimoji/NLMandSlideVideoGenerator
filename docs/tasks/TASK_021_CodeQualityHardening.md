@@ -1,5 +1,5 @@
 # Task: コード品質ハードニング
-Status: DONE
+Status: LAYER_A_DONE
 Tier: 2
 Branch: master
 Owner: Worker-B
@@ -52,15 +52,15 @@ Report: AI_CONTEXT.md (2026-03-03セクション参照)
 - [x] mypy clean pass確認（core 3ファイル: 0 errors）
 
 ### Layer B（手動検証）
-- [x] mypy警告ゼロ確認（Core モジュール） — 2026-03-03 確認: `Success: no issues found in 3 source files`
-- [x] CI パイプラインの完全実行確認 — 2026-03-03 確認: CI #11 成功 (4m18s), 全ワークフロー正常
+- [ ] mypy警告ゼロ確認（Core モジュール）
+- [ ] CI パイプラインの完全実行確認
 
 ## DoD (Definition of Done)
 
 - [x] bare `except Exception:` が Critical/High 箇所でゼロ（重複削除22箇所、残存73箇所は正当な2段パターン）
 - [x] Core モジュール（exceptions, interfaces, models）の mypy パス（0 errors）
 - [x] CI パイプライン（ci.ps1）に型チェックステージ追加済
-- [x] 既存テスト全パス（146 passed, 7 skipped, 5 deselected）
+- [x] 既存テスト全パス（109 passed, 7 skipped, 4 deselected）
 
 ## Constraints
 - 既存テストを壊さない
