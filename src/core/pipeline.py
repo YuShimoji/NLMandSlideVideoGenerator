@@ -64,6 +64,8 @@ from .utils.logger import logger
 from .exceptions import PipelineError
 from .models import PipelineArtifacts
 from .helpers import with_fallback, build_default_pipeline
+from . import slide_builder as sb
+from . import stage_runners as sr
 
 
 class ModularVideoPipeline:
@@ -426,50 +428,7 @@ class ModularVideoPipeline:
         start_slide_id: int,
     ) -> List[Dict[str, Any]]:
         """CSV 1行を1枚または複数サブスライドに展開"""
-
-        text = (segment.text or "").strip()
-        text_length = len(text)
-        segment_duration = max(float(segment.end_time - segment.start_time), 0.1)
-
-        slides_settings = settings.SLIDES_SETTINGS
-        auto_split = slides_settings.get("auto_split_long_lines", False)
-        threshold = int(slides_settings.get("long_line_char_threshold", 9999))
-        target_chars = int(slides_settings.get("long_line_target_chars_per_subslide", threshold))
-        max_subslides = max(int(slides_settings.get("long_line_max_subslides", 1)), 1)
-        min_duration = float(slides_settings.get("min_subslide_duration", 0.5))
-
-        should_split = (
-            auto_split
-            and max_subslides > 1
-            and target_chars > 0
-            and text_length >= threshold
-        )
-
-        if should_split:
-            chunks = self._split_text_for_subslides(text, target_chars, max_subslides)
-        else:
-            chunks = [text]
-
-        durations = self._allocate_subslide_durations(
-            total_duration=segment_duration,
-            chunks=chunks,
-            min_duration=min_duration,
-        )
-
-        total_subslides = len(chunks)
-        slides: List[Dict[str, Any]] = []
-        for idx, chunk in enumerate(chunks):
-            slides.append(
-                self._build_slide_dict(
-                    segment=segment,
-                    slide_id=start_slide_id + idx,
-                    text=chunk,
-                    duration=durations[idx],
-                    sub_index=idx,
-                    sub_total=total_subslides,
-                )
-            )
-        return slides
+        return sb.expand_segment_into_slides(segment, start_slide_id)
 
     def _split_text_for_subslides(
         self,
@@ -478,46 +437,10 @@ class ModularVideoPipeline:
         max_subslides: int,
     ) -> List[str]:
         """句読点優先で長文を複数スライド用テキストに分割"""
-
-        normalized = (text or "").strip()
-        if not normalized:
-            return [""]
-
-        chunks: List[str] = []
-        remaining = normalized
-
-        while remaining and len(chunks) < max_subslides - 1:
-            if len(remaining) <= target_chars:
-                break
-
-            split_index = self._find_split_index(remaining, target_chars)
-            chunk = remaining[:split_index].strip()
-            if not chunk:
-                chunk = remaining[:target_chars]
-                split_index = len(chunk)
-
-            chunks.append(chunk)
-            remaining = remaining[split_index:].lstrip()
-
-        if remaining:
-            chunks.append(remaining)
-
-        return chunks[:max_subslides]
+        return sb.split_text_for_subslides(text, target_chars, max_subslides)
 
     def _find_split_index(self, text: str, preferred_length: int) -> int:
-        if len(text) <= preferred_length:
-            return len(text)
-
-        search_window = min(len(text), preferred_length + 40)
-        slice_text = text[:search_window]
-
-        punctuation_patterns = ["。", "！", "？", "!", "?", "、", ",", " ", "\n"]
-        for pattern in punctuation_patterns:
-            idx = slice_text.rfind(pattern, 0, search_window)
-            if idx != -1 and idx >= int(preferred_length * 0.6):
-                return idx + 1
-
-        return preferred_length
+        return sb.find_split_index(text, preferred_length)
 
     def _allocate_subslide_durations(
         self,
@@ -525,50 +448,7 @@ class ModularVideoPipeline:
         chunks: List[str],
         min_duration: float,
     ) -> List[float]:
-        if total_duration <= 0:
-            total_duration = 0.1 * len(chunks)
-
-        total_chars = sum(max(len(chunk.strip()), 1) for chunk in chunks)
-        total_chars = max(total_chars, 1)
-
-        remaining_duration = total_duration
-        remaining_chars = total_chars
-        durations: List[float] = []
-
-        for idx, chunk in enumerate(chunks):
-            chunk_chars = max(len(chunk.strip()), 1)
-            slots_left = len(chunks) - idx - 1
-
-            ratio = chunk_chars / remaining_chars if remaining_chars else 0
-            duration = total_duration * ratio if ratio > 0 else remaining_duration / max(slots_left + 1, 1)
-            duration = max(duration, min_duration)
-
-            max_allowed = remaining_duration - (slots_left * min_duration)
-            if max_allowed > 0:
-                duration = min(duration, max_allowed)
-
-            durations.append(duration)
-            remaining_duration -= duration
-            remaining_chars -= chunk_chars
-
-        total_assigned = sum(durations)
-        diff = total_duration - total_assigned
-        if durations:
-            durations[-1] += diff
-            if durations[-1] < min_duration:
-                deficit = min_duration - durations[-1]
-                durations[-1] = min_duration
-                for i in range(len(durations) - 2, -1, -1):
-                    available = durations[i] - min_duration
-                    if available <= 0:
-                        continue
-                    take = min(available, deficit)
-                    durations[i] -= take
-                    deficit -= take
-                    if deficit <= 0:
-                        break
-
-        return durations
+        return sb.allocate_subslide_durations(total_duration, chunks, min_duration)
 
     def _build_slide_dict(
         self,
@@ -579,78 +459,14 @@ class ModularVideoPipeline:
         sub_index: int,
         sub_total: int,
     ) -> Dict[str, Any]:
-        base_title = getattr(segment, "slide_suggestion", None) or (segment.text[:30] if segment.text else f"Segment {segment.id}")
-        if sub_total > 1 and sub_index > 0:
-            title = f"{base_title}（続き {sub_index + 1}/{sub_total}）"
-        else:
-            title = base_title
-
-        return {
-            "slide_id": slide_id,
-            "title": title,
-            "text": text,
-            "key_points": getattr(segment, "key_points", []),
-            "duration": max(duration, 0.1),
-            "source_segments": [segment.id],
-            "speakers": [segment.speaker] if getattr(segment, "speaker", None) else [],
-            "subslide_index": sub_index,
-            "subslide_count": sub_total,
-            "is_continued": sub_total > 1 and sub_index > 0,
-        }
+        return sb.build_slide_dict(segment, slide_id, text, duration, sub_index, sub_total)
 
     def _build_slides_payload(
         self,
         segment_payloads: List[Dict[str, Any]],
         csv_path: Path,
     ) -> Dict[str, Any]:
-        video_resolution = settings.VIDEO_SETTINGS.get("resolution", (1920, 1080))
-        auto_split = settings.SLIDES_SETTINGS.get("auto_split_long_lines", False)
-
-        payload_segments: List[Dict[str, Any]] = []
-        for payload in segment_payloads:
-            segment = payload.get("segment")
-            slides = payload.get("slides", [])
-            audio_file: Optional[Path] = payload.get("audio_file")
-
-            if not segment:
-                continue
-
-            converted_slides: List[Dict[str, Any]] = []
-            for idx, slide in enumerate(slides):
-                converted_slides.append(
-                    {
-                        "slide_id": slide.get("slide_id"),
-                        "order": slide.get("subslide_index", idx),
-                        "count": slide.get("subslide_count", len(slides)),
-                        "title": slide.get("title"),
-                        "text": slide.get("text"),
-                        "duration": float(slide.get("duration", 0.0) or 0.0),
-                        "is_continued": bool(slide.get("is_continued", False)),
-                    }
-                )
-
-            payload_segments.append(
-                {
-                    "segment_id": getattr(segment, "id", None),
-                    "speaker": getattr(segment, "speaker", ""),
-                    "start_time": float(getattr(segment, "start_time", 0.0) or 0.0),
-                    "end_time": float(getattr(segment, "end_time", 0.0) or 0.0),
-                    "text": getattr(segment, "text", ""),
-                    "audio_file": str(audio_file) if audio_file else None,
-                    "subslides": converted_slides,
-                }
-            )
-
-        return {
-            "meta": {
-                "source_csv": str(csv_path),
-                "generated_at": datetime.now().isoformat(),
-                "auto_split": auto_split,
-                "video_resolution": list(video_resolution),
-                "total_segments": len(payload_segments),
-            },
-            "segments": payload_segments,
-        }
+        return sb.build_slides_payload(segment_payloads, csv_path)
 
     async def run_csv_timeline(
         self,
@@ -1104,18 +920,7 @@ class ModularVideoPipeline:
         sources: List
     ) -> tuple[Optional[Dict[str, Any]], AudioInfo]:
         """従来 Stage1 処理（フォールバック付き）"""
-        try:
-            return await self._run_legacy_stage1(topic, sources)
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"Legacy Stage1 failed: {e}. Using minimal fallback...")
-            # 最小限のフォールバック
-            audio_info = await self.audio_generator.generate_audio(sources)
-            return None, audio_info
-        except Exception as e:
-            logger.warning(f"Legacy Stage1 failed: {e}. Using minimal fallback...")
-            # 最小限のフォールバック
-            audio_info = await self.audio_generator.generate_audio(sources)
-            return None, audio_info
+        return await sr.run_legacy_stage1_with_fallback(topic, sources, self.audio_generator)
 
     async def _run_legacy_stage1(
         self,
@@ -1123,118 +928,7 @@ class ModularVideoPipeline:
         sources: List[SourceInfo],
     ) -> tuple[Optional[Dict[str, Any]], AudioInfo]:
         """従来のGemini+TTSまたはNotebookLMモックを使用したStage1処理"""
-
-        script_bundle: Optional[Dict[str, Any]] = None
-
-        if settings.GEMINI_API_KEY and settings.TTS_SETTINGS.get("provider", "none") != "none":
-            logger.info("Gemini + TTS による音声生成パスを使用します")
-            try:
-                gemini = GeminiIntegration(api_key=settings.GEMINI_API_KEY)
-                sources_payload = [
-                    {
-                        "url": getattr(s, "url", ""),
-                        "title": getattr(s, "title", ""),
-                        "content_preview": getattr(s, "content_preview", ""),
-                        "relevance_score": getattr(s, "relevance_score", 0.0),
-                        "reliability_score": getattr(s, "reliability_score", 0.0),
-                    }
-                    for s in sources
-                ]
-                language = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
-                script_info: ScriptInfo = await gemini.generate_script_from_sources(
-                    sources=sources_payload,
-                    topic=topic,
-                    target_duration=300.0,
-                    language=language,
-                )
-
-                settings.SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                script_path = settings.SCRIPTS_DIR / f"script_{timestamp}.json"
-                with open(script_path, "w", encoding="utf-8") as f:
-                    f.write(script_info.content)
-                logger.info(f"スクリプト保存: {script_path}")
-
-                try:
-                    script_bundle = json.loads(script_info.content)
-                except json.JSONDecodeError:
-                    logger.warning("Gemini スクリプトをJSONとして解析できませんでした。生テキストを保持します。")
-                    script_bundle = {"title": script_info.title, "content": script_info.content}
-
-                if script_bundle and "segments" in script_bundle:
-                    tts_text = "\n\n".join(seg.get("content", "") for seg in script_bundle.get("segments", []))
-                else:
-                    tts_text = script_info.content
-
-                # Geminiスライド情報の生成（任意）
-                prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
-                logger.info(f"Geminiスライド生成設定: prefer_gemini_slide_content={prefer_gemini}")
-                try:
-                    max_slides = settings.SLIDES_SETTINGS.get("max_slides_per_batch", 20)
-                    logger.info(f"Geminiスライド生成開始: max_slides={max_slides}")
-                    gemini_slides = await gemini.generate_slide_content(
-                        script_info=script_info,
-                        max_slides=max_slides,
-                    )
-
-                    if gemini_slides:
-                        logger.info(f"Geminiスライド生成成功: {len(gemini_slides)}枚")
-                        slide_payload = []
-                        for slide in gemini_slides:
-                            slide_payload.append(
-                                {
-                                    "title": slide.get("title", f"スライド {slide.get('slide_number', len(slide_payload) + 1)}"),
-                                    "content": slide.get("content", ""),
-                                    "layout": slide.get("layout", "title_and_content"),
-                                    "duration": slide.get("duration", 15.0),
-                                    "image_suggestions": slide.get("image_suggestions", []),
-                                }
-                            )
-                        script_bundle.setdefault("slides", slide_payload)
-                        logger.info(f"script_bundle にスライド情報を追加: {len(slide_payload)}枚")
-                    else:
-                        logger.warning("Geminiスライド生成結果が空でした")
-                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as slide_err:
-                    logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
-                except Exception as slide_err:
-                    logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
-
-                api_keys = {
-                    "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
-                    "openai": settings.OPENAI_API_KEY,
-                    "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
-                    "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
-                    "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
-                }
-                tts = TTSIntegration(api_keys)
-                audio_output = settings.AUDIO_DIR / f"tts_{timestamp}.mp3"
-                voice_cfg = VoiceConfig(
-                    voice_id=settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id", "default"),
-                    language=language,
-                    gender="female",
-                    age_range="adult",
-                    accent="japanese" if language == "ja" else "",
-                    quality="high",
-                )
-                tts_audio = await tts.generate_audio(tts_text, audio_output, voice_cfg)
-                audio_info = AudioInfo(
-                    file_path=tts_audio.file_path,
-                    duration=tts_audio.duration,
-                    quality_score=tts_audio.quality_score,
-                    sample_rate=tts_audio.sample_rate,
-                    file_size=tts_audio.file_size,
-                    language=language,
-                    channels=getattr(tts_audio, "channels", 2),
-                )
-                return script_bundle, audio_info
-            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as exc:
-                logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
-            except Exception as exc:
-                logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
-
-        # フォールバック: 既存AudioGeneratorのみ
-        audio_info = await self.audio_generator.generate_audio(sources)
-        return script_bundle, audio_info
+        return await sr.run_legacy_stage1(topic, sources, self.audio_generator)
 
     # =========================================================================
     # Stage2/Stage3 共通ヘルパーメソッド（run() と run_csv_timeline() の重複コード削減）
@@ -1252,70 +946,17 @@ class ModularVideoPipeline:
         editing_extras: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
     ) -> tuple[VideoInfo, Optional[Path], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
-        """Stage2: 動画レンダリング処理の共通ロジック
-
-        Returns:
-            tuple: (video_info, thumbnail_path, timeline_plan, editing_outputs)
-        """
-        thumbnail_path: Optional[Path] = None
-        timeline_plan: Optional[Dict[str, Any]] = None
-        editing_outputs: Optional[Dict[str, Any]] = None
-
-        if self.timeline_planner and self.editing_backend:
-            if progress_callback:
-                progress_callback("タイムライン計画", 0.7, "動画のタイムラインを計画します...")
-            logger.info(f"Stage2モード: {stage2_mode}")
-
-            timeline_plan = await self.timeline_planner.build_plan(
-                script=script_bundle or {"segments": transcript.segments},
-                audio=audio_info,
-                user_preferences=user_preferences,
-            )
-
-            if progress_callback:
-                progress_callback("動画レンダリング", 0.75, "MoviePyで動画をレンダリングします...")
-
-            if editing_extras is None:
-                editing_extras = {"export_outputs": {}}
-            video_info = await self.editing_backend.render(
-                timeline_plan=timeline_plan,
-                audio=audio_info,
-                slides=slides_pkg,
-                transcript=transcript,
-                quality=quality,
-                extras=editing_extras,
-            )
-            editing_outputs = editing_extras.get("export_outputs") or None
-
-            # サムネイル生成（オプション）
-            if self.thumbnail_generator and user_preferences and user_preferences.get("generate_thumbnail", False):
-                try:
-                    thumbnail_style = user_preferences.get("thumbnail_style", "modern")
-                    thumbnail_info = await self.thumbnail_generator.generate(
-                        video=video_info,
-                        script=script_bundle or {"title": transcript.title},
-                        slides=slides_pkg,
-                        style=thumbnail_style
-                    )
-                    thumbnail_path = thumbnail_info.file_path
-                    logger.info(f"サムネイル生成完了: {thumbnail_path}")
-                except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as thumb_err:
-                    logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
-                    thumbnail_path = None
-                except Exception as thumb_err:
-                    logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
-                    thumbnail_path = None
-        else:
-            if progress_callback:
-                progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
-            logger.info("Stage2拡張未設定のため従来の VideoComposer を使用")
-            video_info = await self.video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
-
-        logger.info(f"動画合成完了: {video_info.file_path}")
-        if progress_callback:
-            progress_callback("動画合成", 0.8, f"動画合成完了: {video_info.file_path}")
-
-        return video_info, thumbnail_path, timeline_plan, editing_outputs
+        """Stage2: 動画レンダリング処理の共通ロジック"""
+        return await sr.run_stage2_video_render(
+            audio_info, slides_pkg, transcript, quality,
+            script_bundle, user_preferences, stage2_mode,
+            timeline_planner=self.timeline_planner,
+            editing_backend=self.editing_backend,
+            thumbnail_generator=self.thumbnail_generator,
+            video_composer=self.video_composer,
+            editing_extras=editing_extras,
+            progress_callback=progress_callback,
+        )
 
     async def _run_stage3_upload(
         self,
@@ -1327,56 +968,13 @@ class ModularVideoPipeline:
         user_preferences: Optional[Dict[str, Any]],
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
     ) -> tuple[Optional[UploadResult], Optional[str], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
-        """Stage3: アップロード処理の共通ロジック
-
-        Returns:
-            tuple: (upload_result, youtube_url, metadata, publishing_result)
-        """
-        if progress_callback:
-            progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
-
-        metadata = await self.metadata_generator.generate_metadata(transcript)
-        metadata["privacy_status"] = "private" if private_upload else "public"
-        metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
-
-        upload_result: Optional[UploadResult] = None
-        youtube_url: Optional[str] = None
-        publishing_result: Optional[Dict[str, Any]] = None
-
-        if self.platform_adapter:
-            if progress_callback:
-                progress_callback("YouTubeアップロード", 0.95, "YouTubeに動画をアップロードします...")
-            logger.info(f"Stage3モード: {stage3_mode}")
-
-            package = {
-                "video": video_info,
-                "metadata": metadata,
-                "thumbnail": thumbnail_path,
-                "schedule": user_preferences.get("schedule") if user_preferences else None,
-            }
-
-            if self.publishing_queue:
-                queue_id = await self.publishing_queue.enqueue(
-                    package,
-                    schedule=package.get("schedule"),
-                )
-                logger.info(f"投稿キューに登録しました: {queue_id}")
-
-            publishing_result = await self.platform_adapter.publish(
-                package,
-                options={"mode": stage3_mode},
-            )
-            youtube_url = publishing_result.get("url") if publishing_result else None
-        else:
-            if progress_callback:
-                progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
-            await self.uploader.authenticate()
-            upload_result = await self.uploader.upload_video(
-                video=video_info,
-                metadata=metadata,
-                thumbnail_path=thumbnail_path,
-            )
-            youtube_url = upload_result.video_url if upload_result else None
-            logger.success(f"アップロード完了: {youtube_url}")
-
-        return upload_result, youtube_url, metadata, publishing_result
+        """Stage3: アップロード処理の共通ロジック"""
+        return await sr.run_stage3_upload(
+            video_info, transcript, thumbnail_path,
+            private_upload, stage3_mode, user_preferences,
+            metadata_generator=self.metadata_generator,
+            platform_adapter=self.platform_adapter,
+            publishing_queue=self.publishing_queue,
+            uploader=self.uploader,
+            progress_callback=progress_callback,
+        )
