@@ -122,3 +122,71 @@ class TestTTSGeneration:
             "--audio-dir", str(audio_dir),
         ])
         assert result == 1
+
+    @pytest.mark.asyncio
+    async def test_tts_voicevox_partial_failure(self, sample_csv, tmp_path):
+        """VOICEVOX合成の部分失敗時もサマリ報告して終了する"""
+        from scripts.run_csv_pipeline import _tts_voicevox
+
+        audio_dir = tmp_path / "audio"
+        audio_dir.mkdir()
+
+        lines = [(0, "Speaker1", "テスト1"), (1, "Speaker2", "テスト2")]
+
+        with patch("scripts.run_csv_pipeline.settings") as mock_settings:
+            mock_settings.TTS_SETTINGS = {"voicevox": {}}
+
+            with patch("audio.voicevox_client.VoicevoxClient") as MockClient:
+                instance = MockClient.return_value
+                instance.is_available.return_value = True
+
+                call_count = 0
+                async def side_effect(*args, **kwargs):
+                    nonlocal call_count
+                    call_count += 1
+                    if call_count == 1:
+                        # 1行目は成功 → ファイルを書き込む
+                        output_path = kwargs.get("output_path") or args[1]
+                        output_path.write_bytes(b"\x00" * 44)
+                        return output_path
+                    else:
+                        # 2行目は失敗
+                        raise ConnectionError("Engine timeout")
+
+                instance.synthesize_to_file_async = MagicMock(side_effect=side_effect)
+
+                result = await _tts_voicevox(audio_dir, lines, speaker_id=3)
+
+        # 部分失敗は return 1 だが、1行目のWAVは生成済み
+        assert result == 1
+        assert (audio_dir / "001.wav").exists()
+
+    @pytest.mark.asyncio
+    async def test_tts_voicevox_all_success(self, sample_csv, tmp_path):
+        """VOICEVOX全行成功時はreturn 0"""
+        from scripts.run_csv_pipeline import _tts_voicevox
+
+        audio_dir = tmp_path / "audio"
+        audio_dir.mkdir()
+
+        lines = [(0, "Speaker1", "テスト1"), (1, "Speaker2", "テスト2")]
+
+        with patch("scripts.run_csv_pipeline.settings") as mock_settings:
+            mock_settings.TTS_SETTINGS = {"voicevox": {}}
+
+            with patch("audio.voicevox_client.VoicevoxClient") as MockClient:
+                instance = MockClient.return_value
+                instance.is_available.return_value = True
+
+                async def side_effect(*args, **kwargs):
+                    output_path = kwargs.get("output_path") or args[1]
+                    output_path.write_bytes(b"\x00" * 44)
+                    return output_path
+
+                instance.synthesize_to_file_async = MagicMock(side_effect=side_effect)
+
+                result = await _tts_voicevox(audio_dir, lines, speaker_id=3)
+
+        assert result == 0
+        assert (audio_dir / "001.wav").exists()
+        assert (audio_dir / "002.wav").exists()

@@ -91,7 +91,7 @@ async def _tts_voicevox(
     lines: list[tuple[int, str, str]],
     speaker_id: Optional[int] = None,
 ) -> int:
-    """VOICEVOXエンジンでWAVファイルを生成"""
+    """VOICEVOXエンジンでWAVファイルを生成（非同期並行・部分失敗許容）"""
     try:
         from audio.voicevox_client import VoicevoxClient, VoicevoxAudioParams
     except ImportError:
@@ -119,27 +119,47 @@ async def _tts_voicevox(
 
     logger.info(f"VOICEVOX Engine 接続確認: {engine_url} (speaker_id={sid})")
 
+    # 非同期並行処理（Engine過負荷防止: 最大3並行）
+    semaphore = asyncio.Semaphore(3)
     generated = 0
-    for idx, speaker, text in lines:
+    failures: list[tuple[str, str]] = []
+
+    async def _synthesize_one(idx: int, text: str) -> bool:
+        nonlocal generated
         wav_name = f"{idx + 1:03d}.wav"
         output_path = audio_dir / wav_name
+        async with semaphore:
+            try:
+                await client.synthesize_to_file_async(
+                    text=text,
+                    output_path=output_path,
+                    speaker_id=sid,
+                    params=params,
+                )
+                file_size = output_path.stat().st_size
+                generated += 1
+                label = text if len(text) <= 30 else text[:30] + "..."
+                logger.info(
+                    f"  [{generated}/{len(lines)}] {wav_name} "
+                    f"({file_size:,} bytes) - {label}"
+                )
+                return True
+            except Exception as e:
+                failures.append((wav_name, str(e)))
+                logger.warning(f"VOICEVOX合成失敗 ({wav_name}): {e}")
+                return False
 
-        try:
-            client.synthesize_to_file(
-                text=text,
-                output_path=output_path,
-                speaker_id=sid,
-                params=params,
-            )
-            file_size = output_path.stat().st_size
-            generated += 1
-            logger.info(
-                f"  [{generated}/{len(lines)}] {wav_name} "
-                f"({file_size:,} bytes) - {text[:30]}..."
-            )
-        except Exception as e:
-            logger.error(f"VOICEVOX合成失敗 ({wav_name}): {e}")
-            return 1
+    tasks = [_synthesize_one(idx, text) for idx, _speaker, text in lines]
+    await asyncio.gather(*tasks)
+
+    if failures:
+        logger.error(
+            f"TTS音声生成: {generated}/{len(lines)} 成功, "
+            f"{len(failures)} 失敗"
+        )
+        for wav_name, err in failures:
+            logger.error(f"  失敗: {wav_name} - {err}")
+        return 1
 
     logger.info(f"TTS音声生成完了: {generated}ファイル生成")
     return 0
