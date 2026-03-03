@@ -66,6 +66,7 @@ from .models import PipelineArtifacts
 from .helpers import with_fallback, build_default_pipeline
 from . import slide_builder as sb
 from . import stage_runners as sr
+from .csv_audio_utils import find_audio_files, build_audio_segments, combine_wav_files
 
 
 class ModularVideoPipeline:
@@ -488,80 +489,6 @@ class ModularVideoPipeline:
         - 以降のスライド生成・動画合成・アップロード処理は既存の run() と同じフローを利用する。
         """
 
-        import wave
-
-        def _wav_sort_key(path: Path) -> tuple[int, int, str]:
-            stem = path.stem
-            if stem.isdigit():
-                return (0, int(stem), stem)
-            head_digits = ""
-            for ch in stem:
-                if ch.isdigit():
-                    head_digits += ch
-                else:
-                    break
-            if head_digits:
-                return (0, int(head_digits), stem)
-            return (1, 0, stem)
-
-        def _find_audio_files(directory: Path) -> list[Path]:
-            # WAV専用（仕様: 行ごとに 001.wav, 002.wav, ... を期待）
-            files = sorted(directory.glob("*.wav"), key=_wav_sort_key)
-            logger.info(f"WAV検索結果: {len(files)}個見つかりました (dir={directory})")
-            for f in files[:10]:  # 最初の10個を表示
-                logger.info(f"  - {f.name}")
-            if len(files) > 10:
-                logger.info(f"  ... 他 {len(files) - 10} 個")
-            return files
-
-        def _build_audio_segments(audio_files: list[Path]) -> list[AudioInfo]:
-            segments: list[AudioInfo] = []
-            for path in audio_files:
-                try:
-                    with wave.open(str(path), "rb") as wf:
-                        frames = wf.getnframes()
-                        framerate = wf.getframerate() or 1
-                        duration = frames / float(framerate)
-                    segments.append(AudioInfo(file_path=path, duration=duration))
-                except (wave.Error, EOFError, OSError, AttributeError, TypeError, ValueError) as e:
-                    logger.warning(f"WAV解析に失敗しました: {path} ({e})")
-                    segments.append(AudioInfo(file_path=path, duration=1.0))
-                except Exception as e:
-                    logger.warning(f"WAV解析に失敗しました: {path} ({e})")
-                    segments.append(AudioInfo(file_path=path, duration=1.0))
-            return segments
-
-        def _combine_wav_files(input_files: list[Path], output_path: Path) -> float:
-            if not input_files:
-                raise ValueError("入力 WAV がありません")
-
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
-            total_frames = 0
-            params = None
-
-            for path in input_files:
-                with wave.open(str(path), "rb") as wf:
-                    if params is None:
-                        params = wf.getparams()
-                    else:
-                        if wf.getparams()[:3] != params[:3]:
-                            raise RuntimeError(f"WAV フォーマットが一致しません: {path}")
-                    total_frames += wf.getnframes()
-
-            assert params is not None
-
-            with wave.open(str(output_path), "wb") as out_wf:
-                out_wf.setparams(params)
-                for path in input_files:
-                    with wave.open(str(path), "rb") as in_wf:
-                        frames = in_wf.readframes(in_wf.getnframes())
-                        out_wf.writeframes(frames)
-
-            framerate = params.framerate or 1
-            duration = total_frames / float(framerate)
-            return duration
-
         csv_path = csv_path.expanduser().resolve()
         audio_dir = audio_dir.expanduser().resolve()
 
@@ -613,13 +540,13 @@ class ModularVideoPipeline:
             if progress_callback:
                 progress_callback("CSV読み込み", 0.1, "CSVと行ごとの音声からタイムラインを構築します...")
 
-            audio_files = _find_audio_files(audio_dir)
+            audio_files = find_audio_files(audio_dir)
             if not audio_files:
                 # ディレクトリの内容を確認してデバッグ情報を提供
                 all_files = list(audio_dir.glob("*"))
                 logger.error(f"音声ファイルが見つかりません (dir={audio_dir})")
                 logger.error(f"ディレクトリ内の全ファイル ({len(all_files)}個):")
-                for f in sorted(all_files)[:20]:  # 最初の20個を表示
+                for f in sorted(all_files)[:20]:
                     logger.error(f"  - {f.name} ({f.stat().st_size} bytes)")
                 if len(all_files) > 20:
                     logger.error(f"  ... 他 {len(all_files) - 20} 個")
@@ -628,13 +555,13 @@ class ModularVideoPipeline:
                 logger.error("TTSバッチスクリプト (tts_batch_softalk_aquestalk.py) で 001.wav, 002.wav, ... を生成してください")
                 raise RuntimeError(f"WAVファイルが見つかりません (dir={audio_dir})")
 
-            audio_segments = _build_audio_segments(audio_files)
+            audio_segments = build_audio_segments(audio_files)
 
             loader = CsvTranscriptLoader()
             transcript = await loader.load_from_csv(csv_path, audio_segments=audio_segments)
 
             combined_audio_path = settings.AUDIO_DIR / f"{csv_path.stem}_{job_id}_combined.wav"
-            total_duration = _combine_wav_files(audio_files, combined_audio_path)
+            total_duration = combine_wav_files(audio_files, combined_audio_path)
             audio_info = AudioInfo(
                 file_path=combined_audio_path,
                 duration=total_duration,
@@ -771,44 +698,17 @@ class ModularVideoPipeline:
             publishing_result: Optional[Dict[str, Any]] = None
 
             if upload:
-                if progress_callback:
-                    progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
-                metadata = await self.metadata_generator.generate_metadata(transcript)
-                metadata["privacy_status"] = "private" if private_upload else "public"
-                metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
-
-                if self.platform_adapter:
-                    if progress_callback:
-                        progress_callback("YouTubeアップロード", 0.95, "YouTubeに動画をアップロードします...")
-                    logger.info(f"Stage3モード: {stage3_mode}")
-                    package = {
-                        "video": video_info,
-                        "metadata": metadata,
-                        "thumbnail": thumbnail_path,
-                        "schedule": user_preferences.get("schedule") if user_preferences else None,
-                    }
-                    if self.publishing_queue:
-                        queue_id = await self.publishing_queue.enqueue(
-                            package,
-                            schedule=package.get("schedule"),
-                        )
-                        logger.info(f"投稿キューに登録しました: {queue_id}")
-                    publishing_result = await self.platform_adapter.publish(
-                        package,
-                        options={"mode": stage3_mode},
-                    )
-                    youtube_url = publishing_result.get("url") if publishing_result else None
-                else:
-                    if progress_callback:
-                        progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
-                    await self.uploader.authenticate()
-                    upload_result = await self.uploader.upload_video(
-                        video=video_info,
-                        metadata=metadata,
+                upload_result, youtube_url, metadata, publishing_result = (
+                    await self._run_stage3_upload(
+                        video_info=video_info,
+                        transcript=transcript,
                         thumbnail_path=thumbnail_path,
+                        private_upload=private_upload,
+                        stage3_mode=stage3_mode,
+                        user_preferences=user_preferences,
+                        progress_callback=progress_callback,
                     )
-                    youtube_url = upload_result.video_url if upload_result else None
-                    logger.success(f"アップロード完了: {youtube_url}")
+                )
             else:
                 if progress_callback:
                     progress_callback("完了", 1.0, "アップロードをスキップしました")
