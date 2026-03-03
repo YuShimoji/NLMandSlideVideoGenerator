@@ -23,21 +23,21 @@ Report: (未作成)
 ### Layer A（AI完結）
 
 #### A-1: VOICEVOX クライアント実装
-- [ ] `src/audio/voicevox_client.py` 作成
+- [x] `src/audio/voicevox_client.py` 作成
   - VOICEVOX Engine REST API クライアント
   - /audio_query, /synthesis エンドポイント対応
   - スピーカーID管理（ずんだもん、四国めたん等）
   - 音声パラメータ（速度、ピッチ、抑揚）設定
-- [ ] 接続チェック + 自動起動ヘルパー
+- [x] 接続チェック + 自動起動ヘルパー
 
 #### A-2: IVoicePipeline 準拠アダプタ
-- [ ] `src/core/voice_pipelines/voicevox_pipeline.py` 作成
+- [x] `src/core/voice_pipelines/voicevox_pipeline.py` 作成
   - IVoicePipeline プロトコルに準拠
   - バッチ合成（セグメント単位並列処理）
   - リトライ + フォールバック（VOICEVOX → SofTalk）
 
 #### A-3: 設定・環境統合
-- [ ] `config/settings.py` に VOICEVOX 設定セクション追加
+- [x] `config/settings.py` に VOICEVOX 設定セクション追加
   - engine_url (default: http://localhost:50021)
   - speaker_id, speed, pitch, intonation
   - auto_start (bool)
@@ -51,11 +51,11 @@ Report: (未作成)
   - 進捗表示 + エラーハンドリング
 
 #### A-5: テスト
-- [ ] `tests/test_voicevox_pipeline.py` 作成
+- [x] `tests/test_voicevox_pipeline.py` 作成
   - モック使用の単体テスト（API呼び出しなし）
   - REST APIレスポンスのパーステスト
   - フォールバックシナリオテスト
-- [ ] 既存テスト群への回帰確認
+- [x] 既存テスト群への回帰確認
 
 ### Layer B（手動検証）
 
@@ -68,11 +68,11 @@ Report: (未作成)
 | 5 | フォールバック | VOICEVOX停止状態で実行 | SofTalkにフォールバック、警告ログ出力 |
 
 ## DoD (Definition of Done)
-- [ ] IVoicePipeline 準拠の VOICEVOX アダプタ完成
-- [ ] モックテスト全パス
-- [ ] config/settings.py に設定統合済
-- [ ] バッチスクリプトが既存CSV形式と互換
-- [ ] VOICEVOX Engine 停止時にSofTalkフォールバック動作
+- [x] IVoicePipeline 準拠の VOICEVOX アダプタ完成
+- [x] モックテスト全パス
+- [x] config/settings.py に設定統合済
+- [ ] バッチスクリプトが既存CSV形式と互換 (A-4未実装)
+- [ ] VOICEVOX Engine 停止時にSofTalkフォールバック動作 (Layer B)
 
 ## Dependencies
 - VOICEVOX Engine のインストール（手動、Layer B）

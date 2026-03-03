@@ -12,15 +12,18 @@ Report: (未作成)
 - ローカルCI（ci.ps1, 48秒）とクラウドCIの二重ゲート体制を構築する
 
 ## Context
-- `.github/workflows/` に6ワークフロー定義済（未稼働）
-  - openspec-validation.yml
-  - openspec-component-validation.yml
-  - openspec-pr-validation.yml
-  - task-validation.yml
+- `.github/workflows/` に8ワークフロー定義済
+  - ci-main.yml (TASK_023 A-2で作成、TASK_015でtimeout+notify-failure追加)
+  - ci-rollback.yml (TASK_015で作成、docs-onlyスキップ修正済)
+  - openspec-validation.yml (timeout-minutes追加済)
+  - openspec-component-validation.yml (timeout-minutes追加済)
+  - openspec-pr-validation.yml (timeout-minutes追加済)
+  - task-validation.yml (timeout-minutes追加済)
   - orchestrator-audit.yml
-  - documentation.yml
+  - documentation.yml (weekly schedule変更済)
 - ローカルCI: `scripts/ci.ps1` が48秒で完走（目標15分の5.3%）
-- テスト: 103 passed, 7 skipped, 4 deselected
+- テスト: 146 passed, 7 skipped, 5 deselected (TASK_024後)
+- TASK_015完了により timeout-minutes, notify-failure, ci-rollback は実装済み
 
 ## Deliverables
 
@@ -68,11 +71,11 @@ Report: (未作成)
 | 5 | リリースフロー | `git tag v1.0.0 && git push --tags` | GitHub Releases にアーティファクト添付 |
 
 ## DoD (Definition of Done)
-- [ ] PR作成時にテスト自動実行
-- [ ] テスト失敗時にマージブロック
-- [ ] カバレッジレポートがPRに表示
-- [ ] タグ駆動リリースが動作
-- [ ] ローカルCI（ci.ps1）と整合性のあるテスト構成
+- [x] PR作成時にテスト自動実行 (ci-main.yml: push + PR trigger)
+- [ ] テスト失敗時にマージブロック (要ブランチ保護設定 A-4)
+- [ ] カバレッジレポートがPRに表示 (Layer B: Codecov設定)
+- [ ] タグ駆動リリースが動作 (A-3未実装)
+- [x] ローカルCI（ci.ps1）と整合性のあるテスト構成
 
 ## Dependencies
 - GitHubリポジトリの管理者権限（ブランチ保護設定）
