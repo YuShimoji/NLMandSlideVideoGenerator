@@ -1,6 +1,6 @@
 # PROJECT ALIGNMENT SSOT
 
-Updated: 2026-03-01T00:16:00+09:00
+Updated: 2026-03-04T01:00:00+09:00
 Owner: Orchestrator
 Audience: All Agents
 
@@ -33,7 +33,7 @@ Audience: All Agents
 |---|---|---|---|
 | 最終出力像 | 「一般的なゆっくり解説動画」が曖昧 | 曖昧語を廃止 | `16:9 の汎用スライド動画` |
 | Shorts / 縦動画 | 要件にないのに混入 | 非目標化 | 非目標 |
-| 音声優先度 | 自然さ重視へズレた | 優先順位を再定義 | `ゆっくりボイスを使えること` |
+| 音声優先度 | 自然さ重視へズレた | 優先順位を再定義 | `ゆっくりボイスを使えること`（Path A: YMM4内蔵, Path B: VOICEVOX推奨） |
 | キャラクター表示 | 必須か曖昧だった | 任意に固定 | Optional |
 | YMM4 の役割 | WAV供給元と誤認されていた | 最終レンダラーに固定 | CSV→音声生成→動画レンダリングの最終工程 |
 | Research と Production | 混線しやすかった | 責務分離 | Research は手前工程、Production は別 |
@@ -57,14 +57,14 @@ Audience: All Agents
 |---|---|
 | 背景動画 | 必要時のみ加える |
 | 軽い演出 | zoom / pan / 字幕調整など最低限 |
-| Batch TTS パイプライン | SofTalk/AquesTalk → WAVs → run_csv_pipeline.py で自動生成（YMM4不使用時） |
+| Batch TTS パイプライン | VOICEVOX → WAVs → run_csv_pipeline.py で自動生成（YMM4不使用時の推奨） |
 
 ### Optional
 
 | 項目 | 定義 |
 |---|---|
 | キャラクター表示 | 立ち絵、アバター、アイコン |
-| SofTalk / AquesTalk | 代替経路 |
+| SofTalk / AquesTalk | レガシー代替経路（VOICEVOX が使えない場合） |
 
 ### Non-Goals
 
@@ -90,10 +90,11 @@ Audience: All Agents
 ### Path B: Batch TTS 自動パイプライン（Secondary）
 
 1. CSV を作成する（手動 or Research workflow 経由）
-2. SofTalk / AquesTalk でゆっくりボイス WAV を生成する（001.wav, 002.wav, ...）
+2. VOICEVOX で WAV を生成する（`--tts voicevox` オプション、001.wav, 002.wav, ...）
 3. `scripts/run_csv_pipeline.py` で mp4 を生成する
 
-> YMM4 を使わない自動化経路。環境依存（SofTalk/AquesTalk のインストールが必要）。
+> YMM4 を使わない自動化経路。VOICEVOX Engine の起動が前提。
+> フォールバック: SofTalk / AquesTalk（レガシー）も利用可能だが、環境構築コストが高い。
 
 ### Research 先行フロー（Path A/B 共通の前工程）
 
@@ -124,7 +125,7 @@ Audience: All Agents
 | Research | 出典確認、要約、資料パッケージ化 | Research Package |
 | Alignment | 台本との差分比較、採否判断 | Alignment Report / final CSV |
 | Production (Path A) | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
-| Production (Path B) | SofTalk/AquesTalk→WAVs→Python pipeline | mp4 / 字幕 / ログ |
+| Production (Path B) | VOICEVOX→WAVs→Python pipeline（レガシー: SofTalk/AquesTalk） | mp4 / 字幕 / ログ |
 
 ## Agent Operating Policy
 
@@ -146,7 +147,8 @@ Audience: All Agents
 |---|---|---|---|
 | Streamlit Research UI | Playwright smoke で確認済み | 低 | `tests/test_research_ui_playwright.py` と `scripts/smoke_research_ui_playwright.py` が通る |
 | YMM4 実画面の最終確認 | 完了 | 高 | ユーザー確認済み |
-| SofTalk 環境確認 | 任意でバッチ検証 | 低 | 代替経路が必要な時のみ |
+| VOICEVOX Engine 実機検証 | `--tts voicevox` で WAV 生成 | 中 | Path B 自動化に必要 |
+| SofTalk 環境確認 | 任意でバッチ検証 | 低 | レガシー代替が必要な時のみ |
 
 ## Short / Mid / Long Horizon
 

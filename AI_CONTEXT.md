@@ -2,7 +2,7 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-03-03T22:00:00+09:00
+- **最終更新**: 2026-03-04T01:00:00+09:00
 - **更新者**: AI Worker (Opus 4.6)
 
 ## レポート設定（推奨）
@@ -24,13 +24,14 @@
 - 外部実行ファイル検出は `src/core/utils/tool_detection.py` に集約。
 - 品質SSOTは 480p/720p/1080p に統一（4K未対応）。
 - CSV + 行ごとのWAV → CSVパイプラインで動画/字幕/サムネ/メタデータ生成が現行SSOT。
+- 音声方針: Path A=YMM4内蔵ゆっくりボイス（Primary）、Path B=VOICEVOX（自動化推奨）、SofTalk/AquesTalk（レガシー）。
 - ドメイン固有例外階層を `src/core/exceptions.py` に確立。
 - pytest.ini に `pythonpath = . src` を設定し、テストの import 安定化。
 
 ## リスク/懸念
 
 - YMM4本体のDLLがローカル環境で見つからないため、C#プロジェクトのビルドが制限されている。
-- VOICEVOX実機検証（Layer B）は VOICEVOX Engine 起動が前提。
+- VOICEVOX実機検証（Path B自動化）は VOICEVOX Engine 起動が前提。`--tts voicevox` 実装済み。
 - CIパイプラインの GitHub Actions 有効化が未完。
 - pipeline.py (1384行) の技術的負債。TASK_024 で対応予定。
 
@@ -43,7 +44,7 @@
 
 | 尺度 | タスクID | 概要 | ステータス | 優先度 |
 | :--- | :--- | :--- | :--- | :--- |
-| **短期** | TASK_022-B | VOICEVOX実機検証 | 待機 | 高 |
+| **短期** | TASK_022-B | VOICEVOX Engine実機検証 (`--tts voicevox`) | 待機 | 高 |
 | **短期** | TASK_015-B | CI/CD本番有効化 (GitHub Actions) | IN_PROGRESS | 高 |
 | **短期** | SW-CLEANUP | shared-workflows参照除去 | 完了 | 中 |
 | **中期** | TASK_024 | パイプラインリファクタリング (pipeline.py分割) | OPEN | 中 |
@@ -79,3 +80,4 @@
 - 2026-03-02 夜: 総合監査、TASK_021-025起票。
 - 2026-03-03 深夜: TASK_021/022/023 Layer A完了。
 - 2026-03-03 夜: shared-workflows脱却、リポジトリクリーンアップ、テスト安定化。
+- 2026-03-04 未明: 音声方針整合 — YMM4優先+VOICEVOX可+SofTalk/AquesTalkレガシー化。SSOT/比較ドキュメント更新。
