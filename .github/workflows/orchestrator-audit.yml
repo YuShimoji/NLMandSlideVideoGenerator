@@ -1,4 +1,4 @@
-name: Orchestrator Audit
+name: Project Audit
 
 on:
   push:
@@ -14,22 +14,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Run shared-workflows doctor
-        run: node .shared-workflows/scripts/sw-doctor.js --profile shared-orch-bootstrap --format text
-
-      - name: Run orchestrator audit (warning mode)
-        run: node .shared-workflows/scripts/orchestrator-audit.js --no-fail
-
       - name: Validate DONE task report references
         run: node scripts/check_task_reports.js
-
-      - name: Validate operational reports
-        run: node scripts/validate_operational_reports.js

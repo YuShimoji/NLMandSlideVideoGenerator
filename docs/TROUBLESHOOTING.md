@@ -323,8 +323,8 @@ logs/
 
 **Diagnosis:**
 ```bash
-# Run audit locally
-node .shared-workflows/scripts/orchestrator-audit.js
+# Run task report consistency check
+node scripts/check_task_reports.js
 
 # Run full CI pipeline
 .\scripts\ci.ps1
@@ -337,15 +337,10 @@ node .shared-workflows/scripts/orchestrator-audit.js
 | **Fix Report Links** | 1. Ensure all task files reference existing reports<br>2. Update `Report:` field in task markdown<br>3. Create missing report files | Report link errors |
 | **Update Task Status** | 1. Change `Status:` field in task markdown<br>2. Ensure status is valid (OPEN/IN_PROGRESS/DONE/CLOSED)<br>3. Run audit again | Status validation errors |
 | **Check File Encoding** | 1. Verify all markdown files are UTF-8<br>2. Use UTF-8 BOM for Windows compatibility<br>3. Re-save files with correct encoding | Encoding errors |
-| **Run sw-doctor** | 1. `node .shared-workflows/scripts/sw-doctor.js`<br>2. Follow recommendations<br>3. Fix environment issues | Environment validation fails |
 
 **Expected Audit Output:**
 ```
-Orchestrator Audit Results
-- tasks: 18
-- reports: 5
-
-OK
+[check-task-reports] VALIDATION_OK
 ```
 
 ---
