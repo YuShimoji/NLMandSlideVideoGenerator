@@ -33,12 +33,17 @@ def mock_pipeline_args(tmp_path):
     }
     package_file.write_text(json.dumps(package_data), encoding="utf-8")
 
+    # audio_dir にダミーWAVを配置（空ディレクトリだとTTS未指定時にエラーになるため）
+    (audio_dir / "001.wav").write_bytes(b"\x00" * 100)
+
     args = argparse.Namespace(
         csv=str(csv_file),
         audio_dir=str(audio_dir),
         topic="test_topic",
         video_quality="1080p",
         max_chars_per_slide=None,
+        tts=None,
+        tts_speaker_id=None,
         upload=False,
         public_upload=False,
         export_ymm4=False,
