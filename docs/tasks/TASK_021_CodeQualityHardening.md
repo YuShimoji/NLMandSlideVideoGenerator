@@ -1,5 +1,5 @@
 # Task: コード品質ハードニング
-Status: LAYER_A_DONE
+Status: DONE
 Tier: 2
 Branch: master
 Owner: Worker-B
