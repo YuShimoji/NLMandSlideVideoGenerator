@@ -1,5 +1,5 @@
 # Task: CI/CD統合と監査自動化強化
-Status: IN_PROGRESS
+Status: DONE
 Tier: 2
 Branch: master
 Owner: Worker-A
@@ -39,10 +39,10 @@ Report: docs/reports/REPORT_TASK_015_CiCdIntegration_LayerA_2026-02-28.md
 
 ## DoD
 - [x] orchestrator-audit warningが0件になる
-- [ ] CIパイプラインが15分以内に完了
+- [x] CIパイプラインが15分以内に完了 (全ジョブに timeout-minutes 設定, CI #11: 4m18s)
 - [x] 監査自動化スクリプトが動作
-- [ ] ロールバック自動化が機能
-- [ ] 通知システムが動作
+- [x] ロールバック自動化が機能 (ci-rollback.yml, docs-only変更はスキップ)
+- [x] 通知システムが動作 (notify-failure: GitHub Issue自動作成)
 - [x] Report に証跡を保存
 
 ## 検証コマンド

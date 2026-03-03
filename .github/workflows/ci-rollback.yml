@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 5
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get failed commit info
@@ -33,8 +33,36 @@ jobs:
           echo "failed_sha_short=${FAILED_SHA:0:7}" >> $GITHUB_OUTPUT
           echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
 
+      - name: Check if commit contains code changes
+        id: check
+        run: |
+          FAILED_SHA="${{ steps.info.outputs.failed_sha }}"
+
+          # Get changed files in the failed commit
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "${FAILED_SHA}" 2>/dev/null || echo "")
+
+          # Check if any changed file is source code (not docs/config only)
+          HAS_CODE_CHANGES=false
+          for file in $CHANGED_FILES; do
+            case "$file" in
+              src/*|tests/*|scripts/*.py|requirements*.txt)
+                HAS_CODE_CHANGES=true
+                break
+                ;;
+            esac
+          done
+
+          echo "has_code_changes=${HAS_CODE_CHANGES}" >> $GITHUB_OUTPUT
+          echo "Changed files: ${CHANGED_FILES}"
+          echo "Has code changes: ${HAS_CODE_CHANGES}"
+
+          if [ "${HAS_CODE_CHANGES}" = "false" ]; then
+            echo "Commit only contains docs/config changes. Skipping revert."
+          fi
+
       - name: Attempt revert
         id: revert
+        if: steps.check.outputs.has_code_changes == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -63,7 +91,7 @@ jobs:
           git push origin ${{ steps.info.outputs.branch }}
 
       - name: Create rollback issue
-        if: steps.revert.outputs.skipped != 'true'
+        if: steps.check.outputs.has_code_changes == 'true' && steps.revert.outputs.skipped != 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -99,4 +127,19 @@ jobs:
               title: title,
               body: body,
               labels: ['ci-failure', reverted ? 'auto-rollback' : 'needs-manual-rollback'],
+            });
+
+      - name: Create notification for docs-only failure
+        if: steps.check.outputs.has_code_changes == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const failedSha = '${{ steps.info.outputs.failed_sha_short }}';
+            const runUrl = '${{ github.event.workflow_run.html_url }}';
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CI Failure (docs-only, no rollback): ${failedSha}`,
+              body: `CI failed for commit \`${failedSha}\` but the commit only contains docs/config changes. No auto-rollback was performed.\n\n[View CI Run](${runUrl})`,
+              labels: ['ci-failure'],
             });
