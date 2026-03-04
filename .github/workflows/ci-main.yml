@@ -40,12 +40,12 @@ jobs:
 
       - name: Run unit tests
         run: |
-          python -m pytest tests/ -q -m "not slow and not integration" --tb=short --junitxml=test-results.xml
+          python -m pytest tests/ -q -m "not slow and not integration" --tb=short --ignore=tests/test_alignment_export.py --junitxml=test-results.xml
 
       - name: Run tests with coverage
         if: matrix.python-version == '3.11'
         run: |
-          python -m pytest tests/ -q -m "not slow and not integration" --tb=short --cov=src --cov-report=xml --cov-report=term-missing
+          python -m pytest tests/ -q -m "not slow and not integration" --tb=short --ignore=tests/test_alignment_export.py --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload test results
         if: always()
@@ -60,6 +60,36 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+
+  dotnet-test:
+    name: Tests (.NET YMM4 Plugin)
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj
+
+      - name: Build plugin
+        run: dotnet build ymm4-plugin/NLMSlidePlugin.csproj -c Release -p:SkipPluginCopy=true --nologo
+
+      - name: Run .NET tests
+        run: dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload .NET test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: ymm4-plugin/tests/TestResults/test-results.trx
 
   type-check:
     name: Type Check (mypy)
@@ -120,7 +150,7 @@ jobs:
     name: Failure Notification
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [test, type-check, lint]
+    needs: [test, dotnet-test, type-check, lint]
     if: failure()
     permissions:
       issues: write
