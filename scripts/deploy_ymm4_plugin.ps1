@@ -183,7 +183,7 @@ $summary = @"
 - Deployed Size: $($deployedInfo.Length) bytes
 - SHA256(Built): $builtHash
 - SHA256(Deployed): $deployedHash
-- Hash Match: $($hashMatch ? "✅ MATCH" : "❌ MISMATCH")
+- Hash Match: $(if ($hashMatch) { "MATCH" } else { "MISMATCH" })
 
 ## Next Steps
 1. Launch YukkuriMovieMaker.exe
