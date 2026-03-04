@@ -127,7 +127,7 @@ async def run_csv_timeline(
             if len(all_files) > 20:
                 logger.error(f"  ... 他 {len(all_files) - 20} 個")
             logger.error("対応フォーマット: WAV (.wav) のみ")
-            logger.error("TTSバッチスクリプト (tts_batch_softalk_aquestalk.py) で 001.wav, 002.wav, ... を生成してください")
+            logger.error("ヒント: 事前にYMM4や他のツールでWAVファイル（001.wav, 002.wav, ...）を準備してください")
             raise RuntimeError(f"WAVファイルが見つかりません (dir={audio_dir})")
 
         audio_segments = build_audio_segments(audio_files)

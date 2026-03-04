@@ -6,6 +6,10 @@
 
 を入力として、ModularVideoPipeline.run_csv_timeline() を呼び出し、
 スライド生成・動画合成・(オプションで)アップロードまでを実行する薄いラッパーです。
+
+音声ファイルは事前に準備する必要があります：
+- YMM4でゆっくりボイスを使用して生成（推奨）
+- 手動で作成したWAVファイル
 """
 
 from __future__ import annotations
@@ -32,138 +36,6 @@ from notebook_lm.research_models import ResearchPackage  # noqa: E402
 import json  # noqa: E402
 
 
-
-import csv  # noqa: E402
-
-
-async def _generate_tts_audio(
-    csv_path: Path,
-    audio_dir: Path,
-    tts_engine: str,
-    speaker_id: Optional[int] = None,
-) -> int:
-    """CSVテキストからTTSで音声ファイルを生成する。
-
-    既存のWAVファイルがある行はスキップする。
-    """
-    # CSV読み込み: A列=話者, B列=テキスト
-    rows: list[tuple[str, str]] = []
-    try:
-        with open(csv_path, "r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if len(row) >= 2 and row[1].strip():
-                    rows.append((row[0].strip(), row[1].strip()))
-    except Exception as e:
-        logger.error(f"CSV読み込み失敗: {e}")
-        return 1
-
-    if not rows:
-        logger.error("CSVにテキスト行がありません")
-        return 1
-
-    # 既存WAVファイルをチェック
-    existing_wavs = {p.name for p in audio_dir.glob("*.wav")}
-    lines_to_generate: list[tuple[int, str, str]] = []
-    for i, (speaker, text) in enumerate(rows):
-        wav_name = f"{i + 1:03d}.wav"
-        if wav_name not in existing_wavs:
-            lines_to_generate.append((i, speaker, text))
-
-    if not lines_to_generate:
-        logger.info("全ての音声ファイルが既に存在します。TTS生成をスキップします。")
-        return 0
-
-    logger.info(
-        f"TTS音声生成を開始します: engine={tts_engine}, "
-        f"生成対象={len(lines_to_generate)}/{len(rows)}行"
-    )
-
-    if tts_engine == "voicevox":
-        return await _tts_voicevox(audio_dir, lines_to_generate, speaker_id)
-    else:
-        logger.error(f"未対応のTTSエンジン: {tts_engine} (対応: voicevox)")
-        return 1
-
-
-async def _tts_voicevox(
-    audio_dir: Path,
-    lines: list[tuple[int, str, str]],
-    speaker_id: Optional[int] = None,
-) -> int:
-    """VOICEVOXエンジンでWAVファイルを生成（非同期並行・部分失敗許容）"""
-    try:
-        from audio.voicevox_client import VoicevoxClient, VoicevoxAudioParams
-    except ImportError:
-        logger.error("voicevox_client のインポートに失敗しました")
-        return 1
-
-    voicevox_settings = settings.TTS_SETTINGS.get("voicevox", {})
-    engine_url = voicevox_settings.get("engine_url", "http://localhost:50021")
-    sid = speaker_id or int(voicevox_settings.get("speaker_id", 3))
-    params = VoicevoxAudioParams(
-        speed_scale=float(voicevox_settings.get("speed", 1.0)),
-        pitch_scale=float(voicevox_settings.get("pitch", 0.0)),
-        intonation_scale=float(voicevox_settings.get("intonation", 1.0)),
-    )
-
-    client = VoicevoxClient(engine_url=engine_url, timeout=30)
-
-    if not client.is_available():
-        logger.error(
-            f"VOICEVOX Engine ({engine_url}) に接続できません。\n"
-            "VOICEVOX Engine を起動してから再実行してください。\n"
-            "ダウンロード: https://voicevox.hiroshiba.jp/"
-        )
-        return 1
-
-    logger.info(f"VOICEVOX Engine 接続確認: {engine_url} (speaker_id={sid})")
-
-    # 非同期並行処理（Engine過負荷防止: 最大3並行）
-    semaphore = asyncio.Semaphore(3)
-    generated = 0
-    failures: list[tuple[str, str]] = []
-
-    async def _synthesize_one(idx: int, text: str) -> bool:
-        nonlocal generated
-        wav_name = f"{idx + 1:03d}.wav"
-        output_path = audio_dir / wav_name
-        async with semaphore:
-            try:
-                await client.synthesize_to_file_async(
-                    text=text,
-                    output_path=output_path,
-                    speaker_id=sid,
-                    params=params,
-                )
-                file_size = output_path.stat().st_size
-                generated += 1
-                label = text if len(text) <= 30 else text[:30] + "..."
-                logger.info(
-                    f"  [{generated}/{len(lines)}] {wav_name} "
-                    f"({file_size:,} bytes) - {label}"
-                )
-                return True
-            except Exception as e:
-                failures.append((wav_name, str(e)))
-                logger.warning(f"VOICEVOX合成失敗 ({wav_name}): {e}")
-                return False
-
-    tasks = [_synthesize_one(idx, text) for idx, _speaker, text in lines]
-    await asyncio.gather(*tasks)
-
-    if failures:
-        logger.error(
-            f"TTS音声生成: {generated}/{len(lines)} 成功, "
-            f"{len(failures)} 失敗"
-        )
-        for wav_name, err in failures:
-            logger.error(f"  失敗: {wav_name} - {err}")
-        return 1
-
-    logger.info(f"TTS音声生成完了: {generated}ファイル生成")
-    return 0
-
 async def _run(args: argparse.Namespace) -> int:
     csv_path = Path(args.csv).expanduser().resolve()
     audio_dir = Path(args.audio_dir).expanduser().resolve()
@@ -172,37 +44,21 @@ async def _run(args: argparse.Namespace) -> int:
         logger.error(f"CSVファイルが見つかりません: {csv_path}")
         return 1
 
-    # audio_dir が存在しない場合は作成（TTS生成先として使用）
     if not audio_dir.exists():
-        if args.tts:
-            audio_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"音声ディレクトリを作成しました: {audio_dir}")
-        else:
-            logger.error(f"音声ディレクトリが見つかりません: {audio_dir}")
-            return 1
+        logger.error(f"音声ディレクトリが見つかりません: {audio_dir}")
+        return 1
     if not audio_dir.is_dir():
         logger.error(f"音声ディレクトリではありません: {audio_dir}")
         return 1
 
     create_directories()
 
-    # TTS による音声自動生成
-    if args.tts:
-        tts_result = await _generate_tts_audio(
-            csv_path=csv_path,
-            audio_dir=audio_dir,
-            tts_engine=args.tts,
-            speaker_id=args.tts_speaker_id,
-        )
-        if tts_result != 0:
-            return tts_result
-
     # audio_dir 内の WAV ファイル存在確認
     wav_files = sorted(audio_dir.glob("*.wav"))
     if not wav_files:
         logger.error(
             f"音声ディレクトリにWAVファイルがありません: {audio_dir}\n"
-            "ヒント: --tts voicevox オプションでテキストから音声を自動生成できます"
+            "ヒント: 事前にYMM4や他のツールでWAVファイル（001.wav, 002.wav, ...）を準備してください"
         )
         return 1
 
@@ -241,7 +97,7 @@ async def _run(args: argparse.Namespace) -> int:
         if not package_path.exists():
             logger.error(f"Packageファイルが見つかりません: {package_path}")
             return 1
-        
+
         logger.info(f"アライメント事前検証を開始します: {package_path}")
         try:
             with open(package_path, "r", encoding="utf-8") as handle:
@@ -251,15 +107,15 @@ async def _run(args: argparse.Namespace) -> int:
             analyzer = ScriptAlignmentAnalyzer()
             normalized_script = await analyzer.load_script(csv_path)
             report = await analyzer.analyze(package, normalized_script)
-            
+
             supported = report.summary.get('supported', 0)
             orphaned = report.summary.get('orphaned', 0)
             missing = report.summary.get('missing', 0)
             conflict = report.summary.get('conflict', 0)
-            
+
             logger.info("=== アライメント事前検証 結果 ===")
             logger.info(f"Supported: {supported}, Orphaned: {orphaned}, Missing: {missing}, Conflict: {conflict}")
-            
+
             if missing > 0:
                 logger.warning(f"アライメント警告: 根拠のない文(missing)が {missing} 件存在します。")
                 if args.strict_alignment:
@@ -326,18 +182,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         type=int,
         default=None,
         help="1スライドあたりの最大文字数 (省略時は設定ファイルの値を使用)",
-    )
-    parser.add_argument(
-        "--tts",
-        choices=["voicevox"],
-        default=None,
-        help="TTSエンジンでCSVテキストからWAV音声を自動生成 (対応: voicevox)",
-    )
-    parser.add_argument(
-        "--tts-speaker-id",
-        type=int,
-        default=None,
-        help="TTSスピーカーID (VOICEVOX: 3=ずんだもん, 2=四国めたん, 8=春日部つむぎ)",
     )
     parser.add_argument(
         "--upload",
