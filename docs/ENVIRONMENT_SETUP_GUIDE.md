@@ -4,7 +4,7 @@
 
 ## 1. 動作環境の要件 (Prerequisites)
 
-- **OS**: Windows (YMM4を利用するため)
+- **OS**: Windows (YMM4、SofTalk、AquesTalkを利用するため)
 - **Git**: リポジトリのクローン用
 - **Python**: 3.10 以上
 - **Node.js**: v18 以上 (Electron アプリ用)
@@ -29,7 +29,10 @@ pip install -r requirements.txt
 ### 外部依存ツールの配置
 
 - **ffmpeg**: パスが通っていることを確認 (`ffmpeg -version`)
-- **YMM4**: 最新版（v4.33.0.0以降推奨）をインストール
+- **SofTalk / AquesTalk**: インストールし、環境変数を設定
+  - `SOFTALK_EXE`: SofTalk.exe へのフルパス
+  - `AQUESTALK_EXE`: AquesTalkPlayer.exe へのフルパス
+- **YMM4**: 最新版をインストール
 
 ### Electron アプリの準備
 
@@ -47,5 +50,5 @@ npm install
 ## 4. トラブルシューティング (Troubleshooting)
 
 - **サーバーが起動しない**: `venv` 内に `streamlit` が正しくインストールされているか確認してください。
-- **動画が生成されない**: `ffmpeg` のパスを確認してください。
+- **動画が生成されない**: `ffmpeg` のパスと、各音声合成エンジンの環境変数を確認してください。
 - **YMM4連携**: 設定画面 (`Settings`) で YMM4 のパスやプラグイン設定を確認してください。
