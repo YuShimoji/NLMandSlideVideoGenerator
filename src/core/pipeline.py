@@ -32,8 +32,6 @@ from .interfaces import (
     IPlatformAdapter,
     IPublishingQueue,
 )
-from .persistence import db_manager
-
 # 既存実装（デフォルトDI）
 from notebook_lm.source_collector import SourceCollector, SourceInfo
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
@@ -141,21 +139,6 @@ class ModularVideoPipeline:
         if job_id is None:
             import uuid
             job_id = str(uuid.uuid4())
-
-        # 生成履歴の初期レコード作成
-        db_manager.save_generation_record({
-            'job_id': job_id,
-            'topic': topic,
-            'status': 'running',
-            'created_at': datetime.now(),
-            'metadata': {
-                'quality': quality,
-                'private_upload': private_upload,
-                'upload': upload,
-                'stage_modes': stage_modes or {},
-                'user_preferences': user_preferences or {}
-            }
-        })
 
         logger.info(f"モジュラーパイプライン開始: {topic} (Job ID: {job_id})")
         create_directories()
@@ -312,34 +295,6 @@ class ModularVideoPipeline:
             if progress_callback:
                 progress_callback("完了", 1.0, "パイプライン実行完了")
 
-            # 成功時の更新
-            try:
-                db_manager.update_generation_status(job_id, 'completed')
-            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.debug(f"DB更新失敗: {e}")
-            except Exception as e:
-                import traceback
-                logger.debug(f"DB更新失敗 (Unexpected): {e}\n{traceback.format_exc()}")
-
-            try:
-                db_manager.save_generation_record({
-                    'job_id': job_id,
-                    'topic': topic,
-                    'status': 'completed',
-                    'completed_at': datetime.now(),
-                    'artifacts': {
-                        'youtube_url': youtube_url,
-                        'video_file': str(artifacts.video.file_path) if artifacts.video else None,
-                        'audio_file': str(artifacts.audio.file_path) if artifacts.audio else None,
-                        'script_file': None,
-                    }
-                })
-            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.debug(f"DB生成記録失敗: {e}")
-            except Exception as e:
-                import traceback
-                logger.debug(f"DB生成記録失敗 (Unexpected): {e}\n{traceback.format_exc()}")
-
             return {
                 "success": True,
                 "youtube_url": youtube_url,
@@ -349,17 +304,14 @@ class ModularVideoPipeline:
 
         except PipelineError as e:
             logger.error(f"Pipeline error (Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
             raise
 
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
             raise PipelineError(str(e), recoverable=False)
 
         except Exception as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
-            db_manager.update_generation_status(job_id, 'failed', str(e))
             raise PipelineError(str(e), recoverable=False)
 
     async def run_csv_timeline(
