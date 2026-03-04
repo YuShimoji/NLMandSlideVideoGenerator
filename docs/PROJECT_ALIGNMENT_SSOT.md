@@ -22,9 +22,13 @@ Audience: All Agents
 | `TASK_013` YMM4プラグイン本番化 | DONE | 13 tests pass, deploy script, ops docs |
 | `TASK_014` ゆっくりボイス経路 | DONE | Layer B + YMM4 GUI 最終確認まで完了 |
 | `TASK_016` Research Workflow | DONE | Phase 3 UI + Playwright smoke + CSV export |
-| `TASK_015` CI/CD強化 | IN_PROGRESS_PARKED | Layer A 完了。GitHub 側初回実行確認は非ブロッカー保留 |
-| 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、責務分離 |
-| Python tests | 109 passed / 7 skipped | 既存スイート安定 |
+| `TASK_015` CI/CD強化 | IN_PROGRESS | Layer A 完了。.NETテストジョブ追加済。release.yml検証残 |
+| `TASK_021` コード品質 | DONE | mypy 0 errors on Core 3 files |
+| `TASK_022` VOICEVOX統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
+| `TASK_023` E2E実証 | IN_PROGRESS | CSV→mp4パイプライン成功、YMM4エクスポート成功。GUI検証残 |
+| `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
+| 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
+| Python tests | 105 passed / 10 skipped | 既存スイート安定 (VOICEVOX系テスト削除後) |
 | .NET tests | 13 passed / 0 failed | benchmark 含む |
 
 ## Consistency Audit
@@ -147,16 +151,17 @@ Audience: All Agents
 |---|---|---|---|
 | Streamlit Research UI | Playwright smoke で確認済み | 低 | `tests/test_research_ui_playwright.py` と `scripts/smoke_research_ui_playwright.py` が通る |
 | YMM4 実画面の最終確認 | 完了 | 高 | ユーザー確認済み |
-| VOICEVOX Engine 実機検証 | `--tts voicevox` で WAV 生成 | 中 | Path B 自動化に必要 |
-| SofTalk 環境確認 | 任意でバッチ検証 | 低 | レガシー代替が必要な時のみ |
 
-## Short / Mid / Long Horizon
+## Short / Mid / Long Horizon (2026-03-04 updated)
 
 | 尺度 | 次フェーズ | 主タスク | 目的 |
 |---|---|---|---|
-| 短期 | 実トピックE2E継続 | final CSV を YMM4 へ渡し、YMM4 で最終 mp4 を生成する | 主要導線を実運用へ接続する |
-| 中期 | 実制作の安定化 | 必要時のみ `TASK_015` 再開、背景動画整理、テンプレート整備 | 実運用の完成度を上げる |
-| 長期 | 品質成熟 | stricter guard、自動素材調達、最終ワークフロー改善 | YouTube 出力品質の継続改善 |
+| 短期 | TASK_023 E2E完走 | YMM4 GUIでCSVインポート→音声生成→mp4レンダリング | 主要導線の実運用接続 |
+| 短期 | CI安定化 | TASK_015: release.yml検証、.NETテストCI統合確認 | CI green維持 |
+| 中期 | ワークフロー標準化 | TASK_018: YMM4操作手順確定、エラー回復ドキュメント | 再現可能な制作フロー確立 |
+| 中期 | 多言語アライメント | TASK_017: 英語key_claims⇔日本語台本の照合精度改善 | Research→台本の精度向上 |
+| 長期 | クラウド対応 | TASK_025: Docker化、クラウドレンダリング | スケーラブルな運用基盤 |
+| 長期 | 品質成熟 | テンプレート拡充、自動素材調達、品質ゲート強化 | YouTube出力品質の安定化 |
 
 ## Primary References
 
