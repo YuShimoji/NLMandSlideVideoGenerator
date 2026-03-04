@@ -42,6 +42,34 @@ class DatabaseManager:
                 )
             ''')
 
+            # バッチジョブテーブル (バッチ処理システム用)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS batch_jobs (
+                    job_id TEXT PRIMARY KEY,
+                    config TEXT NOT NULL,  -- JSON serialized CSVJobConfig
+                    status TEXT NOT NULL,  -- pending/running/completed/failed/retrying/cancelled
+                    created_at TIMESTAMP NOT NULL,
+                    started_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    output_path TEXT,
+                    youtube_url TEXT,
+                    error_message TEXT,
+                    retry_count INTEGER DEFAULT 0,
+                    progress REAL DEFAULT 0.0,
+                    metadata TEXT  -- JSON
+                )
+            ''')
+
+            # バッチジョブのインデックス
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_batch_jobs_status
+                ON batch_jobs(status)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_batch_jobs_created_at
+                ON batch_jobs(created_at DESC)
+            ''')
+
             # 設定履歴テーブル
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS config_history (
@@ -204,6 +232,274 @@ class DatabaseManager:
                 ''', (status, error_message, job_id))
 
             conn.commit()
+
+    # Batch job operations
+    def save_batch_job(self, job_result: Any) -> None:
+        """バッチジョブを保存または更新
+
+        Args:
+            job_result: JobResult instance from batch.models
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                INSERT OR REPLACE INTO batch_jobs
+                (job_id, config, status, created_at, started_at, completed_at,
+                 output_path, youtube_url, error_message, retry_count, progress, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                job_result.job_id,
+                json.dumps(job_result.config.to_dict(), ensure_ascii=False),
+                job_result.status.value,
+                job_result.created_at.isoformat(),
+                job_result.started_at.isoformat() if job_result.started_at else None,
+                job_result.completed_at.isoformat() if job_result.completed_at else None,
+                str(job_result.output_path) if job_result.output_path else None,
+                job_result.youtube_url,
+                job_result.error_message,
+                job_result.retry_count,
+                job_result.progress,
+                json.dumps(job_result.metadata, ensure_ascii=False),
+            ))
+
+            conn.commit()
+
+    def get_batch_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """バッチジョブを取得
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            Job data as dict, or None if not found
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM batch_jobs WHERE job_id = ?",
+                (job_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                record = dict(row)
+                # Parse JSON fields
+                if record.get('config'):
+                    try:
+                        record['config'] = json.loads(record['config'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if record.get('metadata'):
+                    try:
+                        record['metadata'] = json.loads(record['metadata'])
+                    except (json.JSONDecodeError, TypeError):
+                        record['metadata'] = {}
+                return record
+            return None
+
+    def get_batch_jobs(
+        self,
+        status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+        order_by: str = "created_at DESC"
+    ) -> List[Dict[str, Any]]:
+        """バッチジョブの一覧を取得
+
+        Args:
+            status: Filter by status (optional)
+            limit: Maximum number of jobs to return
+            offset: Number of jobs to skip
+            order_by: SQL ORDER BY clause
+
+        Returns:
+            List of job data as dicts
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            query = "SELECT * FROM batch_jobs"
+            params = []
+
+            if status:
+                query += " WHERE status = ?"
+                params.append(status)
+
+            query += f" ORDER BY {order_by} LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+            result = []
+            for row in rows:
+                record = dict(row)
+                # Parse JSON fields
+                if record.get('config'):
+                    try:
+                        record['config'] = json.loads(record['config'])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if record.get('metadata'):
+                    try:
+                        record['metadata'] = json.loads(record['metadata'])
+                    except (json.JSONDecodeError, TypeError):
+                        record['metadata'] = {}
+                result.append(record)
+
+            return result
+
+    def update_batch_job_status(
+        self,
+        job_id: str,
+        status: str,
+        error_message: Optional[str] = None,
+        started_at: Optional[datetime] = None,
+        completed_at: Optional[datetime] = None
+    ) -> None:
+        """バッチジョブのステータスを更新
+
+        Args:
+            job_id: Job ID
+            status: New status
+            error_message: Error message (optional)
+            started_at: Start time (optional)
+            completed_at: Completion time (optional)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            updates = ["status = ?"]
+            params = [status]
+
+            if error_message is not None:
+                updates.append("error_message = ?")
+                params.append(error_message)
+
+            if started_at is not None:
+                updates.append("started_at = ?")
+                params.append(started_at.isoformat())
+
+            if completed_at is not None:
+                updates.append("completed_at = ?")
+                params.append(completed_at.isoformat())
+
+            params.append(job_id)
+
+            query = f"UPDATE batch_jobs SET {', '.join(updates)} WHERE job_id = ?"
+            cursor.execute(query, params)
+
+            conn.commit()
+
+    def update_batch_job_progress(
+        self,
+        job_id: str,
+        progress: float,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """バッチジョブの進捗を更新
+
+        Args:
+            job_id: Job ID
+            progress: Progress percentage (0.0-100.0)
+            metadata: Additional metadata (optional)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            if metadata is not None:
+                cursor.execute('''
+                    UPDATE batch_jobs
+                    SET progress = ?, metadata = ?
+                    WHERE job_id = ?
+                ''', (progress, json.dumps(metadata, ensure_ascii=False), job_id))
+            else:
+                cursor.execute('''
+                    UPDATE batch_jobs
+                    SET progress = ?
+                    WHERE job_id = ?
+                ''', (progress, job_id))
+
+            conn.commit()
+
+    def increment_batch_job_retry(self, job_id: str) -> int:
+        """バッチジョブのリトライカウントを増加
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            New retry count
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                UPDATE batch_jobs
+                SET retry_count = retry_count + 1, status = 'retrying'
+                WHERE job_id = ?
+            ''', (job_id,))
+
+            cursor.execute(
+                "SELECT retry_count FROM batch_jobs WHERE job_id = ?",
+                (job_id,)
+            )
+            row = cursor.fetchone()
+
+            conn.commit()
+
+            return row['retry_count'] if row else 0
+
+    def delete_batch_job(self, job_id: str) -> bool:
+        """バッチジョブを削除
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            True if deleted, False if not found
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM batch_jobs WHERE job_id = ?", (job_id,))
+            deleted = cursor.rowcount > 0
+
+            conn.commit()
+
+            return deleted
+
+    def get_batch_summary(self) -> Dict[str, Any]:
+        """バッチジョブの統計サマリーを取得
+
+        Returns:
+            Summary statistics with counts per status
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT
+                    COUNT(*) as total_jobs,
+                    COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed,
+                    COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed,
+                    COALESCE(SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END), 0) as running,
+                    COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending,
+                    COALESCE(SUM(CASE WHEN status = 'retrying' THEN 1 ELSE 0 END), 0) as retrying,
+                    COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled
+                FROM batch_jobs
+            ''')
+
+            row = cursor.fetchone()
+            return dict(row) if row else {
+                'total_jobs': 0,
+                'completed': 0,
+                'failed': 0,
+                'running': 0,
+                'pending': 0,
+                'retrying': 0,
+                'cancelled': 0,
+            }
 
     def save_config_change(self, key: str, value: Any, changed_by: str = "system"):
         """設定変更を保存"""
