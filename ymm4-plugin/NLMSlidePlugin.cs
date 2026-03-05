@@ -1,5 +1,3 @@
-using System;
-using System.Windows;
 using YukkuriMovieMaker.Plugin;
 
 namespace NLMSlidePlugin

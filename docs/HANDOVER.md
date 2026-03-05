@@ -29,7 +29,7 @@ Mode: Driver(P6_report)
 - 出力: 最終 mp4（YMM4 からレンダリング）
 - 制作パス:
   - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → レンダリング）
-  - **Path B（Secondary）**: CSV + WAV群 → `scripts/run_csv_pipeline.py`（SofTalk/AquesTalk 等で WAV を別途生成）
+  - **Path B（Secondary, disabled）**: CSV + WAV群 → `scripts/run_csv_pipeline.py`（TTS コード削除済み、事前生成WAVのみ対応）
   - Web UI: `src/web/web_app.py`（Path B 用）
 - 主参照:
   - `docs/PROJECT_ALIGNMENT_SSOT.md`
@@ -81,8 +81,8 @@ Mode: Driver(P6_report)
 
 ## Verification Snapshot
 
-- Python: `109 passed, 7 skipped, 4 deselected`
-- .NET: `13 passed, 0 failed`
+- Python: `107 passed, 0 skipped, 5 deselected` (2026-03-06)
+- .NET: `13 passed, 0 failed, 0 warnings` (2026-03-06)
 - Research UI Playwright smoke: `SMOKE_OK`
 - `orchestrator-audit --no-fail`: `OK`
 - YMM4 GUI: user verified

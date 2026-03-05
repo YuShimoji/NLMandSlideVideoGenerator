@@ -99,27 +99,24 @@ copy .env.example .env
 # 詳細は docs/api_setup_guide.md を参照
 ```
 
-### 3. 統合テスト実行
+### 3. テスト実行
 
 ```bash
-# API連携テスト（モック中心、実APIキー未設定でも可）
-python test_api_integration.py
+# ユニットテスト
+python -m pytest tests/ -q -m "not slow and not integration" --tb=short
 
-# デモ実行
-python test_execution_demo.py
+# CSV パイプラインのテスト実行
+python scripts/run_csv_pipeline.py --csv samples/basic_dialogue/timeline.csv --audio-dir samples/basic_dialogue/audio --topic "テスト"
 ```
 
 ### 4. 本格運用開始
 
 ```bash
-# ヘルプ表示
-python src/main.py --help
+# CSVパイプライン（Path B: 事前生成WAV使用）
+python scripts/run_csv_pipeline.py --csv <csv> --audio-dir <dir> --topic "トピック名"
 
-# 動画生成実行（Gemini+TTS を使用する場合は .env にキー設定 & TTS_PROVIDER を指定）
-python src/main.py --topic "AI技術の最新動向" --duration 300
-
-# モジュラーパイプラインのデモ（Gemini+TTS と Slides 画像エクスポートに対応）
-python run_modular_demo.py --topic "AI技術の最新動向" --quality 1080p
+# YMM4エクスポート（Path A: YMM4で音声+動画レンダリング）
+python scripts/run_csv_pipeline.py --csv <csv> --audio-dir <dir> --topic "トピック名" --export-ymm4
 ```
 
 ## 🧩 モジュラーパイプラインの使い方
@@ -186,18 +183,11 @@ OpenSpecにより以下の品質が保証されます：
 
 ## 🪟 Windows 環境でのUnicode表示について
 
-Windowsコンソールの既定コードページ（cp932）で絵文字などの出力時に `UnicodeEncodeError` が発生する問題に対応しました。以下のスクリプトでは標準出力/標準エラーをUTF-8に再設定しています。
-
-- `run_api_test.py`
-- `run_debug_test.py`
-- `test_api_integration.py`
-- `test_execution_demo.py`
-- `test_simple_mock.py`
-
-サブプロセス実行時も `encoding='utf-8', errors='replace'` を設定済みです。追加で問題が出る場合は、以下も有効です。
+Windowsコンソールの既定コードページ（cp932）で絵文字などの出力時に `UnicodeEncodeError` が発生する場合は、以下の対策が有効です。
 
 - `PYTHONIOENCODING=utf-8` 環境変数の利用
 - Windows Terminal で UTF-8 を使用
+- サブプロセス実行時: `encoding='utf-8', errors='replace'` を設定
 
 ## 🔁 後方互換のための変更点
 
@@ -247,14 +237,11 @@ src/
 ## 🧪 テスト
 
 ```bash
-# 基本テスト
-python -m pytest tests/
+# Python ユニットテスト
+python -m pytest tests/ -q -m "not slow and not integration" --tb=short
 
-# モックテスト
-python test_simple_mock.py
-
-# API統合テスト
-python test_api_integration.py
+# .NET プラグインテスト
+dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 ```
 
 ## 📚 ドキュメント

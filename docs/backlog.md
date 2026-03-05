@@ -228,7 +228,7 @@
 ### 完了済み機能（APIなし運用）
 
 ```
-[NotebookLM/SofTalk等で素材準備] → [CSV + WAV] → [このアプリ] → [動画出力]
+[CSV作成] → [YMM4 (NLMSlidePlugin)] → [音声生成+動画レンダリング] → [mp4出力]
 ```
 
 | 機能 | CLI | Web UI | 状態 |
