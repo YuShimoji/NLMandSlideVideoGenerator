@@ -26,7 +26,7 @@ def _run_environment_check():
     import subprocess
     import shutil
 
-    results = {
+    results: dict[str, dict[str, tuple[bool, str]]] = {
         "essential": {},
         "optional": {},
     }

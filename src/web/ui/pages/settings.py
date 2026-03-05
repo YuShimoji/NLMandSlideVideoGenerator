@@ -88,7 +88,8 @@ def show_settings_page():
         st.subheader("TTS (音声合成) 設定")
 
         tts = settings.TTS_SETTINGS
-        provider_value = (tts.get("provider") or "none").lower()
+        provider_str = str(tts.get("provider") or "none")
+        provider_value = provider_str.lower()
         provider_labels = {
             "none": "none (無効)",
             "openai": "OpenAI",

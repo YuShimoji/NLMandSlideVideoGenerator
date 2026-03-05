@@ -2,6 +2,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 import streamlit as st
 
@@ -54,13 +55,14 @@ def show_assets_page():
     cols = st.columns(len(asset_types))
     total_size = 0
     for i, (name, config) in enumerate(asset_types.items()):
-        dir_path = config["dir"]
+        dir_path: Path = config["dir"]  # type: ignore
         if dir_path.exists():
-            files = []
-            for pattern in config["patterns"]:
-                files.extend(dir_path.glob(pattern))
-            count = len(files)
-            size = sum(f.stat().st_size for f in files if f.is_file())
+            stat_files: List[Path] = []
+            patterns: list[str] = config["patterns"]  # type: ignore
+            for pattern in patterns:
+                stat_files.extend(dir_path.glob(pattern))
+            count = len(stat_files)
+            size = sum(f.stat().st_size for f in stat_files if f.is_file())
             total_size += size
         else:
             count = 0
@@ -76,7 +78,7 @@ def show_assets_page():
 
     for tab, (name, config) in zip(asset_tabs, asset_types.items()):
         with tab:
-            dir_path = config["dir"]
+            dir_path: Path = config["dir"]  # type: ignore
             if not dir_path.exists():
                 st.warning(f"ディレクトリが存在しません: {dir_path}")
                 if st.button(f"ディレクトリを作成", key=f"mkdir_{name}"):
@@ -85,8 +87,9 @@ def show_assets_page():
                 continue
 
             # ファイル一覧取得
-            files = []
-            for pattern in config["patterns"]:
+            files: List[Path] = []
+            patterns: list[str] = config["patterns"]  # type: ignore
+            for pattern in patterns:
                 files.extend(dir_path.glob(pattern))
             files = sorted(files, key=lambda f: f.stat().st_mtime, reverse=True)
 

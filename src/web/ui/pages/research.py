@@ -8,7 +8,7 @@ from io import BytesIO
 
 import streamlit as st
 
-from notebook_lm.research_models import ResearchPackage
+from notebook_lm.research_models import ResearchPackage, AlignmentReport
 from notebook_lm.script_alignment import ScriptAlignmentAnalyzer
 
 
@@ -54,6 +54,7 @@ def show_research_page():
                 except RuntimeError:
                     loop = None
 
+                report: AlignmentReport
                 if loop and loop.is_running():
                     import concurrent.futures
                     with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -158,8 +159,8 @@ def show_research_page():
 
                 final_path = analyzer.export_to_csv(analysis, output_path)
                 st.success(f"✅ CSVを出力しました: {final_path}")
-                with open(final_path, "rb") as f:
-                    csv_data = f.read()
+                with open(final_path, "rb") as csv_file:
+                    csv_data = csv_file.read()
                 st.download_button(
                     "⬇️ CSVをダウンロード",
                     csv_data,
