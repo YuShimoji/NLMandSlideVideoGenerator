@@ -13,10 +13,15 @@ import struct
 
 # 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
-from .gemini_integration import GeminiIntegration
+from .gemini_integration import GeminiIntegration, ScriptInfo
 
 from config.settings import settings
 from .source_collector import SourceInfo
+
+# Type checking imports (used only in type annotations)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pydub import AudioSegment
 
 @dataclass
 class AudioInfo:

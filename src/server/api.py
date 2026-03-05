@@ -39,7 +39,7 @@ ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def _load_persistence():
     """Load persisted runs and artifacts on startup"""
-    global RUNS, ARTIFACTS
+    global RUNS, ARTIFACTS  # noqa: F824
     if RUNS_FILE.exists():
         try:
             with open(RUNS_FILE, 'r', encoding='utf-8') as f:

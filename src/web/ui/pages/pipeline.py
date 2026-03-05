@@ -7,6 +7,7 @@ from datetime import datetime
 import streamlit as st
 
 from src.web.logic.pipeline_manager import run_pipeline_async
+from ._utils import update_progress
 
 
 def show_pipeline_page():
@@ -141,3 +142,55 @@ def show_pipeline_page():
     # Show results
     if st.session_state.pipeline_result:
         show_pipeline_results(st.session_state.pipeline_result)
+
+
+def show_pipeline_results(result):
+    """パイプライン実行結果表示"""
+    st.success("🎉 動画生成完了!")
+
+    if result.get("success"):
+        st.subheader("生成結果")
+
+        # Basic info
+        col1, col2 = st.columns(2)
+        with col1:
+            if result.get("youtube_url"):
+                st.markdown(f"**YouTube URL:** {result['youtube_url']}")
+            st.markdown(f"**Job ID:** {result.get('job_id', 'N/A')}")
+
+        # Artifacts
+        artifacts = result.get("artifacts", {})
+        if artifacts:
+            st.subheader("生成アーティファクト")
+
+            tabs = st.tabs(["音声", "スライド", "動画", "その他"])
+
+            with tabs[0]:
+                if artifacts.get("audio"):
+                    audio = artifacts["audio"]
+                    st.markdown(f"**ファイル:** {audio.file_path.name}")
+                    st.markdown(f"**時間:** {audio.duration:.1f}秒")
+                    st.markdown(f"**品質スコア:** {audio.quality_score:.2f}")
+
+            with tabs[1]:
+                if artifacts.get("slides"):
+                    slides = artifacts["slides"]
+                    st.markdown(f"**スライド数:** {slides.total_slides}枚")
+                    st.markdown(f"**ファイル:** {slides.file_path.name}")
+
+            with tabs[2]:
+                if artifacts.get("video"):
+                    video = artifacts["video"]
+                    st.markdown(f"**ファイル:** {video.file_path.name}")
+                    st.markdown(f"**時間:** {video.duration:.1f}秒")
+                    st.markdown(f"**解像度:** {video.resolution}")
+
+            with tabs[3]:
+                if artifacts.get("script"):
+                    st.markdown("**スクリプト生成:** 完了")
+                if artifacts.get("thumbnail_path"):
+                    st.markdown("**サムネイル生成:** 完了")
+                if artifacts.get("timeline_plan"):
+                    st.markdown("**タイムラインプラン:** 生成済み")
+    else:
+        st.error("動画生成に失敗しました")
