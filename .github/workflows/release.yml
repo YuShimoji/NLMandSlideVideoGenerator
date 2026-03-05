@@ -4,93 +4,180 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (e.g., v1.0.0)'
-        required: true
-        type: string
 
 permissions:
   contents: write
 
 jobs:
-  release:
-    name: Create Release
+  build-plugin:
+    name: Build YMM4 Plugin
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ymm4-plugin/NLMSlidePlugin.csproj
+
+      - name: Build plugin (Release)
+        run: dotnet build ymm4-plugin/NLMSlidePlugin.csproj -c Release -p:SkipPluginCopy=true --nologo
+
+      - name: Locate built DLL
+        id: dll_path
+        shell: pwsh
+        run: |
+          $DLL_FILES = @(Get-ChildItem -Path "ymm4-plugin/bin/Release" -Name "NLMSlidePlugin.dll" -Recurse)
+          if ($DLL_FILES.Count -gt 0) {
+            $DLL_NAME = $DLL_FILES[0]
+            $FULL_PATH = "ymm4-plugin/bin/Release/$DLL_NAME"
+            echo "path=$FULL_PATH" >> $env:GITHUB_OUTPUT
+            echo "filename=$DLL_NAME" >> $env:GITHUB_OUTPUT
+            echo "found=true" >> $env:GITHUB_OUTPUT
+            Write-Host "Found DLL: $FULL_PATH"
+          } else {
+            echo "found=false" >> $env:GITHUB_OUTPUT
+            Write-Host "WARNING: DLL not found in bin/Release directory"
+          }
+
+      - name: Upload plugin DLL artifact
+        if: steps.dll_path.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nlm-slide-plugin-dll
+          path: ${{ steps.dll_path.outputs.path }}
+          retention-days: 90
+          if-no-files-found: ignore
+
+  publish-release:
+    name: Publish GitHub Release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    needs: build-plugin
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for changelog
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+          fetch-depth: 0
 
       - name: Get version from tag
         id: get_version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_num=${VERSION#v}" >> $GITHUB_OUTPUT
 
-      - name: Extract release notes
-        id: release_notes
+      - name: Get previous tag
+        id: prev_tag
         run: |
-          VERSION=${{ steps.get_version.outputs.version }}
-          echo "Generating release notes for ${VERSION}"
-
-          # Get commits since last tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          CURRENT_TAG="${{ steps.get_version.outputs.version }}"
+          PREVIOUS_TAG=$(git tag -l "v*.*.*" | grep -v "$CURRENT_TAG" | sort -V | tail -1)
+          echo "tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "is_first=true" >> $GITHUB_OUTPUT
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges | head -20)
+            echo "is_first=false" >> $GITHUB_OUTPUT
           fi
 
-          # Create release notes
-          cat > release_notes.md << EOF
-          ## What's Changed
+      - name: Generate changelog
+        id: changelog
+        run: |
+          CURRENT_TAG="${{ steps.get_version.outputs.version }}"
+          PREVIOUS_TAG="${{ steps.prev_tag.outputs.tag }}"
 
-          ${COMMITS}
+          if [ "${{ steps.prev_tag.outputs.is_first }}" = "true" ]; then
+            # First release: all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges | head -50)
+          else
+            # Commits since previous tag
+            CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+          fi
 
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${VERSION}
+          # Handle multi-line output
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          ---
+      - name: Download plugin DLL artifact
+        id: download_dll
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: nlm-slide-plugin-dll
+          path: ./release-assets
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find ./release-assets -type f || echo "No artifacts found"
+
+      - name: Create release notes
+        id: release_notes
+        env:
+          CHANGELOG: ${{ steps.changelog.outputs.content }}
+          CURRENT_TAG: ${{ steps.get_version.outputs.version }}
+          VERSION: ${{ steps.get_version.outputs.version_num }}
+          PREV_TAG: ${{ steps.prev_tag.outputs.tag }}
+        run: |
+          cat > /tmp/release_body.md << 'EOFNOTES'
+          ## Release ${{ env.VERSION }}
+
+          ### Changes
+
+          ${{ env.CHANGELOG }}
+
+          ### Release Information
+
+          | Item | Value |
+          |------|-------|
+          | **Tag** | `${{ env.CURRENT_TAG }}` |
+          | **Date** | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |
+          | **Python** | 3.11 |
+          | **.NET** | 9.0 (YMM4 Plugin) |
+
+          ### Artifacts
+
+          - **NLMSlidePlugin.dll** - YMM4 Video Editing Plugin (C# .NET 9.0)
 
           ### Installation
 
-          \`\`\`bash
-          git clone https://github.com/${{ github.repository }}.git
-          cd NLMandSlideVideoGenerator
-          pip install -r requirements.txt
-          \`\`\`
+          1. Download the `NLMSlidePlugin.dll` file from this release
+          2. Place it in your YMM4 plugins directory
+          3. Restart YMM4 to load the updated plugin
 
-          ### Quick Start
+          ### Full Changelog
 
-          See [README.md](https://github.com/${{ github.repository }}/blob/${VERSION}/README.md) for usage instructions.
-          EOF
+          [Compare with previous release](https://github.com/${{ github.repository }}/compare/${{ env.PREV_TAG }}...${{ env.CURRENT_TAG }})
+
+          EOFNOTES
+
+          # Read and encode for output
+          cat /tmp/release_body.md > release_body.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
-          body_path: release_notes.md
+          body_path: release_body.md
           draft: false
           prerelease: false
-          generate_release_notes: false
+          fail_on_unmatched_files: false
+          files: |
+            release-assets/*.dll
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create version badge
-        run: |
-          VERSION=${{ steps.get_version.outputs.version }}
-          echo "[![Version](https://img.shields.io/badge/version-${VERSION}-blue.svg)](https://github.com/${{ github.repository }}/releases/tag/${VERSION})" > version_badge.md
-          cat version_badge.md
