@@ -4,7 +4,7 @@ Tier: 2
 Branch: master
 Owner: Worker-B
 Created: 2026-03-02T22:00:00+09:00
-Report: AI_CONTEXT.md (2026-03-03セクション参照)
+Report: AI_CONTEXT.md
 
 ## Objective
 - プロジェクト全体の例外処理、型安全性、コード品質を本番運用グレードに引き上げる
@@ -55,7 +55,7 @@ Report: AI_CONTEXT.md (2026-03-03セクション参照)
 - [ ] mypy警告ゼロ確認（Core モジュール）
 - [ ] CI パイプラインの完全実行確認
 
-## DoD (Definition of Done)
+## DoD
 
 - [x] bare `except Exception:` が Critical/High 箇所でゼロ（重複削除22箇所、残存73箇所は正当な2段パターン）
 - [x] Core モジュール（exceptions, interfaces, models）の mypy パス（0 errors）
