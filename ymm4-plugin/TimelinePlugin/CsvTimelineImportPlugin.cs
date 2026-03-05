@@ -53,9 +53,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// </summary>
         public double GetAudioDuration(string audioPath)
         {
-            // TODO: NAudioを使用して実際の音声長を取得
-            // 現在は3秒をデフォルトとする
-            return 3.0;
+            return WavDurationReader.GetDuration(audioPath);
         }
     }
 
