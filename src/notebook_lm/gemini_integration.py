@@ -33,17 +33,17 @@ class ScriptInfo:
 
 class GeminiIntegration:
     """Gemini API連携クラス"""
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.model_name = "gemini-2.5-flash"
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.request_count = 0
         self.max_requests_per_minute = 60
-        
+
     async def generate_script_from_sources(
-        self, 
-        sources: List[Dict[str, Any]], 
+        self,
+        sources: List[Dict[str, Any]],
         topic: str,
         target_duration: float = 300.0,
         language: str = "ja"
@@ -51,19 +51,19 @@ class GeminiIntegration:
         """ソースからスクリプトを生成"""
         try:
             logger.info(f"Gemini APIでスクリプト生成開始: {topic}")
-            
+
             # プロンプト構築
             prompt = self._build_script_prompt(sources, topic, target_duration, language)
-            
+
             # Gemini API呼び出し
             response = await self._call_gemini_api(prompt)
-            
+
             # レスポンス解析
             script_info = await self._parse_script_response(response, topic, language)
-            
+
             logger.info(f"スクリプト生成完了: {len(script_info.segments)}セグメント")
             return script_info
-            
+
         except asyncio.CancelledError:
             raise
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
@@ -72,16 +72,16 @@ class GeminiIntegration:
         except Exception as e:
             logger.error(f"スクリプト生成失敗: {e}")
             raise
-    
+
     def _build_script_prompt(
-        self, 
-        sources: List[Dict[str, Any]], 
+        self,
+        sources: List[Dict[str, Any]],
         topic: str,
         target_duration: float,
         language: str
     ) -> str:
         """スクリプト生成用プロンプトを構築"""
-        
+
         # ソース情報をまとめる
         sources_text = ""
         for i, source in enumerate(sources, 1):
@@ -93,10 +93,10 @@ URL: {source.get('url', 'URL不明')}
 信頼性: {source.get('reliability_score', 0.0):.2f}
 ---
 """
-        
+
         # 言語設定
         lang_instruction = "日本語" if language == "ja" else "英語"
-        
+
         # プロンプト構築
         prompt = f"""
 あなたはYouTube解説動画のスクリプト作成の専門家です。
@@ -134,13 +134,13 @@ URL: {source.get('url', 'URL不明')}
 }}
 """
         return prompt
-    
+
     async def _call_gemini_api(self, prompt: str) -> GeminiResponse:
         """Gemini APIを呼び出し"""
         try:
             # レート制限チェック
             await self._check_rate_limit()
-            
+
             # 実API呼び出し（APIキーが設定されていれば試行）
             if self.api_key:
                 try:
@@ -183,7 +183,7 @@ URL: {source.get('url', 'URL不明')}
                     logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
                 except Exception as e:
                     logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
-            
+
             # モック実装（フォールバック）
             await asyncio.sleep(2)  # API呼び出し時間をシミュレート
             mock_content = {
@@ -223,7 +223,7 @@ URL: {source.get('url', 'URL不明')}
                 "total_duration_estimate": 190.0,
                 "language": "ja"
             }
-            
+
             mock_response = GeminiResponse(
                 content=json.dumps(mock_content, ensure_ascii=False, indent=2),
                 model=self.model_name,
@@ -231,10 +231,10 @@ URL: {source.get('url', 'URL不明')}
                 safety_ratings=[{"category": "HARM_CATEGORY_HARASSMENT", "probability": "NEGLIGIBLE"}],
                 created_at=datetime.now()
             )
-            
+
             self.request_count += 1
             return mock_response
-            
+
         except asyncio.CancelledError:
             raise
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
@@ -243,22 +243,22 @@ URL: {source.get('url', 'URL不明')}
         except Exception as e:
             logger.error(f"Gemini API呼び出し失敗: {e}")
             raise
-    
+
     async def _parse_script_response(
-        self, 
-        response: GeminiResponse, 
-        topic: str, 
+        self,
+        response: GeminiResponse,
+        topic: str,
         language: str
     ) -> ScriptInfo:
         """Gemini APIレスポンスを解析してScriptInfoに変換"""
         try:
             # JSONレスポンスを解析
             content_data = json.loads(response.content)
-            
+
             # セグメント情報を構築
             segments = []
             total_duration = 0.0
-            
+
             for segment_data in content_data.get("segments", []):
                 segment = {
                     "section": segment_data.get("section", ""),
@@ -268,10 +268,10 @@ URL: {source.get('url', 'URL不明')}
                 }
                 segments.append(segment)
                 total_duration += segment["duration_estimate"]
-            
+
             # 品質スコアを計算（セグメント数、内容の長さ、キーポイントの数などから算出）
             quality_score = self._calculate_quality_score(segments, content_data)
-            
+
             script_info = ScriptInfo(
                 title=content_data.get("title", topic),
                 content=response.content,
@@ -281,9 +281,9 @@ URL: {source.get('url', 'URL不明')}
                 quality_score=quality_score,
                 created_at=response.created_at
             )
-            
+
             return script_info
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"JSONレスポンス解析失敗: {e}")
             raise
@@ -293,52 +293,52 @@ URL: {source.get('url', 'URL不明')}
         except Exception as e:
             logger.error(f"スクリプトレスポンス解析失敗: {e}")
             raise
-    
+
     def _calculate_quality_score(self, segments: List[Dict], content_data: Dict) -> float:
         """スクリプトの品質スコアを計算"""
         score = 0.0
-        
+
         # セグメント数の評価（3-7セグメントが理想的）
         segment_count = len(segments)
         if 3 <= segment_count <= 7:
             score += 0.3
         elif segment_count > 0:
             score += 0.1
-        
+
         # 各セグメントの内容長評価
         avg_content_length = sum(len(seg.get("content", "")) for seg in segments) / max(len(segments), 1)
         if 50 <= avg_content_length <= 300:
             score += 0.3
         elif avg_content_length > 0:
             score += 0.1
-        
+
         # キーポイントの存在評価
         total_key_points = sum(len(seg.get("key_points", [])) for seg in segments)
         if total_key_points >= len(segments):  # セグメントあたり平均1個以上
             score += 0.2
-        
+
         # タイトルの存在評価
         if content_data.get("title") and len(content_data["title"]) > 5:
             score += 0.2
-        
+
         return min(score, 1.0)
-    
+
     async def _check_rate_limit(self):
         """レート制限をチェック"""
         if self.request_count >= self.max_requests_per_minute:
             logger.warning("レート制限に達しました。1分間待機します...")
             await asyncio.sleep(60)
             self.request_count = 0
-    
+
     async def generate_slide_content(
-        self, 
+        self,
         script_info: ScriptInfo,
         max_slides: int = 10
     ) -> List[Dict[str, Any]]:
         """スクリプトからスライド内容を生成"""
         try:
             logger.info("スライド内容生成開始")
-            
+
             prompt = f"""
 以下のスクリプトを基に、プレゼンテーション用のスライド内容を生成してください。
 
@@ -366,13 +366,13 @@ URL: {source.get('url', 'URL不明')}
   ]
 }}
 """
-            
+
             response = await self._call_gemini_api(prompt)
             slide_data = json.loads(response.content)
-            
+
             logger.info(f"スライド内容生成完了: {len(slide_data.get('slides', []))}枚")
             return slide_data.get("slides", [])
-            
+
         except asyncio.CancelledError:
             raise
         except (json.JSONDecodeError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
@@ -381,7 +381,7 @@ URL: {source.get('url', 'URL不明')}
         except Exception as e:
             logger.error(f"スライド内容生成失敗: {e}")
             raise
-    
+
     def get_usage_stats(self) -> Dict[str, Any]:
         """使用統計を取得"""
         return {

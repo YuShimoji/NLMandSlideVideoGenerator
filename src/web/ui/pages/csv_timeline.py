@@ -151,7 +151,7 @@ def show_csv_pipeline_page():
                     st.markdown("**CSVファイル:**")
                     try:
                         csv_content = csv_file.getvalue().decode('utf-8-sig')
-                        lines = [l for l in csv_content.strip().split('\n') if l.strip()]
+                        lines = [line for line in csv_content.strip().split('\n') if line.strip()]
                         csv_row_count = len(lines)
                         st.text(f"行数: {csv_row_count}行")
 

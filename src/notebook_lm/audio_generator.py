@@ -42,13 +42,13 @@ class AudioInfo:
 
 class AudioGenerator:
     """音声生成クラス"""
-    
+
     def __init__(self):
         self.audio_quality_threshold = settings.NOTEBOOK_LM_SETTINGS["audio_quality_threshold"]
         self.max_duration = settings.NOTEBOOK_LM_SETTINGS["max_audio_duration"]
         self.output_dir = settings.AUDIO_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 代替ワークフロー用: Gemini API キー設定
         self.gemini_api_key = settings.GEMINI_API_KEY if hasattr(settings, 'GEMINI_API_KEY') else None
         self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
@@ -65,7 +65,7 @@ class AudioGenerator:
             "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
         }
         return any(api_keys.values())
-         
+
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """
         ソース情報から音声を生成
@@ -77,24 +77,24 @@ class AudioGenerator:
             AudioInfo: 生成された音声情報
         """
         logger.info(f"音声生成開始: {len(sources)}件のソースから")
-        
+
         try:
             # 代替ワークフロー: Gemini + TTS 統合
             if self.gemini_integration and self._tts_is_available():
                 logger.info("Gemini + TTS 代替ワークフローを使用")
-                
+
                 # Step 1: Geminiでスクリプト生成
                 script_info = await self._generate_script_with_gemini(sources)
-                
+
                 # Step 2: TTSで音声生成
                 audio_file = await self._generate_audio_with_tts(script_info)
-                
+
                 # Step 3: 音声品質の検証
                 audio_info = await self._validate_audio_quality(audio_file)
-                
+
                 logger.success(f"代替ワークフロー音声生成完了: {audio_info.file_path}")
                 return audio_info
-                
+
             else:
                 # フォールバック: プレースホルダー実装
                 logger.warning("Gemini/TTS 設定が不足しているため、プレースホルダー実装を使用")
@@ -106,7 +106,7 @@ class AudioGenerator:
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
             raise
-    
+
     async def _generate_script_with_gemini(self, sources: List[SourceInfo]) -> 'ScriptInfo':
         """
         Gemini APIを使用してスクリプトを生成
@@ -118,10 +118,10 @@ class AudioGenerator:
             ScriptInfo: 生成されたスクリプト情報
         """
         logger.debug("Geminiでスクリプト生成開始")
-        
+
         if not self.gemini_integration:
             raise ValueError("Gemini integration is not initialized")
-        
+
         # SourceInfo を GeminiIntegration 用に変換
         gemini_sources = [
             {
@@ -133,10 +133,10 @@ class AudioGenerator:
             }
             for source in sources
         ]
-        
+
         # トピックを推測（最初のソースのタイトルを使用）
         topic = sources[0].title if sources else "General Topic"
-        
+
         # Gemini API でスクリプト生成
         script_info = await self.gemini_integration.generate_script_from_sources(
             sources=gemini_sources,
@@ -144,10 +144,10 @@ class AudioGenerator:
             target_duration=self.max_duration,
             language="ja"
         )
-        
+
         logger.debug(f"Geminiスクリプト生成完了: {len(script_info.segments)}セグメント")
         return script_info
-    
+
     async def _generate_audio_with_tts(self, script_info: 'ScriptInfo') -> Path:
         """
         TTS統合を使用して音声を生成
@@ -159,7 +159,7 @@ class AudioGenerator:
             Path: 生成された音声ファイルのパス
         """
         logger.debug("TTSで音声生成開始")
-        
+
         try:
             from audio.tts_integration import TTSIntegration, VoiceConfig, TTSProvider
 
@@ -172,7 +172,7 @@ class AudioGenerator:
             }
 
             tts = TTSIntegration(api_keys)
-            
+
             # スクリプトを結合
             full_script = "\n".join([
                 f"{segment.get('section', '')}: {segment.get('content', '')}"
@@ -235,7 +235,7 @@ class AudioGenerator:
         except Exception as e:
             logger.error(f"TTS音声生成失敗: {e}")
             raise
-    
+
     async def _generate_placeholder_audio(self) -> AudioInfo:
         """
         プレースホルダー音声ファイルを生成
@@ -244,10 +244,10 @@ class AudioGenerator:
             AudioInfo: プレースホルダー音声情報
         """
         logger.warning("プレースホルダー音声生成を使用")
-        
+
         # シンプルなWAVファイルを作成
         output_path = self.output_dir / f"placeholder_audio_{int(time.time())}.wav"
-        
+
         # 1秒の無音WAVファイルを作成
         with wave.open(str(output_path), 'wb') as wav_file:
             wav_file.setnchannels(2)  # ステレオ
@@ -256,7 +256,7 @@ class AudioGenerator:
             # 無音データを1秒分
             silent_data = b'\x00\x00' * 44100 * 2  # 44100サンプル * 2チャンネル * 2バイト
             wav_file.writeframes(silent_data)
-        
+
         audio_info = AudioInfo(
             file_path=output_path,
             duration=1.0,
@@ -266,10 +266,10 @@ class AudioGenerator:
             language="ja",
             channels=2
         )
-        
+
         logger.debug(f"プレースホルダー音声生成完了: {output_path}")
         return audio_info
-    
+
     async def _upload_sources(self, session_id: str, sources: List[SourceInfo]):
         """
         ソース情報をNotebookLMにアップロード (現在はシミュレーション)
@@ -279,15 +279,15 @@ class AudioGenerator:
             sources: アップロードするソース一覧
         """
         logger.debug(f"ソースアップロード開始: {len(sources)}件 (セッション: {session_id})")
-        
+
         for i, source in enumerate(sources, 1):
             logger.debug(f"アップロード中 ({i}/{len(sources)}): {source.title}")
-            
+
             # 実際の実装ではブラウザ操作でURLを入力し、追加ボタンをクリックする
             await asyncio.sleep(0.5)  # アップロード時間のシミュレーション
-        
+
         logger.debug("全ソースのアップロード完了")
-    
+
     async def _request_audio_generation(self, session_id: str) -> str:
         """
         音声生成をリクエスト (現在はシミュレーション)
@@ -299,15 +299,15 @@ class AudioGenerator:
             str: 音声生成ジョブID
         """
         logger.debug(f"音声生成リクエスト送信中... (セッション: {session_id})")
-        
+
         # 実際の実装ではNotebookLMの「Audio Overview」機能を実行する
         await asyncio.sleep(1.0)
-        
+
         job_id = f"audio_job_{int(time.time())}_{session_id[-4:]}"
         logger.debug(f"音声生成ジョブ開始: {job_id}")
-        
+
         return job_id
-    
+
     async def _wait_for_audio_completion(self, job_id: str) -> str:
         """
         音声生成の完了を待機
@@ -319,27 +319,27 @@ class AudioGenerator:
             str: 生成された音声ファイルのURL
         """
         logger.info("音声生成完了を待機中...")
-        
+
         max_wait_time = 600  # 10分
         check_interval = 30  # 30秒間隔
-        
+
         for elapsed in range(0, max_wait_time, check_interval):
             logger.debug(f"生成状況確認中... ({elapsed}秒経過)")
-            
+
             # TODO: 実際の生成状況確認実装
             status = await self._check_generation_status(job_id)
-            
+
             if status == "completed":
                 audio_url = await self._get_audio_download_url(job_id)
                 logger.info("音声生成完了")
                 return audio_url
             elif status == "failed":
                 raise Exception("音声生成に失敗しました")
-            
+
             await asyncio.sleep(check_interval)
-        
+
         raise TimeoutError("音声生成がタイムアウトしました")
-    
+
     async def _check_generation_status(self, job_id: str) -> str:
         """
         音声生成状況を確認 (現在はシミュレーション)
@@ -352,13 +352,13 @@ class AudioGenerator:
         """
         # 生成状況確認のシミュレーション
         # 実際にはブラウザ上のプログレスバーやテキストを確認する
-        
+
         # ジョブIDに基づいて完了したことにする（デモ・テスト用）
         logger.debug(f"ジョブ状況確認: {job_id}")
         await asyncio.sleep(0.5)
-        
+
         return "completed"
-    
+
     async def _get_audio_download_url(self, job_id: str) -> str:
         """
         音声ダウンロードURLを取得 (現在はシミュレーション)
@@ -371,12 +371,12 @@ class AudioGenerator:
         """
         # 実際の実装では「Download」ボタンのリンク先を取得するか、
         # 生成されたファイルの直接URLを探査する
-        
+
         mock_url = f"https://example.com/audio/notebook_lm_{job_id}.mp3"
         logger.debug(f"ダウンロードURL取得: {mock_url}")
-        
+
         return mock_url
-    
+
     async def _download_audio(self, audio_url: str) -> Path:
         """
         音声ファイルをダウンロード
@@ -388,15 +388,15 @@ class AudioGenerator:
             Path: ダウンロードされた音声ファイルパス
         """
         logger.info("音声ファイルダウンロード中...")
-        
+
         # ファイル名生成（WAVにフォールバックしやすいようにwavを使用）
         timestamp = int(time.time())
         filename = f"generated_audio_{timestamp}.wav"
         output_path = self.output_dir / filename
-        
+
         # ディレクトリ作成
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # ダウンロード実行（失敗時はローカル生成にフォールバック）
         try:
             response = requests.get(audio_url, stream=True, timeout=10)
@@ -427,7 +427,7 @@ class AudioGenerator:
             wf.writeframes(silence_frame * n_frames)
         logger.info(f"フォールバック音声生成完了: {output_path}")
         return output_path
-    
+
     async def _validate_audio_quality(self, audio_file: Path) -> AudioInfo:
         """
         音声品質を検証
@@ -439,30 +439,30 @@ class AudioGenerator:
             AudioInfo: 検証済み音声情報
         """
         logger.debug("音声品質検証中...")
-        
+
         try:
             # pydubを使用した音声解析
             from pydub import AudioSegment
-            
+
             audio = AudioSegment.from_file(str(audio_file))
-            
+
             # 基本情報取得
             duration = len(audio) / 1000.0  # 秒
             sample_rate = audio.frame_rate
             channels = audio.channels
             file_size = audio_file.stat().st_size
-            
+
             # 品質スコア計算
             quality_score = self._calculate_audio_quality(audio)
-            
+
             # 品質基準チェック
             if quality_score < self.audio_quality_threshold:
                 logger.warning(f"音声品質が基準を下回っています: {quality_score:.2f}")
-            
+
             # 時間制限チェック
             if duration > self.max_duration:
                 logger.warning(f"音声が最大時間を超えています: {duration:.1f}秒")
-            
+
             audio_info = AudioInfo(
                 file_path=audio_file,
                 duration=duration,
@@ -472,7 +472,7 @@ class AudioGenerator:
                 language=settings.YOUTUBE_SETTINGS.get("default_audio_language", "ja"),
                 channels=channels,
             )
-            
+
             logger.debug(f"音声品質検証完了: スコア={quality_score:.2f}")
             return audio_info
 
@@ -498,7 +498,7 @@ class AudioGenerator:
             language=settings.YOUTUBE_SETTINGS.get("default_audio_language", "ja"),
             channels=2,
         )
-    
+
     def _calculate_audio_quality(self, audio: 'AudioSegment') -> float:
         """
         音声品質スコアを計算
@@ -510,25 +510,25 @@ class AudioGenerator:
             float: 品質スコア (0.0-1.0)
         """
         score = 0.5  # ベーススコア
-        
+
         # サンプルレート評価
         if audio.frame_rate >= 44100:
             score += 0.2
         elif audio.frame_rate >= 22050:
             score += 0.1
-        
+
         # チャンネル数評価
         if audio.channels >= 2:
             score += 0.1
-        
+
         # 音量レベル評価
         if hasattr(audio, 'dBFS'):
             db_level = audio.dBFS
             if -20 <= db_level <= -6:  # 適切な音量範囲
                 score += 0.2
-        
+
         return min(score, 1.0)
-    
+
     async def regenerate_audio_if_needed(self, audio_info: AudioInfo, sources: List[SourceInfo]) -> AudioInfo:
         """
         必要に応じて音声を再生成
@@ -543,5 +543,5 @@ class AudioGenerator:
         if audio_info.quality_score < self.audio_quality_threshold:
             logger.warning("音声品質が低いため再生成します")
             return await self.generate_audio(sources)
-        
+
         return audio_info

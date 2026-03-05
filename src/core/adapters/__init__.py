@@ -3,8 +3,6 @@
 NotebookLM DeepDive などの固有フォーマットを内部スキーマへ変換
 """
 from typing import Dict, Any
-from pathlib import Path
-import json
 
 from ..interfaces import IContentAdapter
 from ..utils.logger import logger

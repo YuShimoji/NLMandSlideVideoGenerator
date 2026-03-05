@@ -52,7 +52,7 @@ def _run_environment_check():
 
     # pysrt
     try:
-        import pysrt
+        import pysrt  # noqa: F401
         results["optional"]["pysrt"] = (True, "字幕ハードサブ可能")
     except ImportError:
         results["optional"]["pysrt"] = (False, "未インストール（pip install pysrt）")

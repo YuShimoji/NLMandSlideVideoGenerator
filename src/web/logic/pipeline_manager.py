@@ -57,7 +57,7 @@ async def run_pipeline_async(
     # ジョブIDを生成
     if not job_id:
         job_id = generate_job_id()
-    
+
     # 進捗追跡を初期化
     _job_progress[job_id] = {
         "status": "running",
@@ -66,7 +66,7 @@ async def run_pipeline_async(
         "message": "パイプライン初期化中...",
         "started_at": datetime.now().isoformat(),
     }
-    
+
     # 進捗コールバックをラップしてDB更新も行う
     def wrapped_progress_callback(stage: str, progress: float, message: str):
         _job_progress[job_id] = {
@@ -76,7 +76,7 @@ async def run_pipeline_async(
             "message": message,
             "updated_at": datetime.now().isoformat(),
         }
-        
+
         # DBにも保存
         try:
             from core.persistence import db_manager
@@ -87,16 +87,16 @@ async def run_pipeline_async(
         except Exception as exc:
             logger.debug(f"DB更新失敗は無視: {exc}")
             pass  # DB更新失敗は無視
-        
+
         # 元のコールバックも呼び出し
         if progress_callback:
             progress_callback(stage, progress, message)
-    
+
     try:
         # キャンセルチェック
         if is_cancelled(job_id):
             raise asyncio.CancelledError("Job cancelled before start")
-        
+
         # Build pipeline
         pipeline = build_default_pipeline()
 
@@ -112,7 +112,7 @@ async def run_pipeline_async(
             progress_callback=wrapped_progress_callback,
             job_id=job_id,
         )
-        
+
         # 完了を記録
         _job_progress[job_id] = {
             "status": "completed",
@@ -305,10 +305,10 @@ async def get_pipeline_status(job_id: str) -> Dict[str, Any]:
             "stage": progress_info.get("stage", ""),
             "message": progress_info.get("message", ""),
             "is_active": job_id in _active_jobs,
-            **{k: v for k, v in progress_info.items() 
+            **{k: v for k, v in progress_info.items()
                if k not in ["status", "progress", "stage", "message"]},
         }
-    
+
     # DBから履歴を取得
     try:
         from core.persistence import db_manager
@@ -430,15 +430,15 @@ async def start_pipeline_task(
         ジョブID
     """
     job_id = kwargs.pop("job_id", None) or generate_job_id()
-    
+
     # タスクを作成
     task = asyncio.create_task(
         run_pipeline_async(topic=topic, job_id=job_id, **kwargs)
     )
-    
+
     # アクティブジョブに登録
     _active_jobs[job_id] = task
-    
+
     return job_id
 
 

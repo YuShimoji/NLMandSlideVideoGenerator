@@ -48,7 +48,7 @@ def _load_persistence():
             print(f"Warning: Failed to load runs persistence: {e}")
         except Exception as e:
             print(f"Warning: Failed to load runs persistence: {e}")
-    
+
     # Load artifacts from files
     for artifact_file in ARTIFACTS_DIR.glob("*.json"):
         try:

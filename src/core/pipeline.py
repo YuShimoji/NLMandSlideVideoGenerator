@@ -44,7 +44,7 @@ from .utils.decorators import retry_on_failure
 from .utils.logger import logger
 from .exceptions import PipelineError
 from .models import PipelineArtifacts
-from .helpers import build_default_pipeline  # Re-exported for backwards compatibility
+from .helpers import build_default_pipeline  # noqa: F401 (Re-exported for backwards compatibility)
 from . import stage_runners as sr
 from . import csv_pipeline_runner as csv_runner
 
