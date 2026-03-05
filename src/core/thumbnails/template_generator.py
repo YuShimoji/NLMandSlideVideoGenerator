@@ -124,6 +124,8 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         draw = ImageDraw.Draw(img)
 
         # フォント設定（システムフォントを使用）
+        font_title: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_subtitle: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             font_title = ImageFont.truetype("arial.ttf", 60)
             font_subtitle = ImageFont.truetype("arial.ttf", 36)
@@ -139,6 +141,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
             color = element.get('color', '#ffffff')
 
             # フォントサイズ調整
+            font: ImageFont.FreeTypeFont | ImageFont.ImageFont
             try:
                 font = ImageFont.truetype("arial.ttf", font_size)
             except (OSError, TypeError, ValueError):
@@ -203,6 +206,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         draw = ImageDraw.Draw(image)
 
         # タイトル（大きなフォント、中央）
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             title_font = ImageFont.truetype("arial.ttf", 72)
         except (OSError, TypeError, ValueError):
@@ -211,6 +215,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self._draw_centered_text(draw, title, title_font, (255, 255, 255), height // 3)
 
         # サブタイトル
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 36)
         except (OSError, TypeError, ValueError):
@@ -243,6 +248,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         draw.rectangle([20, 20, width-20, height-20], outline=(0, 0, 0), width=4)
 
         # タイトル
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             title_font = ImageFont.truetype("arial.ttf", 64)
         except (OSError, TypeError, ValueError):
@@ -251,6 +257,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self._draw_centered_text(draw, title, title_font, (0, 0, 0), height // 3)
 
         # サブタイトル
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 32)
         except (OSError, TypeError, ValueError):
@@ -280,6 +287,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         draw = ImageDraw.Draw(image)
 
         # タイトル（ネオン効果）
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             title_font = ImageFont.truetype("arial.ttf", 68)
         except (OSError, TypeError, ValueError):
@@ -288,6 +296,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self._draw_glowing_text(draw, title, title_font, height // 3)
 
         # サブタイトル
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 34)
         except (OSError, TypeError, ValueError):
@@ -317,6 +326,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         draw = ImageDraw.Draw(image)
 
         # タイトル
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             title_font = ImageFont.truetype("arial.ttf", 60)
         except (OSError, TypeError, ValueError):
@@ -325,6 +335,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self._draw_centered_text(draw, title, title_font, (255, 255, 255), height // 3)
 
         # サブタイトル
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             subtitle_font = ImageFont.truetype("arial.ttf", 30)
         except (OSError, TypeError, ValueError):
@@ -360,7 +371,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self,
         draw: ImageDraw.ImageDraw,
         text: str,
-        font: ImageFont.FreeTypeFont,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
         color: tuple,
         y: int
     ):
@@ -377,7 +388,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         self,
         draw: ImageDraw.ImageDraw,
         text: str,
-        font: ImageFont.FreeTypeFont,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
         y: int
     ):
         """光るテキスト効果"""

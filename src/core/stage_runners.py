@@ -27,11 +27,11 @@ from .interfaces import (
     IVideoComposer,
     ITimelinePlanner,
     IEditingBackend,
-    IThumbnailGenerator,
     IMetadataGenerator,
     IPlatformAdapter,
     IPublishingQueue,
     IUploader,
+    ThumbnailGeneratorProtocol,
 )
 
 
@@ -97,7 +97,7 @@ async def run_legacy_stage1(
 
                 if gemini_slides:
                     logger.info(f"Geminiスライド生成成功: {len(gemini_slides)}枚")
-                    slide_payload = []
+                    slide_payload: List[Dict[str, Any]] = []
                     for slide in gemini_slides:
                         slide_payload.append(
                             {
@@ -108,7 +108,8 @@ async def run_legacy_stage1(
                                 "image_suggestions": slide.get("image_suggestions", []),
                             }
                         )
-                    script_bundle.setdefault("slides", slide_payload)
+                    if script_bundle:
+                        script_bundle.setdefault("slides", slide_payload)
                     logger.info(f"script_bundle にスライド情報を追加: {len(slide_payload)}枚")
                 else:
                     logger.warning("Geminiスライド生成結果が空でした")
@@ -184,7 +185,7 @@ async def run_stage2_video_render(
     *,
     timeline_planner: Optional[ITimelinePlanner] = None,
     editing_backend: Optional[IEditingBackend] = None,
-    thumbnail_generator: Optional[IThumbnailGenerator] = None,
+    thumbnail_generator: Optional[ThumbnailGeneratorProtocol] = None,
     video_composer: Optional[IVideoComposer] = None,
     editing_extras: Optional[Dict[str, Any]] = None,
     progress_callback: Optional[Callable[[str, float, str], None]] = None,
@@ -246,6 +247,8 @@ async def run_stage2_video_render(
         if progress_callback:
             progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
         logger.info("Stage2拡張未設定のため従来の VideoComposer を使用")
+        if video_composer is None:
+            raise ValueError("video_composer is required when timeline_planner and editing_backend are not provided")
         video_info = await video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
 
     logger.info(f"動画合成完了: {video_info.file_path}")
@@ -312,6 +315,8 @@ async def run_stage3_upload(
     else:
         if progress_callback:
             progress_callback("YouTubeアップロード", 0.95, "YouTube APIでアップロードします...")
+        if uploader is None:
+            raise ValueError("uploader is required when platform_adapter is not provided")
         await uploader.authenticate()
         upload_result = await uploader.upload_video(
             video=video_info,

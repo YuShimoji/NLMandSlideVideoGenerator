@@ -11,11 +11,27 @@ PROJECT_ROOT = Path(__file__).parent.parent
 
 class Settings:
     """アプリケーション設定"""
-    
+
+    # 型アノテーション（mypy対応）
+    TTS_SETTINGS: Dict[str, Any]
+    YOUTUBE_SETTINGS: Dict[str, Any]
+    SLIDES_SETTINGS: Dict[str, Any]
+    VIDEO_SETTINGS: Dict[str, Any]
+    SUBTITLE_SETTINGS: Dict[str, Any]
+    EFFECT_SETTINGS: Dict[str, Any]
+    NOTEBOOK_LM_SETTINGS: Dict[str, Any]
+    RESEARCH_SETTINGS: Dict[str, Any]
+    PLACEHOLDER_THEMES: Dict[str, Any]
+    PIPELINE_STAGE_MODES: Dict[str, Any]
+    PIPELINE_COMPONENTS: Dict[str, Any]
+    YMM4_SETTINGS: Dict[str, Any]
+    PUBLISHING_SETTINGS: Dict[str, Any]
+    RETRY_SETTINGS: Dict[str, Any]
+
     def __init__(self):
         # Load environment variables from .env file
         load_dotenv()
-        
+
         # 基本設定
         self.APP_NAME = "NLMandSlideVideoGenerator"
         self.VERSION = "1.0.0"
@@ -262,9 +278,10 @@ def create_directories():
         settings.RESEARCH_SETTINGS["data_dir"],
         settings.LOG_FILE.parent
     ]
-    
+
     for directory in directories:
-        directory.mkdir(parents=True, exist_ok=True)
+        if isinstance(directory, Path):
+            directory.mkdir(parents=True, exist_ok=True)
 
 if __name__ == "__main__":
     create_directories()

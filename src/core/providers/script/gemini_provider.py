@@ -79,4 +79,4 @@ class GeminiScriptProvider(IScriptProvider):
         if "title" not in script_bundle:
             script_bundle["title"] = script_info.title
 
-        return script_bundle
+        return script_bundle  # type: ignore[no-any-return]

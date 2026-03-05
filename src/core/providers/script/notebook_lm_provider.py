@@ -2,7 +2,7 @@
 NotebookLM ベースの Script Provider
 OpenSpec IScriptProvider 実装
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json
 from datetime import datetime
@@ -17,7 +17,7 @@ from ...interfaces import IScriptProvider
 class NotebookLMScriptProvider(IScriptProvider):
     """NotebookLM を利用したスクリプト生成プロバイダ"""
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
         self.source_collector = SourceCollector()
         self.audio_generator = AudioGenerator()

@@ -349,11 +349,13 @@ class ModularVideoPipeline:
         mode: str = "auto"
     ) -> Dict[str, Any]:
         """スクリプト生成（リトライ付き）"""
-        return await self.script_provider.generate_script(topic, sources, mode)
+        if self.script_provider is not None:
+            return await self.script_provider.generate_script(topic, sources, mode)
+        raise PipelineError("script_provider is not configured", recoverable=False)
 
     async def _normalize_script_with_fallback(self, raw_script: Dict[str, Any]) -> Dict[str, Any]:
         """スクリプト正規化（フォールバック付き）"""
-        if self.content_adapter_manager:
+        if self.content_adapter_manager is not None:
             return await self.content_adapter_manager.normalize_script(raw_script, "notebooklm")
         return raw_script
 
@@ -364,4 +366,6 @@ class ModularVideoPipeline:
         provider: str
     ) -> AudioInfo:
         """音声合成（リトライ付き）"""
-        return await self.voice_pipeline.synthesize(script, provider)
+        if self.voice_pipeline is not None:
+            return await self.voice_pipeline.synthesize(script, provider)
+        raise PipelineError("voice_pipeline is not configured", recoverable=False)

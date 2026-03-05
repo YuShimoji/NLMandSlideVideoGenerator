@@ -92,7 +92,14 @@ class ITranscriptProcessor(Protocol):
 
 
 class ISlideGenerator(Protocol):
-    async def generate_slides(self, transcript: TranscriptInfo, max_slides: int = 20) -> SlidesPackage:
+    async def generate_slides(self, transcript: TranscriptInfo, max_slides: int = 20, script_bundle: Optional[Dict[str, Any]] = None) -> SlidesPackage:
+        ...
+
+    async def create_slides_from_content(
+        self,
+        slides_content: List[Dict[str, Any]],
+        presentation_title: str,
+    ) -> SlidesPackage:
         ...
 
 
@@ -102,8 +109,16 @@ class IVideoComposer(Protocol):
         audio_file: AudioInfo,
         slides_file: SlidesPackage,
         transcript: TranscriptInfo,
-        quality: str = "1080p"
+        quality: str = "1080p",
+        bgm_path: Optional[Path] = None
     ) -> VideoInfo:
+        ...
+
+    async def generate_thumbnail(
+        self,
+        title: str,
+        first_slide_path: Optional[Path] = None,
+    ) -> Optional[Path]:
         ...
 
 
@@ -126,12 +141,13 @@ class IMetadataGenerator(Protocol):
 
 
 class IThumbnailGenerator(Protocol):
-    async def generate_thumbnail(
+    async def generate(
         self,
-        timeline_plan: Dict[str, Any],
+        video: "VideoInfo",
         script: Dict[str, Any],
-        assets: Dict[str, Any],
-    ) -> Path:
+        slides: "SlidesPackage",
+        style: str = "modern"
+    ) -> "ThumbnailInfo":
         """サムネイルテンプレート適用を抽象化"""
 
 

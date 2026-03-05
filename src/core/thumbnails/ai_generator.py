@@ -176,6 +176,8 @@ class AIThumbnailGenerator(IThumbnailGenerator):
             image = self._apply_gradient(image, style_config)
 
         # フォント設定（デフォルトフォントを使用）
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
             # システムフォントを試行
             title_font = ImageFont.truetype("arial.ttf", style_config['font_size_title'])

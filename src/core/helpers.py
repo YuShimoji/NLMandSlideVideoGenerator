@@ -54,17 +54,19 @@ def with_fallback(primary_func, fallback_func, *args, **kwargs):
 def build_default_pipeline():
     """設定に基づきモジュールコンポーネントを組み立てるヘルパー"""
     from .pipeline import ModularVideoPipeline
+    from .interfaces import IScriptProvider, IVoicePipeline, IEditingBackend, IPlatformAdapter, IThumbnailGenerator
+    from typing import Optional
     # インポートはここで必要に応じて追加
 
     stage_modes = settings.PIPELINE_STAGE_MODES
     components = settings.PIPELINE_COMPONENTS
 
-    script_provider = None
-    voice_pipeline = None
+    script_provider: Optional[IScriptProvider] = None
+    voice_pipeline: Optional[IVoicePipeline] = None
     timeline_planner = None
-    editing_backend = None
-    platform_adapter = None
-    thumbnail_generator = None
+    editing_backend: Optional[IEditingBackend] = None
+    platform_adapter: Optional[IPlatformAdapter] = None
+    thumbnail_generator: Optional[IThumbnailGenerator] = None
 
     if components.get("script_provider") == "gemini" and settings.GEMINI_API_KEY:
         try:

@@ -76,7 +76,7 @@ class TTSVoicePipeline(IVoicePipeline):
     def _resolve_provider_key(self, preferred_provider: Optional[str]) -> str:
         if preferred_provider and preferred_provider in settings.TTS_SETTINGS:
             return preferred_provider
-        configured = settings.TTS_SETTINGS.get("provider", "none")
+        configured: str = str(settings.TTS_SETTINGS.get("provider", "none"))
         if configured != "none" and configured in settings.TTS_SETTINGS:
             return configured
         return "elevenlabs"

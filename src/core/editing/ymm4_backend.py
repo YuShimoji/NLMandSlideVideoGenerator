@@ -463,7 +463,8 @@ class YMM4EditingBackend(IEditingBackend):
         diff_str = os.getenv("YMM4_TEMPLATE_DIFF", "")
         if diff_str:
             try:
-                return json.loads(diff_str)
+                config: Dict[str, Any] = json.loads(diff_str)
+                return config
             except json.JSONDecodeError:
                 logger.warning(f"無効な差分設定 (環境変数): {diff_str}")
 

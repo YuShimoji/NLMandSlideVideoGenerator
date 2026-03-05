@@ -7,7 +7,7 @@ pipeline.py から抽出。
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from pathlib import Path
 
 from config.settings import settings
@@ -25,10 +25,10 @@ def expand_segment_into_slides(
 
     slides_settings = settings.SLIDES_SETTINGS
     auto_split = slides_settings.get("auto_split_long_lines", False)
-    threshold = int(slides_settings.get("long_line_char_threshold", 9999))
-    target_chars = int(slides_settings.get("long_line_target_chars_per_subslide", threshold))
-    max_subslides = max(int(slides_settings.get("long_line_max_subslides", 1)), 1)
-    min_duration = float(slides_settings.get("min_subslide_duration", 0.5))
+    threshold = int(cast(int, slides_settings.get("long_line_char_threshold", 9999)))
+    target_chars = int(cast(int, slides_settings.get("long_line_target_chars_per_subslide", threshold)))
+    max_subslides = max(int(cast(int, slides_settings.get("long_line_max_subslides", 1))), 1)
+    min_duration = float(cast(float, slides_settings.get("min_subslide_duration", 0.5)))
 
     should_split = (
         auto_split
@@ -239,7 +239,7 @@ def build_slides_payload(
             "source_csv": str(csv_path),
             "generated_at": datetime.now().isoformat(),
             "auto_split": auto_split,
-            "video_resolution": list(video_resolution),
+            "video_resolution": list(cast(tuple, video_resolution)),
             "total_segments": len(payload_segments),
         },
         "segments": payload_segments,
