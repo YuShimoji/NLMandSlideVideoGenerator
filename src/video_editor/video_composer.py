@@ -60,13 +60,13 @@ class ThumbnailInfo:
 
 class VideoComposer:
     """動画合成クラス"""
-
+    
     def __init__(self):
         self.video_settings = settings.VIDEO_SETTINGS
         self.output_dir = settings.VIDEOS_DIR
         self.subtitle_generator = SubtitleGenerator()
         self.effect_processor = EffectProcessor()
-
+        
     async def compose_video(
         self,
         audio_file: AudioInfo,
@@ -91,41 +91,41 @@ class VideoComposer:
             VideoInfo: 生成された動画情報
         """
         logger.info("動画合成開始")
-
+        
         # timeline_plan からセグメント情報を抽出
         self._current_timeline_plan = timeline_plan
-
+        
         try:
             # Step 1: スライド画像を抽出
             slide_images = await self._extract_slide_images(slides_file)
-
+            
             # Step 2: 字幕を生成
             subtitle_file = await self.subtitle_generator.generate_subtitles(transcript)
-
+            
             # Step 3: スライドにエフェクトを適用
             processed_slides = await self.effect_processor.apply_effects(
                 slide_images, transcript
             )
-
+            
             # Step 4: トランジションを適用（オプション）
             if self.video_settings.get("enable_transitions", True):
                 processed_slides = self.effect_processor.add_transition_effects(processed_slides)
-
+            
             # Step 5: 動画合成実行
             video_info = await self._compose_final_video(
                 audio_file, processed_slides, subtitle_file, quality, bgm_path=bgm_path
             )
-
+            
             # Step 6: メタデータ保存
             await self._save_video_metadata(video_info, transcript)
-
+            
             logger.success(f"動画合成完了: {video_info.file_path}")
             return video_info
-
+            
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"動画合成エラー: {str(e)}")
             raise
-
+    
     async def _extract_slide_images(self, slides_file: SlidesPackage) -> List[Path]:
         """
         スライドファイルから画像を抽出
@@ -137,7 +137,7 @@ class VideoComposer:
             List[Path]: 抽出された画像ファイルパス一覧
         """
         logger.info("スライド画像抽出中...")
-
+        
         # 1) Google Slides のエクスポート画像を優先
         try:
             if getattr(slides_file, "presentation_id", ""):
@@ -149,18 +149,18 @@ class VideoComposer:
                         return exported
         except (OSError, AttributeError, TypeError, ValueError) as exc:
             logger.debug(f"エクスポート済みスライド画像の探索に失敗（PPTX抽出へフォールバック）: {exc}")
-
+        
         # 2) PPTXからの抽出
         pptx_images = await self._extract_from_pptx(slides_file)
         if pptx_images:
             logger.info(f"PPTXからスライド画像を抽出: {len(pptx_images)}枚")
             return pptx_images
-
+        
         # 3) フォールバック: プレースホルダー生成（実在するPNGを作成）
         slide_images: List[Path] = []
         target_width, target_height = self.video_settings["resolution"]
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
+        
         # テーマ取得
         theme_name = getattr(settings, "PLACEHOLDER_THEME", "dark")
         themes = getattr(settings, "PLACEHOLDER_THEMES", {})
@@ -172,20 +172,20 @@ class VideoComposer:
             "label_color": (120, 120, 130),
             "accent_color": (100, 150, 255),
         }))
-
+        
         logger.info(f"プレースホルダーテーマ: {theme_name}")
-
+        
         for i, slide in enumerate(slides_file.slides, 1):
             image_path = self.output_dir / f"slide_{i:03d}.png"
-
+            
             if not image_path.exists():
                 img = Image.new('RGB', (target_width, target_height), color=theme["background"])
                 draw = ImageDraw.Draw(img)
-
+                
                 # アクセントライン（上部）
                 accent_color = theme.get("accent_color", (100, 150, 255))
                 draw.rectangle([(0, 0), (target_width, 4)], fill=accent_color)
-
+                
                 title_text = slide.title or f"Slide {i}"
 
                 body_text = slide.content or ""
@@ -216,17 +216,17 @@ class VideoComposer:
                     y += 40
 
                 draw.text((x_margin, target_height - 80), label_text, fill=theme["label_color"])
-
+                
                 # アクセントライン（下部）
                 draw.rectangle([(0, target_height - 4), (target_width, target_height)], fill=accent_color)
-
+                
                 img.save(image_path, format='PNG')
-
+            
             slide_images.append(image_path)
-
+        
         logger.info(f"スライド画像抽出完了: {len(slide_images)}枚 (placeholder)")
         return slide_images
-
+    
     def _wrap_placeholder_text(
         self,
         text: str,
@@ -386,7 +386,7 @@ class VideoComposer:
                 logger.warning(f"ImageMagickでのPDF変換に失敗: {e}")
 
         return images
-
+    
     async def _compose_final_video(
         self,
         audio_info: AudioInfo,
@@ -409,31 +409,31 @@ class VideoComposer:
             VideoInfo: 生成された動画情報
         """
         logger.info("最終動画合成中...")
-
+        
         # 出力ファイルパス
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = self.output_dir / f"generated_video_{timestamp}.mp4"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-
+        
         # 動画設定
         resolution = self._get_resolution_from_quality(quality)
         fps = self.video_settings["fps"]
-
+        
         try:
             # MoviePyを使用した動画合成
             from moviepy.editor import (
-                AudioFileClip, ImageClip, CompositeVideoClip,
+                AudioFileClip, ImageClip, CompositeVideoClip, 
                 concatenate_videoclips, TextClip
             )
-
+            
             # 音声読み込み
             audio_clip = AudioFileClip(str(audio_info.file_path))
-
+            
             # スライド動画クリップ作成
             video_clips = []
             num_items = max(len(slide_images), 1)
             default_slide_duration = max(audio_clip.duration / num_items, 0.1)
-
+            
             for i, slide_image in enumerate(slide_images):
                 # ProcessedSlide にも対応（最初のフレームを使用）
                 img_path = slide_image
@@ -442,7 +442,7 @@ class VideoComposer:
                     # dataclass で processed_frames を持つ場合
                     if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
                         img_path = slide_image.processed_frames[0]
-
+                    
                     # 個別スライドのdurationを取得
                     if hasattr(slide_image, "duration"):
                         try:
@@ -454,16 +454,16 @@ class VideoComposer:
                 except (AttributeError, TypeError, ValueError) as exc:
                     logger.debug(f"スライド情報の読み取りに失敗（フォールバック）: {exc}")
                     img_path = slide_image
-
+                
                 # 画像クリップ作成
                 img_clip = ImageClip(str(img_path))
                 img_clip = img_clip.set_duration(clip_duration)
                 img_clip = img_clip.resize(resolution)
-
+                
                 video_clips.append(img_clip)
-
+            
             video_clip = concatenate_videoclips(video_clips)
-
+            
             # 音声を設定 & BGM合成
             final_audio = audio_clip
             if bgm_path and bgm_path.exists():
@@ -476,17 +476,17 @@ class VideoComposer:
                         bgm_clip = audio_loop(bgm_clip, duration=audio_clip.duration)
                     else:
                         bgm_clip = bgm_clip.set_duration(audio_clip.duration)
-
+                    
                     final_audio = CompositeAudioClip([audio_clip, bgm_clip])
                 except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as bgm_err:
                     logger.warning(f"BGM合成に失敗しました: {bgm_err}")
 
             final_clip = video_clip.set_audio(final_audio)
-
+            
             # 字幕を追加
             if subtitle_file.exists():
                 final_clip = self._add_subtitles_to_video(final_clip, subtitle_file)
-
+            
             # 動画出力
             final_clip.write_videofile(
                 str(output_path),
@@ -496,11 +496,11 @@ class VideoComposer:
                 temp_audiofile="temp-audio.m4a",
                 remove_temp=True
             )
-
+            
             # リソース解放
             audio_clip.close()
             final_clip.close()
-
+            
             # 動画情報作成
             video_info = VideoInfo(
                 file_path=output_path,
@@ -512,10 +512,10 @@ class VideoComposer:
                 has_effects=True,
                 created_at=datetime.now()
             )
-
+            
             logger.info("最終動画合成完了")
             return video_info
-
+            
         except ImportError:
             logger.error("MoviePyライブラリが見つかりません")
             # フォールバック実装
@@ -527,7 +527,7 @@ class VideoComposer:
             return await self._compose_video_fallback(
                 audio_info, slide_images, subtitle_file, quality, output_path
             )
-
+    
     def _get_resolution_from_quality(self, quality: str) -> tuple:
         """
         品質設定から解像度を取得
@@ -544,7 +544,7 @@ class VideoComposer:
             "1080p": (1920, 1080),
         }
         return quality_map.get(quality, (1920, 1080))
-
+    
     def _add_subtitles_to_video(self, video_clip, subtitle_file: Path):
         """動画に字幕をオーバーレイする
 
@@ -564,7 +564,7 @@ class VideoComposer:
 
             subs = pysrt.open(str(subtitle_file))
             subtitle_clips = []
-
+            
             # 字幕設定を取得
             sub_settings = settings.SUBTITLE_SETTINGS
             font_size = sub_settings.get("font_size", 48)
@@ -616,7 +616,7 @@ class VideoComposer:
             "green": (0, 255, 0),
         }
         return colors.get(name.lower(), (0, 0, 0))
-
+    
     def _srt_time_to_seconds(self, srt_time) -> float:
         """
         SRT時間を秒に変換
@@ -627,11 +627,11 @@ class VideoComposer:
         Returns:
             float: 秒数
         """
-        return (srt_time.hours * 3600 +
-                srt_time.minutes * 60 +
-                srt_time.seconds +
+        return (srt_time.hours * 3600 + 
+                srt_time.minutes * 60 + 
+                srt_time.seconds + 
                 srt_time.milliseconds / 1000.0)
-
+    
     async def _compose_video_fallback(
         self,
         audio_info: AudioInfo,
@@ -654,10 +654,10 @@ class VideoComposer:
             VideoInfo: 生成された動画情報
         """
         logger.info("FFmpegを使用したフォールバック動画合成")
-
+        
         resolution = self._get_resolution_from_quality(quality)
         fps = self.video_settings.get("fps", 30)
-
+        
         # FFmpegが利用可能か確認（改善されたユーティリティを使用）
         ffmpeg_available, ffmpeg_path = check_ffmpeg_with_warning()
         if not ffmpeg_available:
@@ -675,15 +675,15 @@ class VideoComposer:
                 has_effects=False,
                 created_at=datetime.now()
             )
-
+        
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:
                 tmp_path = Path(tmp_dir)
-
+                
                 # スライド画像からビデオを作成
                 num_slides = max(len(slide_images), 1)
                 slide_duration = max(audio_info.duration / num_slides, 0.1)
-
+                
                 # concat用のファイルリストを作成
                 concat_file = tmp_path / "concat.txt"
                 with open(concat_file, 'w', encoding='utf-8') as f:
@@ -692,7 +692,7 @@ class VideoComposer:
                         img_path = slide_image
                         if hasattr(slide_image, "processed_frames") and getattr(slide_image, "processed_frames"):
                             img_path = slide_image.processed_frames[0]
-
+                        
                         # 個別スライドのdurationを取得
                         dur = slide_duration
                         if hasattr(slide_image, "duration"):
@@ -700,7 +700,7 @@ class VideoComposer:
                                 dur = float(getattr(slide_image, "duration") or slide_duration)
                             except (TypeError, ValueError):
                                 pass
-
+                        
                         f.write(f"file '{img_path}'\n")
                         f.write(f"duration {dur}\n")
                     # 最後のフレームを保持するため再度追加
@@ -709,10 +709,10 @@ class VideoComposer:
                         if hasattr(last_img, "processed_frames") and getattr(last_img, "processed_frames"):
                             last_img = last_img.processed_frames[0]
                         f.write(f"file '{last_img}'\n")
-
+                
                 # 一時動画ファイル
                 temp_video = tmp_path / "temp_video.mp4"
-
+                
                 # Step 1: 画像から動画を作成
                 cmd_video = [
                     ffmpeg_path, "-y",
@@ -724,12 +724,12 @@ class VideoComposer:
                     "-r", str(fps),
                     str(temp_video)
                 ]
-
+                
                 result = subprocess.run(cmd_video, capture_output=True, timeout=300)
                 if result.returncode != 0:
                     logger.warning(f"FFmpeg動画生成エラー: {result.stderr.decode()}")
                     raise RuntimeError("FFmpeg video generation failed")
-
+                
                 # Step 2: 音声を追加
                 temp_with_audio = tmp_path / "temp_with_audio.mp4"
                 cmd_audio = [
@@ -741,16 +741,16 @@ class VideoComposer:
                     "-shortest",
                     str(temp_with_audio)
                 ]
-
+                
                 result = subprocess.run(cmd_audio, capture_output=True, timeout=300)
                 if result.returncode != 0:
                     logger.warning(f"FFmpeg音声追加エラー: {result.stderr.decode()}")
                     raise RuntimeError("FFmpeg audio addition failed")
-
+                
                 # Step 3: 字幕を追加（オプション）
                 has_subtitles = False
                 final_temp = temp_with_audio
-
+                
                 if subtitle_file.exists() and subtitle_file.stat().st_size > 0:
                     temp_with_subs = tmp_path / "temp_with_subs.mp4"
                     # 字幕をハードコード（焼き込み）
@@ -761,7 +761,7 @@ class VideoComposer:
                         "-c:a", "copy",
                         str(temp_with_subs)
                     ]
-
+                    
                     result = subprocess.run(cmd_subs, capture_output=True, timeout=300)
                     if result.returncode == 0:
                         final_temp = temp_with_subs
@@ -769,13 +769,13 @@ class VideoComposer:
                         logger.info("字幕を動画に焼き込みました")
                     else:
                         logger.warning(f"字幕追加をスキップ: {result.stderr.decode()[:200]}")
-
+                
                 # 最終出力にコピー
                 shutil.copy2(final_temp, output_path)
-
+                
                 file_size = output_path.stat().st_size if output_path.exists() else 0
                 logger.info(f"FFmpegによる動画合成完了: {output_path} ({file_size} bytes)")
-
+                
                 return VideoInfo(
                     file_path=output_path,
                     duration=audio_info.duration,
@@ -786,7 +786,7 @@ class VideoComposer:
                     has_effects=False,
                     created_at=datetime.now()
                 )
-
+                
         except (subprocess.TimeoutExpired, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"FFmpegフォールバック動画合成に失敗: {e}")
             # 最終フォールバック: 空のファイル
@@ -802,7 +802,7 @@ class VideoComposer:
                 has_effects=False,
                 created_at=datetime.now()
             )
-
+    
     async def _save_video_metadata(self, video_info: VideoInfo, transcript: TranscriptInfo):
         """
         動画メタデータを保存
@@ -812,7 +812,7 @@ class VideoComposer:
             transcript: 台本情報
         """
         metadata_path = video_info.file_path.with_suffix('.json')
-
+        
         metadata = {
             "video_file": str(video_info.file_path),
             "duration": video_info.duration,
@@ -826,12 +826,12 @@ class VideoComposer:
             "total_segments": len(transcript.segments),
             "transcript_accuracy": transcript.accuracy_score
         }
-
+        
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
-
+        
         logger.info(f"動画メタデータ保存完了: {metadata_path}")
-
+    
     def optimize_for_platform(self, video_info: VideoInfo, platform: str = "youtube") -> VideoInfo:
         """
         プラットフォーム向けに動画を最適化
@@ -844,7 +844,7 @@ class VideoComposer:
             VideoInfo: 最適化された動画情報
         """
         logger.info(f"{platform}向け最適化実行")
-
+        
         # プラットフォーム別最適化設定
         platform_settings = {
             "youtube": {
@@ -858,27 +858,27 @@ class VideoComposer:
                 "max_duration": 600  # 10分
             }
         }
-
+        
         settings = platform_settings.get(platform, platform_settings["youtube"])
-
+        
         # ファイルサイズチェック
         if video_info.file_size > settings["max_file_size"]:
             logger.warning(f"ファイルサイズが制限を超えています: {video_info.file_size / (1024*1024):.1f}MB > {settings['max_file_size'] / (1024*1024):.1f}MB")
-
+            
             # 圧縮処理
             compressed_path = self._compress_video(
                 video_info.video_path,
                 target_size=settings["max_file_size"],
                 platform=platform
             )
-
+            
             if compressed_path and compressed_path.exists():
                 video_info.video_path = compressed_path
                 video_info.file_size = compressed_path.stat().st_size
                 logger.info(f"圧縮完了: {video_info.file_size / (1024*1024):.1f}MB")
-
+        
         return video_info
-
+    
     def _compress_video(
         self,
         video_path: Path,
@@ -897,11 +897,11 @@ class VideoComposer:
         """
         try:
             output_path = video_path.parent / f"{video_path.stem}_compressed{video_path.suffix}"
-
+            
             # 現在のファイルサイズと目標サイズから圧縮率を計算
             current_size = video_path.stat().st_size
             target_bitrate = int((target_size * 8) / self._get_video_duration(video_path) * 0.9)  # 90%マージン
-
+            
             # FFmpegで圧縮
             cmd = [
                 "ffmpeg", "-y",
@@ -914,16 +914,16 @@ class VideoComposer:
                 "-movflags", "+faststart",
                 str(output_path)
             ]
-
+            
             logger.info(f"動画圧縮開始: 目標ビットレート {target_bitrate}bps")
             result = subprocess.run(cmd, capture_output=True, text=True)
-
+            
             if result.returncode == 0 and output_path.exists():
                 # 圧縮後もサイズオーバーならCRF方式で再圧縮
                 if output_path.stat().st_size > target_size:
                     logger.warning("ビットレート指定では目標サイズに収まらず、CRF方式で再圧縮")
                     output_path.unlink()
-
+                    
                     cmd_crf = [
                         "ffmpeg", "-y",
                         "-i", str(video_path),
@@ -935,19 +935,19 @@ class VideoComposer:
                         "-movflags", "+faststart",
                         str(output_path)
                     ]
-
+                    
                     result = subprocess.run(cmd_crf, capture_output=True, text=True)
-
+                    
                     if result.returncode != 0 or not output_path.exists():
                         logger.error(f"CRF圧縮失敗: {result.stderr}")
                         return None
-
+                
                 logger.info(f"圧縮完了: {output_path}")
                 return output_path
             else:
                 logger.error(f"圧縮失敗: {result.stderr}")
                 return None
-
+                
         except FileNotFoundError:
             logger.warning("FFmpegが見つかりません。圧縮をスキップします。")
             logger.warning("FFmpegをインストールするには、以下を参照してください:")
@@ -958,7 +958,7 @@ class VideoComposer:
         except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"圧縮エラー: {e}")
             return None
-
+    
     def _get_video_duration(self, video_path: Path) -> float:
         """動画の長さを取得（秒）"""
         try:
@@ -974,7 +974,7 @@ class VideoComposer:
                 return float(result.stdout.strip())
         except (OSError, subprocess.TimeoutExpired, AttributeError, TypeError, ValueError, RuntimeError) as exc:
             logger.debug(f"ffprobe による動画長取得に失敗（フォールバック=600秒）: {exc}")
-
+        
         # フォールバック: 10分と仮定
         return 600.0
 
@@ -995,18 +995,18 @@ class VideoComposer:
             サムネイル画像パス（失敗時はNone）
         """
         logger.info(f"サムネイル生成開始: {title}")
-
+        
         try:
             # 出力パス決定
             if output_path is None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_path = settings.THUMBNAILS_DIR / f"thumbnail_{timestamp}.png"
-
+            
             output_path.parent.mkdir(parents=True, exist_ok=True)
-
+            
             # YouTube推奨サイズ: 1280x720
             thumb_width, thumb_height = 1280, 720
-
+            
             # ベース画像を作成または読み込み
             if first_slide_path and first_slide_path.exists():
                 base_img = Image.open(first_slide_path)
@@ -1015,14 +1015,14 @@ class VideoComposer:
                 # グラデーション背景を生成
                 base_img = Image.new('RGB', (thumb_width, thumb_height), color=(30, 30, 40))
                 draw = ImageDraw.Draw(base_img)
-
+                
                 # シンプルなグラデーション効果
                 for y in range(thumb_height):
                     alpha = int(y / thumb_height * 60)
                     draw.line([(0, y), (thumb_width, y)], fill=(30 + alpha, 30 + alpha, 50 + alpha))
-
+            
             draw = ImageDraw.Draw(base_img)
-
+            
             # タイトル用の半透明オーバーレイ（下部）
             overlay_height = 180
             overlay = Image.new('RGBA', (thumb_width, overlay_height), (0, 0, 0, 180))
@@ -1033,10 +1033,10 @@ class VideoComposer:
                 ).convert('RGB'),
                 (0, thumb_height - overlay_height)
             )
-
+            
             # タイトルテキストを描画
             draw = ImageDraw.Draw(base_img)
-
+            
             # テキストを折り返し
             max_chars_per_line = 20
             lines = []
@@ -1048,7 +1048,7 @@ class VideoComposer:
                 else:
                     lines.append(words[:max_chars_per_line])
                     words = words[max_chars_per_line:]
-
+            
             # テキスト描画（中央揃え）
             text_y = thumb_height - overlay_height + 30
             for line in lines[:3]:  # 最大3行
@@ -1056,13 +1056,13 @@ class VideoComposer:
                 text_x = (thumb_width - text_width) // 2
                 draw.text((text_x, text_y), line, fill=(255, 255, 255))
                 text_y += 50
-
+            
             # 保存
             base_img.save(output_path, format='PNG', quality=95)
             logger.success(f"サムネイル生成完了: {output_path}")
-
+            
             return output_path
-
+            
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"サムネイル生成エラー: {e}")
             return None

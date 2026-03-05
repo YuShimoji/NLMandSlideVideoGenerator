@@ -60,14 +60,14 @@ class SlidesPackage:
 
 class SlideGenerator:
     """スライド生成クラス"""
-
+    
     def __init__(self):
         self.max_chars_per_slide = settings.SLIDES_SETTINGS["max_chars_per_slide"]
         self.max_slides_per_batch = settings.SLIDES_SETTINGS["max_slides_per_batch"]
         self.theme = settings.SLIDES_SETTINGS["theme"]
         self.output_dir = settings.SLIDES_DIR
         self.content_splitter = ContentSplitter()
-
+    
     async def authenticate(self) -> bool:
         """Google Slides API 認証"""
         client = GoogleSlidesClient()
@@ -77,7 +77,7 @@ class SlideGenerator:
         else:
             logger.warning("Google Slides API 未認証のため、モックへフォールバックします")
         return available
-
+        
     async def generate_slides(
         self,
         transcript: TranscriptInfo,
@@ -96,12 +96,12 @@ class SlideGenerator:
             SlidesPackage: 生成されたスライドパッケージ
         """
         logger.info(f"スライド生成開始: {transcript.title}")
-
+        
         prefer_bundle = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
         has_bundle = script_bundle is not None
         has_slides_in_bundle = has_bundle and "slides" in script_bundle
         bundle_slide_count = len(script_bundle.get("slides", [])) if has_slides_in_bundle else 0
-
+        
         logger.info(
             f"スライド生成パラメータ: prefer_bundle={prefer_bundle}, "
             f"has_bundle={has_bundle}, has_slides_in_bundle={has_slides_in_bundle}, "
@@ -112,37 +112,37 @@ class SlideGenerator:
         if prefer_bundle and script_bundle and "slides" in script_bundle:
             logger.info(f"NotebookLM/Gemini のスライド情報を優先使用します ({bundle_slide_count}枚)")
             return await self._generate_slides_from_bundle(script_bundle, max_slides)
-
+        
         try:
             # Step 1: 台本をスライド用に分割
             slide_contents = await self.content_splitter.split_for_slides(
                 transcript, max_slides
             )
-
+            
             # Step 2: Google Slidesでスライド生成
             slides_package = await self._generate_slides_with_google(
                 slide_contents, transcript.title
             )
-
+            
             # Step 3: スライドファイルのダウンロード
             await self._download_slides_file(slides_package)
-
+            
             # Step 4: スライド情報の保存
             await self._save_slides_metadata(slides_package)
-
+            
             logger.success(f"スライド生成完了: {slides_package.total_slides}枚")
             return slides_package
-
+            
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"スライド生成エラー: {str(e)}")
             raise
         except Exception as e:
             logger.error(f"スライド生成エラー: {str(e)}")
             raise
-
+    
     async def _generate_slides_with_google(
-        self,
-        slide_contents: List[Dict[str, Any]],
+        self, 
+        slide_contents: List[Dict[str, Any]], 
         presentation_title: str
     ) -> SlidesPackage:
         """
@@ -159,7 +159,7 @@ class SlideGenerator:
         client = GoogleSlidesClient()
         presentation_id: Optional[str] = None
         slides: List[SlideInfo] = []
-
+        
         # まずはAPIが利用可能か試みる
         try:
             presentation_id = client.create_presentation(presentation_title)
@@ -169,7 +169,7 @@ class SlideGenerator:
         except Exception as e:
             presentation_id = None
             logger.warning(f"Slides APIのプレゼン作成に失敗: {e}")
-
+        
         if presentation_id:
             # API経由でのスライド追加（簡易）
             try:
@@ -186,7 +186,7 @@ class SlideGenerator:
                 logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
             except Exception as e:
                 logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
-
+            
             # SlideInfoを整備
             for i, c in enumerate(slide_contents, start=1):
                 slides.append(SlideInfo(
@@ -197,7 +197,7 @@ class SlideGenerator:
                     estimated_duration=c.get("duration", 15.0),
                     speakers=c.get("speakers"),
                 ))
-
+            
             # PPTXとサムネイル画像を書き出し
             pptx_path = self.output_dir / f"{presentation_id}.pptx"
             try:
@@ -206,14 +206,14 @@ class SlideGenerator:
                 logger.warning(f"PPTXエクスポート失敗: {e}")
             except Exception as e:
                 logger.warning(f"PPTXエクスポート失敗: {e}")
-
+            
             try:
                 client.export_thumbnails(presentation_id, settings.SLIDES_IMAGES_DIR / presentation_id)
             except (ImportError, AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
                 logger.warning(f"サムネイル書き出し失敗: {e}")
             except Exception as e:
                 logger.warning(f"サムネイル書き出し失敗: {e}")
-
+            
             slides_package = SlidesPackage(
                 file_path=pptx_path,
                 slides=slides,
@@ -225,7 +225,7 @@ class SlideGenerator:
             )
             logger.info(f"Google Slidesでの生成完了: {len(slides)}枚")
             return slides_package
-
+        
         # APIが使えない場合は既存のモック実装にフォールバック
         logger.warning("Slides API未使用のため、モック生成にフォールバックします")
         slides = [
@@ -250,7 +250,7 @@ class SlideGenerator:
             created_at=time.strftime("%Y-%m-%d %H:%M:%S")
         )
         return slides_package
-
+    
     async def _generate_slides_from_bundle(
         self,
         script_bundle: Dict[str, Any],
@@ -267,10 +267,10 @@ class SlideGenerator:
             SlidesPackage: 生成されたスライドパッケージ
         """
         logger.info("スクリプトバンドルからスライド生成中...")
-
+        
         bundle_slides = script_bundle.get("slides", [])
         slides: List[SlideInfo] = []
-
+        
         # バンドルのスライドを SlideInfo に変換
         for i, bundle_slide in enumerate(bundle_slides[:max_slides]):
             slide_info = SlideInfo(
@@ -285,7 +285,7 @@ class SlideGenerator:
                 ),
             )
             slides.append(slide_info)
-
+        
         # スライドが足りない場合はセグメントから補完
         if len(slides) < max_slides and "segments" in script_bundle:
             segments = script_bundle["segments"]
@@ -298,10 +298,10 @@ class SlideGenerator:
                     estimated_duration=segment.get("duration", 15.0)
                 )
                 slides.append(slide_info)
-
+        
         presentation_id = f"notebooklm_{int(time.time())}"
         title = script_bundle.get("title", "NotebookLM Presentation")
-
+        
         slides_package = SlidesPackage(
             file_path=self.output_dir / f"{presentation_id}.pptx",
             slides=slides,
@@ -311,11 +311,11 @@ class SlideGenerator:
             title=title,
             created_at=time.strftime("%Y-%m-%d %H:%M:%S")
         )
-
+        
         # ファイル生成とメタデータ保存
         await self._download_slides_file(slides_package)
         await self._save_slides_metadata(slides_package)
-
+        
         logger.info(f"バンドルからのスライド生成完了: {len(slides)}枚")
         return slides_package
 
@@ -352,7 +352,7 @@ class SlideGenerator:
         await self._download_slides_file(slides_package)
         await self._save_slides_metadata(slides_package)
         return slides_package
-
+    
     async def _download_slides_file(self, slides_package: SlidesPackage):
         """
         スライドファイルをダウンロード
@@ -361,15 +361,15 @@ class SlideGenerator:
             slides_package: スライドパッケージ
         """
         logger.info("スライドファイルダウンロード中...")
-
+        
         # 既にAPIでエクスポート済みなら何もしない
         if slides_package.file_path.exists():
             logger.info(f"既存スライドを検出: {slides_package.file_path} -> ダウンロード処理をスキップ")
             return
-
+        
         # ディレクトリ作成
         slides_package.file_path.parent.mkdir(parents=True, exist_ok=True)
-
+ 
         try:
             from pptx import Presentation
         except ImportError as e:
@@ -378,7 +378,7 @@ class SlideGenerator:
                 f.write(b"")
             logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
             return
-
+ 
         try:
             prs = Presentation()
             slide_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
@@ -395,7 +395,7 @@ class SlideGenerator:
                         placeholders[1].text = slide_info.content or ""
                 except (AttributeError, TypeError, ValueError, IndexError, KeyError):
                     pass
-
+ 
             prs.save(str(slides_package.file_path))
             logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
@@ -408,7 +408,7 @@ class SlideGenerator:
             with open(slides_package.file_path, "wb") as f:
                 f.write(b"")
             logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
-
+    
     async def _save_slides_metadata(self, slides_package: SlidesPackage):
         """
         スライドメタデータを保存
@@ -417,7 +417,7 @@ class SlideGenerator:
             slides_package: スライドパッケージ
         """
         metadata_path = self.output_dir / f"{slides_package.presentation_id}_metadata.json"
-
+        
         metadata = {
             "presentation_id": slides_package.presentation_id,
             "title": slides_package.title,
@@ -436,8 +436,8 @@ class SlideGenerator:
                 for slide in slides_package.slides
             ]
         }
-
+        
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
-
+        
         logger.info(f"スライドメタデータ保存完了: {metadata_path}")

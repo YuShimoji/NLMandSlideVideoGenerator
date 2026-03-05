@@ -21,12 +21,10 @@ exclude = [
 # E = pycodestyle errors
 # F = Pyflakes errors
 # W = pycodestyle warnings
-# I = isort (import sorting) - DISABLED due to circular import issues
-select = ["E", "F", "W"]
+# I = isort (import sorting)
+select = ["E", "F", "W", "I"]
 
 # Ignore specific patterns to avoid conflicts with existing codebase
 ignore = [
   "E501",  # Line too long (handled by formatter)
-  "F401",  # Imported but unused - will clean up gradually
-  "F841",  # Local variable assigned but never used - will clean up gradually
 ]

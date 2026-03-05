@@ -50,7 +50,7 @@ class VoiceConfig:
 
 class TTSIntegration:
     """TTS統合クラス"""
-
+    
     def __init__(self, api_keys: Dict[str, str]):
         self.api_keys = api_keys
         self.providers = {}
@@ -63,24 +63,24 @@ class TTSIntegration:
             "google_cloud": TTSProvider.GOOGLE_CLOUD,
         }.get(provider_name, TTSProvider.ELEVENLABS)
         self._initialize_providers()
-
+    
     def _initialize_providers(self):
         """プロバイダーを初期化"""
         if self.api_keys.get("elevenlabs"):
             self.providers[TTSProvider.ELEVENLABS] = ElevenLabsTTS(self.api_keys["elevenlabs"])
-
+        
         if self.api_keys.get("openai"):
             self.providers[TTSProvider.OPENAI] = OpenAITTS(self.api_keys["openai"])
-
+        
         if self.api_keys.get("azure_speech"):
             self.providers[TTSProvider.AZURE] = AzureTTS(
-                self.api_keys["azure_speech"],
+                self.api_keys["azure_speech"], 
                 self.api_keys.get("azure_region", "eastus")
             )
-
+        
         if self.api_keys.get("google_cloud"):
             self.providers[TTSProvider.GOOGLE_CLOUD] = GoogleCloudTTS(self.api_keys["google_cloud"])
-
+    
     async def generate_audio(
         self,
         text: str,
@@ -92,29 +92,29 @@ class TTSIntegration:
         try:
             # プロバイダー選択
             selected_provider = provider or self._select_best_provider(text, voice_config)
-
+            
             if selected_provider not in self.providers:
                 raise ValueError(f"プロバイダー {selected_provider.value} が利用できません")
-
+            
             logger.info(f"音声生成開始: {selected_provider.value}")
-
+            
             # 音声生成実行
             tts_provider = self.providers[selected_provider]
             audio_info = await tts_provider.synthesize(text, output_path, voice_config)
-
+            
             logger.info(f"音声生成完了: {audio_info.file_path}")
             return audio_info
-
+            
         except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"音声生成失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"音声生成失敗: {e}")
             raise
-
+    
     def _select_best_provider(
-        self,
-        text: str,
+        self, 
+        text: str, 
         voice_config: Optional[VoiceConfig]
     ) -> TTSProvider:
         """最適なプロバイダーを選択"""
@@ -124,22 +124,22 @@ class TTSIntegration:
             for provider in [TTSProvider.ELEVENLABS, TTSProvider.AZURE, TTSProvider.GOOGLE_CLOUD]:
                 if provider in self.providers:
                     return provider
-
+        
         # 英語やその他言語の場合
         for provider in [TTSProvider.OPENAI, TTSProvider.ELEVENLABS, TTSProvider.AZURE]:
             if provider in self.providers:
                 return provider
-
+        
         # デフォルト
         return self.default_provider
-
+    
     async def get_available_voices(self, provider: TTSProvider) -> List[VoiceConfig]:
         """利用可能な音声一覧を取得"""
         if provider not in self.providers:
             return []
-
+        
         return await self.providers[provider].get_voices()
-
+    
     def get_provider_status(self) -> Dict[str, bool]:
         """プロバイダーの利用可能状況を取得"""
         return {
@@ -149,43 +149,43 @@ class TTSIntegration:
 
 class BaseTTS:
     """TTS基底クラス"""
-
+    
     def __init__(self, api_key: str):
         self.api_key = api_key
-
+    
     async def synthesize(
-        self,
-        text: str,
-        output_path: Path,
+        self, 
+        text: str, 
+        output_path: Path, 
         voice_config: Optional[VoiceConfig]
     ) -> AudioInfo:
         """音声合成（サブクラスで実装）"""
         raise NotImplementedError
-
+    
     async def get_voices(self) -> List[VoiceConfig]:
         """利用可能音声取得（サブクラスで実装）"""
         raise NotImplementedError
 
 class ElevenLabsTTS(BaseTTS):
     """ElevenLabs TTS"""
-
+    
     async def synthesize(
-        self,
-        text: str,
-        output_path: Path,
+        self, 
+        text: str, 
+        output_path: Path, 
         voice_config: Optional[VoiceConfig]
     ) -> AudioInfo:
         """ElevenLabsで音声合成"""
         try:
             logger.info("ElevenLabs音声合成開始")
-
+            
             # 実際のAPI呼び出しはここで実装
             # import requests
             # url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
             # headers = {"xi-api-key": self.api_key}
             # data = {"text": text, "model_id": "eleven_multilingual_v2"}
             # response = requests.post(url, json=data, headers=headers)
-
+            
             # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
             try:
                 voice_id = (
@@ -225,15 +225,15 @@ class ElevenLabsTTS(BaseTTS):
                 logger.warning(f"ElevenLabs 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"ElevenLabs 実API呼び出しに失敗したためフォールバックします: {_e}")
-
+            
             # モック実装（フォールバック）
             await asyncio.sleep(3)  # 合成時間をシミュレート
-
+            
             # 空のファイルを作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'wb') as f:
                 f.write(b'mock_audio_data')  # プレースホルダー
-
+            
             audio_info = AudioInfo(
                 file_path=output_path,
                 duration=len(text) * 0.1,  # 文字数から推定
@@ -245,16 +245,16 @@ class ElevenLabsTTS(BaseTTS):
                 provider="elevenlabs",
                 voice_id=voice_config.voice_id if voice_config else "default"
             )
-
+            
             return audio_info
-
+            
         except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"ElevenLabs音声合成失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"ElevenLabs音声合成失敗: {e}")
             raise
-
+    
     async def get_voices(self) -> List[VoiceConfig]:
         """ElevenLabs音声一覧取得"""
         return [
@@ -266,17 +266,17 @@ class ElevenLabsTTS(BaseTTS):
 
 class OpenAITTS(BaseTTS):
     """OpenAI TTS"""
-
+    
     async def synthesize(
-        self,
-        text: str,
-        output_path: Path,
+        self, 
+        text: str, 
+        output_path: Path, 
         voice_config: Optional[VoiceConfig]
     ) -> AudioInfo:
         """OpenAIで音声合成"""
         try:
             logger.info("OpenAI音声合成開始")
-
+            
             # 実際のAPI呼び出しはここで実装
             # from openai import OpenAI
             # client = OpenAI(api_key=self.api_key)
@@ -285,7 +285,7 @@ class OpenAITTS(BaseTTS):
             #     voice="alloy",
             #     input=text
             # )
-
+            
             # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
             try:
                 model = settings.TTS_SETTINGS.get("openai", {}).get("model", "gpt-4o-mini-tts")
@@ -327,14 +327,14 @@ class OpenAITTS(BaseTTS):
                 logger.warning(f"OpenAI TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"OpenAI TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
-
+            
             # モック実装（フォールバック）
             await asyncio.sleep(2)
-
+            
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'wb') as f:
                 f.write(b'mock_openai_audio')
-
+            
             audio_info = AudioInfo(
                 file_path=output_path,
                 duration=len(text) * 0.08,
@@ -346,16 +346,16 @@ class OpenAITTS(BaseTTS):
                 provider="openai",
                 voice_id=voice_config.voice_id if voice_config else "alloy"
             )
-
+            
             return audio_info
-
+            
         except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"OpenAI音声合成失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"OpenAI音声合成失敗: {e}")
             raise
-
+    
     async def get_voices(self) -> List[VoiceConfig]:
         """OpenAI音声一覧取得"""
         return [
@@ -369,29 +369,29 @@ class OpenAITTS(BaseTTS):
 
 class AzureTTS(BaseTTS):
     """Azure Speech Services TTS"""
-
+    
     def __init__(self, api_key: str, region: str):
         super().__init__(api_key)
         self.region = region
-
+    
     async def synthesize(
-        self,
-        text: str,
-        output_path: Path,
+        self, 
+        text: str, 
+        output_path: Path, 
         voice_config: Optional[VoiceConfig]
     ) -> AudioInfo:
         """Azureで音声合成"""
         try:
             logger.info("Azure音声合成開始")
-
+            
             # 実際のAPI呼び出しはここで実装
             # import azure.cognitiveservices.speech as speechsdk
             # speech_config = speechsdk.SpeechConfig(
-            #     subscription=self.api_key,
+            #     subscription=self.api_key, 
             #     region=self.region
             # )
             # synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config)
-
+            
             # まず実API呼び出しを試行（失敗時は下のフォールバックへ）
             try:
                 import azure.cognitiveservices.speech as speechsdk
@@ -427,14 +427,14 @@ class AzureTTS(BaseTTS):
                 logger.warning(f"Azure TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
             except Exception as _e:
                 logger.warning(f"Azure TTS 実API呼び出しに失敗したためフォールバックします: {_e}")
-
+            
             # モック実装（フォールバック）
             await asyncio.sleep(2.5)
-
+            
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'wb') as f:
                 f.write(b'mock_azure_audio')
-
+            
             audio_info = AudioInfo(
                 file_path=output_path,
                 duration=len(text) * 0.09,
@@ -446,16 +446,16 @@ class AzureTTS(BaseTTS):
                 provider="azure",
                 voice_id=voice_config.voice_id if voice_config else "ja-JP-NanamiNeural"
             )
-
+            
             return audio_info
-
+            
         except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"Azure音声合成失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"Azure音声合成失敗: {e}")
             raise
-
+    
     async def get_voices(self) -> List[VoiceConfig]:
         """Azure音声一覧取得"""
         return [
@@ -467,29 +467,29 @@ class AzureTTS(BaseTTS):
 
 class GoogleCloudTTS(BaseTTS):
     """Google Cloud Text-to-Speech"""
-
+    
     async def synthesize(
-        self,
-        text: str,
-        output_path: Path,
+        self, 
+        text: str, 
+        output_path: Path, 
         voice_config: Optional[VoiceConfig]
     ) -> AudioInfo:
         """Google Cloudで音声合成"""
         try:
             logger.info("Google Cloud音声合成開始")
-
+            
             # 実際のAPI呼び出しはここで実装
             # from google.cloud import texttospeech
             # client = texttospeech.TextToSpeechClient()
             # synthesis_input = texttospeech.SynthesisInput(text=text)
-
+            
             # モック実装
             await asyncio.sleep(2)
-
+            
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'wb') as f:
                 f.write(b'mock_google_audio')
-
+            
             audio_info = AudioInfo(
                 file_path=output_path,
                 duration=len(text) * 0.085,
@@ -501,16 +501,16 @@ class GoogleCloudTTS(BaseTTS):
                 provider="google_cloud",
                 voice_id=voice_config.voice_id if voice_config else "ja-JP-Standard-A"
             )
-
+            
             return audio_info
-
+            
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"Google Cloud音声合成失敗: {e}")
             raise
         except Exception as e:
             logger.error(f"Google Cloud音声合成失敗: {e}")
             raise
-
+    
     async def get_voices(self) -> List[VoiceConfig]:
         """Google Cloud音声一覧取得"""
         return [

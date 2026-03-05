@@ -81,7 +81,7 @@ def show_assets_page():
             dir_path: Path = config["dir"]  # type: ignore
             if not dir_path.exists():
                 st.warning(f"ディレクトリが存在しません: {dir_path}")
-                if st.button("ディレクトリを作成", key=f"mkdir_{name}"):
+                if st.button(f"ディレクトリを作成", key=f"mkdir_{name}"):
                     dir_path.mkdir(parents=True, exist_ok=True)
                     st.rerun()
                 continue

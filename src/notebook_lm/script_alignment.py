@@ -145,7 +145,7 @@ class ScriptAlignmentAnalyzer:
         # 追加: exact/token matchで orphaned となったものを LLM 翻訳・意味照合で救う
         # ------------------------------------------------------------------
         orphaned_items = [
-            item for item in analysis
+            item for item in analysis 
             if item.get("status") == "orphaned" and item.get("segment_index") is not None
         ]
         if orphaned_items and source_candidates:
@@ -207,7 +207,7 @@ class ScriptAlignmentAnalyzer:
         with open(output_path, "w", encoding="utf-8", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerows(rows)
-
+        
         logger.info(f"最終CSVをエクスポートしました: {output_path}")
         return output_path
 
@@ -227,7 +227,7 @@ class ScriptAlignmentAnalyzer:
             import json
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel("gemini-2.5-flash")
-
+            
             sentences_payload = []
             for item in orphaned_items:
                 # LLMには元の文そのものを送る
@@ -235,14 +235,14 @@ class ScriptAlignmentAnalyzer:
                     "id": item["segment_index"],
                     "text": item["text"],
                 })
-
+            
             claims_payload = []
             for c in candidates:
                 claims_payload.append({
                     "claim_key": c["claim_key"],
                     "text": c["claim"]
                 })
-
+            
             prompt = f"""
 You are an expert multi-lingual analyst.
 Match the following Japanese sentences to the English key claims that support them.
@@ -269,7 +269,7 @@ Only output the JSON. Do not include markdown formatting or tags like ```json.
             resp = await asyncio.to_thread(model.generate_content, prompt)
             text_content = getattr(resp, "text", "")
             content_str = str(text_content).strip() if text_content else ""
-
+            
             if content_str.startswith("```json"):
                 content_str = content_str[7:]
             elif content_str.startswith("```"):
@@ -277,12 +277,12 @@ Only output the JSON. Do not include markdown formatting or tags like ```json.
             if content_str.endswith("```"):
                 content_str = content_str[:-3]
             content_str = content_str.strip()
-
+            
             result = json.loads(content_str)
-
+            
             matches = result.get("matches", [])
             match_dict = {m["sentence_id"]: m.get("matched_claim_keys", []) for m in matches}
-
+            
             for item in orphaned_items:
                 seg_id = item["segment_index"]
                 matched_keys = match_dict.get(seg_id, [])
@@ -298,7 +298,7 @@ Only output the JSON. Do not include markdown formatting or tags like ```json.
                                 break
                         if item["status"] == "supported":
                             break
-
+                            
         except Exception as e:
             logger.warning(f"LLM semantic alignment failed: {e}")
 

@@ -7,6 +7,6 @@ from .tts_integration import TTSIntegration, TTSProvider, VoiceConfig
 
 __all__ = [
     "TTSIntegration",
-    "TTSProvider",
+    "TTSProvider", 
     "VoiceConfig"
 ]

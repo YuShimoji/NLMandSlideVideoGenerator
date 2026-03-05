@@ -71,7 +71,7 @@ def main():
 
     # Sidebar navigation - 整理されたメニュー
     st.sidebar.markdown("### 📍 ナビゲーション")
-
+    
     # 主要機能
     st.sidebar.markdown("**動画生成**")
     initial_page = _resolve_initial_page()
@@ -81,7 +81,7 @@ def main():
         index=PAGE_OPTIONS.index(initial_page),
         label_visibility="collapsed"
     )
-
+    
     # ページ表示
     if page == "🏠 ホーム":
         show_home_page()
@@ -100,7 +100,7 @@ def main():
         show_settings_page()
     elif page == "🧪 テスト":
         show_tests_page()
-
+    
     # サイドバーにクイックリンク
     st.sidebar.divider()
     st.sidebar.markdown("### 📚 クイックリンク")

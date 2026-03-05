@@ -9,6 +9,6 @@ from .transcript_processor import TranscriptProcessor
 
 __all__ = [
     "SourceCollector",
-    "AudioGenerator",
+    "AudioGenerator", 
     "TranscriptProcessor"
 ]

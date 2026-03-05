@@ -83,7 +83,7 @@ class YMM4EditingBackend(IEditingBackend):
             try:
                 shutil.copy2(self.project_template, project_path)
                 logger.info(f"YMM4 テンプレートを複製しました: {project_path}")
-
+                
                 # テンプレート差分適用プロトタイプ
                 self._apply_template_diff(project_dir, project_path)
             except (OSError, shutil.Error, AttributeError, TypeError, ValueError, RuntimeError) as err:
@@ -272,7 +272,7 @@ class YMM4EditingBackend(IEditingBackend):
 
             slides_payload = {}
             timeline_plan = {}
-
+            
             if slides_payload_path.exists():
                 with open(slides_payload_path, 'r', encoding='utf-8') as f:
                     slides_payload = json.load(f)
@@ -292,12 +292,12 @@ class YMM4EditingBackend(IEditingBackend):
                 # scripts/generate_ymm4_ahk.py を動的インポート
                 project_root = Path(__file__).resolve().parents[3]
                 scripts_dir = project_root / "scripts"
-
+                
                 if scripts_dir not in sys.path:
                     sys.path.insert(0, str(scripts_dir))
-
+                
                 from generate_ymm4_ahk import generate_ahk_script
-
+                
                 # AHK設定
                 ahk_config = {
                     "debug": True,
@@ -305,7 +305,7 @@ class YMM4EditingBackend(IEditingBackend):
                     "operation_delay": 200,
                     "max_retries": 3,
                 }
-
+                
                 # スクリプト生成
                 ahk_content = generate_ahk_script(
                     project_dir,
@@ -313,17 +313,17 @@ class YMM4EditingBackend(IEditingBackend):
                     timeline_plan,
                     ahk_config
                 )
-
+                
                 # ファイルに保存
                 custom_script = project_dir / "ymm4_automation.ahk"
                 custom_script.write_text(ahk_content, encoding='utf-8')
-
+                
                 logger.info(f"カスタムAHKスクリプト生成成功（直接呼び出し）: {custom_script}")
                 return custom_script
-
+                
             except ImportError as ie:
                 logger.debug(f"直接インポート失敗、サブプロセスにフォールバック: {ie}")
-
+                
                 # フォールバック: サブプロセスで実行
                 generate_script = project_root / "scripts" / "generate_ymm4_ahk.py"
                 if not generate_script.exists():
@@ -420,28 +420,28 @@ class YMM4EditingBackend(IEditingBackend):
             if not template_json.exists():
                 logger.info("テンプレート JSON メタデータが見つからないため、差分適用をスキップ")
                 return
-
+            
             # テンプレートメタデータを読み込み
             with open(template_json, 'r', encoding='utf-8') as f:
                 template_meta = json.load(f)
-
+            
             # 差分適用設定を取得（例: 環境変数や設定ファイルから）
             diff_config = self._load_diff_config()
-
+            
             if diff_config:
                 # 差分適用ロジック（プロトタイプ）
                 updated_meta = self._compute_template_diff(template_meta, diff_config)
-
+                
                 # 更新されたメタデータを保存
                 updated_json = project_dir / "template_diff_applied.json"
                 with open(updated_json, 'w', encoding='utf-8') as f:
                     json.dump(updated_meta, f, ensure_ascii=False, indent=2)
-
+                
                 logger.info(f"テンプレート差分適用完了: {updated_json}")
                 logger.info(f"適用された差分: {diff_config}")
             else:
                 logger.info("適用する差分設定が見つからないため、スキップ")
-
+                
         except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
             logger.warning(f"テンプレート差分適用エラー: {e}")
         except Exception as e:
@@ -466,7 +466,7 @@ class YMM4EditingBackend(IEditingBackend):
                 return json.loads(diff_str)
             except json.JSONDecodeError:
                 logger.warning(f"無効な差分設定 (環境変数): {diff_str}")
-
+        
         # 2. 環境変数からファイルパス
         diff_file = os.getenv("YMM4_TEMPLATE_DIFF_FILE", "")
         if diff_file:
@@ -481,7 +481,7 @@ class YMM4EditingBackend(IEditingBackend):
                     logger.warning(f"差分設定ファイル読み込みエラー: {e}")
                 except Exception as e:
                     logger.warning(f"差分設定ファイル読み込みエラー: {e}")
-
+        
         # 3. デフォルト設定ファイル
         project_root = Path(__file__).resolve().parents[3]
         default_diff = project_root / "config" / "ymm4_template_diff.json"
@@ -495,7 +495,7 @@ class YMM4EditingBackend(IEditingBackend):
                 logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
             except Exception as e:
                 logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
-
+        
         return None
 
     def _compute_template_diff(self, template_meta: Dict[str, Any], diff_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -511,47 +511,47 @@ class YMM4EditingBackend(IEditingBackend):
         """
         import copy
         updated = copy.deepcopy(template_meta)
-
+        
         # 字幕スタイルの適用
         if "subtitle_style" in diff_config:
             subtitle = diff_config["subtitle_style"]
             updated.setdefault("styles", {})["subtitle"] = subtitle
             logger.info(f"字幕スタイルを適用: font={subtitle.get('font_family')}, size={subtitle.get('font_size')}")
-
+        
         # 背景設定の適用
         if "background" in diff_config:
             bg = diff_config["background"]
             updated.setdefault("styles", {})["background"] = bg
             logger.info(f"背景を適用: type={bg.get('type')}, color={bg.get('color')}")
-
+        
         # 話者ごとの色設定
         if "speaker_colors" in diff_config:
             updated["speaker_colors"] = diff_config["speaker_colors"]
             logger.info(f"話者色を適用: {len(diff_config['speaker_colors'])}件")
-
+        
         # タイミング設定
         if "timing" in diff_config:
             updated["timing"] = diff_config["timing"]
             logger.info(f"タイミング設定を適用: {diff_config['timing']}")
-
+        
         # 音声設定
         if "audio" in diff_config:
             updated["audio_settings"] = diff_config["audio"]
             logger.info(f"音声設定を適用: {diff_config['audio']}")
-
+        
         # エフェクト追加（既存に追加）
         if "effects" in diff_config:
             updated.setdefault("effects", []).extend(diff_config["effects"])
             logger.info(f"エフェクトを追加: {len(diff_config['effects'])}件")
-
+        
         # カスタムキーの適用（上記以外のキーをそのまま追加）
-        reserved_keys = {"$schema", "$version", "$description",
+        reserved_keys = {"$schema", "$version", "$description", 
                         "_version", "_description",
-                        "subtitle_style", "background", "speaker_colors",
+                        "subtitle_style", "background", "speaker_colors", 
                         "timing", "audio", "effects"}
         for key, value in diff_config.items():
             if key not in reserved_keys:
                 updated[key] = value
                 logger.debug(f"カスタムキーを適用: {key}")
-
+        
         return updated
