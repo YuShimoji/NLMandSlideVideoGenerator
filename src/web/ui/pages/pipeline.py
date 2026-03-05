@@ -83,7 +83,8 @@ def show_pipeline_page():
         # Prepare parameters
         urls_list = [url.strip() for url in urls.split('\n') if url.strip()]
 
-        user_preferences = {}
+        from typing import Any, Dict
+        user_preferences: Dict[str, Any] = {}
         if generate_thumbnail:
             user_preferences["generate_thumbnail"] = True
             user_preferences["thumbnail_style"] = thumbnail_style

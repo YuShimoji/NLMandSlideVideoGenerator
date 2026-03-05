@@ -4,7 +4,7 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 from urllib.parse import urlparse
 
 import requests
@@ -188,9 +188,14 @@ class SourceCollector:
         for tag in candidates:
             if not tag:
                 continue
-            content = tag.get("content") if tag.has_attr("content") else tag.get_text()
+            # Check if tag is a Tag (not NavigableString)
+            from bs4 import Tag
+            if isinstance(tag, Tag):
+                content = tag.get("content") if tag.has_attr("content") else tag.get_text()
+            else:
+                content = str(tag)
             if content:
-                cleaned = content.strip()
+                cleaned = str(content).strip()
                 if cleaned:
                     return cleaned
 
@@ -205,9 +210,13 @@ class SourceCollector:
             soup.find("meta", attrs={"name": "twitter:description"}),
         ]
         for tag in candidates:
-            content = tag.get("content") if tag else None
+            from bs4 import Tag
+            if tag and isinstance(tag, Tag):
+                content = tag.get("content")
+            else:
+                content = None
             if content:
-                cleaned = content.strip()
+                cleaned = str(content).strip()
                 if cleaned:
                     return cleaned[:500] + "..." if len(cleaned) > 500 else cleaned
 
@@ -288,7 +297,7 @@ class SourceCollector:
             ".story p",
         ]
 
-        tags = []
+        tags: List[Any] = []
         for selector in selectors:
             tags.extend(soup.select(selector))
         if not tags:

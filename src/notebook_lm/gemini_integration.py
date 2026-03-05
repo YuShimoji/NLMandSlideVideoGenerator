@@ -371,7 +371,8 @@ URL: {source.get('url', 'URL不明')}
             slide_data = json.loads(response.content)
 
             logger.info(f"スライド内容生成完了: {len(slide_data.get('slides', []))}枚")
-            return slide_data.get("slides", [])
+            slides: list = slide_data.get("slides", [])
+            return list(slides)
 
         except asyncio.CancelledError:
             raise

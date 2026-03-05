@@ -359,7 +359,8 @@ async def run_connection_tests():
 
 @app.post("/api/v1/pipeline")
 async def run_pipeline(payload: Dict[str, Any]):
-    topic: str = payload.get("topic")
+    topic_raw = payload.get("topic")
+    topic: str = str(topic_raw) if topic_raw is not None else ""
     if not topic:
         raise HTTPException(status_code=400, detail="'topic' is required")
     urls = payload.get("urls") or []

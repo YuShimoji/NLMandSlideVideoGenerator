@@ -122,15 +122,24 @@ def parse_test_output(output: str) -> Dict[str, Any]:
     for line in lines:
         line = line.strip()
         if '✅' in line and ':' in line:
-            results["passed_tests"] += 1
-            results["test_details"].append({"name": line.split(':')[0].replace('✅', '').strip(), "status": "passed"})
+            passed_count: int = results["passed_tests"]  # type: ignore
+            results["passed_tests"] = passed_count + 1
+            details: list = results["test_details"]  # type: ignore
+            details.append({"name": line.split(':')[0].replace('✅', '').strip(), "status": "passed"})
         elif '❌' in line and ':' in line:
-            results["failed_tests"] += 1
-            results["test_details"].append({"name": line.split(':')[0].replace('❌', '').strip(), "status": "failed"})
+            failed_count: int = results["failed_tests"]  # type: ignore
+            results["failed_tests"] = failed_count + 1
+            details: list = results["test_details"]  # type: ignore
+            details.append({"name": line.split(':')[0].replace('❌', '').strip(), "status": "failed"})
         elif '⏭️' in line and ':' in line:
-            results["skipped_tests"] += 1
-            results["test_details"].append({"name": line.split(':')[0].replace('⏭️', '').strip(), "status": "skipped"})
+            skipped_count: int = results["skipped_tests"]  # type: ignore
+            results["skipped_tests"] = skipped_count + 1
+            details: list = results["test_details"]  # type: ignore
+            details.append({"name": line.split(':')[0].replace('⏭️', '').strip(), "status": "skipped"})
 
-    results["total_tests"] = results["passed_tests"] + results["failed_tests"] + results["skipped_tests"]
+    passed: int = results["passed_tests"]  # type: ignore
+    failed: int = results["failed_tests"]  # type: ignore
+    skipped: int = results["skipped_tests"]  # type: ignore
+    results["total_tests"] = passed + failed + skipped
 
     return results

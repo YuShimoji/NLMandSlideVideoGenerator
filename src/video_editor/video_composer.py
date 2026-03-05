@@ -5,7 +5,7 @@
 import shutil
 import subprocess
 import tempfile
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union, cast
 from pathlib import Path
 from dataclasses import dataclass
 import json
@@ -21,7 +21,7 @@ from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from slides.slide_generator import SlidesPackage
 from .subtitle_generator import SubtitleGenerator
-from .effect_processor import EffectProcessor
+from .effect_processor import EffectProcessor, ProcessedSlide
 
 @dataclass
 class VideoInfo:
@@ -241,7 +241,7 @@ class VideoComposer:
         if not normalized:
             return ""
 
-        lines = []
+        lines: List[str] = []
         index = 0
         length = len(normalized)
 
@@ -319,7 +319,7 @@ class VideoComposer:
             from pptx import Presentation
 
             prs = Presentation(str(pptx_path))
-            images: List[Path] = []
+            pptx_images: List[Path] = []
 
             for i, slide in enumerate(prs.slides, 1):
                 # スライドから埋め込み画像を抽出
@@ -330,15 +330,15 @@ class VideoComposer:
                             image_path = output_dir / f"slide_{i:03d}.png"
                             with open(image_path, "wb") as f:
                                 f.write(image_bytes)
-                            images.append(image_path)
+                            pptx_images.append(image_path)
                             break  # 1スライドにつき1画像
                         except (AttributeError, OSError, TypeError, ValueError) as exc:
                             logger.debug(f"python-pptx 画像抽出に失敗（スキップ）: {exc}")
                             continue
 
-            if images:
-                logger.info(f"python-pptxでPPTX抽出完了: {len(images)}枚")
-                return images
+            if pptx_images:
+                logger.info(f"python-pptxでPPTX抽出完了: {len(pptx_images)}枚")
+                return pptx_images
         except ImportError:
             logger.debug("python-pptx がインストールされていません")
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
@@ -388,7 +388,7 @@ class VideoComposer:
     async def _compose_final_video(
         self,
         audio_info: AudioInfo,
-        slide_images: List[Path],
+        slide_images: Union[List[Path], List["ProcessedSlide"]],
         subtitle_file: Path,
         quality: str,
         bgm_path: Optional[Path] = None
@@ -626,15 +626,15 @@ class VideoComposer:
         Returns:
             float: 秒数
         """
-        return (srt_time.hours * 3600 +
-                srt_time.minutes * 60 +
-                srt_time.seconds +
-                srt_time.milliseconds / 1000.0)
+        return float(srt_time.hours * 3600 +
+                     srt_time.minutes * 60 +
+                     srt_time.seconds +
+                     srt_time.milliseconds / 1000.0)
 
     async def _compose_video_fallback(
         self,
         audio_info: AudioInfo,
-        slide_images: List[Path],
+        slide_images: Union[List[Path], List[ProcessedSlide]],
         subtitle_file: Path,
         quality: str,
         output_path: Path
@@ -861,18 +861,19 @@ class VideoComposer:
         settings = platform_settings.get(platform, platform_settings["youtube"])
 
         # ファイルサイズチェック
-        if video_info.file_size > settings["max_file_size"]:
-            logger.warning(f"ファイルサイズが制限を超えています: {video_info.file_size / (1024*1024):.1f}MB > {settings['max_file_size'] / (1024*1024):.1f}MB")
+        max_file_size = cast(int, settings["max_file_size"])
+        if video_info.file_size > max_file_size:
+            logger.warning(f"ファイルサイズが制限を超えています: {video_info.file_size / (1024*1024):.1f}MB > {max_file_size / (1024*1024):.1f}MB")
 
             # 圧縮処理
             compressed_path = self._compress_video(
-                video_info.video_path,
-                target_size=settings["max_file_size"],
+                video_info.file_path,
+                target_size=max_file_size,
                 platform=platform
             )
 
             if compressed_path and compressed_path.exists():
-                video_info.video_path = compressed_path
+                video_info.file_path = compressed_path
                 video_info.file_size = compressed_path.stat().st_size
                 logger.info(f"圧縮完了: {video_info.file_size / (1024*1024):.1f}MB")
 
@@ -1007,6 +1008,7 @@ class VideoComposer:
             thumb_width, thumb_height = 1280, 720
 
             # ベース画像を作成または読み込み
+            base_img: Image.Image
             if first_slide_path and first_slide_path.exists():
                 base_img = Image.open(first_slide_path)
                 base_img = base_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)

@@ -24,10 +24,10 @@ class SlideInfo:
     content: str
     layout_type: Optional[str] = None
     estimated_duration: Optional[float] = None
-    image_suggestions: List[str] = None
+    image_suggestions: Optional[List[str]] = None
     # 互換性維持のためのフィールド（旧API: layout/duration）
-    layout: str = None
-    duration: float = None
+    layout: Optional[str] = None
+    duration: Optional[float] = None
     speakers: Optional[List[str]] = None
 
     def __post_init__(self):
@@ -47,12 +47,12 @@ class SlidesPackage:
     """
 
     file_path: Optional[Path] = None
-    slides: List[SlideInfo] = None
+    slides: Optional[List[SlideInfo]] = None
     total_slides: int = 0
     theme: str = "default"
     presentation_id: str = ""
     title: str = ""
-    created_at: str = None
+    created_at: Optional[str] = None
 
     def __post_init__(self):
         if self.slides is None:
@@ -99,8 +99,8 @@ class SlideGenerator:
 
         prefer_bundle = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
         has_bundle = script_bundle is not None
-        has_slides_in_bundle = has_bundle and "slides" in script_bundle
-        bundle_slide_count = len(script_bundle.get("slides", [])) if has_slides_in_bundle else 0
+        has_slides_in_bundle = has_bundle and script_bundle is not None and "slides" in script_bundle
+        bundle_slide_count = len(script_bundle.get("slides", [])) if (script_bundle is not None and has_slides_in_bundle) else 0
 
         logger.info(
             f"スライド生成パラメータ: prefer_bundle={prefer_bundle}, "
@@ -363,51 +363,57 @@ class SlideGenerator:
         logger.info("スライドファイルダウンロード中...")
 
         # 既にAPIでエクスポート済みなら何もしない
-        if slides_package.file_path.exists():
+        if slides_package.file_path is not None and slides_package.file_path.exists():
             logger.info(f"既存スライドを検出: {slides_package.file_path} -> ダウンロード処理をスキップ")
             return
 
         # ディレクトリ作成
-        slides_package.file_path.parent.mkdir(parents=True, exist_ok=True)
+        if slides_package.file_path is not None:
+            slides_package.file_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
             from pptx import Presentation
         except ImportError as e:
             logger.warning(f"python-pptx が見つからないため PPTX 生成をスキップします: {e}")
-            with open(slides_package.file_path, "wb") as f:
-                f.write(b"")
-            logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
+            if slides_package.file_path is not None:
+                with open(slides_package.file_path, "wb") as f:
+                    f.write(b"")
+                logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
             return
 
         try:
             prs = Presentation()
             slide_layout = prs.slide_layouts[1] if len(prs.slide_layouts) > 1 else prs.slide_layouts[0]
-            for slide_info in slides_package.slides:
-                slide = prs.slides.add_slide(slide_layout)
-                try:
-                    if getattr(slide.shapes, "title", None) is not None:
-                        slide.shapes.title.text = slide_info.title or ""
-                except (AttributeError, TypeError, ValueError):
-                    pass
-                try:
-                    placeholders = getattr(slide.shapes, "placeholders", None)
-                    if placeholders and len(placeholders) > 1:
-                        placeholders[1].text = slide_info.content or ""
-                except (AttributeError, TypeError, ValueError, IndexError, KeyError):
-                    pass
+            if slides_package.slides is not None:
+                for slide_info in slides_package.slides:
+                    slide = prs.slides.add_slide(slide_layout)
+                    try:
+                        if getattr(slide.shapes, "title", None) is not None:
+                            slide.shapes.title.text = slide_info.title or ""
+                    except (AttributeError, TypeError, ValueError):
+                        pass
+                    try:
+                        placeholders = getattr(slide.shapes, "placeholders", None)
+                        if placeholders and len(placeholders) > 1:
+                            placeholders[1].text = slide_info.content or ""
+                    except (AttributeError, TypeError, ValueError, IndexError, KeyError):
+                        pass
 
-            prs.save(str(slides_package.file_path))
-            logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
+            if slides_package.file_path is not None:
+                prs.save(str(slides_package.file_path))
+                logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.warning(f"PPTX生成に失敗しました: {e}")
-            with open(slides_package.file_path, "wb") as f:
-                f.write(b"")
-            logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
+            if slides_package.file_path is not None:
+                with open(slides_package.file_path, "wb") as f:
+                    f.write(b"")
+                logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
         except Exception as e:
             logger.warning(f"PPTX生成に失敗しました: {e}")
-            with open(slides_package.file_path, "wb") as f:
-                f.write(b"")
-            logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
+            if slides_package.file_path is not None:
+                with open(slides_package.file_path, "wb") as f:
+                    f.write(b"")
+                logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
 
     async def _save_slides_metadata(self, slides_package: SlidesPackage):
         """
@@ -434,7 +440,7 @@ class SlideGenerator:
                     "estimated_duration": slide.estimated_duration
                 }
                 for slide in slides_package.slides
-            ]
+            ] if slides_package.slides is not None else []
         }
 
         with open(metadata_path, 'w', encoding='utf-8') as f:

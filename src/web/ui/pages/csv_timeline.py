@@ -224,27 +224,28 @@ def show_csv_pipeline_page():
         else:
             import tempfile
             import asyncio
+            from typing import Optional
 
             # 音声ファイルの準備
-            audio_path_obj = None
-            temp_audio_dir = None
+            final_audio_path: Optional[Path] = None
+            temp_audio_dir: Optional[str] = None
 
             if audio_dir:
                 # ディレクトリパス指定の場合
-                audio_path_obj = Path(audio_dir).expanduser()
-                if not audio_path_obj.exists() or not audio_path_obj.is_dir():
-                    st.error(f"音声ディレクトリが存在しません: {audio_path_obj}")
+                final_audio_path = Path(audio_dir).expanduser()
+                if not final_audio_path.exists() or not final_audio_path.is_dir():
+                    st.error(f"音声ディレクトリが存在しません: {final_audio_path}")
                     st.info("パスの例: samples/basic_dialogue/audio")
                     return
             elif audio_files_uploaded:
                 # アップロードされたWAVファイルを一時ディレクトリに保存
                 temp_audio_dir = tempfile.mkdtemp(prefix="audio_")
-                audio_path_obj = Path(temp_audio_dir)
+                final_audio_path = Path(temp_audio_dir)
 
                 # ファイル名でソートして連番で保存
                 sorted_files = sorted(audio_files_uploaded, key=lambda x: x.name)
                 for i, uploaded_file in enumerate(sorted_files, start=1):
-                    wav_path = audio_path_obj / f"{i:03d}.wav"
+                    wav_path = final_audio_path / f"{i:03d}.wav"
                     with open(wav_path, "wb") as f:
                         f.write(uploaded_file.getvalue())
 
@@ -294,10 +295,15 @@ def show_csv_pipeline_page():
                     # Streamlitの制約上、asyncio内からのUI更新は限定的
                     # ログに記録し、完了後に表示する
 
+                if final_audio_path is None:
+                    st.error("音声ファイルが指定されていません")
+                    return
+
                 async def run_pipeline():
+                    assert final_audio_path is not None
                     return await run_csv_pipeline_async(
                         csv_path=csv_path,
-                        audio_dir=audio_path_obj,
+                        audio_dir=final_audio_path,
                         topic=topic,
                         quality=quality,
                         private_upload=private_upload,

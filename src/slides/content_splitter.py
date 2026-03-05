@@ -147,8 +147,8 @@ class ContentSplitter:
             bool: 重要な話者変更かどうか
         """
         # 話者が変わり、かつ前のセグメントが長い場合
-        return (prev_segment.speaker != curr_segment.speaker and
-                (curr_segment.start_time - prev_segment.start_time) > 30)
+        return bool(prev_segment.speaker != curr_segment.speaker and
+                    (curr_segment.start_time - prev_segment.start_time) > 30)
 
     def _is_time_gap_significant(self, prev_segment: TranscriptSegment, curr_segment: TranscriptSegment) -> bool:
         """
@@ -163,7 +163,7 @@ class ContentSplitter:
         """
         # 5秒以上の間隔がある場合
         time_gap = curr_segment.start_time - prev_segment.end_time
-        return time_gap > 5.0
+        return bool(time_gap > 5.0)
 
     def _split_by_character_limit(self, segment_groups: List[List[TranscriptSegment]]) -> List[SplitContent]:
         """
@@ -206,8 +206,8 @@ class ContentSplitter:
         Returns:
             List[SplitContent]: 細分化されたコンテンツ
         """
-        sub_contents = []
-        current_segments = []
+        sub_contents: List[SplitContent] = []
+        current_segments: List[TranscriptSegment] = []
         current_length = 0
         slide_id = start_slide_id
 
@@ -315,9 +315,9 @@ class ContentSplitter:
         # 最初の文または50文字でタイトル生成
         sentences = re.split(r'[。！？]', first_text)
         if sentences and len(sentences[0]) <= 50:
-            return sentences[0].strip()
+            return str(sentences[0].strip())
 
-        return first_text[:30] + "..." if len(first_text) > 30 else first_text
+        return str(first_text[:30] + "..." if len(first_text) > 30 else first_text)
 
     def _generate_image_suggestions(self, key_points: List[str], text: str) -> List[str]:
         """
@@ -485,7 +485,8 @@ class ContentSplitter:
                     key_points=content.key_points[:3],
                     duration=min(content.duration, 20.0),  # 時間も短縮
                     source_segments=content.source_segments,
-                    image_suggestions=content.image_suggestions
+                    image_suggestions=content.image_suggestions,
+                    speakers=content.speakers,
                 )
 
                 simplified_contents.append(simplified_content)

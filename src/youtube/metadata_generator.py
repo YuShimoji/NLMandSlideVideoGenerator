@@ -159,9 +159,9 @@ class MetadataGenerator:
 
         # フォールバック: 元のタイトルを調整
         if len(base_title) <= self.max_title_length:
-            return base_title
+            return str(base_title)
         else:
-            return base_title[:self.max_title_length-3] + "..."
+            return str(base_title[:self.max_title_length-3]) + "..."
 
     def _generate_description(self, transcript: TranscriptInfo) -> str:
         """
@@ -276,7 +276,7 @@ class MetadataGenerator:
 
         return chapters
 
-    def _group_segments_into_chapters(self, segments: List[TranscriptSegment]) -> List[tuple]:
+    def _group_segments_into_chapters(self, segments: List[TranscriptSegment]) -> List[tuple[float, str]]:
         """
         セグメントをチャプターにグループ化
 
@@ -284,7 +284,7 @@ class MetadataGenerator:
             segments: セグメント一覧
 
         Returns:
-            List[tuple]: (開始時間, チャプタータイトル) のリスト
+            List[tuple[float, str]]: (開始時間, チャプタータイトル) のリスト
         """
         if not segments:
             return []
@@ -338,7 +338,7 @@ class MetadataGenerator:
         # フォールバック: 最初のセグメントから
         if segments:
             first_text = segments[0].text
-            return first_text[:20] + "..." if len(first_text) > 20 else first_text
+            return str(first_text[:20]) + "..." if len(first_text) > 20 else str(first_text)
 
         return "詳細解説"
 
@@ -679,7 +679,7 @@ class MetadataGenerator:
         if len(title) > self.max_title_length:
             title = title[:self.max_title_length-3] + "..."
 
-        return title
+        return str(title)
 
     def _generate_description_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> str:
         """
@@ -710,7 +710,7 @@ class MetadataGenerator:
         if len(description) > self.max_description_length:
             description = description[:self.max_description_length-3] + "..."
 
-        return description
+        return str(description)
 
     def _generate_tags_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> List[str]:
         """

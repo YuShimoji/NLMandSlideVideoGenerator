@@ -108,7 +108,7 @@ class VideoGenerationPipeline:
             youtube_url = upload_result.video_url
 
             logger.success(f"動画生成完了: {youtube_url}")
-            return youtube_url
+            return str(youtube_url)
 
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"動画生成エラー: {str(e)}")

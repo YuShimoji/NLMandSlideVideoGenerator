@@ -318,7 +318,7 @@ class EffectProcessor:
             float: イージング適用済み進行度
         """
         if easing_type == "ease_in_out":
-            return 0.5 * (1 - np.cos(progress * np.pi))
+            return float(0.5 * (1 - np.cos(progress * np.pi)))
         elif easing_type == "ease_in":
             return progress * progress
         elif easing_type == "ease_out":

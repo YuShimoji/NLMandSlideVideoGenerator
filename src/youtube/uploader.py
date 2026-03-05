@@ -309,7 +309,7 @@ class YouTubeUploader:
         self,
         video_metadata_pairs: list,
         max_concurrent: int = 3
-    ) -> list:
+    ) -> Dict[str, Any]:
         """複数動画の一括アップロード"""
         try:
             logger.info(f"一括アップロード開始: {len(video_metadata_pairs)}件")

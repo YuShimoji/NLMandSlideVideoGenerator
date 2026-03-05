@@ -49,7 +49,7 @@ class TTSIntegration:
 
     def __init__(self, api_keys: Dict[str, str]):
         self.api_keys = api_keys
-        self.providers = {}
+        self.providers: Dict[TTSProvider, BaseTTS] = {}
         # 既定プロバイダーは settings から
         provider_name = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
         self.default_provider = {
@@ -99,7 +99,7 @@ class TTSIntegration:
             audio_info = await tts_provider.synthesize(text, output_path, voice_config)
 
             logger.info(f"音声生成完了: {audio_info.file_path}")
-            return audio_info
+            return AudioInfo(**audio_info.__dict__)
 
         except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"音声生成失敗: {e}")
@@ -134,7 +134,8 @@ class TTSIntegration:
         if provider not in self.providers:
             return []
 
-        return await self.providers[provider].get_voices()
+        voices = await self.providers[provider].get_voices()
+        return list(voices)
 
     def get_provider_status(self) -> Dict[str, bool]:
         """プロバイダーの利用可能状況を取得"""

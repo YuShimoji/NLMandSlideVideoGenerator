@@ -122,7 +122,7 @@ async def run_pipeline_async(
             "completed_at": datetime.now().isoformat(),
         }
 
-        return result
+        return dict(result)
 
     except asyncio.CancelledError:
         _job_progress[job_id] = {
@@ -250,7 +250,7 @@ async def run_csv_pipeline_async(
             "completed_at": datetime.now().isoformat(),
         }
 
-        return result
+        return dict(result)
 
     except asyncio.CancelledError:
         _job_progress[job_id] = {
@@ -354,7 +354,7 @@ def list_recent_jobs(limit: int = 20) -> list:
     try:
         from core.persistence import db_manager
         records = db_manager.get_generation_history(limit=limit)
-        return records
+        return list(records)
     except (ImportError, AttributeError, TypeError, OSError, ValueError, RuntimeError) as exc:
         logger.debug(f"ジョブ履歴取得に失敗（空リストで継続）: {exc}")
         return []

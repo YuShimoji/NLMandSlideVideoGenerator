@@ -175,8 +175,18 @@ class CsvTranscriptLoader:
 
         # ケース2: ヒューリスティックに基づく自動配分
         # 全体時間の決定
-        if total_audio and getattr(total_audio, "duration", 0.0) and total_audio.duration > 0:
-            total_duration = float(total_audio.duration)
+        total_duration: float
+        if total_audio is not None:
+            duration_val = getattr(total_audio, "duration", None)
+            if duration_val is not None and duration_val > 0:
+                total_duration = float(duration_val)
+            else:
+                # テキスト長からざっくり推定
+                total_chars = sum(len(seg.text) for seg in segments)
+                if total_chars > 0:
+                    total_duration = total_chars / self.chars_per_second
+                else:
+                    total_duration = len(segments) * self.min_segment_duration
         else:
             # テキスト長からざっくり推定
             total_chars = sum(len(seg.text) for seg in segments)

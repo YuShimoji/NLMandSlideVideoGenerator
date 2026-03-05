@@ -94,7 +94,7 @@ class GoogleSlidesClient:
             pres = service.presentations().create(body=body).execute()
             pres_id = pres.get("presentationId")
             logger.success(f"プレゼン作成: {pres_id}")
-            return pres_id
+            return str(pres_id) if pres_id else None
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.warning(f"プレゼン作成失敗: {e}")
             return None
