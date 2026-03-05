@@ -1,0 +1,30 @@
+# Ruff Configuration
+# Fast Python linter for errors, warnings, and import sorting
+
+line-length = 120
+target-version = "py311"
+
+# Directory patterns to exclude
+exclude = [
+  ".git",
+  "__pycache__",
+  ".venv",
+  "venv",
+  ".eggs",
+  "*.egg-info",
+  "dist",
+  "build",
+]
+
+[lint]
+# Select rule categories:
+# E = pycodestyle errors
+# F = Pyflakes errors
+# W = pycodestyle warnings
+# I = isort (import sorting)
+select = ["E", "F", "W", "I"]
+
+# Ignore specific patterns to avoid conflicts with existing codebase
+ignore = [
+  "E501",  # Line too long (handled by formatter)
+]
