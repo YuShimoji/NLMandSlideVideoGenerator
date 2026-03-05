@@ -35,7 +35,7 @@ class GoogleAuthHelper:
         except Exception as e:
             logger.warning(f"google-auth の読み込みに失敗したため、認証をスキップします: {e}")
             return None
- 
+
         creds = None
         if self.token_file.exists():
             try:

@@ -30,7 +30,7 @@ except ImportError as e:
 
 class VideoGenerationPipeline:
     """動画生成パイプライン"""
-    
+
     def __init__(self):
         self.source_collector = SourceCollector()
         self.audio_generator = AudioGenerator()
@@ -39,7 +39,7 @@ class VideoGenerationPipeline:
         self.video_composer = VideoComposer()
         self.youtube_uploader = YouTubeUploader()
         self.metadata_generator = MetadataGenerator()
-    
+
     async def generate_video(
         self,
         topic: str,
@@ -67,19 +67,19 @@ class VideoGenerationPipeline:
         """
         try:
             logger.info(f"動画生成開始: {topic}")
-            
+
             # Phase 1: NotebookLMでの作業
             logger.info("Phase 1: ソース収集・音声生成")
             sources = await self.source_collector.collect_sources(topic, urls)
             audio_info = await self.audio_generator.generate_audio(sources)
             transcript = await self.transcript_processor.process_audio(audio_info)
-            
+
             # Phase 2: Google Slideでの作業
             logger.info("Phase 2: スライド生成")
             slides_pkg = await self.slide_generator.generate_slides(
                 transcript, max_slides=max_slides
             )
-            
+
             # Phase 3: 動画編集作業
             logger.info("Phase 3: 動画編集・合成")
             video_info = await self.video_composer.compose_video(
@@ -88,7 +88,7 @@ class VideoGenerationPipeline:
                 transcript=transcript,
                 quality=video_quality
             )
-            
+
             # Phase 4: YouTubeアップロード
             logger.info("Phase 4: YouTubeアップロード")
             # メタデータ生成
@@ -106,10 +106,10 @@ class VideoGenerationPipeline:
                 thumbnail_path=None
             )
             youtube_url = upload_result.video_url
-            
+
             logger.success(f"動画生成完了: {youtube_url}")
             return youtube_url
-            
+
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"動画生成エラー: {str(e)}")
             raise
@@ -125,7 +125,7 @@ def main():
     python src/main.py --topic "AI技術の最新動向"
     """
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='YouTube解説動画自動化システム')
     parser.add_argument('--topic', required=True, help='調査トピック')
     parser.add_argument('--urls', nargs='*', help='ソースURL（複数指定可能）')
@@ -136,9 +136,9 @@ def main():
     parser.add_argument('--upload-schedule', help='アップロードスケジュール (YYYY-MM-DD HH:MM)')
     parser.add_argument('--private-upload', action='store_true', default=True, help='非公開アップロード')
     parser.add_argument('--debug', action='store_true', help='デバッグモード')
-    
+
     args = parser.parse_args()
-    
+
     topic = args.topic
     urls = args.urls or []
     output_dir = args.output_dir
@@ -148,11 +148,11 @@ def main():
     upload_schedule = args.upload_schedule
     private_upload = args.private_upload
     debug = args.debug
-    
+
     # ログレベル設定
     if debug:
         print("[DEBUG] デバッグモードが有効です")
-    
+
     # 必要なディレクトリを作成
     create_directories()
 
@@ -168,10 +168,10 @@ def main():
             logger.warning(f"max_chars_per_slide オプションの適用に失敗しました: {e}")
         except Exception as e:
             logger.warning(f"max_chars_per_slide オプションの適用に失敗しました: {e}")
-    
+
     # パイプライン実行
     pipeline = VideoGenerationPipeline()
-    
+
     try:
         youtube_url = asyncio.run(
             pipeline.generate_video(
@@ -184,10 +184,10 @@ def main():
                 private_upload=private_upload
             )
         )
-        
-        print(f"✅ 動画生成完了!")
+
+        print("✅ 動画生成完了!")
         print(f"📺 YouTube URL: {youtube_url}")
-        
+
     except (OSError, RuntimeError, TypeError, ValueError) as e:
         print(f"❌ エラーが発生しました: {str(e)}")
         if debug:

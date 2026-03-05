@@ -64,7 +64,7 @@ class ExportFallbackManager:
     複数のバックエンドを優先順位付きで管理し、
     失敗時に自動的に次のバックエンドにフォールバックする
     """
-    
+
     def __init__(
         self,
         configs: Optional[List[BackendConfig]] = None,
@@ -77,15 +77,15 @@ class ExportFallbackManager:
         """
         self.configs = configs or self._default_configs()
         self.backends: Dict[BackendType, IEditingBackend] = {}
-        
+
         if auto_detect:
             self._detect_available_backends()
-        
+
         # 優先順位でソート
         self.configs.sort(key=lambda c: c.priority)
-        
+
         logger.info(f"ExportFallbackManager初期化: {len(self.configs)}個のバックエンド設定")
-    
+
     def _default_configs(self) -> List[BackendConfig]:
         """デフォルト設定"""
         return [
@@ -109,12 +109,12 @@ class ExportFallbackManager:
                 timeout_seconds=180.0,
             ),
         ]
-    
+
     def _detect_available_backends(self) -> None:
         """利用可能なバックエンドを検出"""
         ahk_available = find_autohotkey_exe() is not None
         ymm4_available = find_ymm4_exe() is not None
-        
+
         for config in self.configs:
             if config.backend_type == BackendType.YMM4_AHK:
                 if not (ahk_available and ymm4_available):
@@ -123,7 +123,7 @@ class ExportFallbackManager:
             elif config.backend_type == BackendType.YMM4_API:
                 # 未実装
                 config.enabled = False
-    
+
     def _get_backend(self, backend_type: BackendType) -> IEditingBackend:
         """バックエンドインスタンスを取得（遅延初期化）"""
         if backend_type not in self.backends:
@@ -136,9 +136,9 @@ class ExportFallbackManager:
             elif backend_type == BackendType.YMM4_API:
                 # 将来実装（YMM4 プラグインAPI 等のバックエンド）
                 raise NotImplementedError("YMM4 API バックエンド（プラグインAPI 等）は未実装です")
-        
+
         return self.backends[backend_type]
-    
+
     async def render(
         self,
         timeline_plan: Dict[str, Any],
@@ -165,10 +165,10 @@ class ExportFallbackManager:
             FallbackResult: 結果（成功/失敗、使用バックエンド、エラー情報）
         """
         result = FallbackResult(success=False)
-        
+
         # 有効なバックエンドを優先順位順に取得
         enabled_configs = [c for c in self.configs if c.enabled]
-        
+
         # 優先バックエンドがある場合は先頭に
         if preferred_backend:
             preferred_config = next(
@@ -178,26 +178,26 @@ class ExportFallbackManager:
             if preferred_config:
                 enabled_configs.remove(preferred_config)
                 enabled_configs.insert(0, preferred_config)
-        
+
         if not enabled_configs:
             logger.error("有効なバックエンドがありません")
             return result
-        
+
         logger.info(f"レンダリング開始: {len(enabled_configs)}個のバックエンドを試行")
-        
+
         for config in enabled_configs:
             backend_type = config.backend_type
             result.attempted_backends.append(backend_type)
-            
+
             for attempt in range(config.retry_count):
                 try:
                     logger.info(
                         f"バックエンド試行: {backend_type.value} "
                         f"(試行{attempt + 1}/{config.retry_count})"
                     )
-                    
+
                     backend = self._get_backend(backend_type)
-                    
+
                     # タイムアウト付きで実行
                     video_info = await asyncio.wait_for(
                         backend.render(
@@ -210,31 +210,31 @@ class ExportFallbackManager:
                         ),
                         timeout=config.timeout_seconds
                     )
-                    
+
                     # 成功
                     result.success = True
                     result.video_info = video_info
                     result.used_backend = backend_type
-                    
+
                     logger.info(f"レンダリング成功: {backend_type.value}")
                     return result
-                    
+
                 except asyncio.TimeoutError:
                     error_msg = f"タイムアウト ({config.timeout_seconds}秒)"
                     logger.warning(f"{backend_type.value}: {error_msg}")
                     result.errors[backend_type] = error_msg
-                    
+
                 except NotImplementedError as e:
                     error_msg = str(e)
                     logger.warning(f"{backend_type.value}: {error_msg}")
                     result.errors[backend_type] = error_msg
                     break  # リトライ不要
-                    
+
                 except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
                     error_msg = str(e)
                     logger.warning(f"{backend_type.value} エラー: {error_msg}")
                     result.errors[backend_type] = error_msg
-                    
+
                     if attempt < config.retry_count - 1:
                         # リトライ前に待機
                         await asyncio.sleep(2.0)
@@ -243,21 +243,21 @@ class ExportFallbackManager:
                     error_msg = str(e)
                     logger.warning(f"{backend_type.value} エラー: {error_msg}")
                     result.errors[backend_type] = error_msg
-                    
+
                     if attempt < config.retry_count - 1:
                         # リトライ前に待機
                         await asyncio.sleep(2.0)
-            
+
             # 次のバックエンドへフォールバック
             logger.info(f"{backend_type.value} 失敗、次のバックエンドへ")
-        
+
         logger.error(f"全バックエンドが失敗: {list(result.errors.keys())}")
         return result
-    
+
     def get_available_backends(self) -> List[BackendType]:
         """利用可能なバックエンドのリストを取得"""
         return [c.backend_type for c in self.configs if c.enabled]
-    
+
     def set_backend_enabled(self, backend_type: BackendType, enabled: bool) -> None:
         """バックエンドの有効/無効を設定"""
         for config in self.configs:
@@ -265,7 +265,7 @@ class ExportFallbackManager:
                 config.enabled = enabled
                 logger.info(f"{backend_type.value}: {'有効' if enabled else '無効'}化")
                 return
-    
+
     def get_status(self) -> Dict[str, Any]:
         """マネージャーの状態を取得"""
         return {

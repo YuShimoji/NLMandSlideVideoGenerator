@@ -68,15 +68,15 @@ def detect_ffmpeg() -> FFmpegInfo:
         detected = find_ffmpeg_exe()
         if detected:
             ffmpeg_path = str(detected)
-    
+
     if not ffmpeg_path:
         return FFmpegInfo(available=False)
-    
+
     # バージョン情報を取得
     version = None
     has_libx264 = False
     has_aac = False
-    
+
     try:
         result = subprocess.run(
             [ffmpeg_path, "-version"],
@@ -84,7 +84,7 @@ def detect_ffmpeg() -> FFmpegInfo:
             text=True,
             timeout=10
         )
-        
+
         if result.returncode == 0:
             output = result.stdout
             # バージョン抽出
@@ -92,14 +92,14 @@ def detect_ffmpeg() -> FFmpegInfo:
                 if line.startswith("ffmpeg version"):
                     version = line.split()[2] if len(line.split()) > 2 else "unknown"
                     break
-            
+
             # コーデック確認
             has_libx264 = "--enable-libx264" in output or "libx264" in output
             has_aac = "--enable-aac" in output or "aac" in output
-            
+
     except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
         logger.debug(f"FFmpegバージョン取得エラー: {e}")
-    
+
     return FFmpegInfo(
         available=True,
         path=ffmpeg_path,
@@ -117,11 +117,11 @@ def check_ffmpeg_with_warning() -> Tuple[bool, Optional[str]]:
         Tuple[bool, Optional[str]]: (利用可能か, FFmpegパス)
     """
     info = detect_ffmpeg()
-    
+
     if not info.available:
         logger.warning(FFMPEG_INSTALL_GUIDE)
         return False, None
-    
+
     logger.debug(f"FFmpeg検出: {info.path} (version: {info.version})")
     return True, info.path
 
@@ -140,7 +140,7 @@ def get_ffmpeg_path() -> Optional[str]:
 def print_ffmpeg_status():
     """FFmpegの状態を表示（デバッグ用）"""
     info = detect_ffmpeg()
-    
+
     if info.available:
         print(f"✅ FFmpeg: {info.path}")
         print(f"   Version: {info.version}")

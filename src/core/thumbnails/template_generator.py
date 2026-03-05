@@ -24,11 +24,11 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
     def __init__(self, template_dir: Optional[Path] = None):
         self.output_dir = settings.THUMBNAILS_DIR
         self.output_dir.mkdir(exist_ok=True)
-        
+
         # テンプレートディレクトリ
         self.template_dir = template_dir or settings.TEMPLATES_DIR / "thumbnails"
         self.template_dir.mkdir(exist_ok=True)
-        
+
         # ビルトインテンプレート（フォールバック）
         self.templates = {
             'modern': self._modern_template,
@@ -36,14 +36,14 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
             'gaming': self._gaming_template,
             'educational': self._educational_template
         }
-        
+
         # JSON テンプレートを読み込み
         self.json_templates = self._load_json_templates()
 
     def _load_json_templates(self) -> Dict[str, Dict[str, Any]]:
         """JSON テンプレートファイルを読み込み"""
         templates = {}
-        
+
         if self.template_dir.exists():
             for json_file in self.template_dir.glob("*.json"):
                 try:
@@ -56,7 +56,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
                     logger.warning(f"テンプレート読み込みエラー {json_file}: {e}")
                 except Exception as e:
                     logger.warning(f"テンプレート読み込みエラー {json_file}: {e}")
-        
+
         return templates
 
     async def generate(
@@ -81,11 +81,11 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # JSON テンプレートがある場合は優先使用
         if style in self.json_templates:
             return await self._generate_from_json_template(video, script, slides, style)
-        
+
         # ビルトインテンプレートにフォールバック
         if style in self.templates:
             return await self.templates[style](video, script, slides)
-        
+
         # デフォルトは modern
         logger.warning(f"不明なスタイル '{style}'、modern にフォールバック")
         return await self.templates['modern'](video, script, slides)
@@ -111,18 +111,18 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         """
         template = self.json_templates[template_name]
         logger.info(f"JSON テンプレート '{template_name}' を使用してサムネイル生成")
-        
+
         # テンプレートからパラメータを取得
         width = template.get('width', 1280)
         height = template.get('height', 720)
         background_color = template.get('background_color', '#1a1a1a')
         text_elements = template.get('text_elements', [])
         image_elements = template.get('image_elements', [])
-        
+
         # PIL で画像生成
         img = Image.new('RGB', (width, height), background_color)
         draw = ImageDraw.Draw(img)
-        
+
         # フォント設定（システムフォントを使用）
         try:
             font_title = ImageFont.truetype("arial.ttf", 60)
@@ -130,37 +130,37 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         except (OSError, TypeError, ValueError):
             font_title = ImageFont.load_default()
             font_subtitle = ImageFont.load_default()
-        
+
         # テキスト要素を描画
         for element in text_elements:
             text = self._resolve_text_placeholder(element.get('text', ''), video, script, slides)
             position = element.get('position', (50, 50))
             font_size = element.get('font_size', 36)
             color = element.get('color', '#ffffff')
-            
+
             # フォントサイズ調整
             try:
                 font = ImageFont.truetype("arial.ttf", font_size)
             except (OSError, TypeError, ValueError):
                 font = ImageFont.load_default()
-            
+
             draw.text(position, text, fill=color, font=font)
-        
+
         # 画像要素（プレースホルダー）
         for element in image_elements:
             # 実際の画像挿入ロジックはここに追加
             logger.debug(f"画像要素: {element}")
-        
+
         # ファイル保存
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = self.output_dir / f"thumbnail_{template_name}_{timestamp}.jpg"
         img.save(output_path, quality=95)
-        
+
         logger.info(f"JSON テンプレートサムネイル生成完了: {output_path}")
-        
+
         # コンテンツ情報を抽出
         title_text, subtitle_text = await self._extract_content_info(script, slides)
-        
+
         return ThumbnailInfo(
             file_path=output_path,
             title_text=title_text,
@@ -193,7 +193,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         """モダンテンプレート"""
         # コンテンツ抽出
         title, subtitle = await self._extract_content_info(script, slides)
-        
+
         width, height = 1280, 720
 
         # グラデーション背景
@@ -232,7 +232,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         """クラシックテンプレート"""
         # コンテンツ抽出
         title, subtitle = await self._extract_content_info(script, slides)
-        
+
         width, height = 1280, 720
 
         # 白背景
@@ -272,7 +272,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         """ゲーミングテンプレート"""
         # コンテンツ抽出
         title, subtitle = await self._extract_content_info(script, slides)
-        
+
         width, height = 1280, 720
 
         # ダーク背景
@@ -309,7 +309,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         """教育テンプレート"""
         # コンテンツ抽出
         title, subtitle = await self._extract_content_info(script, slides)
-        
+
         width, height = 1280, 720
 
         # 青背景
@@ -429,7 +429,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
     ) -> ThumbnailInfo:
         """画像から ThumbnailInfo を作成"""
         filepath = await self._save_thumbnail(image, style)
-        
+
         return ThumbnailInfo(
             file_path=filepath,
             title_text=title_text,
