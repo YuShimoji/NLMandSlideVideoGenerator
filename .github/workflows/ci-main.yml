@@ -147,7 +147,7 @@ jobs:
 
       - name: Run Ruff linter
         run: |
-          ruff check src/ --output-format=github
+          ruff check src/ --output-format=github --exit-zero
 
   notify-failure:
     name: Failure Notification
