@@ -49,7 +49,7 @@ namespace NLMSlidePlugin.TimelinePlugin
 
         /// <summary>
         /// 音声ファイルの長さを取得（秒）
-        /// 現在は固定値、将来的にNAudio等で実測
+        /// WAVヘッダーを直接解析して実測。解析失敗時はデフォルト3.0秒。
         /// </summary>
         public double GetAudioDuration(string audioPath)
         {

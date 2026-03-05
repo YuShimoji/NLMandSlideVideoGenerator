@@ -23,7 +23,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// <summary>
         /// CSVファイルからタイムラインに一括インポート
         /// </summary>
-        public async Task<ImportResult> ImportFromCsvAsync(string csvPath, string? audioDir = null)
+        public ImportResult ImportFromCsv(string csvPath, string? audioDir = null)
         {
             var result = new ImportResult();
 
