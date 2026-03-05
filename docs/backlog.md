@@ -21,7 +21,6 @@
 | A-3-3 | Geminiスライド検証とログ強化 | 2025-11-28 |
 | C-1 | CSVタイムラインモード基盤実装 | 2025-11-30 |
 | C-2 | YMM4エクスポートPoC + 仕様書 | 2025-11-30 |
-| - | SofTalk/AquesTalk TTSバッチ連携 | 2025-11-30 |
 | - | WAV検出バグ修正 + ログ強化 | 2025-11-30 |
 | A-4 | 動画合成強化（PPTX抽出/FFmpegフォールバック） | 2025-11-30 |
 | B-1 | ジョブ管理機能（進捗追跡/キャンセル） | 2025-11-30 |
@@ -132,8 +131,6 @@
 | C1-1 | CLI 専用エントリポイント作成 | 中 | ✅ 完了 |
 | C1-2 | Web フォーム（CSV + audio_dir 入力）作成 | 中 | ✅ 完了 |
 | C1-3 | CSV フォーマット仕様ドキュメント作成 | 低 | ✅ 完了 |
-| C1-4 | SofTalk/AquesTalk TTSバッチスクリプト | 中 | ✅ 完了 |
-| C1-5 | Speaker列→声プリセットマッピング | 中 | ✅ 完了 |
 
 ### C-2: YMM4 エクスポート
 
@@ -218,16 +215,15 @@
 > **「APIなしワークフロー」** は完成・安定稼働中。
 > 次は **Gemini+TTS API連携** または **SSOT堅牢化** を優先。
 
-### 補足方針（2025-12-08追記 / 2026-02-06更新）
+### 補足方針（2025-12-08追記 / 2026-03-05更新）
 
 - CSV タイムラインモードは「`csv` + 行ごと `wav` が揃っていること」のみを前提とし、
   どの TTS エンジンで WAV を生成するかはユーザー環境に委ねる。
-- SofTalk / AquesTalk ローカル TTS 連携（`scripts/tts_batch_softalk_aquestalk.py`）は、
-  テンプレ実装として維持するが、環境依存が大きいため **主フローではなく任意の上級者向けオプション** として扱う。
-- ゆっくり系音声については、**YMM4 に台本 CSV を読み込ませてプロジェクト内で音声生成するフロー** を最終形とし、
-  フェーズ C-2 / C-3 系タスク（AutoHotkey 連携・YMM4 プラグインAPI連携）を通じて段階的に自動化していく。
+- **ゆっくり系音声については、YMM4 に台本 CSV を読み込ませてプロジェクト内で音声生成するフロー** を最終形とし、
+  フェーズ C-2 / C-3 系タスク（YMM4 プラグインAPI連携）を通じて段階的に自動化していく。
   - 当初は「YMM4 REST API」を想定していたが、実際には **.NET プラグインAPI** が提供されているため、
     今後はプラグインAPIベースでの自動化を前提とする（詳細は `docs/ymm4_integration_arch.md` を参照）。
+- **注**: SofTalk / AquesTalk / VOICEVOX ローカル TTS 連携は、プロジェクトの YMM4 一本化方針により 2026-03-04 に削除されました。
 
 ### 完了済み機能（APIなし運用）
 
@@ -252,9 +248,8 @@
 - `docs/user_guide_manual_workflow.md` - ユーザー向けガイド
 - `docs/spec_csv_input_format.md` - CSV入力仕様
 - `docs/spec_transcript_io.md` - Transcript I/O仕様
-- `docs/tts_batch_softalk_aquestalk.md` - 音声生成
 - `docs/subtitle_hardsub_guide.md` - 字幕ガイド
- - `docs/ymm4_integration_arch.md` - YMM4 連携アーキテクチャ設計（本書）
+- `docs/ymm4_integration_arch.md` - YMM4 連携アーキテクチャ設計
 
 ### 次期フェーズ: API連携
 

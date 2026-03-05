@@ -22,7 +22,7 @@ Report: (未作成)
   - orchestrator-audit.yml
   - documentation.yml (weekly schedule変更済)
 - ローカルCI: `scripts/ci.ps1` が48秒で完走（目標15分の5.3%）
-- テスト: 146 passed, 7 skipped, 5 deselected (TASK_024後)
+- テスト: 107 passed, 11 skipped, 4 deselected (2026-03-05現在)
 - TASK_015完了により timeout-minutes, notify-failure, ci-rollback は実装済み
 
 ## Deliverables
@@ -65,7 +65,7 @@ Report: (未作成)
 | # | 検証項目 | 手順 | 期待結果 |
 |---|---------|------|---------|
 | 1 | ワークフロー起動確認 | テストブランチ作成→PR作成 | Actions タブでワークフロー実行確認 |
-| 2 | テスト結果確認 | PRにテスト結果コメント確認 | 103+ passed 表示 |
+| 2 | テスト結果確認 | PRにテスト結果コメント確認 | 107+ passed 表示 |
 | 3 | シークレット設定 | GitHub Settings → Secrets に API キー設定 | ワークフローからシークレット参照可能 |
 | 4 | カバレッジ確認 | Codecov連携確認 | PRにカバレッジバッジ表示 |
 | 5 | リリースフロー | `git tag v1.0.0 && git push --tags` | GitHub Releases にアーティファクト添付 |

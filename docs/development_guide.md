@@ -64,11 +64,10 @@ chore: その他の変更
 ### 4. 手動E2Eワークフローの確認
 
 - ユーザー視点の手動ワークフロー全体像は `docs/user_guide_manual_workflow.md` を参照してください。
-- **CSV + SofTalk/AquesTalk TTS Webフロー E2E 手順** は、同ドキュメント内の「CSV+TTS Webフロー E2E 手順（SofTalk/AquesTalk）」セクションにまとまっていますが、現在は *環境が合う場合のオプション（Path B）* という位置づけです。
-- 制作パスは2つあります:
+- 制作パスは以下の通りです:
   - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → 動画レンダリング）。YMM4 が最終レンダラー。
-  - **Path B（Secondary）**: CSV + WAV群 → `run_csv_pipeline.py`。SofTalk/AquesTalk 等で個別WAVを生成して使用。
-- 新機能の開発後は、Path B の **CSV + WAV → run_csv_pipeline.py** フローで動作確認を行うことを推奨します（Path A は YMM4 GUI 操作のため自動テスト不可）。
+  - **Path B（Legacy, 削除済）**: CSV + WAV群 → `run_csv_pipeline.py`。SofTalk/AquesTalk 等で個別WAVを生成して使用。（2026-03-04 にプロジェクトの YMM4 一本化方針により削除）
+- 新機能の開発後は、Path A の **CSV → YMM4** フローで動作確認を行ってください（Path A は YMM4 GUI 操作のため自動テスト不可）。
 
 ## テスト実行
 
