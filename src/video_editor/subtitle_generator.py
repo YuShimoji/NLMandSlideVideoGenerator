@@ -2,7 +2,6 @@
 字幕生成モジュール
 台本から字幕ファイルを生成
 """
-import asyncio
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from dataclasses import dataclass
@@ -76,11 +75,11 @@ class SubtitleGenerator:
     ) -> Path:
         """
         台本から字幕ファイルを生成
-        
+
         Args:
             transcript_info: 台本情報
             style: 字幕スタイルプリセット名
-            
+
         Returns:
             Path: 生成された字幕ファイルパス
         """
@@ -123,10 +122,10 @@ class SubtitleGenerator:
     def _create_subtitle_segments(self, transcript_segments: List[TranscriptSegment]) -> List[SubtitleSegment]:
         """
         台本セグメントから字幕セグメントを作成
-        
+
         Args:
             transcript_segments: 台本セグメント一覧
-            
+
         Returns:
             List[SubtitleSegment]: 字幕セグメント一覧
         """
@@ -154,10 +153,10 @@ class SubtitleGenerator:
     def _clean_subtitle_text(self, text: str) -> str:
         """
         字幕用にテキストをクリーニング
-        
+
         Args:
             text: 元のテキスト
-            
+
         Returns:
             str: クリーニング済みテキスト
         """
@@ -181,10 +180,10 @@ class SubtitleGenerator:
     def _optimize_subtitles(self, subtitle_segments: List[SubtitleSegment]) -> List[SubtitleSegment]:
         """
         字幕を最適化
-        
+
         Args:
             subtitle_segments: 字幕セグメント一覧
-            
+
         Returns:
             List[SubtitleSegment]: 最適化された字幕セグメント一覧
         """
@@ -218,10 +217,10 @@ class SubtitleGenerator:
     def _resolve_time_overlaps(self, segments: List[SubtitleSegment]) -> List[SubtitleSegment]:
         """
         字幕の時間重複を解決
-        
+
         Args:
             segments: 字幕セグメント一覧
-            
+
         Returns:
             List[SubtitleSegment]: 重複解決済みセグメント一覧
         """
@@ -253,11 +252,11 @@ class SubtitleGenerator:
     async def _generate_srt_file(self, segments: List[SubtitleSegment], title: str) -> Path:
         """
         SRTファイルを生成
-        
+
         Args:
             segments: 字幕セグメント一覧
             title: タイトル
-            
+
         Returns:
             Path: 生成されたSRTファイルパス
         """
@@ -282,11 +281,11 @@ class SubtitleGenerator:
     async def _generate_vtt_file(self, segments: List[SubtitleSegment], title: str) -> Path:
         """
         VTTファイルを生成（Web用）
-        
+
         Args:
             segments: 字幕セグメント一覧
             title: タイトル
-            
+
         Returns:
             Path: 生成されたVTTファイルパス
         """
@@ -313,12 +312,12 @@ class SubtitleGenerator:
     async def _generate_ass_file(self, segments: List[SubtitleSegment], title: str, style: str) -> Path:
         """
         ASSファイルを生成（スタイル付き字幕）
-        
+
         Args:
             segments: 字幕セグメント一覧
             title: タイトル
             style: スタイル名
-            
+
         Returns:
             Path: 生成されたASSファイルパス
         """
@@ -404,10 +403,10 @@ class SubtitleGenerator:
     def _seconds_to_srt_time(self, seconds: float) -> str:
         """
         秒をSRT形式の時間に変換
-        
+
         Args:
             seconds: 秒数
-            
+
         Returns:
             str: SRT形式の時間
         """
@@ -421,10 +420,10 @@ class SubtitleGenerator:
     def _srt_time_to_seconds(self, srt_time: str) -> float:
         """
         SRT形式の時間を秒に変換
-        
+
         Args:
             srt_time: SRT形式の時間
-            
+
         Returns:
             float: 秒数
         """
@@ -437,10 +436,10 @@ class SubtitleGenerator:
     def _srt_to_vtt_time(self, srt_time: str) -> str:
         """
         SRT時間をVTT時間に変換
-        
+
         Args:
             srt_time: SRT形式の時間
-            
+
         Returns:
             str: VTT形式の時間
         """
@@ -450,10 +449,10 @@ class SubtitleGenerator:
     def add_styling_to_subtitles(self, srt_path: Path) -> Path:
         """
         字幕にスタイリングを追加
-        
+
         Args:
             srt_path: SRTファイルパス
-            
+
         Returns:
             Path: スタイル付きSRTファイルパス
         """

@@ -3,7 +3,7 @@
 NotebookLMを使用したラジオ風音声の生成
 """
 import asyncio
-from typing import List, Optional
+from typing import List
 from pathlib import Path
 from dataclasses import dataclass
 import requests
@@ -64,10 +64,10 @@ class AudioGenerator:
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """
         ソース情報から音声を生成
-        
+
         Args:
             sources: ソース情報一覧
-            
+
         Returns:
             AudioInfo: 生成された音声情報
         """
@@ -105,10 +105,10 @@ class AudioGenerator:
     async def _generate_script_with_gemini(self, sources: List[SourceInfo]) -> 'ScriptInfo':
         """
         Gemini APIを使用してスクリプトを生成
-        
+
         Args:
             sources: ソース情報一覧
-            
+
         Returns:
             ScriptInfo: 生成されたスクリプト情報
         """
@@ -146,10 +146,10 @@ class AudioGenerator:
     async def _generate_audio_with_tts(self, script_info: 'ScriptInfo') -> Path:
         """
         TTS統合を使用して音声を生成
-        
+
         Args:
             script_info: スクリプト情報
-            
+
         Returns:
             Path: 生成された音声ファイルのパス
         """
@@ -234,7 +234,7 @@ class AudioGenerator:
     async def _generate_placeholder_audio(self) -> AudioInfo:
         """
         プレースホルダー音声ファイルを生成
-        
+
         Returns:
             AudioInfo: プレースホルダー音声情報
         """
@@ -268,7 +268,7 @@ class AudioGenerator:
     async def _upload_sources(self, session_id: str, sources: List[SourceInfo]):
         """
         ソース情報をNotebookLMにアップロード (現在はシミュレーション)
-        
+
         Args:
             session_id: NotebookLMセッションID
             sources: アップロードするソース一覧
@@ -286,10 +286,10 @@ class AudioGenerator:
     async def _request_audio_generation(self, session_id: str) -> str:
         """
         音声生成をリクエスト (現在はシミュレーション)
-        
+
         Args:
             session_id: NotebookLMセッションID
-            
+
         Returns:
             str: 音声生成ジョブID
         """
@@ -306,10 +306,10 @@ class AudioGenerator:
     async def _wait_for_audio_completion(self, job_id: str) -> str:
         """
         音声生成の完了を待機
-        
+
         Args:
             job_id: 音声生成ジョブID
-            
+
         Returns:
             str: 生成された音声ファイルのURL
         """
@@ -338,10 +338,10 @@ class AudioGenerator:
     async def _check_generation_status(self, job_id: str) -> str:
         """
         音声生成状況を確認 (現在はシミュレーション)
-        
+
         Args:
             job_id: ジョブID
-            
+
         Returns:
             str: 生成状況 ("processing", "completed", "failed")
         """
@@ -357,10 +357,10 @@ class AudioGenerator:
     async def _get_audio_download_url(self, job_id: str) -> str:
         """
         音声ダウンロードURLを取得 (現在はシミュレーション)
-        
+
         Args:
             job_id: ジョブID
-            
+
         Returns:
             str: ダウンロードURL
         """
@@ -375,10 +375,10 @@ class AudioGenerator:
     async def _download_audio(self, audio_url: str) -> Path:
         """
         音声ファイルをダウンロード
-        
+
         Args:
             audio_url: 音声ファイルURL
-            
+
         Returns:
             Path: ダウンロードされた音声ファイルパス
         """
@@ -426,10 +426,10 @@ class AudioGenerator:
     async def _validate_audio_quality(self, audio_file: Path) -> AudioInfo:
         """
         音声品質を検証
-        
+
         Args:
             audio_file: 音声ファイルパス
-            
+
         Returns:
             AudioInfo: 検証済み音声情報
         """
@@ -497,10 +497,10 @@ class AudioGenerator:
     def _calculate_audio_quality(self, audio: 'AudioSegment') -> float:
         """
         音声品質スコアを計算
-        
+
         Args:
             audio: 音声データ
-            
+
         Returns:
             float: 品質スコア (0.0-1.0)
         """
@@ -527,11 +527,11 @@ class AudioGenerator:
     async def regenerate_audio_if_needed(self, audio_info: AudioInfo, sources: List[SourceInfo]) -> AudioInfo:
         """
         必要に応じて音声を再生成
-        
+
         Args:
             audio_info: 現在の音声情報
             sources: ソース情報
-            
+
         Returns:
             AudioInfo: 最終的な音声情報
         """

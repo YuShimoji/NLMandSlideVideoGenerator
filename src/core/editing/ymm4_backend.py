@@ -262,7 +262,7 @@ class YMM4EditingBackend(IEditingBackend):
 
     async def _generate_custom_ahk_script(self, project_dir: Path, project_file: Path) -> Optional[Path]:
         """slides_payloadとtimeline_planからカスタムAHKスクリプトを生成
-        
+
         改善版: 直接関数呼び出しを優先、フォールバックでサブプロセス実行
         """
         try:
@@ -409,7 +409,7 @@ class YMM4EditingBackend(IEditingBackend):
     def _apply_template_diff(self, project_dir: Path, project_path: Path) -> None:
         """
         テンプレート差分適用プロトタイプ
-        
+
         Args:
             project_dir: プロジェクトディレクトリ
             project_path: プロジェクトファイルパス
@@ -450,12 +450,12 @@ class YMM4EditingBackend(IEditingBackend):
     def _load_diff_config(self) -> Optional[Dict[str, Any]]:
         """
         差分適用設定を読み込み
-        
+
         優先順位:
         1. 環境変数 YMM4_TEMPLATE_DIFF (JSON文字列)
         2. 環境変数 YMM4_TEMPLATE_DIFF_FILE (ファイルパス)
         3. config/ymm4_template_diff.json
-        
+
         Returns:
             Optional[Dict[str, Any]]: 差分設定
         """
@@ -501,11 +501,11 @@ class YMM4EditingBackend(IEditingBackend):
     def _compute_template_diff(self, template_meta: Dict[str, Any], diff_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         テンプレート差分を計算して適用
-        
+
         Args:
             template_meta: テンプレートメタデータ
             diff_config: 差分設定
-            
+
         Returns:
             Dict[str, Any]: 更新されたメタデータ
         """

@@ -2,10 +2,8 @@
 Home page for Web Application
 """
 import streamlit as st
-from pathlib import Path
 
 from config.settings import settings
-from core.utils.tool_detection import find_autohotkey_exe
 from ._utils import _run_environment_check
 
 

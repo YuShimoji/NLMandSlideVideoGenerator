@@ -2,7 +2,6 @@
 動画合成モジュール
 音声、スライド、字幕を組み合わせて最終動画を生成
 """
-import asyncio
 import shutil
 import subprocess
 import tempfile
@@ -15,7 +14,7 @@ from PIL import Image, ImageDraw
 
 # 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
-from core.utils.ffmpeg_utils import check_ffmpeg_with_warning, FFMPEG_INSTALL_GUIDE
+from core.utils.ffmpeg_utils import check_ffmpeg_with_warning
 
 from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo
@@ -78,7 +77,7 @@ class VideoComposer:
     ) -> VideoInfo:
         """
         音声、スライド、字幕、BGMを合成して動画を生成
-        
+
         Args:
             audio_file: 音声ファイル情報
             slides_file: スライドファイル情報
@@ -86,7 +85,7 @@ class VideoComposer:
             quality: 動画品質
             timeline_plan: タイムライン計画（セグメント長・エフェクト指示）
             bgm_path: BGMファイルパス（オプション）
-            
+
         Returns:
             VideoInfo: 生成された動画情報
         """
@@ -129,10 +128,10 @@ class VideoComposer:
     async def _extract_slide_images(self, slides_file: SlidesPackage) -> List[Path]:
         """
         スライドファイルから画像を抽出
-        
+
         Args:
             slides_file: スライドファイル情報
-            
+
         Returns:
             List[Path]: 抽出された画像ファイルパス一覧
         """
@@ -397,14 +396,14 @@ class VideoComposer:
     ) -> VideoInfo:
         """
         最終動画を合成
-        
+
         Args:
             audio_info: 音声情報
             slide_images: スライド画像一覧
             subtitle_file: 字幕ファイル
             quality: 動画品質
             bgm_path: BGMファイルパス（オプション）
-            
+
         Returns:
             VideoInfo: 生成された動画情報
         """
@@ -531,10 +530,10 @@ class VideoComposer:
     def _get_resolution_from_quality(self, quality: str) -> tuple:
         """
         品質設定から解像度を取得
-        
+
         Args:
             quality: 品質設定
-            
+
         Returns:
             tuple: 解像度 (width, height)
         """
@@ -620,10 +619,10 @@ class VideoComposer:
     def _srt_time_to_seconds(self, srt_time) -> float:
         """
         SRT時間を秒に変換
-        
+
         Args:
             srt_time: SRT時間オブジェクト
-            
+
         Returns:
             float: 秒数
         """
@@ -642,14 +641,14 @@ class VideoComposer:
     ) -> VideoInfo:
         """
         フォールバック動画合成（FFmpegを使用）
-        
+
         Args:
             audio_info: 音声情報
             slide_images: スライド画像一覧
             subtitle_file: 字幕ファイル
             quality: 動画品質
             output_path: 出力パス
-            
+
         Returns:
             VideoInfo: 生成された動画情報
         """
@@ -806,7 +805,7 @@ class VideoComposer:
     async def _save_video_metadata(self, video_info: VideoInfo, transcript: TranscriptInfo):
         """
         動画メタデータを保存
-        
+
         Args:
             video_info: 動画情報
             transcript: 台本情報
@@ -835,11 +834,11 @@ class VideoComposer:
     def optimize_for_platform(self, video_info: VideoInfo, platform: str = "youtube") -> VideoInfo:
         """
         プラットフォーム向けに動画を最適化
-        
+
         Args:
             video_info: 動画情報
             platform: 対象プラットフォーム
-            
+
         Returns:
             VideoInfo: 最適化された動画情報
         """
@@ -886,12 +885,12 @@ class VideoComposer:
         platform: str = "youtube"
     ) -> Optional[Path]:
         """動画を圧縮
-        
+
         Args:
             video_path: 元動画パス
             target_size: 目標ファイルサイズ（バイト）
             platform: プラットフォーム
-            
+
         Returns:
             圧縮後の動画パス（失敗時はNone）
         """
@@ -985,12 +984,12 @@ class VideoComposer:
         output_path: Optional[Path] = None,
     ) -> Optional[Path]:
         """YouTube用サムネイルを生成
-        
+
         Args:
             title: 動画タイトル
             first_slide_path: 最初のスライド画像パス（省略時は新規生成）
             output_path: 出力パス（省略時は自動決定）
-            
+
         Returns:
             サムネイル画像パス（失敗時はNone）
         """

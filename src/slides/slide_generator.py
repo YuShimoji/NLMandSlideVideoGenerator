@@ -86,12 +86,12 @@ class SlideGenerator:
     ) -> SlidesPackage:
         """
         台本からスライドを生成
-        
+
         Args:
             transcript: 台本情報
             max_slides: 最大スライド数
             script_bundle: オプションのスクリプトバンドル（NotebookLM対応）
-            
+
         Returns:
             SlidesPackage: 生成されたスライドパッケージ
         """
@@ -147,11 +147,11 @@ class SlideGenerator:
     ) -> SlidesPackage:
         """
         Google Slidesでスライドを生成
-        
+
         Args:
             slide_contents: スライド内容一覧
             presentation_title: プレゼンテーションタイトル
-            
+
         Returns:
             SlidesPackage: 生成されたスライドパッケージ
         """
@@ -258,11 +258,11 @@ class SlideGenerator:
     ) -> SlidesPackage:
         """
         スクリプトバンドルからスライドを生成（NotebookLM対応）
-        
+
         Args:
             script_bundle: スクリプトバンドル
             max_slides: 最大スライド数
-            
+
         Returns:
             SlidesPackage: 生成されたスライドパッケージ
         """
@@ -356,7 +356,7 @@ class SlideGenerator:
     async def _download_slides_file(self, slides_package: SlidesPackage):
         """
         スライドファイルをダウンロード
-        
+
         Args:
             slides_package: スライドパッケージ
         """
@@ -412,7 +412,7 @@ class SlideGenerator:
     async def _save_slides_metadata(self, slides_package: SlidesPackage):
         """
         スライドメタデータを保存
-        
+
         Args:
             slides_package: スライドパッケージ
         """

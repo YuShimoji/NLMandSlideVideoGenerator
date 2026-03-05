@@ -10,7 +10,7 @@ import math
 import re
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 from core.adapters import ContentAdapterManager
 from core.utils.logger import logger

@@ -2,7 +2,6 @@
 
 import streamlit as st
 import os
-from pathlib import Path
 
 from config.settings import settings
 from core.persistence import db_manager

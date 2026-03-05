@@ -3,11 +3,9 @@ Pipeline Page - Video Generation Interface
 """
 import asyncio
 from datetime import datetime
-from pathlib import Path
 
 import streamlit as st
 
-from config.settings import settings
 from src.web.logic.pipeline_manager import run_pipeline_async
 
 

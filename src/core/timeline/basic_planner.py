@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional
 
-from config.settings import settings
 from ..interfaces import ITimelinePlanner
 from .models import TimelinePlan, TimelineSegment
 

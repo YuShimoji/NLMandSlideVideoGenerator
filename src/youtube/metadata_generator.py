@@ -2,14 +2,12 @@
 メタデータ生成モジュール
 YouTube動画用のタイトル、概要、タグを自動生成
 """
-import asyncio
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 import re
 from collections import Counter
-from datetime import datetime
 
 from core.utils.logger import logger
 from config.settings import settings
@@ -73,11 +71,11 @@ class MetadataGenerator:
     async def generate_metadata(self, transcript: TranscriptInfo, template_name: str = "default") -> Dict[str, Any]:
         """
         台本からYouTube用メタデータを生成
-        
+
         Args:
             transcript: 台本情報
             template_name: 使用するテンプレート名
-            
+
         Returns:
             Dict[str, Any]: 生成されたメタデータ
         """
@@ -128,10 +126,10 @@ class MetadataGenerator:
     def _generate_title(self, transcript: TranscriptInfo) -> str:
         """
         動画タイトルを生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             str: 生成されたタイトル
         """
@@ -168,10 +166,10 @@ class MetadataGenerator:
     def _generate_description(self, transcript: TranscriptInfo) -> str:
         """
         動画概要欄を生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             str: 生成された概要欄
         """
@@ -225,10 +223,10 @@ class MetadataGenerator:
     def _generate_video_summary(self, transcript: TranscriptInfo) -> str:
         """
         動画の要約を生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             str: 動画要約
         """
@@ -260,10 +258,10 @@ class MetadataGenerator:
     def _generate_chapters(self, transcript: TranscriptInfo) -> List[str]:
         """
         タイムスタンプ付きチャプターを生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: チャプター一覧
         """
@@ -281,10 +279,10 @@ class MetadataGenerator:
     def _group_segments_into_chapters(self, segments: List[TranscriptSegment]) -> List[tuple]:
         """
         セグメントをチャプターにグループ化
-        
+
         Args:
             segments: セグメント一覧
-            
+
         Returns:
             List[tuple]: (開始時間, チャプタータイトル) のリスト
         """
@@ -320,10 +318,10 @@ class MetadataGenerator:
     def _generate_chapter_title(self, segments: List[TranscriptSegment]) -> str:
         """
         チャプタータイトルを生成
-        
+
         Args:
             segments: セグメント一覧
-            
+
         Returns:
             str: チャプタータイトル
         """
@@ -347,10 +345,10 @@ class MetadataGenerator:
     def _extract_key_points_for_description(self, transcript: TranscriptInfo) -> List[str]:
         """
         概要欄用の重要ポイントを抽出
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: 重要ポイント一覧
         """
@@ -367,12 +365,12 @@ class MetadataGenerator:
     def _extract_source_information(self, transcript: TranscriptInfo) -> List[str]:
         """
         ソース情報を抽出
-        
+
         台本テキストからURL、引用、参照情報を抽出
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: ソース情報一覧
         """
@@ -437,10 +435,10 @@ class MetadataGenerator:
     def _generate_tags(self, transcript: TranscriptInfo) -> List[str]:
         """
         動画タグを生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: タグ一覧
         """
@@ -495,10 +493,10 @@ class MetadataGenerator:
     def _generate_topic_tags(self, transcript: TranscriptInfo) -> List[str]:
         """
         トピック関連のタグを生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: トピック関連タグ
         """
@@ -526,10 +524,10 @@ class MetadataGenerator:
     def _generate_thumbnail_suggestions(self, transcript: TranscriptInfo) -> List[str]:
         """
         サムネイル提案を生成
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: サムネイル提案一覧
         """
@@ -554,10 +552,10 @@ class MetadataGenerator:
     def _extract_main_keywords(self, transcript: TranscriptInfo) -> List[str]:
         """
         主要キーワードを抽出
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             List[str]: 主要キーワード一覧
         """
@@ -571,10 +569,10 @@ class MetadataGenerator:
     def _get_main_hashtag(self, transcript: TranscriptInfo) -> str:
         """
         メインハッシュタグを取得
-        
+
         Args:
             transcript: 台本情報
-            
+
         Returns:
             str: メインハッシュタグ
         """
@@ -586,10 +584,10 @@ class MetadataGenerator:
     def _seconds_to_timestamp(self, seconds: float) -> str:
         """
         秒をタイムスタンプに変換
-        
+
         Args:
             seconds: 秒数
-            
+
         Returns:
             str: タイムスタンプ (MM:SS)
         """
@@ -605,12 +603,12 @@ class MetadataGenerator:
     ) -> str:
         """
         短縮版概要欄を作成
-        
+
         Args:
             transcript: 台本情報
             summary: 要約
             chapters: チャプター一覧
-            
+
         Returns:
             str: 短縮版概要欄
         """
@@ -630,11 +628,11 @@ class MetadataGenerator:
     def optimize_for_seo(self, metadata: Dict[str, Any], target_keywords: List[str]) -> Dict[str, Any]:
         """
         SEO最適化
-        
+
         Args:
             metadata: 元のメタデータ
             target_keywords: ターゲットキーワード
-            
+
         Returns:
             Dict[str, Any]: SEO最適化済みメタデータ
         """
@@ -656,11 +654,11 @@ class MetadataGenerator:
     def _generate_title_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> str:
         """
         テンプレートからタイトルを生成
-        
+
         Args:
             transcript: 台本情報
             template: テンプレートデータ
-            
+
         Returns:
             str: 生成されたタイトル
         """
@@ -686,11 +684,11 @@ class MetadataGenerator:
     def _generate_description_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> str:
         """
         テンプレートから概要欄を生成
-        
+
         Args:
             transcript: 台本情報
             template: テンプレートデータ
-            
+
         Returns:
             str: 生成された概要欄
         """
@@ -717,11 +715,11 @@ class MetadataGenerator:
     def _generate_tags_from_template(self, transcript: TranscriptInfo, template: Dict[str, Any]) -> List[str]:
         """
         テンプレートからタグを生成
-        
+
         Args:
             transcript: 台本情報
             template: テンプレートデータ
-            
+
         Returns:
             List[str]: 生成されたタグ
         """
@@ -767,7 +765,7 @@ class MetadataGenerator:
     def create_template_from_metadata(self, metadata: Dict[str, Any], template_name: str) -> None:
         """
         既存メタデータからテンプレートを作成
-        
+
         Args:
             metadata: メタデータ
             template_name: テンプレート名
@@ -792,7 +790,7 @@ class MetadataGenerator:
     def edit_template(self, template_name: str, updates: Dict[str, Any]) -> None:
         """
         テンプレートを編集
-        
+
         Args:
             template_name: テンプレート名
             updates: 更新内容
@@ -813,7 +811,7 @@ class MetadataGenerator:
     def list_templates(self) -> Dict[str, Dict[str, Any]]:
         """
         利用可能なテンプレート一覧を取得
-        
+
         Returns:
             Dict[str, Dict[str, Any]]: テンプレート一覧
         """

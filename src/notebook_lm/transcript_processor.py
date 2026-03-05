@@ -3,7 +3,7 @@
 NotebookLMを使用した音声の文字起こしと台本構造化
 """
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List
 from pathlib import Path
 from dataclasses import dataclass, asdict
 import json
@@ -48,10 +48,10 @@ class TranscriptProcessor:
     async def process_audio(self, audio_info: AudioInfo) -> TranscriptInfo:
         """
         音声ファイルを処理して台本を生成
-        
+
         Args:
             audio_info: 音声情報
-            
+
         Returns:
             TranscriptInfo: 生成された台本情報
         """
@@ -92,10 +92,10 @@ class TranscriptProcessor:
     async def _upload_audio_to_notebook(self, audio_path: Path) -> str:
         """
         音声ファイルをNotebookLMにアップロード (現在はシミュレーション)
-        
+
         Args:
             audio_path: 音声ファイルパス
-            
+
         Returns:
             str: アップロードセッションID
         """
@@ -115,10 +115,10 @@ class TranscriptProcessor:
     async def _execute_transcription(self, session_id: str) -> str:
         """
         文字起こしを実行 (現在はシミュレーション)
-        
+
         Args:
             session_id: アップロードセッションID
-            
+
         Returns:
             str: 生の文字起こしテキスト
         """
@@ -146,11 +146,11 @@ class TranscriptProcessor:
     async def _structure_transcript(self, raw_transcript: str, audio_info: AudioInfo) -> TranscriptInfo:
         """
         生の文字起こしを構造化
-        
+
         Args:
             raw_transcript: 生の文字起こしテキスト
             audio_info: 音声情報
-            
+
         Returns:
             TranscriptInfo: 構造化された台本情報
         """
@@ -184,10 +184,10 @@ class TranscriptProcessor:
     def _parse_transcript_segments(self, raw_transcript: str) -> List[TranscriptSegment]:
         """
         生の文字起こしからセグメントを解析
-        
+
         Args:
             raw_transcript: 生の文字起こしテキスト
-            
+
         Returns:
             List[TranscriptSegment]: 解析されたセグメント一覧
         """
@@ -240,10 +240,10 @@ class TranscriptProcessor:
     def _extract_key_points(self, text: str) -> List[str]:
         """
         テキストからキーポイントを抽出
-        
+
         Args:
             text: 対象テキスト
-            
+
         Returns:
             List[str]: 抽出されたキーポイント
         """
@@ -268,11 +268,11 @@ class TranscriptProcessor:
     def _generate_slide_suggestion(self, text: str, key_points: List[str]) -> str:
         """
         スライド内容の提案を生成
-        
+
         Args:
             text: セグメントテキスト
             key_points: キーポイント
-            
+
         Returns:
             str: スライド提案
         """
@@ -291,10 +291,10 @@ class TranscriptProcessor:
     def _generate_title_from_content(self, segments: List[TranscriptSegment]) -> str:
         """
         セグメント内容からタイトルを生成
-        
+
         Args:
             segments: セグメント一覧
-            
+
         Returns:
             str: 生成されたタイトル
         """
@@ -322,10 +322,10 @@ class TranscriptProcessor:
     async def _verify_and_correct_transcript(self, transcript_info: TranscriptInfo) -> TranscriptInfo:
         """
         台本内容の検証・修正
-        
+
         Args:
             transcript_info: 台本情報
-            
+
         Returns:
             TranscriptInfo: 検証済み台本情報
         """
@@ -349,10 +349,10 @@ class TranscriptProcessor:
     def _calculate_transcript_accuracy(self, transcript_info: TranscriptInfo) -> float:
         """
         台本精度を計算
-        
+
         Args:
             transcript_info: 台本情報
-            
+
         Returns:
             float: 精度スコア (0.0-1.0)
         """
@@ -373,10 +373,10 @@ class TranscriptProcessor:
     def _check_time_consistency(self, segments: List[TranscriptSegment]) -> float:
         """
         時間軸の整合性をチェック
-        
+
         Args:
             segments: セグメント一覧
-            
+
         Returns:
             float: 整合性スコア (0.0-1.0)
         """
@@ -399,10 +399,10 @@ class TranscriptProcessor:
     async def _correct_low_accuracy_transcript(self, transcript_info: TranscriptInfo) -> TranscriptInfo:
         """
         低精度台本の修正 (現在はシミュレーション)
-        
+
         Args:
             transcript_info: 台本情報
-            
+
         Returns:
             TranscriptInfo: 修正済み台本情報
         """
@@ -433,10 +433,10 @@ class TranscriptProcessor:
     def _fix_segment_consistency(self, transcript_info: TranscriptInfo) -> TranscriptInfo:
         """
         セグメント間の整合性を修正
-        
+
         Args:
             transcript_info: 台本情報
-            
+
         Returns:
             TranscriptInfo: 修正済み台本情報
         """
@@ -459,7 +459,7 @@ class TranscriptProcessor:
     async def _save_transcript(self, transcript_info: TranscriptInfo):
         """
         台本をファイルに保存
-        
+
         Args:
             transcript_info: 台本情報
         """
@@ -489,7 +489,7 @@ class TranscriptProcessor:
     async def _save_as_srt(self, transcript_info: TranscriptInfo, srt_path: Path):
         """
         SRT形式で台本を保存
-        
+
         Args:
             transcript_info: 台本情報
             srt_path: SRTファイルパス
@@ -507,10 +507,10 @@ class TranscriptProcessor:
     def _seconds_to_srt_time(self, seconds: float) -> str:
         """
         秒をSRT形式のタイムスタンプに変換
-        
+
         Args:
             seconds: 秒数
-            
+
         Returns:
             str: SRT形式タイムスタンプ
         """
@@ -524,10 +524,10 @@ class TranscriptProcessor:
     async def load_transcript(self, transcript_path: Path) -> TranscriptInfo:
         """
         保存された台本を読み込み
-        
+
         Args:
             transcript_path: 台本ファイルパス
-            
+
         Returns:
             TranscriptInfo: 読み込まれた台本情報
         """

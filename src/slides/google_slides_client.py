@@ -17,7 +17,6 @@ from typing import List, Dict, Any, Optional
 import io
 import requests
 
-from config.settings import settings
 from gapi.google_auth import GoogleAuthHelper
 from core.utils.logger import logger
 

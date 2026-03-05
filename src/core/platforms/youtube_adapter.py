@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from config.settings import settings
 from youtube.uploader import YouTubeUploader
 from ..interfaces import IPlatformAdapter
 from ..utils.logger import logger

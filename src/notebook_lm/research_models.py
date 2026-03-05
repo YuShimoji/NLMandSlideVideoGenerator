@@ -2,7 +2,7 @@
 リサーチ関連のデータモデル
 """
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime
 from .source_collector import SourceInfo
 

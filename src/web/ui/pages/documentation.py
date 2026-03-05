@@ -3,7 +3,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from config.settings import settings
 from web.ui._utils import load_markdown_file
 
 

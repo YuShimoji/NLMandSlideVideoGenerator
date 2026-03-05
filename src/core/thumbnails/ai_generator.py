@@ -4,8 +4,7 @@ AIサムネイル生成モジュール
 Gemini APIを使用して動画の内容から自動で魅力的なサムネイルを生成
 """
 
-import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont

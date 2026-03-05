@@ -5,11 +5,7 @@
 """
 from __future__ import annotations
 
-import asyncio
-import json
-import time
-from datetime import datetime
-from typing import Protocol, List, Optional, Union, Dict, Any, Callable
+from typing import List, Optional, Dict, Any, Callable
 from pathlib import Path
 
 from config.settings import settings, create_directories
@@ -33,34 +29,22 @@ from .interfaces import (
     IPublishingQueue,
 )
 # 既存実装（デフォルトDI）
-from notebook_lm.source_collector import SourceCollector, SourceInfo
+from notebook_lm.source_collector import SourceCollector
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
-from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo, TranscriptSegment
-from slides.slide_generator import SlideGenerator, SlidesPackage
-from video_editor.video_composer import VideoComposer, VideoInfo
+from notebook_lm.transcript_processor import TranscriptProcessor
+from slides.slide_generator import SlideGenerator
+from video_editor.video_composer import VideoComposer
 from youtube.uploader import YouTubeUploader, UploadResult
 from youtube.metadata_generator import MetadataGenerator
 
 # 追加統合（オプション）
-from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
-from audio.tts_integration import TTSIntegration, TTSProvider, VoiceConfig
-from .providers.script.gemini_provider import GeminiScriptProvider
-from .providers.script.notebook_lm_provider import NotebookLMScriptProvider
-from .voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
-from .timeline.basic_planner import BasicTimelinePlanner
-from .thumbnails import AIThumbnailGenerator
-from .thumbnails.template_generator import TemplateThumbnailGenerator
-from .editing.moviepy_backend import MoviePyEditingBackend
-from .editing.ymm4_backend import YMM4EditingBackend
-from .platforms.youtube_adapter import YouTubePlatformAdapter
-from .platforms.tiktok_adapter import TikTokPlatformAdapter
 from .adapters import ContentAdapterManager
 
 from .utils.decorators import retry_on_failure
 from .utils.logger import logger
 from .exceptions import PipelineError
 from .models import PipelineArtifacts
-from .helpers import with_fallback, build_default_pipeline
+from .helpers import build_default_pipeline  # Re-exported for backwards compatibility
 from . import stage_runners as sr
 from . import csv_pipeline_runner as csv_runner
 

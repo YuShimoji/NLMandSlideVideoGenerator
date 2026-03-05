@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ..interfaces import IEditingBackend
@@ -60,7 +59,7 @@ class FallbackResult:
 class ExportFallbackManager:
     """
     エクスポートフォールバックマネージャー
-    
+
     複数のバックエンドを優先順位付きで管理し、
     失敗時に自動的に次のバックエンドにフォールバックする
     """
@@ -151,7 +150,7 @@ class ExportFallbackManager:
     ) -> FallbackResult:
         """
         動画をレンダリング（フォールバック付き）
-        
+
         Args:
             timeline_plan: タイムライン計画
             audio: 音声情報
@@ -160,7 +159,7 @@ class ExportFallbackManager:
             quality: 出力品質
             extras: 追加オプション
             preferred_backend: 優先バックエンド（指定時は最初に試行）
-            
+
         Returns:
             FallbackResult: 結果（成功/失敗、使用バックエンド、エラー情報）
         """

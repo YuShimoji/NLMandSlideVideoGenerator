@@ -99,13 +99,13 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
     ) -> ThumbnailInfo:
         """
         JSON テンプレートからサムネイルを生成
-        
+
         Args:
             video: 動画情報
             script: スクリプトデータ
             slides: スライドパッケージ
             template_name: テンプレート名
-            
+
         Returns:
             ThumbnailInfo: 生成されたサムネイル情報
         """

@@ -1,12 +1,8 @@
 """CSVタイムラインパイプラインページ"""
 import streamlit as st
 from pathlib import Path
-import tempfile
 import traceback
 
-from config.settings import settings, create_directories
-from src.utils.logger import logger
-from src.web.logic.pipeline_manager import run_csv_pipeline_async
 
 
 def show_csv_pipeline_page():
@@ -154,7 +150,6 @@ def show_csv_pipeline_page():
                 if csv_file:
                     st.markdown("**CSVファイル:**")
                     try:
-                        import io
                         csv_content = csv_file.getvalue().decode('utf-8-sig')
                         lines = [l for l in csv_content.strip().split('\n') if l.strip()]
                         csv_row_count = len(lines)

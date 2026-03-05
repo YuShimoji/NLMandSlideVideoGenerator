@@ -1,7 +1,6 @@
 """
 Shared utility functions for UI pages
 """
-import streamlit as st
 
 
 def load_markdown_file(filepath):
@@ -23,8 +22,6 @@ def update_progress(progress_placeholder, status_placeholder, phase, progress, m
 
 def _run_environment_check():
     """環境チェックを実行"""
-    import subprocess
-    import shutil
 
     results: dict[str, dict[str, tuple[bool, str]]] = {
         "essential": {},

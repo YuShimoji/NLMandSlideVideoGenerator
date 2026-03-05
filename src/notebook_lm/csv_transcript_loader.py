@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import List, Optional, Sequence
 
 from core.utils.logger import logger
-from config.settings import settings
 from .audio_generator import AudioInfo
 from .transcript_processor import TranscriptInfo, TranscriptSegment
 

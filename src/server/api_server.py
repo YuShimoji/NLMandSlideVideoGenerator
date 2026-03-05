@@ -2,14 +2,10 @@
 運用・監視 API サーバー
 FastAPI ベースの運用ダッシュボードと監視機能
 """
-import asyncio
 import json
-import os
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from contextlib import asynccontextmanager
+from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, PlainTextResponse, HTMLResponse

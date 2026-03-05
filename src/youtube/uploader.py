@@ -4,14 +4,13 @@ YouTube アップローダー
 動画のアップロードと管理を行う
 """
 import asyncio
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, Union
 from dataclasses import dataclass
 
 from core.utils.logger import logger
-from core.exceptions import UploadError, QuotaExceededError, APIAuthenticationError
+from core.exceptions import UploadError, QuotaExceededError
 
 @dataclass
 class UploadResult:

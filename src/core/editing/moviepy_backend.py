@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from config.settings import settings
 from ..interfaces import IEditingBackend
 from ..timeline.models import TimelinePlan
 from video_editor.video_composer import VideoComposer, VideoInfo

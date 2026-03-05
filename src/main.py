@@ -52,7 +52,7 @@ class VideoGenerationPipeline:
     ) -> str:
         """
         動画生成の全工程を実行
-        
+
         Args:
             topic: 調査トピック
             urls: ソースURL一覧
@@ -61,7 +61,7 @@ class VideoGenerationPipeline:
             video_quality: 動画品質
             upload_schedule: アップロードスケジュール
             private_upload: 非公開アップロード
-            
+
         Returns:
             str: 生成された動画のYouTube URL
         """
@@ -120,7 +120,7 @@ class VideoGenerationPipeline:
 def main():
     """
     YouTube解説動画自動化システム
-    
+
     使用例:
     python src/main.py --topic "AI技術の最新動向"
     """

@@ -2,7 +2,7 @@
 コンテンツ分割モジュール
 台本をスライド生成に適した形式に分割
 """
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import re
 from dataclasses import dataclass
 
@@ -44,11 +44,11 @@ class ContentSplitter:
     ) -> List[Dict[str, Any]]:
         """
         台本をスライド用に分割
-        
+
         Args:
             transcript_info: 台本情報
             max_slides: 最大スライド数
-            
+
         Returns:
             List[Dict[str, Any]]: 分割されたコンテンツ一覧
         """
@@ -73,10 +73,10 @@ class ContentSplitter:
     def _group_segments_logically(self, segments: List[TranscriptSegment]) -> List[List[TranscriptSegment]]:
         """
         セグメントを論理的にグループ化
-        
+
         Args:
             segments: セグメント一覧
-            
+
         Returns:
             List[List[TranscriptSegment]]: グループ化されたセグメント
         """
@@ -113,11 +113,11 @@ class ContentSplitter:
     def _is_topic_change(self, prev_segment: TranscriptSegment, curr_segment: TranscriptSegment) -> bool:
         """
         トピック変更を検出
-        
+
         Args:
             prev_segment: 前のセグメント
             curr_segment: 現在のセグメント
-            
+
         Returns:
             bool: トピック変更があるかどうか
         """
@@ -138,11 +138,11 @@ class ContentSplitter:
     def _is_speaker_change_significant(self, prev_segment: TranscriptSegment, curr_segment: TranscriptSegment) -> bool:
         """
         話者変更が重要かどうかを判定
-        
+
         Args:
             prev_segment: 前のセグメント
             curr_segment: 現在のセグメント
-            
+
         Returns:
             bool: 重要な話者変更かどうか
         """
@@ -153,11 +153,11 @@ class ContentSplitter:
     def _is_time_gap_significant(self, prev_segment: TranscriptSegment, curr_segment: TranscriptSegment) -> bool:
         """
         時間的な間隔が重要かどうかを判定
-        
+
         Args:
             prev_segment: 前のセグメント
             curr_segment: 現在のセグメント
-            
+
         Returns:
             bool: 重要な時間間隔かどうか
         """
@@ -168,10 +168,10 @@ class ContentSplitter:
     def _split_by_character_limit(self, segment_groups: List[List[TranscriptSegment]]) -> List[SplitContent]:
         """
         文字数制限に基づいて分割
-        
+
         Args:
             segment_groups: セグメントグループ
-            
+
         Returns:
             List[SplitContent]: 分割されたコンテンツ
         """
@@ -198,11 +198,11 @@ class ContentSplitter:
     def _split_group_further(self, group: List[TranscriptSegment], start_slide_id: int) -> List[SplitContent]:
         """
         グループをさらに細分化
-        
+
         Args:
             group: セグメントグループ
             start_slide_id: 開始スライドID
-            
+
         Returns:
             List[SplitContent]: 細分化されたコンテンツ
         """
@@ -238,11 +238,11 @@ class ContentSplitter:
     def _create_split_content(self, segments: List[TranscriptSegment], slide_id: int) -> SplitContent:
         """
         セグメント群からSplitContentを作成
-        
+
         Args:
             segments: セグメント一覧
             slide_id: スライドID
-            
+
         Returns:
             SplitContent: 作成されたコンテンツ
         """
@@ -297,11 +297,11 @@ class ContentSplitter:
     def _generate_slide_title(self, segments: List[TranscriptSegment], key_points: List[str]) -> str:
         """
         スライドタイトルを生成
-        
+
         Args:
             segments: セグメント一覧
             key_points: キーポイント
-            
+
         Returns:
             str: 生成されたタイトル
         """
@@ -322,11 +322,11 @@ class ContentSplitter:
     def _generate_image_suggestions(self, key_points: List[str], text: str) -> List[str]:
         """
         画像提案を生成
-        
+
         Args:
             key_points: キーポイント
             text: テキスト
-            
+
         Returns:
             List[str]: 画像提案一覧
         """
@@ -347,10 +347,10 @@ class ContentSplitter:
     def _extract_concrete_terms(self, text: str) -> List[str]:
         """
         テキストから具体的な用語を抽出
-        
+
         Args:
             text: 対象テキスト
-            
+
         Returns:
             List[str]: 抽出された用語
         """
@@ -373,11 +373,11 @@ class ContentSplitter:
     def _reduce_to_max_slides(self, split_contents: List[SplitContent], max_slides: int) -> List[SplitContent]:
         """
         スライド数を最大数に削減
-        
+
         Args:
             split_contents: 分割コンテンツ一覧
             max_slides: 最大スライド数
-            
+
         Returns:
             List[SplitContent]: 削減されたコンテンツ一覧
         """
@@ -407,10 +407,10 @@ class ContentSplitter:
     def _calculate_content_importance(self, content: SplitContent) -> float:
         """
         コンテンツの重要度を計算
-        
+
         Args:
             content: 分割コンテンツ
-            
+
         Returns:
             float: 重要度スコア
         """
@@ -435,10 +435,10 @@ class ContentSplitter:
     def _convert_to_slide_format(self, split_contents: List[SplitContent]) -> List[Dict[str, Any]]:
         """
         SplitContentを辞書形式に変換
-        
+
         Args:
             split_contents: 分割コンテンツ一覧
-            
+
         Returns:
             List[Dict[str, Any]]: 辞書形式のスライドコンテンツ
         """
@@ -462,10 +462,10 @@ class ContentSplitter:
     def extract_key_points_only(self, split_contents: List[SplitContent]) -> List[SplitContent]:
         """
         要点のみを抽出してコンテンツを簡略化
-        
+
         Args:
             split_contents: 分割コンテンツ一覧
-            
+
         Returns:
             List[SplitContent]: 簡略化されたコンテンツ一覧
         """

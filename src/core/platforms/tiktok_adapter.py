@@ -3,8 +3,7 @@ TikTok プラットフォームアダプター
 TikTok / TikTok Shorts への動画投稿機能
 """
 import asyncio
-import json
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 from pathlib import Path
 
 from core.interfaces import IPlatformAdapter

@@ -8,8 +8,8 @@ import json
 from datetime import datetime
 
 from notebook_lm.source_collector import SourceCollector, SourceInfo
-from notebook_lm.audio_generator import AudioGenerator, AudioInfo
-from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo
+from notebook_lm.audio_generator import AudioGenerator
+from notebook_lm.transcript_processor import TranscriptProcessor
 
 from ...interfaces import IScriptProvider
 

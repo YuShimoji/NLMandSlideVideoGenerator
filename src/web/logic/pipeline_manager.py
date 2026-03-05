@@ -10,7 +10,7 @@ Pipeline execution logic for web application
 import asyncio
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Set
+from typing import Optional, Dict, Any, Callable
 from datetime import datetime
 
 from src.core.pipeline import build_default_pipeline

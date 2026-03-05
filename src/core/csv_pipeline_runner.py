@@ -18,10 +18,7 @@ from .models import PipelineArtifacts
 from .persistence import db_manager
 
 from notebook_lm.audio_generator import AudioInfo
-from notebook_lm.transcript_processor import TranscriptInfo
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
-from slides.slide_generator import SlidesPackage
-from video_editor.video_composer import VideoInfo
 from youtube.uploader import UploadResult
 
 from .interfaces import (

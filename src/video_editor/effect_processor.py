@@ -2,11 +2,9 @@
 エフェクト処理モジュール
 スライド画像にズーム、パン、フェードエフェクトを適用
 """
-import asyncio
 from typing import List, Dict, Any, Tuple
 from pathlib import Path
 from dataclasses import dataclass
-import json
 
 # 基本的なロガー設定（loguruの代替）
 class SimpleLogger:
@@ -28,7 +26,7 @@ except ImportError:
     logger.warning("PIL/Pillowまたはnumpyが利用できません。画像処理機能は制限されます。")
 
 from config.settings import settings
-from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
+from notebook_lm.transcript_processor import TranscriptInfo
 
 @dataclass
 class EffectSettings:
@@ -66,11 +64,11 @@ class EffectProcessor:
     ) -> List[ProcessedSlide]:
         """
         スライド画像にエフェクトを適用
-        
+
         Args:
             slide_images: スライド画像パス一覧
             transcript: 台本情報
-            
+
         Returns:
             List[ProcessedSlide]: 処理済みスライド一覧
         """
@@ -109,11 +107,11 @@ class EffectProcessor:
     def _get_segment_info(self, slide_index: int, transcript: TranscriptInfo) -> Dict[str, Any]:
         """
         スライドに対応するセグメント情報を取得
-        
+
         Args:
             slide_index: スライドインデックス
             transcript: 台本情報
-            
+
         Returns:
             Dict[str, Any]: セグメント情報
         """
@@ -137,10 +135,10 @@ class EffectProcessor:
     def _determine_effect_config(self, segment_info: Dict[str, Any]) -> EffectSettings:
         """
         セグメント情報に基づいてエフェクト設定を決定
-        
+
         Args:
             segment_info: セグメント情報
-            
+
         Returns:
             EffectSettings: エフェクト設定
         """
@@ -209,13 +207,13 @@ class EffectProcessor:
     ) -> ProcessedSlide:
         """
         単一スライドにエフェクトを適用
-        
+
         Args:
             slide_path: スライド画像パス
             slide_id: スライドID
             effect_config: エフェクト設定
             segment_info: セグメント情報
-            
+
         Returns:
             ProcessedSlide: 処理済みスライド
         """
@@ -259,10 +257,10 @@ class EffectProcessor:
     def _resize_image_to_target(self, image: Image.Image) -> Image.Image:
         """
         画像を目標解像度にリサイズ
-        
+
         Args:
             image: 元画像
-            
+
         Returns:
             Image.Image: リサイズ済み画像
         """
@@ -289,12 +287,12 @@ class EffectProcessor:
     ) -> Image.Image:
         """
         単一フレームにエフェクトを適用
-        
+
         Args:
             image: 元画像
             progress: 進行度 (0.0-1.0)
             effect_config: エフェクト設定
-            
+
         Returns:
             Image.Image: エフェクト適用済み画像
         """
@@ -311,11 +309,11 @@ class EffectProcessor:
     def _apply_easing(self, progress: float, easing_type: str) -> float:
         """
         イージング関数を適用
-        
+
         Args:
             progress: 進行度 (0.0-1.0)
             easing_type: イージングタイプ
-            
+
         Returns:
             float: イージング適用済み進行度
         """
@@ -336,12 +334,12 @@ class EffectProcessor:
     ) -> Image.Image:
         """
         ズームエフェクトを適用
-        
+
         Args:
             image: 元画像
             progress: 進行度
             effect_config: エフェクト設定
-            
+
         Returns:
             Image.Image: ズーム適用済み画像
         """
@@ -380,12 +378,12 @@ class EffectProcessor:
     ) -> Image.Image:
         """
         パンエフェクトを適用
-        
+
         Args:
             image: 元画像
             progress: 進行度
             effect_config: エフェクト設定
-            
+
         Returns:
             Image.Image: パン適用済み画像
         """
@@ -429,10 +427,10 @@ class EffectProcessor:
     ) -> List[ProcessedSlide]:
         """
         スライド間のトランジションエフェクトを追加
-        
+
         Args:
             processed_slides: 処理済みスライド一覧
-            
+
         Returns:
             List[ProcessedSlide]: トランジション追加済みスライド一覧
         """
@@ -475,12 +473,12 @@ class EffectProcessor:
     ) -> List[Path]:
         """
         フェードトランジションフレームを作成
-        
+
         Args:
             from_frame_path: 開始フレームパス
             to_frame_path: 終了フレームパス
             transition_frames: トランジションフレーム数
-            
+
         Returns:
             List[Path]: トランジションフレームパス一覧
         """
@@ -505,10 +503,10 @@ class EffectProcessor:
     def optimize_for_video_codec(self, processed_slides: List[ProcessedSlide]) -> List[ProcessedSlide]:
         """
         動画コーデック向けに最適化
-        
+
         Args:
             processed_slides: 処理済みスライド一覧
-            
+
         Returns:
             List[ProcessedSlide]: 最適化済みスライド一覧
         """

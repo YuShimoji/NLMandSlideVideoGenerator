@@ -4,7 +4,6 @@ import asyncio
 import json
 import traceback
 from pathlib import Path
-from io import BytesIO
 
 import streamlit as st
 

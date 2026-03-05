@@ -6,8 +6,7 @@ NotebookLMの代替としてGoogle AI Studio (Gemini API)を使用
 import asyncio
 import json
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass
 
 from core.utils.logger import logger

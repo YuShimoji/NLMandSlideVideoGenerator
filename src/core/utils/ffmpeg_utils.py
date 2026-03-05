@@ -8,7 +8,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional, Tuple
 
 from .logger import logger
@@ -58,7 +57,7 @@ FFmpegがインストールされていません。
 def detect_ffmpeg() -> FFmpegInfo:
     """
     FFmpegを検出し、情報を返す
-    
+
     Returns:
         FFmpegInfo: FFmpegの検出結果
     """
@@ -112,7 +111,7 @@ def detect_ffmpeg() -> FFmpegInfo:
 def check_ffmpeg_with_warning() -> Tuple[bool, Optional[str]]:
     """
     FFmpegをチェックし、見つからない場合は警告を表示
-    
+
     Returns:
         Tuple[bool, Optional[str]]: (利用可能か, FFmpegパス)
     """
@@ -129,7 +128,7 @@ def check_ffmpeg_with_warning() -> Tuple[bool, Optional[str]]:
 def get_ffmpeg_path() -> Optional[str]:
     """
     FFmpegパスを取得（見つからない場合はNone）
-    
+
     Returns:
         Optional[str]: FFmpegのパス
     """

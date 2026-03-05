@@ -5,14 +5,10 @@ TTS統合モジュール
 実API呼び出しを可能にし、失敗時はモックにフォールバック
 """
 import asyncio
-import json
-from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
-import os
-import time
 import requests
 
 from config.settings import settings
