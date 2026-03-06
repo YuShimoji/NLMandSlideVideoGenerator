@@ -37,10 +37,8 @@ python scripts/run_csv_pipeline.py \
 ### 注意事項
 
 - 同梱の音声ファイルは **無音のテスト用** です
-- 実際の動画制作では、以下のツールで音声を生成してください:
-  - **NotebookLM** - Deep Dive Audio機能
-  - **SofTalk / AquesTalk** - `scripts/tts_batch_softalk.py`
-  - **ElevenLabs / OpenAI TTS** - API経由
+- 実際の動画制作では、**YMM4 内蔵ゆっくりボイス** (Path A) を使用してください
+  - YMM4 を使わない場合は、任意のツールで連番WAVを手動準備してください
 
 ## 自分のサンプルを作成する
 

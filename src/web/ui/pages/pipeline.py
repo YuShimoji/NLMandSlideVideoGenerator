@@ -90,6 +90,8 @@ def show_pipeline_page():
             user_preferences["thumbnail_style"] = thumbnail_style
 
         if schedule_publish and publish_datetime and publish_time:
+            if isinstance(publish_datetime, tuple):
+                publish_datetime = publish_datetime[0] if publish_datetime else datetime.now().date()
             schedule_dt = datetime.combine(publish_datetime, publish_time)
             user_preferences["schedule"] = schedule_dt.isoformat()
 
@@ -112,10 +114,10 @@ def show_pipeline_page():
                 result = await run_pipeline_async(
                     topic=topic,
                     urls=urls_list,
-                    quality=quality,
+                    quality=quality or "720p",
                     private_upload=private_upload,
                     upload=upload,
-                    stage_modes=stage_modes,
+                    stage_modes={k: v for k, v in stage_modes.items() if v is not None},
                     user_preferences=user_preferences,
                     progress_callback=lambda phase, progress, message: update_progress(
                         progress_placeholder, status_placeholder, phase, progress, message

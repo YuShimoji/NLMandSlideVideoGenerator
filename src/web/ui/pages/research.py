@@ -137,9 +137,9 @@ def show_research_page():
                                 key=f"choice_{i}",
                                 index=default_index,
                             )
-                            if "採用" in choice:
+                            if choice and "採用" in choice:
                                 item["status"] = "adopted"
-                            elif "拒否" in choice:
+                            elif choice and "拒否" in choice:
                                 item["status"] = "rejected"
                             else:
                                 if status not in ("orphaned", "conflict"):

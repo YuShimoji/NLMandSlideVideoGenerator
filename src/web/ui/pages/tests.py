@@ -18,7 +18,7 @@ def show_tests_page():
         async def execute_tests():
             try:
                 results = await run_api_tests_async(
-                    progress_callback=lambda message: progress_placeholder.info(message)
+                    progress_callback=lambda message: progress_placeholder.info(message)  # type: ignore[arg-type]
                 )
                 result_placeholder.json(results)
             except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:

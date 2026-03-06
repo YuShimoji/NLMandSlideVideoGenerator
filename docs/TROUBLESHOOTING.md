@@ -52,43 +52,10 @@ Audio Playback Test: ✅ Passed
 
 ---
 
-### 🟡 Problem: SofTalk/TTS audio generation fails
-
-**Symptoms:**
-- `tts_batch_softalk_aquestalk.py` exits with errors
-- Generated audio files are missing or corrupt
-- Error: "SofTalk executable not found"
-
-**Diagnosis:**
-```bash
-# Check SofTalk installation
-$env:SOFTALK_EXE
-Get-Command SofTalk.exe
-
-# Test audio generation (dry-run)
-python scripts/tts_batch_softalk_aquestalk.py --engine softalk --csv samples/basic_dialogue/timeline.csv --out-dir samples/audio --dry-run
-```
-
-**Solutions:**
-
-| Solution | Steps | When to Use |
-|----------|-------|-------------|
-| **Install SofTalk** | 1. Download from [SofTalk website](https://w.atwiki.jp/softalk/)<br>2. Extract to `C:\Program Files\SofTalk\`<br>3. Set `SOFTALK_EXE` env var | SofTalk not installed |
-| **Set Environment Variable** | 1. Open System Properties → Environment Variables<br>2. Add `SOFTALK_EXE` = `C:\Path\To\SofTalk.exe`<br>3. Restart terminal | SofTalk installed but not detected |
-| **Check CSV Format** | 1. Verify CSV has "Speaker" and "Text" columns<br>2. Ensure UTF-8 encoding<br>3. Remove empty lines | CSV parsing errors |
-| **Use Alternative TTS** | 1. Consider VOICEVOX (better quality)<br>2. See [SofTalk Assessment](technical/SOFTALK_INTEGRATION_ASSESSMENT.md) | Quality/compatibility issues |
-
-**Alternative Solution (VOICEVOX):**
-```bash
-# Install VOICEVOX via Docker
-docker pull voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-docker run -d -p 50021:50021 voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-
-# Use VOICEVOX API (future implementation)
-python scripts/tts_batch_voicevox.py --csv timeline.csv --out-dir audio
-```
-
 ---
+
+> **注**: SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
+> 音声生成は YMM4 内蔵ゆっくりボイスを使用してください。
 
 ## YMM4 Plugin Issues
 

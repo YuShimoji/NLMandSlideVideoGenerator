@@ -17,10 +17,9 @@ Source: TASK_014
 | # | 経路 | 役割 | 自動化度 | 安定度 | 環境依存 | 状態 |
 |---|------|------|----------|--------|----------|------|
 | 1 | **YMM4（最終レンダラー）** | CSV→音声→動画を一貫処理 | 低（GUI操作） | 高 | YMM4 v4.33+ | 動作確認済み |
-| 2 | **VOICEVOX + Python pipeline** | 自動WAV生成→自動動画生成 | 高 | 高 | VOICEVOX Engine 起動 | 実装済み (`--tts voicevox`) |
-| 3 | **SofTalk バッチ + Python pipeline** | 自動WAV生成→自動動画生成 | 高 | 中 | SofTalk.exe 必須 | レガシー・環境依存大 |
-| 4 | **AquesTalk バッチ + Python pipeline** | 自動WAV生成→自動動画生成 | 高 | 中 | AquesTalkPlayer.exe 必須 | レガシー・環境依存大 |
-| 5 | **手動準備 + Python pipeline** | 任意ツールでWAV→自動動画生成 | なし | 高 | なし | 常時利用可 |
+| 2 | **手動準備 + Python pipeline** | 任意ツールでWAV→自動動画生成 | なし | 高 | なし | 常時利用可 |
+
+> **注**: VOICEVOX / SofTalk / AquesTalk のTTS連携コードは 2026-03-04 に削除されました。音声生成は YMM4 内蔵ゆっくりボイスを使用してください。
 
 ---
 
@@ -49,74 +48,7 @@ Source: TASK_014
 
 ---
 
-### 第2推奨: VOICEVOX + Python パイプライン
-
-**理由**: YMM4 を使わずに完全自動化可能。REST API ベースで環境構築が容易。`--tts voicevox` オプションで CSV から WAV 生成まで一気通貫。
-
-**前提条件**:
-- VOICEVOX Engine がローカルで起動していること（デフォルト: `http://localhost:50021`）
-
-**手順**:
-
-| Step | 操作 | 出力 |
-|------|------|------|
-| 1 | VOICEVOX Engine を起動 | REST API 待受開始 |
-| 2 | タイムライン CSV を用意 | `timeline.csv` |
-| 3 | `run_csv_pipeline.py --tts voicevox` で実行 | WAVs + 動画 + 字幕 |
-
-```powershell
-.\venv\Scripts\python.exe scripts\run_csv_pipeline.py `
-  --csv data\timeline.csv `
-  --audio-dir data\audio\episode01 `
-  --topic "解説動画タイトル" `
-  --tts voicevox `
-  --tts-speaker-id 3
-```
-
-**スピーカーID例**: 3=ずんだもん, 2=四国めたん, 8=春日部つむぎ
-
----
-
-### 第3推奨: SofTalk / AquesTalk バッチ + Python パイプライン（レガシー）
-
-**理由**: VOICEVOX が使えない環境での代替。ただしインストールと環境設定に手間がかかる。
-
-**前提条件**:
-- SofTalk.exe または AquesTalkPlayer.exe がインストール済みであること
-- 環境変数 `SOFTALK_EXE` / `AQUESTALK_EXE` にパスを設定するか、PATH に含めること
-
-**手順**:
-
-| Step | 操作 | 出力 |
-|------|------|------|
-| 1 | SofTalk または AquesTalk をインストール | 実行ファイル |
-| 2 | 環境変数を設定 | — |
-| 3 | タイムライン CSV を用意 | `timeline.csv` |
-| 4 | バッチスクリプトを実行 | `audio_dir/001.wav`, `002.wav`, ... |
-| 5 | CSV パイプラインを実行 | 動画 + 字幕 |
-
-```powershell
-# Step 4
-.\venv\Scripts\python.exe scripts\tts_batch_softalk_aquestalk.py `
-  --engine softalk `
-  --csv data\timeline.csv `
-  --out-dir data\audio\episode01
-
-# Step 5
-.\venv\Scripts\python.exe scripts\run_csv_pipeline.py `
-  --csv data\timeline.csv `
-  --audio-dir data\audio\episode01 `
-  --topic "解説動画タイトル"
-```
-
-**既知の制約**:
-- SofTalk は Shift-JIS 前提の場合がある（スクリプト内で変換処理あり）
-- インストール先ディレクトリによって設定ファイルの保存可否が変わる
-- ウィンドウの表示/非表示の挙動がバージョンにより異なる
-
----
-
-### 第4推奨: 手動準備 + Python パイプライン
+### 第2推奨: 手動準備 + Python パイプライン
 
 **理由**: どんな環境でも使えるが、音声生成は手作業。Python パイプラインで動画を自動生成。
 
@@ -134,12 +66,10 @@ Source: TASK_014
 
 | 状態 | 対処 |
 |------|------|
-| YMM4 がインストールされていない | 第2推奨（VOICEVOX + pipeline）に切り替え |
-| VOICEVOX Engine が起動できない | 第3推奨（SofTalk/AquesTalk）または第4推奨（手動 + pipeline）に切り替え |
-| SofTalk/AquesTalk がインストールされていない | 第2推奨（VOICEVOX）または第4推奨（手動 + pipeline）に切り替え |
-| WAV ファイルが `audio_dir` にない（Path B使用時） | パイプラインは起動するがデフォルト3秒のプレースホルダーが使われる |
-| WAV の連番が CSV 行数と合わない（Path B使用時） | ログに警告が出る。不足分はデフォルト音声長で補完される |
-| パイプライン実行中にエラー（Path B使用時） | `--video-quality 480p` で低解像度テストを先に行い、成功を確認してから本番品質で再実行 |
+| YMM4 がインストールされていない | 第2推奨（手動WAV準備 + Python pipeline）に切り替え |
+| WAV ファイルが `audio_dir` にない（手動pipeline使用時） | パイプラインは起動するがデフォルト3秒のプレースホルダーが使われる |
+| WAV の連番が CSV 行数と合わない（手動pipeline使用時） | ログに警告が出る。不足分はデフォルト音声長で補完される |
+| パイプライン実行中にエラー（手動pipeline使用時） | `--video-quality 480p` で低解像度テストを先に行い、成功を確認してから本番品質で再実行 |
 
 ---
 

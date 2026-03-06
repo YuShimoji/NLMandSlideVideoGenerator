@@ -54,13 +54,11 @@
   - YMM4 プロジェクトファイル（タイムライン情報を含む）
 - `docs/ymm4_export_spec.md` に、YMM4 プロジェクト出力の仕様・テンプレート差分の考え方が整理済み。
 
-### 2.3 SofTalk/AquesTalk の位置づけ（整理済み）
+### 2.3 TTS連携の位置づけ（2026-03-04 更新）
 
-- `docs/tts_batch_softalk_aquestalk.md` / `docs/backlog.md` に記載の通り:
-  - SofTalk/AquesTalk 連携は、環境依存が大きく、
-    **「動作すれば便利な上級者向けオプション」** として扱う。
-  - 主フローは「CSV + WAV が揃っている」ことだけを前提とし、
-    YMM4 / NotebookLM / 他クラウド TTS / AquesTalk Player 等、任意の手段を許容する。
+- SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除済み。
+- 音声生成は **YMM4 内蔵ゆっくりボイス** を唯一の推奨方法とする。
+- Path B (手動WAV + Python pipeline) では、任意の外部ツールでWAVを事前準備する。
 
 ---
 

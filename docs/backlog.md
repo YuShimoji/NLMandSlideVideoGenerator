@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-02-06
+最終更新: 2026-03-07
 
 ---
 
@@ -57,6 +57,8 @@
 | D-14 | broad `except Exception` / bare `except` の整理（想定例外→catch-all、挙動/ログ維持） | 2025-12-14 |
 | D-15 | ドキュメント導線整理（INDEX/README）+ 申し送り整備（HANDOVER_20251214） | 2025-12-14 |
 | D-16 | Google Slides API 統合の堅牢化（OAuth refresh/利用可否チェック/フォールバックPPTX/VideoComposer PPTX参照修正） | 2025-12-15 |
+| TASK_022 | VOICEVOX統合 — CLOSED (WONTFIX): YMM4一本化により不要。コード全削除済 | 2026-03-04 |
+| TASK_024 | pipeline.py リファクタリング (1384→431行, -69%) | 2026-03-04 |
 
 ---
 

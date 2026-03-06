@@ -133,7 +133,7 @@ def show_csv_pipeline_page():
                 "green": "🟢 グリーン（深緑背景・緑アクセント）",
                 "warm": "🟠 ウォーム（茶系背景・オレンジアクセント）",
             }
-            st.caption(theme_descriptions.get(placeholder_theme, ""))
+            st.caption(theme_descriptions.get(placeholder_theme or "dark", ""))
 
     # 入力素材プレビュー
     has_audio_input = audio_dir or (audio_files_uploaded and len(audio_files_uploaded) > 0)
@@ -246,8 +246,8 @@ def show_csv_pipeline_page():
                 sorted_files = sorted(audio_files_uploaded, key=lambda x: x.name)
                 for i, uploaded_file in enumerate(sorted_files, start=1):
                     wav_path = final_audio_path / f"{i:03d}.wav"
-                    with open(wav_path, "wb") as f:
-                        f.write(uploaded_file.getvalue())
+                    with open(wav_path, "wb") as wav_file:
+                        wav_file.write(uploaded_file.getvalue())
 
                 st.info(f"📂 {len(sorted_files)}個のWAVファイルを一時ディレクトリに保存しました")
 
@@ -260,7 +260,8 @@ def show_csv_pipeline_page():
             try:
                 # CSVを一時ファイルに保存
                 with tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False) as tmp:
-                    tmp.write(csv_file.getvalue())
+                    if csv_file is not None:
+                        tmp.write(csv_file.getvalue())
                     csv_path = Path(tmp.name)
 
                 status_text.info("パイプラインを初期化中...")
@@ -305,7 +306,7 @@ def show_csv_pipeline_page():
                         csv_path=csv_path,
                         audio_dir=final_audio_path,
                         topic=topic,
-                        quality=quality,
+                        quality=quality or "720p",
                         private_upload=private_upload,
                         upload=upload,
                         stage_modes=settings.PIPELINE_STAGE_MODES,

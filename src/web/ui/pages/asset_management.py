@@ -68,7 +68,7 @@ def show_assets_page():
             count = 0
             size = 0
         with cols[i]:
-            st.metric(config["icon"], f"{count} files", f"{size // (1024*1024):.1f} MB")
+            st.metric(str(config["icon"]), f"{count} files", f"{size // (1024*1024):.1f} MB")
 
     st.caption(f"総容量: {total_size // (1024*1024):.1f} MB")
     st.divider()
@@ -165,7 +165,7 @@ def show_assets_page():
                     preview_type = config["preview"]
                     try:
                         if preview_type == "image" and f.suffix.lower() in [".png", ".jpg", ".jpeg"]:
-                            st.image(str(f), use_container_width=True)
+                            st.image(str(f), use_container_width=True)  # type: ignore[call-arg]
                         elif preview_type == "audio" and f.suffix.lower() in [".mp3", ".wav", ".m4a"]:
                             st.audio(str(f))
                         elif preview_type == "video" and f.suffix.lower() in [".mp4", ".webm"]:

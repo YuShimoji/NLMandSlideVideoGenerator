@@ -1,6 +1,6 @@
 # PROJECT ALIGNMENT SSOT
 
-Updated: 2026-03-04T01:00:00+09:00
+Updated: 2026-03-07T00:00:00+09:00
 Owner: Orchestrator
 Audience: All Agents
 
@@ -28,7 +28,7 @@ Audience: All Agents
 | `TASK_023` E2E実証 | IN_PROGRESS | CSV→mp4パイプライン成功、YMM4エクスポート成功。GUI検証残 |
 | `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
-| Python tests | 105 passed / 10 skipped | 既存スイート安定 (VOICEVOX系テスト削除後) |
+| Python tests | 107 passed / 0 skipped | 既存スイート安定 |
 | .NET tests | 13 passed / 0 failed | benchmark 含む |
 
 ## Consistency Audit
@@ -61,14 +61,13 @@ Audience: All Agents
 |---|---|
 | 背景動画 | 必要時のみ加える |
 | 軽い演出 | zoom / pan / 字幕調整など最低限 |
-| Batch TTS パイプライン | VOICEVOX → WAVs → run_csv_pipeline.py で自動生成（YMM4不使用時の推奨） |
+| 手動WAV + Python pipeline | 任意ツールでWAV準備 → run_csv_pipeline.py で動画生成（YMM4不使用時の代替） |
 
 ### Optional
 
 | 項目 | 定義 |
 |---|---|
 | キャラクター表示 | 立ち絵、アバター、アイコン |
-| SofTalk / AquesTalk | レガシー代替経路（VOICEVOX が使えない場合） |
 
 ### Non-Goals
 
@@ -91,14 +90,14 @@ Audience: All Agents
 > YMM4 が最終レンダラーであり、Python パイプラインは CSV 作成までの前工程に責務を限定する。
 > YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
 
-### Path B: Batch TTS 自動パイプライン（Secondary）
+### Path B: 手動WAV + Python pipeline（Secondary, TTS削除済み）
 
 1. CSV を作成する（手動 or Research workflow 経由）
-2. VOICEVOX で WAV を生成する（`--tts voicevox` オプション、001.wav, 002.wav, ...）
+2. 任意のツールで WAV を生成する（001.wav, 002.wav, ... 形式）
 3. `scripts/run_csv_pipeline.py` で mp4 を生成する
 
-> YMM4 を使わない自動化経路。VOICEVOX Engine の起動が前提。
-> フォールバック: SofTalk / AquesTalk（レガシー）も利用可能だが、環境構築コストが高い。
+> YMM4 を使わない代替経路。音声ファイルの事前準備が必要。
+> VOICEVOX / SofTalk / AquesTalk のTTS連携コードは 2026-03-04 に削除済み。
 
 ### Research 先行フロー（Path A/B 共通の前工程）
 
@@ -129,7 +128,7 @@ Audience: All Agents
 | Research | 出典確認、要約、資料パッケージ化 | Research Package |
 | Alignment | 台本との差分比較、採否判断 | Alignment Report / final CSV |
 | Production (Path A) | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
-| Production (Path B) | VOICEVOX→WAVs→Python pipeline（レガシー: SofTalk/AquesTalk） | mp4 / 字幕 / ログ |
+| Production (Path B) | 手動WAV準備→Python pipeline (TTS連携削除済み) | mp4 / 字幕 / ログ |
 
 ## Agent Operating Policy
 

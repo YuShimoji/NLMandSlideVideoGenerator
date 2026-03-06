@@ -123,7 +123,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 ## 備考（自由記述）
 
 - Python 3.11.0 / venv 環境を使用。
-- テスト: 107 passed, 11 skipped (~12秒）
+- テスト: 107 passed, 0 skipped, 5 deselected (~10秒)
 - プロジェクト健全性: Ruff 0 + Mypy 0 + CI全緑 = A+ ランク
 - 残り改善ポイント: テストカバレッジ (56%→80%+)
 
@@ -139,9 +139,10 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - 2026-03-05 夜: Ruff全修正 (995→0)、Mypy全修正 (228→0)、CI 5段階全緑化。Health Score 98/100達成。
 - 2026-03-06: YMM4プラグインGetAudioDuration修正、CS1998警告解消、skippedテスト10件→0件解消。
 
-## 本セッション Git Commits (2026-03-06)
+## 直近 Git Commits
 
 ```
+9dfd512 chore: remove unused usings, fix stale README refs, clean up docs
+4e41921 fix: resolve 10 skipped tests, CS1998 warning, and stale docstrings
 1448cc0 fix(plugin): use WavDurationReader for actual audio duration instead of fixed 3.0s
-(pending) fix: resolve 10 skipped tests + CS1998 warning + docstring update
 ```

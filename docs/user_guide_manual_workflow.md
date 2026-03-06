@@ -82,13 +82,11 @@ audio_folder/
 
 **音声生成方法（YMM4以外）:**
 
-1. **SofTalk/AquesTalk** [自動化可・環境依存]
-   - バッチスクリプト: `scripts/tts_batch_softalk_aquestalk.py`
-   - 詳細: `docs/tts_batch_softalk_aquestalk.md`
-2. **手動準備** [常時利用可]
-   - 棒読みちゃん、VOICEVOX等で音声生成 → 連番WAVにリネーム
-3. **NotebookLM**: Deep Dive Audio → 分割 (ゆっくりボイスではない)
-4. **ElevenLabs/OpenAI TTS**: API経由 (ゆっくりボイスではない)
+> SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
+
+1. **手動準備** [常時利用可]
+   - 任意のツール(棒読みちゃん、VOICEVOX等)で音声生成 → 連番WAVにリネーム
+2. **NotebookLM**: Deep Dive Audio → 分割 (ゆっくりボイスではない)
 
 ### ステップ2: 動画生成の実行（Path B のみ）
 
@@ -143,57 +141,11 @@ data/
         └── timeline_plan.json
 ```
 
-### CSV+TTS Webフロー E2E 手順（SofTalk/AquesTalk）
+### (削除済み) CSV+TTS Webフロー E2E 手順
 
-> ⚠️ 現在、SofTalk / AquesTalk 連携は環境依存の要素が多く、
-> 「動作すれば便利なオプション」という位置づけです。CSV タイムラインモード自体は、
-> **任意の手段で 001.wav, 002.wav... を用意できれば利用可能** であり、
-> YMM4 や他 TTS を使うワークフローも同等にサポートされます。
-
-このプロジェクトで想定している「CSV+TTS→Web UI→動画生成」の一連の流れは、次のようになります。
-
-1. **前提準備**
-   - SofTalk または AquesTalk をローカルにインストール
-   - 環境変数 `SOFTALK_EXE` または `AQUESTALK_EXE` に実行ファイルパスを設定
-   - 詳細は `docs/tts_batch_softalk_aquestalk.md` を参照
-
-2. **CSV台本の準備**
-   - 上記「1-1. CSV台本の作成」に従って、話者列 + テキスト列のCSVを用意
-   - サンプル: `docs/spec_csv_input_format.md` や Web UI のサンプルコードを参照
-
-3. **Web UI の起動と CSV Pipeline ページの表示**
-   - ターミナルで `streamlit run src/web/web_app.py` を実行
-   - ブラウザのサイドバーから **「CSV Pipeline」** を選択
-
-4. **TTSバッチ（SofTalk/AquesTalk）の実行**
-   - CSV Pipeline ページ下部の **SofTalk/AquesTalk TTS バッチセクション** を開く
-   - 入力内容の例:
-     - TTSエンジン: `SofTalk` または `AquesTalk`
-     - 出力ディレクトリ: `data/tts_outputs/例)` など任意の空ディレクトリ
-     - SpeakerマップJSON: CSVの話者名 → TTSプリセットの対応表
-   - 必要に応じて **dry-run** でコマンド内容を確認
-   - 実行後、ログエリアで各行のWAV生成結果を確認
-
-5. **audio_dir の自動反映**
-   - TTS バッチが成功すると、指定した出力ディレクトリが Web セッションに記憶されます
-   - ページ上の **「audio_dir に反映」ボタン**（名称はUIに準拠）から、
-     - 生成された音声ディレクトリパスを `audio_dir` 入力欄へワンクリックで反映
-
-6. **動画生成の実行（CSV Timeline パイプライン）**
-   - CSVファイルをアップロード
-   - `audio_dir` に TTS出力ディレクトリが設定されていることを確認
-   - トピック名・画質・YMM4出力有無などオプションを指定
-   - **「動画生成開始」** ボタンを押す
-   - 実行中はページ内の進捗バーとログを確認
-
-7. **出力物とジョブ履歴の確認**
-   - 上記「ステップ3: 出力の確認」にあるように、`data/videos/` と `data/transcripts/` を確認
-   - Web UI の結果セクションで:
-     - 出力動画のパスと簡易プレビュー
-     - 生成された字幕ファイル一覧
-     - YMM4 プロジェクト情報（エクスポート有効時）
-     - `job_id`（内部ジョブ管理用ID）
-   - ジョブIDを元に、設定ページのジョブ履歴UIから過去の実行状況を参照可能です（今後の拡張前提）。
+> SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
+> 音声生成は **YMM4 内蔵ゆっくりボイス** (Path A) を使用してください。
+> Path B で手動WAVを使う場合は、上記「ステップ2」の手順に従ってください。
 
 ---
 
@@ -284,6 +236,5 @@ sudo apt install ffmpeg
 ## 関連ドキュメント
 
 - `docs/voice_path_comparison.md` - ゆっくりボイス経路比較・推奨
-- `docs/tts_batch_softalk_aquestalk.md` - SofTalk/AquesTalk連携
 - `docs/ymm4_export_spec.md` - YMM4エクスポート仕様
 - `docs/spec_transcript_io.md` - 台本I/O仕様
