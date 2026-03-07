@@ -65,7 +65,7 @@ ymm4-plugin/
 ├── VoicePlugin/
 │   └── CsvTimelineVoicePlugin.cs   # IVoicePlugin実装（スケルトン）
 └── TextCompletionPlugin/
-    └── CsvScriptCompletionPlugin.cs # ITextCompletionPlugin実装（スケルトン）
+    └── CsvScriptCompletionPlugin.cs # テキスト補完・校正（Gemini API）
 ```
 
 ## 実装予定のプラグインインターフェース
@@ -76,7 +76,7 @@ ymm4-plugin/
 | `IToolPlugin` | ツールウィンドウ統合 | ✅ 実装済み |
 | `IPluginMenuItem` | 旧メニュー統合（v4.33+非推奨） | ⏸ 廃止 |
 | `IVoicePlugin` | ボイス生成 | 🚧 スケルトン |
-| `ITextCompletionPlugin` | テキスト補完・校正 | 🚧 スケルトン |
+| `ITextCompletionPlugin` | テキスト補完・校正 | ✅ 実装済み (Gemini API) |
 | `IAudioFileSourcePlugin` | 外部WAVインポート | ⏳ 予定 |
 
 ## PoC ゴール
@@ -84,6 +84,36 @@ ymm4-plugin/
 1. **Phase 1**: プラグインがYMM4に読み込まれることを確認
 2. **Phase 2**: 外部CSVファイルを読み込み、タイムラインにアイテムを追加
 3. **Phase 3**: 生成された音声WAVファイルとの連携
+
+## Gemini API キー設定（テキスト補完機能）
+
+CsvScriptCompletionPlugin は Gemini API を利用して台本テキストの校正・補完を行います。
+
+### 1. API キーの取得
+
+1. [Google AI Studio](https://aistudio.google.com/) にアクセス
+2. 「Get API key」→「Create API key」でキーを生成
+3. 無料枠: 15 RPM / 100万トークン/日（2026年3月時点）
+
+### 2. 環境変数の設定
+
+**PowerShell（一時的）:**
+```powershell
+$env:GEMINI_API_KEY = "your_api_key_here"
+```
+
+**システム環境変数（永続的）:**
+```powershell
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your_api_key_here", "User")
+```
+
+**YMM4 から使う場合:**
+YMM4 はシステム環境変数を読み込むため、上記の永続的な設定が必要です。
+設定後、YMM4 を再起動してください。
+
+### 3. フォールバック動作
+
+API キー未設定時やAPI呼び出し失敗時は、入力テキストをそのまま返します（エラーにはなりません）。
 
 ## 開発ガイド
 
