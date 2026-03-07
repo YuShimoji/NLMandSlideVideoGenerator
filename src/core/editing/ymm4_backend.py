@@ -11,7 +11,7 @@ from config.settings import settings
 from ..interfaces import IEditingBackend
 from ..utils.logger import logger
 from ..utils.tool_detection import find_autohotkey_exe
-from .moviepy_backend import MoviePyEditingBackend
+
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from slides.slide_generator import SlidesPackage
@@ -19,20 +19,18 @@ from video_editor.video_composer import VideoInfo
 
 
 class YMM4EditingBackend(IEditingBackend):
-    """YMM4 プロジェクトを生成しつつ MoviePy にフォールバックして動画を書き出すバックエンド"""
+    """YMM4 プロジェクトファイル一式を書き出すエクスポート専用バックエンド"""
 
     def __init__(
         self,
         project_template: Optional[Path] = None,
         workspace_dir: Optional[Path] = None,
         auto_hotkey_script: Optional[Path] = None,
-        fallback_backend: Optional[MoviePyEditingBackend] = None,
     ) -> None:
         settings_payload = settings.YMM4_SETTINGS
         self.project_template = Path(project_template or settings_payload["project_template"])
         self.workspace_dir = Path(workspace_dir or settings_payload["workspace_dir"])
         self.auto_hotkey_script = Path(auto_hotkey_script or settings_payload["auto_hotkey_script"])
-        self.fallback_backend = fallback_backend or MoviePyEditingBackend()
 
     async def render(
         self,
@@ -55,20 +53,19 @@ class YMM4EditingBackend(IEditingBackend):
         # YMM4 AutoHotkeyスクリプト実行（オプション）
         await self._run_autohotkey_script(project_dir, project_file)
 
-        # YMM4書き出しが未整備のため、MoviePy にフォールバックして動画を生成
-        video_info = await self.fallback_backend.render(
-            timeline_plan=timeline_plan,
-            audio=audio,
-            slides=slides,
-            transcript=transcript,
-            quality=quality,
-            extras=extras,
+        # Placeholder VideoInfo（YMM4側で最終レンダリングを行う前提）
+        video_info = VideoInfo(
+            file_path=project_file,
+            duration=audio.duration,
+            resolution=quality,
+            fps=30,
+            file_size=0,
+            created_at=datetime.now(),
         )
 
         self._export_video_metadata(project_dir, video_info)
-        logger.info("YMM4 プロジェクト Placeholder + MoviePy フォールバックを完了")
+        logger.info("YMM4 プロジェクトエクスポート完了")
         logger.info(f"YMM4 プロジェクト: {project_file}")
-        logger.info(f"フォールバック動画: {video_info.file_path}")
         return video_info
 
     def _prepare_workspace(self) -> Path:
