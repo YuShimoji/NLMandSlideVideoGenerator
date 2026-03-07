@@ -61,7 +61,7 @@
 
 ```
 Stage 1: Python Unit Tests (pytest -q -m "not slow and not integration")
-Stage 2: Type Check (mypy src/core/ --ignore-missing-imports)
+Stage 2: Type Check (mypy src/ --ignore-missing-imports)
 Stage 3: Lint Check (ruff check src/)
 Stage 4: Task Report Consistency (node scripts/check_task_reports.js)
 Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)

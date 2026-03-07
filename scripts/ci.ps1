@@ -16,11 +16,11 @@ if (-not (Test-Path $python)) {
     & $python -m pytest -q -m "not slow and not integration" --tb=short
 }
 
-Write-Header "2. Type Check (mypy - src/core/)"
+Write-Header "2. Type Check (mypy - src/)"
 if (-not (Test-Path $python)) {
     Write-Warning "Python venv not found. Skipping type check."
 } else {
-    & $python -m mypy src/core/ --config-file mypy.ini --ignore-missing-imports
+    & $python -m mypy src/ --config-file mypy.ini --ignore-missing-imports
 }
 
 Write-Header "3. Lint Check (ruff)"
