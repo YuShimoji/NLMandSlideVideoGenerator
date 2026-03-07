@@ -1,0 +1,209 @@
+[
+  {
+    "id": "SP-001",
+    "title": "PROJECT ALIGNMENT SSOT",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/PROJECT_ALIGNMENT_SSOT.md",
+    "summary": "プロジェクト方針・タスク検証・YMM4優先制作パスの単一情報源"
+  },
+  {
+    "id": "SP-002",
+    "title": "CSV Input Format Specification",
+    "status": "done",
+    "pct": 100,
+    "cat": "data",
+    "file": "docs/spec_csv_input_format.md",
+    "summary": "CSVタイムライン形式仕様 (speaker, text列) 全パイプライン共通"
+  },
+  {
+    "id": "SP-003",
+    "title": "Transcript I/O Specification",
+    "status": "done",
+    "pct": 100,
+    "cat": "data",
+    "file": "docs/spec_transcript_io.md",
+    "summary": "TranscriptSegment/TranscriptInfoデータ構造仕様"
+  },
+  {
+    "id": "SP-004",
+    "title": "YMM4 Export Specification",
+    "status": "partial",
+    "pct": 70,
+    "cat": "plugin",
+    "file": "docs/ymm4_export_spec.md",
+    "summary": "CSV→YMM4エクスポート仕様 (timeline_plan.json, slides_payload.json)"
+  },
+  {
+    "id": "SP-005",
+    "title": "YMM4 Integration Architecture",
+    "status": "legacy",
+    "pct": 30,
+    "cat": "plugin",
+    "file": "docs/ymm4_integration_arch.md",
+    "summary": "旧WAVエクスポート設計。YMM4最終レンダラー方針に置き換え済み"
+  },
+  {
+    "id": "SP-006",
+    "title": "System Architecture",
+    "status": "partial",
+    "pct": 60,
+    "cat": "system",
+    "file": "docs/system_architecture.md",
+    "summary": "モジュラーパイプライン3段階構成。Path B MoviePyスタブ化反映が必要"
+  },
+  {
+    "id": "SP-007",
+    "title": "System Specification",
+    "status": "partial",
+    "pct": 50,
+    "cat": "system",
+    "file": "docs/system_specification.md",
+    "summary": "マルチプラットフォーム動画制作の長期設計。現実との乖離あり"
+  },
+  {
+    "id": "SP-008",
+    "title": "Development Guide",
+    "status": "done",
+    "pct": 85,
+    "cat": "infra",
+    "file": "docs/development_guide.md",
+    "summary": "開発者セットアップ手順 (venv作成、依存インストール、設定)"
+  },
+  {
+    "id": "SP-009",
+    "title": "Workflow Specification",
+    "status": "legacy",
+    "pct": 40,
+    "cat": "system",
+    "file": "docs/workflow_specification.md",
+    "summary": "全自動ワークフロー構想。現行SSOTはuser_guide_manual_workflow.md"
+  },
+  {
+    "id": "SP-010",
+    "title": "API Setup Guide",
+    "status": "done",
+    "pct": 90,
+    "cat": "infra",
+    "file": "docs/api_setup_guide.md",
+    "summary": "API認証設定ガイド (Gemini, YouTube, Google Slides)"
+  },
+  {
+    "id": "SP-011",
+    "title": "Google API Setup Guide",
+    "status": "done",
+    "pct": 95,
+    "cat": "infra",
+    "file": "docs/google_api_setup.md",
+    "summary": "Google Cloud Console セットアップ手順"
+  },
+  {
+    "id": "SP-012",
+    "title": "HANDOVER",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/HANDOVER.md",
+    "summary": "セッション引き継ぎ (2026-03-01): YMM4優先、プロジェクト方針"
+  },
+  {
+    "id": "SP-013",
+    "title": "WORKFLOW STATE SSOT",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/WORKFLOW_STATE_SSOT.md",
+    "summary": "ミッション定義、完了基準、選択ルール (A/B/C/D)"
+  },
+  {
+    "id": "SP-014",
+    "title": "Research Workflow Design",
+    "status": "done",
+    "pct": 95,
+    "cat": "core",
+    "file": "docs/research_workflow_design.md",
+    "summary": "Web調査+NLMスクリプト整合ワークフロー (TASK_016)"
+  },
+  {
+    "id": "SP-015",
+    "title": "YMM4 Final Workflow",
+    "status": "done",
+    "pct": 90,
+    "cat": "plugin",
+    "file": "docs/ymm4_final_workflow.md",
+    "summary": "Path A (CSV→YMM4→mp4) 標準手順+リカバリ手順"
+  },
+  {
+    "id": "SP-016",
+    "title": "User Guide: Manual Workflow",
+    "status": "done",
+    "pct": 95,
+    "cat": "core",
+    "file": "docs/user_guide_manual_workflow.md",
+    "summary": "Path A/B制作手順のユーザーガイド (本番SSOT)"
+  },
+  {
+    "id": "SP-017",
+    "title": "Voice Path Comparison",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/voice_path_comparison.md",
+    "summary": "ゆっくりボイス経路比較+推奨 (YMM4のみ、VOICEVOX等削除済)"
+  },
+  {
+    "id": "SP-018",
+    "title": "Environment Setup Guide",
+    "status": "done",
+    "pct": 85,
+    "cat": "infra",
+    "file": "docs/ENVIRONMENT_SETUP_GUIDE.md",
+    "summary": "Windows環境セットアップ (Python, Node.js, Git, 外部ツール)"
+  },
+  {
+    "id": "SP-019",
+    "title": "Troubleshooting Guide",
+    "status": "partial",
+    "pct": 70,
+    "cat": "infra",
+    "file": "docs/TROUBLESHOOTING.md",
+    "summary": "音声/YMM4/動画生成/CI障害の診断手順"
+  },
+  {
+    "id": "SP-020",
+    "title": "YMM4 Template Diff Guide",
+    "status": "done",
+    "pct": 80,
+    "cat": "plugin",
+    "file": "docs/ymm4_template_diff_guide.md",
+    "summary": "YMM4テンプレートカスタマイズ (字幕スタイル、背景色、話者設定)"
+  },
+  {
+    "id": "SP-021",
+    "title": "Subtitle Hardsub Guide",
+    "status": "done",
+    "pct": 75,
+    "cat": "ui",
+    "file": "docs/subtitle_hardsub_guide.md",
+    "summary": "ハードサブ/ソフトサブ説明、必要ライブラリ、環境設定"
+  },
+  {
+    "id": "SP-022",
+    "title": "Development Backlog",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/backlog.md",
+    "summary": "フェーズ状態、完了/進行中/将来タスク管理"
+  },
+  {
+    "id": "SP-023",
+    "title": "Documentation Index",
+    "status": "done",
+    "pct": 100,
+    "cat": "infra",
+    "file": "docs/INDEX.md",
+    "summary": "全ドキュメントのマスターインデックス"
+  }
+]
