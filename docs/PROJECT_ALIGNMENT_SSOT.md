@@ -1,6 +1,6 @@
 # PROJECT ALIGNMENT SSOT
 
-Updated: 2026-03-07T00:00:00+09:00
+Updated: 2026-03-07T22:00:00+09:00
 Owner: Orchestrator
 Audience: All Agents
 
@@ -22,14 +22,16 @@ Audience: All Agents
 | `TASK_013` YMM4プラグイン本番化 | DONE | 13 tests pass, deploy script, ops docs |
 | `TASK_014` ゆっくりボイス経路 | DONE | Layer B + YMM4 GUI 最終確認まで完了 |
 | `TASK_016` Research Workflow | DONE | Phase 3 UI + Playwright smoke + CSV export |
-| `TASK_015` CI/CD強化 | IN_PROGRESS | Layer A 完了。.NETテストジョブ追加済。release.yml検証残 |
-| `TASK_021` コード品質 | DONE | mypy 0 errors on Core 3 files |
+| `TASK_015` CI/CD強化 | DONE | CIワークフロー11→6整理、.NET Core分離でubuntu CI、deprecated actions修正、全グリーン |
+| `TASK_021` コード品質 | DONE | mypy 0 errors (76 files), ruff 0 |
 | `TASK_022` VOICEVOX統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
 | `TASK_023` E2E実証 | IN_PROGRESS | CSV→mp4パイプライン成功、YMM4エクスポート成功。GUI検証残 |
 | `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
-| Python tests | 107 passed / 0 skipped | 既存スイート安定 |
-| .NET tests | 13 passed / 0 failed | benchmark 含む |
+| Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
+| .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
+| Python tests | 104 passed / 5 deselected | TTS/MoviePy dead tests 削除後 |
+| .NET tests | 19 passed / 0 failed | Core分離後 (Gemini API tests +6) |
 
 ## Consistency Audit
 
@@ -37,11 +39,14 @@ Audience: All Agents
 |---|---|---|---|
 | 最終出力像 | 「一般的なゆっくり解説動画」が曖昧 | 曖昧語を廃止 | `16:9 の汎用スライド動画` |
 | Shorts / 縦動画 | 要件にないのに混入 | 非目標化 | 非目標 |
-| 音声優先度 | 自然さ重視へズレた | 優先順位を再定義 | `ゆっくりボイスを使えること`（Path A: YMM4内蔵, Path B: VOICEVOX推奨） |
+| 音声優先度 | 自然さ重視へズレた | 優先順位を再定義 | `ゆっくりボイスを使えること`（Path A: YMM4内蔵。外部TTS全削除済） |
 | キャラクター表示 | 必須か曖昧だった | 任意に固定 | Optional |
 | YMM4 の役割 | WAV供給元と誤認されていた | 最終レンダラーに固定 | CSV→音声生成→動画レンダリングの最終工程 |
 | Research と Production | 混線しやすかった | 責務分離 | Research は手前工程、Production は別 |
 | CI の扱い | 実制作より先行し始めた | 非ブロッカー化 | Windows 実制作を優先 |
+| CI ワークフロー肥大化 | 11本に膨張、broken多数 | 必要十分に整理 | 6本に統合 (ci-main, ci-rollback, dotnet-build, orchestrator-audit, release, research-ui-smoke) |
+| OpenSpec フレームワーク | spec 0件、import broken | 削除 | 3ワークフロー+2スクリプト削除。SPEC VIEW (spec-index.json) が仕様管理を担う |
+| .NET テスト分離 | YMM4 DLL不在でCI不可 | Core プロジェクト分離 | NLMSlidePlugin.Core.csproj (net9.0, ubuntu CI) |
 
 ## Final Output Definition
 
@@ -143,6 +148,8 @@ Audience: All Agents
 - 手動確認は YMM4 GUI など外部依存箇所に限定する
 - Windows を primary OS とする
 - CI は有用だが、Windows 実制作より優先しない
+- CI方針: 最小限の必要十分。broken workflowの保守コスト > 提供価値の場合は削除する
+- 仕様管理: SPEC VIEW (docs/spec-index.json + Markdown) を一元管理手段とする。OpenSpecは廃止済み
 
 ## Manual Validation Gate
 
@@ -156,7 +163,7 @@ Audience: All Agents
 | 尺度 | 次フェーズ | 主タスク | 目的 |
 |---|---|---|---|
 | 短期 | TASK_023 E2E完走 | YMM4 GUIでCSVインポート→音声生成→mp4レンダリング | 主要導線の実運用接続 |
-| 短期 | CI安定化 | TASK_015: release.yml検証、.NETテストCI統合確認 | CI green維持 |
+| 短期 | CI安定化 | DONE: CIワークフロー整理完了、.NET Core CI統合、全グリーン | CI green維持 |
 | 中期 | ワークフロー標準化 | TASK_018: YMM4操作手順確定、エラー回復ドキュメント | 再現可能な制作フロー確立 |
 | 中期 | 多言語アライメント | TASK_017: 英語key_claims⇔日本語台本の照合精度改善 | Research→台本の精度向上 |
 | 長期 | クラウド対応 | TASK_025: Docker化、クラウドレンダリング | スケーラブルな運用基盤 |
