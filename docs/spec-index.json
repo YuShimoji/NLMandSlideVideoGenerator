@@ -87,7 +87,7 @@
     "pct": 90,
     "cat": "infra",
     "file": "docs/api_setup_guide.md",
-    "summary": "API認証設定ガイド (Gemini, YouTube, Google Slides)"
+    "summary": "API認証設定ガイド (Gemini/YouTube/Slides)。YMM4プラグインGemini連携+TTS削除反映済(2026-03-07)"
   },
   {
     "id": "SP-011",
