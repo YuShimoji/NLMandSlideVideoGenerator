@@ -1,112 +1,103 @@
 # HANDOVER
 
-Timestamp: 2026-03-01T00:16:00+09:00
-Actor: Codex (Orchestrator)
-Type: Handover
-Mode: Driver(P6_report)
+Timestamp: 2026-03-07T23:00:00+09:00
+Actor: Claude Code (Driver)
+Type: Session 4 Handover
 
 ## Current Status
 
-- GitHubAutoApprove: true
 - **DONE**: `TASK_013` YMM4プラグイン本番化
 - **DONE**: `TASK_014` ゆっくりボイス経路整理
 - **DONE**: `TASK_016` Web資料収集とNLM台本調整ワークフロー
-- **IN_PROGRESS_PARKED**: `TASK_015` CI/CD強化
-- **NEXT**: `data/input/e2e_iran_20260301/timeline.csv` を YMM4 へ NLMSlidePlugin 経由でインポートし、YMM4 内で音声生成→動画レンダリング（YMM4 が最終レンダラー）
+- **DONE**: `TASK_015` CI/CD強化 (CIワークフロー11→6整理、.NET Core分離、deprecated actions修正、全グリーン)
+- **DONE**: `TASK_021` コード品質 (mypy 0 errors, ruff 0)
+- **DONE**: `TASK_024` リファクタリング (pipeline.py -69%)
+- **CLOSED**: `TASK_022` VOICEVOX統合 (WONTFIX, YMM4一本化により不要)
+- **IN_PROGRESS**: `TASK_023` E2E実証 (CSV→mp4パイプライン成功、YMM4エクスポート成功。GUI検証残)
+- **NEXT**: YMM4 GUIでCSVインポート→音声生成→mp4レンダリングの手動E2E検証
+
+## Session 4 Summary (2026-03-07)
+
+### Completed Work
+1. **Gemini API統合**: `CsvScriptCompletionPlugin` に Gemini REST API 実装、6テスト追加
+2. **.NET Core分離**: `NLMSlidePlugin.Core.csproj` (net9.0, YMM4非依存) + CI ubuntu テスト
+3. **OpenSpec削除**: 3ワークフロー + 2スクリプト + 3生成ドキュメント削除
+4. **CIワークフロー統合**: 11→6 (task-validation, documentation 削除)
+5. **deprecated actions修正**: v3→v4/v5/v7 (upload-artifact, cache, setup-python, github-script, action-gh-release)
+6. **MoviePy fallback stub化**: video_editor/* → NotImplementedError
+7. **SSOT/DECISION LOG更新**: PROJECT_ALIGNMENT_SSOT.md + CLAUDE.md 同期
+
+### Commits (this session)
+- `48dc154` refactor(ymm4): separate Core project for CI-testable .NET builds
+- `7de98ce` fix(ci): upgrade deprecated GitHub Actions from v3 to v4
+- `c5cdc88` chore(ci): remove broken OpenSpec workflows and upgrade deprecated actions
+- `9aee841` chore(ci): remove redundant task-validation and documentation workflows
+- `6c9e30d` docs: update SSOT with session 4 changes
+
+## Quality Gate
+
+| Area | Result |
+|---|---|
+| Python tests | 104 passed, 5 deselected |
+| .NET tests | 19 passed, 0 failures, 0 warnings |
+| CI workflows | 6/6 green |
+| Ruff | 0 errors |
+| Mypy | 0 errors (76 files) |
+
+## CI Workflows (6, all green)
+
+1. `ci-main.yml` — Python lint + test
+2. `ci-rollback.yml` — Auto-revert on CI failure
+3. `dotnet-build.yml` — .NET Core test (ubuntu) + plugin build (windows)
+4. `orchestrator-audit.yml` — Task report validation
+5. `release.yml` — GitHub release
+6. `research-ui-smoke.yml` — Streamlit Playwright smoke
 
 ## Project Policy
 
 - 最終出力ターゲットは `16:9 の汎用スライド動画`
-- 音声は `ゆっくりボイスを使えること` を優先
+- 音声は `ゆっくりボイスを使えること` を優先 (Path A: YMM4内蔵。外部TTS全削除済)
 - キャラクター表示は任意
 - 背景動画は加点要素であり必須ではない
 - Research Workflow と動画生成 Workflow は分離する
 - Windows 実運用を優先し、Linux 差分は非ブロッカー
+- CI方針: 最小限の必要十分。broken workflowの保守コスト > 提供価値の場合は削除
+- 仕様管理: SPEC VIEW (docs/spec-index.json + Markdown) を一元管理手段とする
 
-## Current Production SSOT
+## Production Paths
 
-- 入力: `speaker,text` 形式の CSV
-- 出力: 最終 mp4（YMM4 からレンダリング）
-- 制作パス:
-  - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → レンダリング）
-  - **Path B（Secondary, disabled）**: CSV + WAV群 → `scripts/run_csv_pipeline.py`（TTS コード削除済み、事前生成WAVのみ対応）
-  - Web UI: `src/web/web_app.py`（Path B 用）
-- 主参照:
-  - `docs/PROJECT_ALIGNMENT_SSOT.md`
-  - `docs/user_guide_manual_workflow.md`
-  - `docs/voice_path_comparison.md`
+- **Path A (Primary)**: CSV → YMM4 (NLMSlidePlugin import → voice gen → render) → final mp4
+- **Path B (Stubbed)**: MoviePy video generation code stub化済み、TTS全削除済み
 
-## Confirmed Manual Gate
+## YMM4 Plugin TODOs (2 remaining)
 
-- YMM4 GUI 最終確認は完了
-- ユーザー確認結果:
-  - プラグインOK
-  - CSVインポートOK
-  - 音声生成OK
-  - `run_csv_pipeline.py` OK
+- `CsvTimelineVoicePlugin.GenerateVoiceAsync` — needs IVoicePlugin.CreateVoiceAsync
+- `CsvTimelineVoicePlugin.GetAvailableSpeakers` — needs IVoicePlugin.Voices
 
-## Selected Topic
-
-- Topic: `US and Israel launch strikes on Iran – What has happened so far`
-- Seed URL: `http://www.euronews.com/2026/02/28/us-and-israel-launch-strikes-on-iran-what-has-happened-so-far`
-- Route: `B`
-- Note: breaking news のため、単一ソースでは確定しない
-- Package: `data/research/rp_20260301_000417/package.json`
-- AlignmentReport: `data/research/rp_20260301_000417/alignment_report.json`
-- Reviewed report: `data/research/rp_20260301_000417/alignment_report_adopted_all.json`
-- Final CSV: `output_csv/final_script_rp_20260301_000417.csv`
-- Handoff dir: `data/input/e2e_iran_20260301/`
-- Auto result: `supported=0 / orphaned=139 / missing=18`
-- Delivery result: 139 セグメントを `adopted` 扱いにして final CSV を生成済み
-
-## Why CI Is Parked
-
-- `TASK_015` Layer A で Playwright smoke と監査ガードの最小導入は完了
-- 以降の GitHub Actions 側初回実行確認は Windows 実制作を止める必須条件ではない
-- ユーザー判断により、CI 深掘りを止めて Windows 実制作側を優先している
-
-## Immediate Runbook
-
-### 次の実務（Path A: YMM4 制作）
+## Immediate Runbook (Path A: YMM4 制作)
 
 | Step | 操作 | 目的 |
 |---|---|---|
 | 1 | YMM4 を起動し、新規プロジェクトを作成 | 制作環境を準備する |
-| 2 | NLMSlidePlugin で `data/input/e2e_iran_20260301/timeline.csv` をインポート | タイムラインにCSV行を反映する |
+| 2 | NLMSlidePlugin で CSV をインポート | タイムラインにCSV行を反映する |
 | 3 | YMM4 内でゆっくりボイス音声を生成 | 各行の音声を自動生成する |
 | 4 | レイアウト・音声を確認・調整 | 品質を確認する |
 | 5 | YMM4 で動画をレンダリング（書き出し） | 最終 mp4 を生成する |
 
-> **注**: `RUN_AFTER_YMM4.ps1` と `audio_dir` は Path B（Batch TTS）用。Path A では不要。
+## Horizon
 
-## Verification Snapshot
+| 尺度 | タスク | 状態 |
+|---|---|---|
+| 短期 | TASK_023 E2E完走 (YMM4 GUI手動検証) | IN_PROGRESS |
+| 中期 | ワークフロー標準化 (YMM4操作手順確定) | TODO |
+| 中期 | 多言語アライメント精度改善 | TODO |
+| 長期 | クラウド対応 (Docker化) | TODO |
+| 長期 | 品質成熟 (テンプレート拡充, 自動素材調達) | TODO |
 
-- Python: `107 passed, 0 skipped, 5 deselected` (2026-03-06)
-- .NET: `13 passed, 0 failed, 0 warnings` (2026-03-06)
-- Research UI Playwright smoke: `SMOKE_OK`
-- `orchestrator-audit --no-fail`: `OK`
-- YMM4 GUI: user verified
+## Primary References
 
-## Risks
-
-- 実トピック E2E は題材と素材の品質に依存する
-- 現 package は英語ソース、台本は日本語のため、現行照合ロジックでは `supported` が立ちにくい
-- 今回の final CSV は手動採否相当で作っており、自動根拠一致ではない
-- CI を止めたため、GitHub 側実行結果は未確認
-- ただし上記 CI 未確認は Windows 実制作の即時ブロッカーではない
-
-## リスク
-
-- 実トピック E2E の題材選定が未固定
-- GitHub 側 CI 実行結果は未確認だが非ブロッカー
-
-## Proposals
-
-- 次は実トピック1本で end-to-end の制作入口を固定する
-- その後に必要なら `TASK_015` を再開する
-
-## Outlook
-
-- Short-term: final CSV を YMM4 へインポートし、YMM4 内で音声生成→動画レンダリングまで完結させる
-- Mid-term: 背景動画の扱いと実制作テンプレートを整理する
-- Long-term: CI strict 化と自動素材調達の成熟度を上げる
+- `docs/PROJECT_ALIGNMENT_SSOT.md`
+- `docs/WORKFLOW_STATE_SSOT.md`
+- `docs/voice_path_comparison.md`
+- `docs/research_workflow_design.md`
+- `docs/user_guide_manual_workflow.md`
