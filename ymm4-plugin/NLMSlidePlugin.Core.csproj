@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>NLMSlidePlugin.Core</AssemblyName>
+    <RootNamespace>NLMSlidePlugin</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- YMM4非依存のコアロジックのみをコンパイル -->
+  <ItemGroup>
+    <Compile Include="Core\**\*.cs" />
+    <Compile Include="TextCompletionPlugin\**\*.cs" />
+  </ItemGroup>
+
+</Project>

@@ -17,6 +17,12 @@
 	<ItemGroup>
 		<Compile Remove="tests/**" />
 		<Compile Remove="tests_backup/**" />
+		<Compile Remove="Core/**" />
+		<Compile Remove="TextCompletionPlugin/**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="NLMSlidePlugin.Core.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

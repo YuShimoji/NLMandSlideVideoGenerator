@@ -1,7 +1,4 @@
-name: .NET Build (Optional)
-
-# This workflow builds the YMM4 plugin independently from the main CI
-# Failure here does NOT block Python CI or auto-rollback
+name: .NET Build & Test
 
 on:
   push:
@@ -16,8 +13,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build YMM4 Plugin
+  # Core project: YMM4非依存 — CI上でビルド+テスト可能
+  core-test:
+    name: Core Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build Core project
+        run: dotnet build ymm4-plugin/NLMSlidePlugin.Core.csproj -c Release --nologo
+
+      - name: Build test project
+        run: dotnet build ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo
+
+      - name: Run tests
+        run: dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: ymm4-plugin/tests/TestResults/test-results.trx
+        continue-on-error: true
+
+  # Main plugin: YMM4 DLLs required — CI上ではビルド不可
+  plugin-build:
+    name: Plugin Build (Optional)
     runs-on: windows-latest
     timeout-minutes: 10
 
@@ -40,36 +70,4 @@ jobs:
 
       - name: Build status
         run: |
-          echo "⚠️ .NET build completed with warnings (expected - YMM4 DLLs not available in CI)"
-          echo "This is a known limitation and does NOT affect Python pipeline functionality"
-
-  test:
-    name: Test YMM4 Plugin
-    runs-on: windows-latest
-    timeout-minutes: 10
-    needs: build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Restore test dependencies
-        run: dotnet restore ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj
-        continue-on-error: true
-
-      - name: Run .NET tests
-        run: dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo --logger "trx;LogFileName=test-results.trx"
-        continue-on-error: true
-
-      - name: Upload .NET test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotnet-test-results
-          path: ymm4-plugin/tests/TestResults/test-results.trx
-        continue-on-error: true
+          echo "YMM4 DLLs not available in CI - plugin build is best-effort only"
