@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using NLMSlidePlugin.Core;
+using YukkuriMovieMaker.Project;
+using YukkuriMovieMaker.Project.Items;
 
 namespace NLMSlidePlugin.TimelinePlugin
 {
@@ -21,13 +24,16 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// <summary>
         /// CSVファイルからタイムラインに一括インポート
         /// </summary>
-        public ImportResult ImportFromCsv(string csvPath, string? audioDir = null)
+        /// <param name="csvPath">CSVファイルパス</param>
+        /// <param name="audioDir">音声ファイルディレクトリ（省略時はCSVと同ディレクトリ）</param>
+        /// <param name="timeline">YMM4タイムライン（省略時はシミュレーションモード）</param>
+        /// <param name="addSubtitles">字幕アイテムを追加するか</param>
+        public ImportResult ImportFromCsv(string csvPath, string? audioDir = null, Timeline? timeline = null, bool addSubtitles = true)
         {
             var result = new ImportResult();
 
             try
             {
-                // CSV読み込み
                 var reader = new CsvTimelineReader(csvPath, audioDir);
                 var items = reader.ReadTimeline();
 
@@ -37,7 +43,6 @@ namespace NLMSlidePlugin.TimelinePlugin
                     return result;
                 }
 
-                // 音声ファイルの存在確認
                 int audioFound = 0;
                 foreach (var item in items)
                 {
@@ -49,17 +54,22 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                 result.TotalItems = items.Count;
                 result.AudioFilesFound = audioFound;
-
-                // TODO: YMM4 APIを使用してタイムラインにアイテムを追加
-                // 現在はシミュレーションモード
-                result.Success = true;
-                result.Message = $"{items.Count}件のデータを読み込みました（音声: {audioFound}件）";
                 result.Items = items;
 
-                // 設定を保存
+                if (timeline != null)
+                {
+                    var execResult = AddToTimeline(items, timeline, addSubtitles);
+                    result.Success = true;
+                    result.Message = $"{execResult.ImportedRows}件をタイムラインに追加しました（音声: {execResult.AudioItems}件, 字幕: {execResult.TextItems}件）";
+                }
+                else
+                {
+                    result.Success = true;
+                    result.Message = $"{items.Count}件のデータを読み込みました（音声: {audioFound}件）";
+                }
+
                 _settings.LastCsvPath = csvPath;
                 _settings.AudioDirectory = audioDir ?? Path.GetDirectoryName(csvPath);
-
             }
             catch (Exception ex)
             {
@@ -71,17 +81,81 @@ namespace NLMSlidePlugin.TimelinePlugin
         }
 
         /// <summary>
-        /// タイムラインアイテムをYMM4に追加（実際のAPI連携部分）
-        /// Note: YMM4の内部APIに依存するため、実際の実装はYMM4のバージョンに依存
+        /// タイムラインアイテムをYMM4に追加
+        /// CsvImportDialogのImportToTimelineロジックを集約
         /// </summary>
-        public async Task<bool> AddToTimelineAsync(List<CsvTimelineItem> items)
+        public AddToTimelineResult AddToTimeline(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true)
         {
-            // TODO: YMM4のタイムラインAPIを使用して実装
-            // IEditor、ITimeline、ISequence等のインターフェースが必要
-            // 現在はプレースホルダー
-            
-            await Task.Delay(100); // 非同期処理のシミュレーション
-            return true;
+            int fps = Math.Max(1, timeline.VideoInfo.FPS);
+            int baseLayer = GetImportBaseLayer(timeline);
+
+            int importedRows = 0;
+            int audioItemsCount = 0;
+            int textItemsCount = 0;
+            int skippedRows = 0;
+
+            var allTimelineItems = new List<IItem>();
+
+            foreach (var csvItem in items)
+            {
+                int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
+                int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
+
+                bool hasItemInRow = false;
+
+                if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
+                {
+                    var audio = new AudioItem(csvItem.AudioFilePath)
+                    {
+                        Frame = startFrame,
+                        Layer = baseLayer,
+                        Length = lengthFrames,
+                        PlaybackRate = 1.0
+                    };
+                    allTimelineItems.Add(audio);
+                    audioItemsCount++;
+                    hasItemInRow = true;
+                }
+
+                if (addSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
+                {
+                    var text = new TextItem
+                    {
+                        Frame = startFrame,
+                        Layer = baseLayer + 1,
+                        Length = lengthFrames,
+                        PlaybackRate = 1.0,
+                        Text = csvItem.Text
+                    };
+                    allTimelineItems.Add(text);
+                    textItemsCount++;
+                    hasItemInRow = true;
+                }
+
+                if (hasItemInRow)
+                    importedRows++;
+                else
+                    skippedRows++;
+            }
+
+            if (allTimelineItems.Count > 0)
+            {
+                foreach (var item in allTimelineItems)
+                {
+                    timeline.Items.Add(item);
+                }
+                timeline.RefreshTimelineLengthAndMaxLayer();
+            }
+
+            return new AddToTimelineResult(importedRows, audioItemsCount, textItemsCount, skippedRows, timeline.Items.Count);
+        }
+
+        /// <summary>
+        /// 非同期版 AddToTimeline（UIスレッドからの呼び出し用）
+        /// </summary>
+        public Task<AddToTimelineResult> AddToTimelineAsync(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true)
+        {
+            return Task.FromResult(AddToTimeline(items, timeline, addSubtitles));
         }
 
         /// <summary>
@@ -89,8 +163,6 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// </summary>
         public string? ResolveVoiceCharacter(string speakerName)
         {
-            // 話者名 → YMM4ボイスのマッピング
-            // デフォルトマッピング
             var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { "ずんだもん", "Zundamon" },
@@ -102,15 +174,30 @@ namespace NLMSlidePlugin.TimelinePlugin
                 { "れいむ", "Reimu" }
             };
 
-            if (mapping.TryGetValue(speakerName, out var voice))
-            {
-                return voice;
-            }
+            return mapping.TryGetValue(speakerName, out var voice) ? voice : "Yukari";
+        }
 
-            // デフォルト
-            return "Yukari";
+        private static int GetImportBaseLayer(Timeline timeline)
+        {
+            int maxLayer = 0;
+            foreach (var item in timeline.Items)
+            {
+                if (item.Layer > maxLayer)
+                    maxLayer = item.Layer;
+            }
+            return maxLayer + 1;
         }
     }
+
+    /// <summary>
+    /// タイムライン追加結果
+    /// </summary>
+    public record AddToTimelineResult(
+        int ImportedRows,
+        int AudioItems,
+        int TextItems,
+        int SkippedRows,
+        int TotalTimelineItems);
 
     /// <summary>
     /// インポート結果
