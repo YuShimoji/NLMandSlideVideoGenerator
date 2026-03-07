@@ -13,7 +13,7 @@ namespace NLMSlidePlugin.VoicePlugin
     /// <remarks>
     /// 用途:
     /// - CSV行をYMM4タイムラインのボイスアイテムとして追加
-    /// - 既存のYMM4ボイス（AquesTalk等）との連携
+    /// - YMM4内蔵ゆっくりボイスとの連携
     /// - 外部TTS音声ファイルのインポート
     /// </remarks>
     public class CsvTimelineVoicePlugin

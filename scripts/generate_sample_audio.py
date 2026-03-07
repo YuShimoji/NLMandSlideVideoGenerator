@@ -3,7 +3,7 @@
 サンプル音声ファイル生成スクリプト
 
 テスト用の無音WAVファイルを生成します。
-実際の運用では、NotebookLM、SofTalk、AquesTalk等で生成した音声を使用してください。
+実際の運用では、YMM4内蔵ゆっくりボイスで音声を生成してください。
 """
 from __future__ import annotations
 
@@ -52,10 +52,7 @@ def main():
     print("=" * 50)
     print()
     print("注意: これらは無音のテスト用ファイルです。")
-    print("実際の運用では、以下のツールで音声を生成してください:")
-    print("  - NotebookLM (Deep Dive Audio)")
-    print("  - SofTalk / AquesTalk")
-    print("  - ElevenLabs / OpenAI TTS")
+    print("実際の運用では、YMM4内蔵ゆっくりボイスで音声を生成してください。")
 
 
 if __name__ == "__main__":
