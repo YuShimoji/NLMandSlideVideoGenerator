@@ -37,6 +37,7 @@ def _create_silent_wav(path: Path, duration_sec: float = 1.0, sample_rate: int =
 
 @pytest.mark.asyncio
 async def test_demo_csv_subtitles_end_to_end(tmp_path: Path):
+    """Path B (MoviePy) が削除されたため、NotImplementedError を確認"""
     # 1) CSV 作成 (2行)
     csv_path = tmp_path / "timeline.csv"
     csv_content = "Speaker1,こんにちは\nSpeaker2,世界\n"
@@ -50,18 +51,6 @@ async def test_demo_csv_subtitles_end_to_end(tmp_path: Path):
     # 3) 出力ディレクトリ
     out_dir = tmp_path / "subs"
 
-    # 4) デモ実行
-    srt_path = await run_demo(csv_path, audio_dir, output_dir=out_dir, style="default")
-
-    assert srt_path.exists()
-    content = srt_path.read_text(encoding="utf-8")
-
-    # CSVのテキストがSRTに含まれていることを確認
-    assert "こんにちは" in content
-    assert "世界" in content
-
-    # セグメントが2つ生成されているはず
-    # SRT フォーマットではインデックス行が "1", "2" となるので、それを簡易チェック
-    # 先頭行が "1" で始まり、その後のどこかに "2" 行があることを確認
-    assert content.lstrip().startswith("1\n")
-    assert "\n2\n" in content
+    # 4) デモ実行 → Path B 削除により NotImplementedError が発生することを確認
+    with pytest.raises(NotImplementedError, match="Path B.*MoviePy.*removed"):
+        await run_demo(csv_path, audio_dir, output_dir=out_dir, style="default")

@@ -1,22 +1,27 @@
-"""MoviePy ベースの編集バックエンド"""
+"""
+MoviePy ベースの編集バックエンド (NO-OP STUB)
+
+Path B (MoviePy-based Python video generation) has been removed.
+YMM4 is now the sole renderer for video output.
+
+This stub preserves import paths and type definitions for compatibility.
+"""
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..interfaces import IEditingBackend
-from ..timeline.models import TimelinePlan
-from video_editor.video_composer import VideoComposer, VideoInfo
+from video_editor.video_composer import VideoInfo
 from notebook_lm.audio_generator import AudioInfo
 from slides.slide_generator import SlidesPackage
 from notebook_lm.transcript_processor import TranscriptInfo
 
 
 class MoviePyEditingBackend(IEditingBackend):
-    """既存 VideoComposer をラップするバックエンド実装"""
+    """MoviePy バックエンド (NO-OP STUB)"""
 
     def __init__(self) -> None:
-        self.video_composer = VideoComposer()
+        pass
 
     async def render(
         self,
@@ -27,27 +32,5 @@ class MoviePyEditingBackend(IEditingBackend):
         quality: str = "1080p",
         extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
-        """VideoComposer を呼び出してレンダリング実行"""
-        bgm_path = None
-        if extras and "bgm_path" in extras:
-            bgm_path = Path(extras["bgm_path"])
-
-        # plan 情報を VideoComposer に渡してセグメント長・エフェクトを反映
-        return await self.video_composer.compose_video(
-            audio_file=audio,
-            slides_file=slides,
-            transcript=transcript,
-            quality=quality,
-            timeline_plan=timeline_plan,
-            bgm_path=bgm_path,
-        )
-
-    def _parse_plan(self, plan_dict: Dict[str, Any]) -> TimelinePlan:
-        segments = []
-        for raw in plan_dict.get("segments", []):
-            segments.append(raw)
-        return TimelinePlan(
-            total_duration=float(plan_dict.get("total_duration", 0.0) or 0.0),
-            segments=segments,  # 型ヒント用、詳細反映は今後実装
-            notes=plan_dict.get("notes"),
-        )
+        """レンダリング (STUB)"""
+        raise NotImplementedError("Path B (MoviePy) has been removed. Use YMM4 for rendering.")

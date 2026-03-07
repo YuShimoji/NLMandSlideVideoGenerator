@@ -17,6 +17,7 @@ from video_editor.video_composer import VideoInfo  # noqa: E402
 
 
 def test_moviepy_editing_backend_render():
+    """Path B (MoviePy) が削除されたため、NotImplementedError を確認"""
     backend = MoviePyEditingBackend()
 
     # モックデータ
@@ -30,25 +31,10 @@ def test_moviepy_editing_backend_render():
     slides = SimpleNamespace()
     transcript = SimpleNamespace()
 
-    mock_video_info = VideoInfo(
-        file_path=Path("test_video.mp4"),
-        duration=120.0,
-        resolution=(1920, 1080),
-        fps=30,
-        file_size=1000000,
-        has_subtitles=True,
-        has_effects=False,
-        created_at=datetime.now(),
-    )
-
-    with patch.object(backend.video_composer, 'compose_video', new_callable=AsyncMock) as mock_compose:
-        mock_compose.return_value = mock_video_info
-
-        # asyncio.runを使ってテスト実行
-        result = asyncio.run(backend.render(timeline_plan, audio, slides, transcript))
-
-        assert result == mock_video_info
-        mock_compose.assert_called_once()
+    # Path B 削除により NotImplementedError が発生することを確認
+    import pytest
+    with pytest.raises(NotImplementedError, match="Path B.*MoviePy.*removed"):
+        asyncio.run(backend.render(timeline_plan, audio, slides, transcript))
 
 
 def test_ymm4_record_export_outputs_includes_template_diff(tmp_path: Path):
