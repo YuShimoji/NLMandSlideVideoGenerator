@@ -1,8 +1,10 @@
 # SofTalk Integration Technical Assessment
 
+> **DEPRECATED (2026-03-04)**: SofTalk/AquesTalk/VOICEVOX統合はYMM4一本化方針により削除されました。本文書は歴史的参照として保持されています。現行の音声ワークフローは `docs/voice_path_comparison.md` を参照してください。
+
 **Document Version**: 1.0
 **Date**: 2026-03-02
-**Status**: TASK_014 Deliverable
+**Status**: DEPRECATED (旧 TASK_014 Deliverable)
 **Author**: Antigravity (Orchestrator)
 
 ---

@@ -40,7 +40,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 - **処理**:
   - NotebookLM / Gemini API / ローカルプロンプトによる台本生成 (`IScriptProvider`)
   - DeepDive など NotebookLM 固有構造を一般化するコンテンツ正規化 (`ContentAdapter`)
-  - ElevenLabs / OpenAI / Azure / ユーザー音声を用いた `VoicePipeline` と `AudioValidator`
+  - YMM4内蔵ゆっくりボイスによる音声生成（外部TTS連携は2026-03-04に削除済み）
   - 素材メタデータ管理 (`AssetRegistry`)
 - **出力**: `ScriptBundle`, `AudioInfo`, クリップ用素材リスト
 - **モード切替**: 完全手動入力、AI補完（人間レビュー必須）、完全自動収集
@@ -131,15 +131,15 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 1. **素材入力**: ユーザー/MCP/NotebookLM/Gemini から素材取得
 2. **台本正規化**: DeepDive JSON/Markdown を `ScriptBundle` に変換
 3. **音声生成**: TTS or 収録音声を `AudioInfo` に統一
-4. **タイムライン構築**: `TimelinePlanner` が YMM4/ MoviePy 両対応の指示書を生成
-5. **レンダリング**: MoviePy or YMM4 API
+4. **タイムライン構築**: `TimelinePlanner` が YMM4 対応の指示書を生成
+5. **レンダリング**: YMM4 API（MoviePyは2026-03-07にNo-opスタブ化済み）
 6. **メタデータ生成**: 投稿テンプレートから概要欄/タグ/広告位置を生成
 7. **投稿/書き出し**: プラットフォーム別アダプターで自動投稿 or ドラフト作成
 
 ### 4.3 外部システム連携
 - **NotebookLM / Gemini API**: 台本生成・要約補完
 - **MCP Agents**: Web 情報取得、翻訳、要約
-- **TTS プロバイダー**: ElevenLabs / OpenAI / Azure / Google Cloud
+- **TTS**: YMM4内蔵ゆっくりボイス（外部TTSプロバイダーは2026-03-04に削除済み）
 - **Google Slides API**: スライド生成・画像エクスポート
 - **YukkuriMovieMaker4 API**: テンプレートからタイムライン再構築
 - **YouTube Data API / TikTok API**: 投稿・メタデータ設定
@@ -282,7 +282,7 @@ POST /api/v1/templates/sync
 ### 3.4 保守性要件
 - **モジュール化**: 各機能の独立性確保
 - **ログ管理**: 詳細な処理ログの記録
-- **テスト**: 90%以上のテストカバレッジ
+- **テスト**: Python 104 passed / .NET 13 passed (2026-03-07時点)。カバレッジ約42%
 
 ## 4. システム構成
 

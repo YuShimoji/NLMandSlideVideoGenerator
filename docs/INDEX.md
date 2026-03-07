@@ -3,8 +3,6 @@
 ## まず読む（現行SSOT）
 
 - **方針整合SSOT（全Agent共通）**: `docs/PROJECT_ALIGNMENT_SSOT.md`
-- **協働ルール（SSOT）**: `docs/Windsurf_AI_Collab_Rules_latest.md`
-
 - **開発バックログ / 方針**: `docs/backlog.md`
 - **制作ワークフロー（Path A/B）**: `docs/user_guide_manual_workflow.md`
 - **CSV入力仕様**: `docs/spec_csv_input_format.md`

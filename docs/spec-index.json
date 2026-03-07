@@ -51,7 +51,7 @@
     "pct": 60,
     "cat": "system",
     "file": "docs/system_architecture.md",
-    "summary": "モジュラーパイプライン3段階構成。Path B MoviePyスタブ化反映が必要"
+    "summary": "モジュラーパイプライン3段階構成。Path B MoviePyスタブ化・TTS削除を反映済(2026-03-07)"
   },
   {
     "id": "SP-007",
@@ -60,7 +60,7 @@
     "pct": 50,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "マルチプラットフォーム動画制作の長期設計。現実との乖離あり"
+    "summary": "マルチプラットフォーム動画制作の長期設計。TTS/MoviePy/カバレッジ記載を現状反映済(2026-03-07)"
   },
   {
     "id": "SP-008",

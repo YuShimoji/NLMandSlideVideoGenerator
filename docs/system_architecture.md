@@ -26,7 +26,6 @@ flowchart LR
         B3 --> B5
         B4 --> B5
         B5 --> B6[YMM4 Project Builder]
-        B5 --> B7[MoviePy Composer]
     end
 
     subgraph S3[Stage 3: 投稿配信]
@@ -43,7 +42,7 @@ flowchart LR
     classDef manual fill:#fff3e0
     classDef hybrid fill:#ede7f6
 
-    class A2,B6,B7,C3 hybrid
+    class A2,B6,C3 hybrid
     class A4,B1,B5,C1 auto
     class A1,A3,B2,B3,B4,C2 manual
 ```
@@ -52,7 +51,7 @@ flowchart LR
 - **Input Orchestrator**: NotebookLM/外部MCP/手動アップロードなど複数入力経路を抽象化。
 - **Script Provider**: NotebookLM/Gemini、自前プロンプト実行、CSV/PDF手動投入を `IScriptProvider` で差し替え。
 - **Content Adapter**: NotebookLM固有フォーマット（DeepDive等）を一般化し、台本セクション・メタ情報・引用元を抽出して内部スキーマへ変換。
-- **Voice Pipeline**: `TTSIntegration` に基づく合成音声/手動収録音声を切替、品質検証とフォーマット統一を担当。`src/core/voice_pipelines/tts_voice_pipeline.py` に実装された `TTSVoicePipeline` が `IVoicePipeline` を満たし、`PIPELINE_COMPONENTS.voice_pipeline` が `tts` または `gemini_tts` の場合に `build_default_pipeline()` で注入される。
+- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コード(ElevenLabs/OpenAI/Azure/SofTalk/AquesTalk/VOICEVOX)は2026-03-04に削除済み(`src/audio/tts_integration.py`はNo-opスタブ)。
 - **Asset Registry**: `data/` 配下への素材登録、再利用用メタデータ管理、差分検知を実装予定。
 
 ### Stage 2: 編集生成レイヤー
@@ -62,8 +61,8 @@ flowchart LR
 - **Effect Engine**: `EffectProcessor` をベースに、パン/ズーム、モーションプリセット、YMM4専用エフェクトタグを付与。
 - **Renderer**:
   - **YMM4 Project Builder**: YMM4 API (https://ymm-api-docs.vercel.app/) を利用し、テンプレート`.exo`や`.y4mmp`を複製。タイムライン、立ち絵、字幕パーツをAPI経由で挿入。
-  - **MoviePy Composer**: 既存 `VideoComposer` を使用する `MoviePyEditingBackend` が `src/core/editing/moviepy_backend.py` に実装され、`PIPELINE_COMPONENTS.editing_backend=moviepy` の場合に利用される。
-  - **YMM4 Project Builder**: `src/core/editing/ymm4_backend.py` が `.y4mmp` テンプレート複製と AutoHotkey フォールバックを行い、`PIPELINE_COMPONENTS.editing_backend=ymm4` で注入される。現状は MoviePy にフォールバックして動画書き出しを行い、YMM4 プロジェクトファイルと補助情報を出力する。
+  - **YMM4 Project Builder**: `src/core/editing/ymm4_backend.py` が `.y4mmp` テンプレート複製を行い、`PIPELINE_COMPONENTS.editing_backend=ymm4` で注入される。YMM4がfinal rendererとして動画書き出しを担当する。
+  - **MoviePy Composer (削除済み)**: `src/video_editor/*` はNo-opスタブ化済み(2026-03-07)。`NotImplementedError`を送出する。
   - **運用メモ**: 現状のYMM4 APIでは書き出し機能が未提供の可能性があるため、AutoHotkey等によるGUI自動操作を併用するフォールバック手段を用意する。テンプレート/スクリプトの指定は `config/settings.py` の `YMM4_SETTINGS` で管理する。
 
 ### Stage 3: 投稿配信レイヤー
@@ -157,8 +156,8 @@ sequenceDiagram
 
 ### フォールバックと拡張ポイント
 - **台本工程**: NotebookLMが利用不可の場合、Gemini + Web MCP、またはユーザーがNotebookLMから抽出したJSON/Markdownをアップロード。
-- **音声**: ElevenLabs/OpenAI/AzureのTTS、またはユーザー提供音声を `AudioValidator` が品質チェック後に採用。
-- **編集**: ユーザーがYMM4テンプレートを調整すれば、テンプレート差分のみAPI適用。テンプレート未整備時はMoviePyを使用。
+- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携は削除済み(2026-03-04)。
+- **編集**: YMM4テンプレートベースのレンダリング。MoviePyは削除済み(2026-03-07)。
 - **投稿**: YouTubeへの自動投稿、またはメタデータ/サムネイルのみ作成して手動投稿に切替可能。
 
 ## アーキテクチャの特徴
