@@ -212,7 +212,7 @@ async def run_csv_timeline(
                 user_preferences=user_preferences,
             )
             if progress_callback:
-                progress_callback("動画レンダリング", 0.7, "動画をレンダリングします...")
+                progress_callback("動画レンダリング", 0.7, "MoviePyで動画をレンダリングします...")
 
             if bgm_path:
                 editing_extras["bgm_path"] = str(bgm_path)
@@ -228,7 +228,7 @@ async def run_csv_timeline(
             editing_outputs = editing_extras.get("export_outputs") or None
         else:
             if progress_callback:
-                progress_callback("動画合成", 0.7, "動画を合成します...")
+                progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
             logger.info("Stage2拡張未設定のため従来の VideoComposer を使用 (CSVタイムライン)")
             video_info = await video_composer.compose_video(
                 audio_info, slides_pkg, transcript, quality, bgm_path=bgm_path

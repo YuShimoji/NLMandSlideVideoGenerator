@@ -53,10 +53,12 @@ def test_ymm4_record_export_outputs_includes_template_diff(tmp_path: Path):
     audio_dir.mkdir()
     (project_dir / "template_diff_applied.json").write_text("{}", encoding="utf-8")
 
+    # 依存を最小化するため、fallback_backend は未使用だが渡しておく
     backend = YMM4EditingBackend(
         project_template=tmp_path / "template.y4mmp",
         workspace_dir=tmp_path,
         auto_hotkey_script=tmp_path / "dummy.ahk",
+        fallback_backend=MoviePyEditingBackend(),
     )
 
     extras: dict[str, Any] = {}
