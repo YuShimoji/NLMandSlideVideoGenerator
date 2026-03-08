@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from web.ui._utils import load_markdown_file
+from ._utils import load_markdown_file
 
 
 def show_documentation_page():
