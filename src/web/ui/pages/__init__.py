@@ -7,7 +7,6 @@ Now split into separate modules for better maintainability:
 
 - home.py: Landing page and environment check
 - pipeline.py: Full pipeline execution
-- csv_timeline.py: CSV-based timeline mode
 - asset_management.py: Asset viewing and management
 - settings.py: Settings display and configuration
 - research.py: Research package alignment
@@ -18,7 +17,6 @@ Now split into separate modules for better maintainability:
 
 from .home import show_home_page
 from .pipeline import show_pipeline_page
-from .csv_timeline import show_csv_pipeline_page
 from .asset_management import show_assets_page
 from .settings import show_settings_page
 from .research import show_research_page
@@ -32,7 +30,6 @@ __all__ = [
     # Main page functions
     "show_home_page",
     "show_pipeline_page",
-    "show_csv_pipeline_page",
     "show_assets_page",
     "show_settings_page",
     "show_research_page",
