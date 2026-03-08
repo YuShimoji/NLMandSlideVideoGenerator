@@ -64,10 +64,9 @@ Type: Session 4 Handover
 - CI方針: 最小限の必要十分。broken workflowの保守コスト > 提供価値の場合は削除
 - 仕様管理: SPEC VIEW (docs/spec-index.json + Markdown) を一元管理手段とする
 
-## Production Paths
+## Production Path
 
-- **Path A (Primary)**: CSV → YMM4 (NLMSlidePlugin import → voice gen → render) → final mp4
-- **Path B (Stubbed)**: MoviePy video generation code stub化済み、TTS全削除済み
+- **Path A (Primary, only)**: CSV → YMM4 (NLMSlidePlugin import → voice gen → render) → final mp4
 
 ## YMM4 Plugin TODOs (2 remaining)
 

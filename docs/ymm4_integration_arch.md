@@ -1,9 +1,9 @@
 # YMM4 連携アーキテクチャ設計
 
-> **DEPRECATED (2026-03-01)**: この文書は「YMM4 → 個別WAV → Python pipeline」の設計を記述しているが、
-> YMM4 は個別WAVエクスポートができないため、この前提は誤りである。
-> 現在の正しいアーキテクチャは `docs/PROJECT_ALIGNMENT_SSOT.md` を参照。
-> YMM4 は最終レンダラーとして CSV→音声→動画を一貫処理する（Path A）。
+> **DEPRECATED (2026-03-08)**: このドキュメントは Path B（YMM4 → 個別WAV → Python pipeline）の設計を記述していますが、
+> Path B は 2026-03-08 に完全削除されました。
+> 現在の正しいアーキテクチャは `docs/PROJECT_ALIGNMENT_SSOT.md` を参照してください。
+> YMM4 は最終レンダラーとして CSV→音声→動画を一貫処理します（Path A のみ）。
 
 最終更新: 2025-12-10
 対象バージョン: **プラグインAPI優先** CSV タイムラインモード / YMM4 エクスポート基盤完了後
@@ -53,11 +53,11 @@
   - YMM4 プロジェクトファイル（タイムライン情報を含む）
 - `docs/ymm4_export_spec.md` に、YMM4 プロジェクト出力の仕様・テンプレート差分の考え方が整理済み。
 
-### 2.3 TTS連携の位置づけ（2026-03-04 更新）
+### 2.3 TTS連携の位置づけ（2026-03-08 更新）
 
 - SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除済み。
-- 音声生成は **YMM4 内蔵ゆっくりボイス** を唯一の推奨方法とする。
-- Path B (手動WAV + Python pipeline) では、任意の外部ツールでWAVを事前準備する。
+- Path B (MoviePy backend) は 2026-03-08 に削除済み。
+- 音声生成は **YMM4 内蔵ゆっくりボイス** のみ。
 
 ---
 

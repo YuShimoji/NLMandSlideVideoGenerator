@@ -4,7 +4,7 @@ YouTube解説動画自動化システム (NLMandSlideVideoGenerator)
 
 ## プロジェクト概要
 
-このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現行の本番SSOTは Path A の単一経路構成です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` の主経路として稼働中です。Path B（CSV + WAV → MoviePy → mp4）は 2026-03-07 に削除されました。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
+このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現行の本番SSOTは Path A の単一経路構成です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` の主経路として稼働中です。Gemini/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
 
 ## ドキュメント
 
@@ -31,17 +31,11 @@ git clone https://github.com/YuShimoji/NLMandSlideVideoGenerator.git
 cd NLMandSlideVideoGenerator
 pip install -r requirements.txt
 
-# 2. サンプル音声を生成（無音のテスト用WAV）
-python scripts/generate_sample_audio.py
+# 2. YMM4を起動し、NLMSlidePluginでCSVをインポート
+# 3. YMM4内でゆっくりボイス音声を自動生成
+# 4. YMM4で動画をレンダリング（書き出し）→ 最終 mp4
 
-# 3. 動画生成を実行
-python scripts/run_csv_pipeline.py \
-  --csv samples/basic_dialogue/timeline.csv \
-  --audio-dir samples/basic_dialogue/audio \
-  --topic "AI技術解説サンプル"
-
-# 4. 出力確認
-# data/videos/ に動画が出力されます
+# 詳細は docs/user_guide_manual_workflow.md を参照
 ```
 
 **Web UIを使う場合:**
@@ -81,17 +75,20 @@ copy .env.example .env
 # ユニットテスト
 python -m pytest tests/ -q -m "not slow and not integration" --tb=short
 
-# CSV パイプラインのテスト実行
-python scripts/run_csv_pipeline.py --csv samples/basic_dialogue/timeline.csv --audio-dir samples/basic_dialogue/audio --topic "テスト"
+# YMM4 プラグインテスト（手動）
+# 1. YMM4起動 → NLMSlidePluginでCSVインポート
+# 2. YMM4内で音声生成 → 動画レンダリング
 ```
 
 ### 4. 本格運用開始
 
 ```bash
-# YMM4エクスポート（Path A: YMM4で音声+動画レンダリング）
-python scripts/run_csv_pipeline.py --csv <csv> --audio-dir <dir> --topic "トピック名" --export-ymm4
+# YMM4制作（Path A: CSV → YMM4 で音声+動画レンダリング）
+# 1. YMM4を起動し、NLMSlidePluginでCSVをインポート
+# 2. YMM4内でゆっくりボイス音声を自動生成
+# 3. YMM4で動画をレンダリング（書き出し）→ 最終 mp4
 
-# 注: Path B（MoviePy経由の動画生成）は 2026-03-07 に削除されました
+# 詳細は docs/user_guide_manual_workflow.md を参照
 ```
 
 ## 🧩 モジュラーパイプラインの使い方
@@ -236,11 +233,10 @@ dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 ## 🎯 ロードマップ
 
 ### 完了済み ✅
-- [x] CSVタイムライン → 動画生成パイプライン
+- [x] CSVタイムライン入力仕様
 - [x] Web UI実装（Streamlit）
-- [x] YMM4エクスポート連携
+- [x] YMM4プラグイン統合
 - [x] 長文自動分割機能
-- [x] MoviePyバックエンド（削除済 - 2026-03-07にYMM4一本化により削除）
 
 ### 進行中
 - [ ] YMM4 SDK統合 (GenerateVoiceAsync, ImportFromCsv, AddToTimelineAsync)

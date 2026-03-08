@@ -6,7 +6,7 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/PROJECT_ALIGNMENT_SSOT.md",
-    "summary": "プロジェクト方針・タスク検証・YMM4優先制作パスの単一情報源"
+    "summary": "プロジェクト方針・タスク検証・Path A (CSV→YMM4) 単一制作パスの情報源"
   },
   {
     "id": "SP-002",
@@ -42,7 +42,7 @@
     "pct": 30,
     "cat": "plugin",
     "file": "docs/ymm4_integration_arch.md",
-    "summary": "旧WAVエクスポート設計。YMM4最終レンダラー方針に置き換え済み"
+    "summary": "DEPRECATED: Path B (YMM4→WAV→Python) 設計。Path B削除済 (2026-03-08)"
   },
   {
     "id": "SP-006",
@@ -141,7 +141,7 @@
     "pct": 95,
     "cat": "core",
     "file": "docs/user_guide_manual_workflow.md",
-    "summary": "Path A/B制作手順のユーザーガイド (本番SSOT)"
+    "summary": "Path A (CSV→YMM4) 制作手順のユーザーガイド (本番SSOT)"
   },
   {
     "id": "SP-017",

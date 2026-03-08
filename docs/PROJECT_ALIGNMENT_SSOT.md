@@ -30,8 +30,9 @@ Audience: All Agents
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
-| Python tests | 97 passed / 5 deselected | Path B stub完全削除+レガシー一掃後 |
-| .NET tests | 19 passed / 0 failed | Core分離後 (Gemini API tests +6) |
+| Path B完全削除 | DONE | 15ファイル削除、7ファイル修正、コード・テスト・API・Web UI全削除 (2026-03-08) |
+| Python tests | 67 passed / 1 deselected | Path B完全削除後 |
+| .NET tests | 34 passed / 0 failed | Core分離後 |
 
 ## Consistency Audit
 
@@ -48,6 +49,7 @@ Audience: All Agents
 | OpenSpec フレームワーク | spec 0件、import broken | 削除 | 3ワークフロー+2スクリプト削除。SPEC VIEW (spec-index.json) が仕様管理を担う |
 | .NET テスト分離 | YMM4 DLL不在でCI不可 | Core プロジェクト分離 | NLMSlidePlugin.Core.csproj (net9.0, ubuntu CI) |
 | Path B MoviePy | スタブ化後もコード・参照が残存 | 完全削除+レガシー一掃 | 6ファイル削除、データ型をmodels.pyに抽出、video_composerパラメータ除去、34件のレガシー参照修正 (2026-03-08) |
+| Path B 経路自体 | YMM4一本化後もPath Bコード・API・UI残存 | 完全削除 | csv_pipeline_runner, run_csv_pipeline, ExportFallbackManager, CSV Timeline API/UI 全削除。Path A一本化 (2026-03-08) |
 
 ## Final Output Definition
 
@@ -96,24 +98,19 @@ Audience: All Agents
 > YMM4 が最終レンダラーであり、Python パイプラインは CSV 作成までの前工程に責務を限定する。
 > YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
 
-### Path B: 手動WAV + Python pipeline（Secondary, MoviePy/TTS削除済み）
+### ~~Path B~~ (削除済み, 2026-03-08)
 
-1. CSV を作成する（手動 or Research workflow 経由）
-2. 任意のツールで WAV を生成する（001.wav, 002.wav, ... 形式）
-3. `scripts/run_csv_pipeline.py --export-ymm4` で YMM4 プロジェクトを生成する
-4. YMM4 GUI でプロジェクトを開き、動画をレンダリングする
+> Path B（手動WAV + Python pipeline）は完全に削除された。csv_pipeline_runner, run_csv_pipeline.py,
+> ExportFallbackManager, CSV Timeline API/UI、関連テスト7件を含む15ファイルが削除された。
+> YMM4一本化により、Pythonパイプラインの役割はCSV生成までの前工程に限定される。
 
-> 直接 mp4 は生成不可（MoviePy は 2026-03-08 に完全削除済み）。
-> editing_backend は YMM4 のみ。出力は YMM4 プロジェクトファイル。
-> TTS連携コード（VOICEVOX / SofTalk / AquesTalk / ElevenLabs / Azure）も全削除済み。
-
-### Research 先行フロー（Path A/B 共通の前工程）
+### Research 先行フロー（Path A の前工程）
 
 1. Web から資料収集する
 2. Research Package を保存する
 3. NLM たたき台台本と資料を照合する
 4. 採否判断を反映して CSV を出力する
-5. Path A または Path B へ接続する
+5. Path A へ接続する
 
 ## Current E2E Topic
 
@@ -121,7 +118,7 @@ Audience: All Agents
 |---|---|
 | Topic | `US and Israel launch strikes on Iran – What has happened so far` |
 | Seed URL | `http://www.euronews.com/2026/02/28/us-and-israel-launch-strikes-on-iran-what-has-happened-so-far` |
-| Route | `B` |
+| Route | `A` (Path B削除済み) |
 | Reason | breaking news のため単一ソースで確定しない |
 | Package | `data/research/rp_20260301_000417/package.json` |
 | Alignment | `data/research/rp_20260301_000417/alignment_report.json` |
@@ -135,8 +132,7 @@ Audience: All Agents
 |---|---|---|
 | Research | 出典確認、要約、資料パッケージ化 | Research Package |
 | Alignment | 台本との差分比較、採否判断 | Alignment Report / final CSV |
-| Production (Path A) | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
-| Production (Path B) | 手動WAV準備→Python pipeline→YMM4エクスポート (MoviePy/TTS全削除済み) | YMM4プロジェクト / ログ |
+| Production | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
 
 ## Agent Operating Policy
 

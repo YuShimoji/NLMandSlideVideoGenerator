@@ -65,10 +65,8 @@ chore: その他の変更
 ### 4. 手動E2Eワークフローの確認
 
 - ユーザー視点の手動ワークフロー全体像は `docs/user_guide_manual_workflow.md` を参照してください。
-- 制作パスは以下の通りです:
-  - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → 動画レンダリング）。YMM4 が最終レンダラー。
-  - **Path B（削除済）**: MoviePy バックエンドは 2026-03-07 に削除済み。外部 TTS 連携（VOICEVOX/SofTalk/AquesTalk）も 2026-03-04 削除済み。
-- 新機能の開発後は、Path A の **CSV → YMM4** フローで動作確認を行ってください（Path A は YMM4 GUI 操作のため自動テスト不可）。
+- 制作パス: **CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → 動画レンダリング）**。YMM4 が最終レンダラー。
+- 新機能の開発後は、**CSV → YMM4** フローで動作確認を行ってください（YMM4 GUI 操作のため自動テスト不可）。
 
 ## テスト実行
 
@@ -175,9 +173,10 @@ python -c "from config.settings import create_directories; create_directories()"
 
 ### よくある問題
 
-#### 1. MoviePyのインストールエラー（削除済み）
+#### 1. YMM4プラグインの動作確認
 
-MoviePy は 2026-03-07 に削除されました。YMM4 を使用してください。
+YMM4 で NLMSlidePlugin が認識されない場合、プラグインDLLの配置場所を確認してください。
+詳細は `docs/ymm4_export_spec.md` を参照。
 
 #### 2. Google APIの認証エラー
 - API キーの確認

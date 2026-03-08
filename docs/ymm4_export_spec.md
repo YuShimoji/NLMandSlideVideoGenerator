@@ -24,8 +24,8 @@
 | テンプレート .y4mmp 複製 | ✅ 実装済み | |
 | 音声アセットコピー | ✅ 実装済み | |
 | AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
-| YMM4 API 連携（プラグインAPI 優先, 旧: REST API） | ❌ 未実装 | 将来対応（設計は `docs/ymm4_integration_arch.md` を参照） |
-| 動画出力 | ✅ MoviePy フォールバック | YMM4 書き出しではない |
+| YMM4 API 連携（プラグインAPI 優先, 旧: REST API） | ❌ 未実装 | 将来対応 |
+| 動画出力 | ❌ 削除済み | MoviePy backend 削除済み (2026-03-08) |
 
 ---
 

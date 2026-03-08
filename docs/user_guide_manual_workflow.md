@@ -6,23 +6,17 @@
 
 ## 概要
 
-**2つの制作パス:**
+**制作パス:**
 
 ```
-Path A (Primary): CSV → YMM4 → 最終 mp4
-Path B (Secondary): CSV + WAV群 → Python pipeline → mp4
+Path A (唯一): CSV → YMM4 → 最終 mp4
 ```
 
-**Path A（YMM4 制作）の必要素材:**
+**必要素材:**
 1. **台本/テロップ** - CSV形式（speaker, text）
-
-**Path B（Batch TTS + Python pipeline）の必要素材:**
-1. **台本/テロップ** - CSV形式（speaker, text）
-2. **音声ファイル** - WAV形式（001.wav, 002.wav, ... 行ごとに分割）
 
 **出力:**
-- **Path A**: YMM4 からレンダリングした最終 mp4
-- **Path B**: 動画ファイル (.mp4) + 字幕ファイル (SRT/ASS/VTT)
+- YMM4 からレンダリングした最終 mp4
 
 ---
 
@@ -56,96 +50,16 @@ Speaker1,3行目のテロップです
 
 ---
 
-## 方法2: CSVタイムライン + Batch TTS パイプライン（Path B）
+## (削除済み) 方法2: CSVタイムライン + Batch TTS パイプライン（Path B）
 
-### ステップ1: 素材の準備
-
-#### 1-1. CSV台本の作成
-
-方法1と同じフォーマットでCSVを作成します。
-
-#### 1-2. 音声ファイルの準備
-
-各行に対応するWAVファイルを用意します。
-
-```
-audio_folder/
-├── 001.wav  (1行目の音声)
-├── 002.wav  (2行目の音声)
-├── 003.wav  (3行目の音声)
-└── ...
-```
-
-**ファイル命名規則:**
-- `001.wav`, `002.wav`, `003.wav`, ...
-- 3桁のゼロ埋め番号
-
-**音声生成方法（YMM4以外）:**
-
-> SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
-
-1. **手動準備** [常時利用可]
-   - 任意のツール(棒読みちゃん、VOICEVOX等)で音声生成 → 連番WAVにリネーム
-2. **NotebookLM**: Deep Dive Audio → 分割 (ゆっくりボイスではない)
-
-### ステップ2: 動画生成の実行（Path B のみ）
-
-#### 方法A: コマンドライン (CLI)
-
-```bash
-python scripts/run_csv_pipeline.py \
-  --csv "path/to/timeline.csv" \
-  --audio-dir "path/to/audio_folder" \
-  --topic "動画タイトル" \
-  --video-quality 1080p
-```
-
-**オプション:**
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--csv` | CSVファイルパス | (必須) |
-| `--audio-dir` | 音声ディレクトリ | (必須) |
-| `--topic` | 動画タイトル | CSVファイル名 |
-| `--video-quality` | 品質 (1080p/720p/480p) | 1080p |
-| `--export-ymm4` | YMM4プロジェクト出力 | false |
-| `--upload` | YouTube自動アップロード | false |
-| `--max-chars-per-slide` | スライド文字数上限 | 60 |
-
-#### 方法B: Web UI
-
-1. `streamlit run src/web/web_app.py` を実行
-2. サイドバーで **「CSV Pipeline」** を選択
-3. フォームに入力:
-   - CSVファイルをアップロード
-   - 音声ディレクトリのパスを入力
-   - トピック名を入力
-   - オプションを設定
-4. **「動画生成開始」** をクリック
-
-### ステップ3: 出力の確認
-
-生成後、以下の場所に出力されます:
-
-```
-data/
-├── videos/
-│   └── generated_video_YYYYMMDD_HHMMSS.mp4
-├── transcripts/
-│   ├── {topic}_subtitles.srt
-│   ├── {topic}_subtitles.vtt
-│   └── {topic}_subtitles_default.ass
-└── ymm4/  (YMM4エクスポート時)
-    └── ymm4_project_XXXXXX/
-        ├── project.y4mmp
-        ├── slides_payload.json
-        └── timeline_plan.json
-```
-
-### (削除済み) CSV+TTS Webフロー E2E 手順
-
-> SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
-> 音声生成は **YMM4 内蔵ゆっくりボイス** (Path A) を使用してください。
-> Path B で手動WAVを使う場合は、上記「ステップ2」の手順に従ってください。
+> **Path B は 2026-03-08 に完全削除されました。**
+>
+> - MoviePy backend (`src/core/editing/moviepy_backend.py`) 削除済み
+> - TTS統合 (`src/audio/tts_integration.py`) 削除済み
+> - video_composer (`src/video_editor/video_composer.py`) 削除済み
+> - `run_csv_pipeline.py` および `csv_pipeline_runner.py` 削除済み
+>
+> **現行の制作方法は Path A（YMM4制作フロー）のみです。**
 
 ---
 

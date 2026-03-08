@@ -23,7 +23,7 @@
 - 表示ルールの外部SSOTは廃止。プロジェクト内ドキュメント（AI_CONTEXT.md, CLAUDE.md）を参照先とする。
 - 外部実行ファイル検出は `src/core/utils/tool_detection.py` に集約。
 - 品質SSOTは 480p/720p/1080p に統一（4K未対応）。
-- CSV + 行ごとのWAV → CSVパイプラインで動画/字幕/サムネ/メタデータ生成が現行SSOT。
+- CSV → YMM4 で音声生成・動画レンダリング (Path A) が現行SSOT。
 - 音声方針: YMM4内蔵ゆっくりボイス（唯一の推奨方法）。VOICEVOX/SofTalk/AquesTalkは削除済み。
 - ドメイン固有例外階層を `src/core/exceptions.py` に確立。
 - pytest.ini に `pythonpath = . src` を設定し、テストの import 安定化。
@@ -123,7 +123,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - [x] .NET Core分離 (2026-03-07: NLMSlidePlugin.Core.csproj)
 - [x] CIワークフロー整理 (2026-03-07: 11→6、deprecated actions全修正)
 - [x] OpenSpec削除 (2026-03-07: spec 0件、broken imports)
-- [x] Path B dead code完全削除 (2026-03-08: 6ファイル削除、-1205行)
+- [x] Path B完全削除 (2026-03-08: MoviePy backend + TTS統合 + video_composer等6ファイル削除、-1205行)
 - [ ] テストカバレッジ拡充 (57% → 80%+)
 - [ ] GitHub Actions CI有効化確認 (Layer B)
 - [ ] Codecov統合

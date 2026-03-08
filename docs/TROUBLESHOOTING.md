@@ -129,18 +129,20 @@ Get-Content $logPath -Tail 50
 
 ## Video Generation Issues
 
-### 🔴 Problem: Video generation - MoviePy removed
+### 🔴 Problem: Video generation - MoviePy removed / CSV pipeline deleted
 
-**Note:** MoviePy バックエンドは 2026-03-07 に YMM4 一本化方針により削除されました。
+**Note:** MoviePy バックエンド と run_csv_pipeline.py は 2026-03-08 に完全削除されました。
 
 **現在のワークフロー:**
 - YMM4 を使用した動画生成が唯一のサポート方法です
-- CSV → YMM4 プロジェクト生成 → YMM4 内で音声生成 → 動画レンダリング
+- CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → 動画レンダリング）
 
-**移行方法:**
-1. `scripts/run_csv_pipeline.py --export-ymm4` で YMM4 プロジェクトを生成
-2. YMM4 で生成されたプロジェクトを開く
-3. YMM4 GUI で音声生成・動画レンダリングを実行
+**制作手順:**
+1. YMM4 を起動し、新規プロジェクトを作成
+2. NLMSlidePlugin の「CSVタイムラインをインポート」からCSVを読み込む
+3. YMM4 内でゆっくりボイス音声を自動生成
+4. レイアウト・音声を確認・調整
+5. YMM4 で動画をレンダリング（書き出し）→ 最終 mp4
 
 **関連ドキュメント:**
 - `docs/user_guide_manual_workflow.md` - YMM4 ワークフロー詳細
@@ -343,7 +345,7 @@ When you need to perform manual verification, use this checklist:
 | **Audio Diagnostics** | Run `python scripts/test_audio_output.py` | ✅ All checks pass, no warnings | ⬜ |
 | **YMM4 Plugin Load** | 1. Deploy plugin<br>2. Open YMM4<br>3. Check Tools menu | Plugin appears in menu | ⬜ |
 | **CSV Import** | 1. Open CSV Import Dialog<br>2. Select test CSV<br>3. Click Preview<br>4. Click Import | Items appear on timeline | ⬜ |
-| **Video Generation** | Run `python scripts/run_csv_pipeline.py` with sample data | Video generated successfully | ⬜ |
+| **Video Generation** | 1. Import CSV in YMM4<br>2. Generate voice<br>3. Render video | Video generated successfully | ⬜ |
 | **Subtitle Display** | Play generated video | Subtitles visible and synchronized | ⬜ |
 | **CI Pipeline** | Run `.\scripts\ci.ps1` | All checks pass | ⬜ |
 
@@ -391,12 +393,12 @@ Remove-Item -Recurse -Force ymm4-plugin\bin, ymm4-plugin\obj
 
 ### Performance Profiling
 ```python
-# Profile Python script
-python -m cProfile -o output.prof scripts/run_csv_pipeline.py
+# Profile Python scripts (example with web app)
+python -m cProfile -o output.prof src/web/web_app.py
 python -m pstats output.prof
 
 # Memory profiling
-python -m memory_profiler scripts/run_csv_pipeline.py
+python -m memory_profiler src/main.py
 ```
 
 ---

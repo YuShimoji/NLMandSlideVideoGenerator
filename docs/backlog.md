@@ -95,7 +95,7 @@
 
 ### A-4: 動画合成・エフェクト実装
 
-**注**: MoviePyバックエンドは 2026-03-07 に削除済み。データ型（VideoInfo, ThumbnailInfo）は `src/video_editor/models.py` に移動。
+**注**: MoviePy backend は 2026-03-08 に完全削除済み。データ型（VideoInfo, ThumbnailInfo）は `src/video_editor/models.py` に移動。
 
 | ID | ファイル | 内容 | 状態 |
 |----|----------|------|------|
