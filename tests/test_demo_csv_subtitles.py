@@ -52,5 +52,5 @@ async def test_demo_csv_subtitles_end_to_end(tmp_path: Path):
     out_dir = tmp_path / "subs"
 
     # 4) デモ実行 → Path B 削除により NotImplementedError が発生することを確認
-    with pytest.raises(NotImplementedError, match="Path B.*MoviePy.*removed"):
+    with pytest.raises(NotImplementedError, match="Path B"):
         await run_demo(csv_path, audio_dir, output_dir=out_dir, style="default")

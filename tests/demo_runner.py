@@ -1,9 +1,7 @@
 """
 デモ実行クラス
 """
-import asyncio
 from pathlib import Path
-from datetime import datetime
 
 from config.settings import settings, create_directories
 from .demo_data import (
@@ -72,7 +70,7 @@ class DemoRunner:
 
         mock_audio = get_mock_audio_info()
 
-        print(f"🎧 生成された音声:")
+        print("🎧 生成された音声:")
         print(f"  ファイル: {mock_audio.file_path}")
         print(f"  長さ: {mock_audio.duration:.1f}秒")
         print(f"  サンプリングレート: {mock_audio.sample_rate}Hz")
@@ -86,13 +84,13 @@ class DemoRunner:
 
         mock_transcript = get_mock_transcript()
 
-        print(f"📄 文字起こし結果:")
+        print("📄 文字起こし結果:")
         print(f"  タイトル: {mock_transcript.title}")
         print(f"  言語: {mock_transcript.language}")
         print(f"  長さ: {mock_transcript.duration:.1f}秒")
         print(f"  セグメント数: {len(mock_transcript.segments)}")
 
-        print(f"\n📋 最初の数セグメント:")
+        print("\n📋 最初の数セグメント:")
         for i, segment in enumerate(mock_transcript.segments[:3], 1):
             print(f"  {i}. [{segment.start_time:.1f}s - {segment.end_time:.1f}s] {segment.content}")
 
@@ -103,7 +101,7 @@ class DemoRunner:
 
         mock_slides = get_mock_slides_package()
 
-        print(f"🎨 生成されたスライド:")
+        print("🎨 生成されたスライド:")
         print(f"  プレゼンテーションID: {mock_slides.presentation_id}")
         print(f"  URL: {mock_slides.slides_url}")
         print(f"  スライド数: {mock_slides.total_slides}")
@@ -116,7 +114,7 @@ class DemoRunner:
 
         mock_video = get_mock_video_info()
 
-        print(f"🎥 生成された動画:")
+        print("🎥 生成された動画:")
         print(f"  ファイル: {mock_video.file_path}")
         print(f"  長さ: {mock_video.duration:.1f}秒")
         print(f"  解像度: {mock_video.resolution[0]}x{mock_video.resolution[1]}")
@@ -131,14 +129,14 @@ class DemoRunner:
         mock_metadata = get_mock_metadata()
         mock_upload_result = get_mock_upload_result()
 
-        print(f"🚀 アップロード結果:")
+        print("🚀 アップロード結果:")
         print(f"  動画ID: {mock_upload_result.video_id}")
         print(f"  URL: {mock_upload_result.video_url}")
         print(f"  アップロード状況: {mock_upload_result.upload_status}")
         print(f"  処理状況: {mock_upload_result.processing_status}")
         print(f"  公開設定: {mock_upload_result.privacy_status}")
 
-        print(f"\n📋 動画メタデータ:")
+        print("\n📋 動画メタデータ:")
         print(f"  タイトル: {mock_metadata.title}")
         print(f"  説明文: {len(mock_metadata.description)}文字")
         print(f"  タグ数: {len(mock_metadata.tags)}個")
@@ -182,7 +180,7 @@ class DemoRunner:
             print("📄 ファイルが見つかりませんでした")
 
         # ディレクトリ構造を表示
-        print(f"\n📂 ディレクトリ構造:")
+        print("\n📂 ディレクトリ構造:")
         print(f"  📁 {settings.DATA_DIR.name}/")
         for subdir in [settings.AUDIO_DIR, settings.SLIDES_DIR, settings.VIDEOS_DIR, settings.TRANSCRIPTS_DIR]:
             if subdir.exists():

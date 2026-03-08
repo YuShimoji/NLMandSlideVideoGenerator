@@ -5,8 +5,7 @@ OpenSpec IPlatformAdapterの実装を検証
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from pathlib import Path
 from datetime import datetime
 import sys
@@ -16,7 +15,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 from src.core.platforms.youtube_adapter import YouTubePlatformAdapter
-from video_editor.video_composer import VideoInfo
+from video_editor.models import VideoInfo
 from youtube.uploader import UploadMetadata
 
 class TestYouTubePlatformAdapter:
@@ -61,12 +60,12 @@ class TestYouTubePlatformAdapter:
         mock_result.video_url = "https://youtube.com/watch?v=test123"
         mock_result.video_id = "test123"
         mock_result.upload_status = "uploaded"
-        
+
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(return_value=mock_result)
-        
+
         result = await adapter.upload(mock_video_info, mock_metadata)
-        
+
         assert result["url"] == "https://youtube.com/watch?v=test123"
         assert result["video_id"] == "test123"
         adapter.uploader.upload_video.assert_called_once()
@@ -75,17 +74,17 @@ class TestYouTubePlatformAdapter:
     async def test_upload_with_schedule(self, adapter, mock_video_info, mock_metadata):
         """スケジュール付きアップロードテスト"""
         schedule_time = datetime(2025, 12, 31, 12, 0, 0)
-        
+
         mock_result = Mock()
         mock_result.video_url = "https://youtube.com/watch?v=scheduled_test"
         mock_result.video_id = "scheduled_test"
         mock_result.upload_status = "scheduled"
-        
+
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(return_value=mock_result)
-        
+
         result = await adapter.upload(mock_video_info, mock_metadata, schedule=schedule_time)
-        
+
         assert result["url"] == "https://youtube.com/watch?v=scheduled_test"
         adapter.uploader.upload_video.assert_called_once()
 
@@ -94,7 +93,7 @@ class TestYouTubePlatformAdapter:
         """APIエラー時の処理テスト"""
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(side_effect=Exception("YouTube API Error"))
-        
+
         with pytest.raises(Exception):
             await adapter.upload(mock_video_info, mock_metadata)
 
@@ -110,12 +109,12 @@ class TestYouTubePlatformAdapter:
         mock_result.video_url = "https://youtube.com/watch?v=structured_test"
         mock_result.video_id = "structured_test"
         mock_result.upload_status = "uploaded"
-        
+
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(return_value=mock_result)
-        
+
         result = await adapter.upload(mock_video_info, mock_metadata)
-        
+
         assert "url" in result
         assert "video_id" in result
         assert "success" in result
@@ -132,18 +131,18 @@ class TestYouTubePlatformAdapter:
                 language="ja",
                 privacy_status=privacy
             )
-            
+
             mock_result = Mock()
             mock_result.video_url = f"https://youtube.com/watch?v={privacy}_test"
             mock_result.video_id = f"{privacy}_test"
             mock_result.upload_status = "uploaded"
-            
+
             adapter.uploader.authenticate = AsyncMock(return_value=True)
             adapter.uploader.upload_video = AsyncMock(return_value=mock_result)
             adapter._authenticated = False  # 認証状態をリセット
-            
+
             result = await adapter.upload(mock_video_info, metadata)
-            
+
             assert result["video_id"] == f"{privacy}_test"
 
     @pytest.mark.asyncio
@@ -159,10 +158,10 @@ class TestYouTubePlatformAdapter:
             has_effects=False,
             created_at=datetime.now()
         )
-        
+
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(side_effect=FileNotFoundError("Video file not found"))
-        
+
         with pytest.raises(FileNotFoundError):
             await adapter.upload(invalid_video, mock_metadata)
 
@@ -177,9 +176,9 @@ class TestYouTubePlatformAdapter:
             language="ja",
             privacy_status="invalid_status"
         )
-        
+
         adapter.uploader.authenticate = AsyncMock(return_value=True)
         adapter.uploader.upload_video = AsyncMock(side_effect=ValueError("Invalid metadata"))
-        
+
         with pytest.raises(ValueError):
             await adapter.upload(mock_video_info, invalid_metadata)

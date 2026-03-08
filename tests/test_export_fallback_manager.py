@@ -17,7 +17,6 @@ from src.core.editing import (
     ExportFallbackManager,
     BackendType,
     BackendConfig,
-    FallbackResult,
 )
 
 
@@ -53,68 +52,68 @@ class TestExportFallbackManager:
     def test_manager_initialization(self):
         """マネージャーの初期化テスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
+
         assert manager is not None
         assert len(manager.configs) > 0
-        
+
     def test_default_configs(self):
         """デフォルト設定のテスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
-        # MoviePyは常に有効
-        moviepy_config = next(
-            (c for c in manager.configs if c.backend_type == BackendType.MOVIEPY),
+
+        # YMM4_AHKが有効
+        ahk_config = next(
+            (c for c in manager.configs if c.backend_type == BackendType.YMM4_AHK),
             None
         )
-        assert moviepy_config is not None
-        assert moviepy_config.enabled is True
-        
+        assert ahk_config is not None
+        assert ahk_config.enabled is True
+
     def test_custom_configs(self):
         """カスタム設定のテスト"""
         custom_configs = [
             BackendConfig(
-                backend_type=BackendType.MOVIEPY,
+                backend_type=BackendType.YMM4_AHK,
                 enabled=True,
                 priority=1,
             )
         ]
-        
+
         manager = ExportFallbackManager(configs=custom_configs, auto_detect=False)
-        
+
         assert len(manager.configs) == 1
-        assert manager.configs[0].backend_type == BackendType.MOVIEPY
-        
+        assert manager.configs[0].backend_type == BackendType.YMM4_AHK
+
     def test_get_available_backends(self):
         """利用可能バックエンド取得テスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
-        # MoviePyのみ有効化
+
+        # YMM4_AHKのみ有効化
         for config in manager.configs:
-            config.enabled = config.backend_type == BackendType.MOVIEPY
-        
+            config.enabled = config.backend_type == BackendType.YMM4_AHK
+
         available = manager.get_available_backends()
-        assert BackendType.MOVIEPY in available
-        
+        assert BackendType.YMM4_AHK in available
+
     def test_set_backend_enabled(self):
         """バックエンド有効/無効切替テスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
-        manager.set_backend_enabled(BackendType.MOVIEPY, False)
-        
-        moviepy_config = next(
-            c for c in manager.configs if c.backend_type == BackendType.MOVIEPY
+
+        manager.set_backend_enabled(BackendType.YMM4_AHK, False)
+
+        ahk_config = next(
+            c for c in manager.configs if c.backend_type == BackendType.YMM4_AHK
         )
-        assert moviepy_config.enabled is False
-        
-        manager.set_backend_enabled(BackendType.MOVIEPY, True)
-        assert moviepy_config.enabled is True
-        
+        assert ahk_config.enabled is False
+
+        manager.set_backend_enabled(BackendType.YMM4_AHK, True)
+        assert ahk_config.enabled is True
+
     def test_get_status(self):
         """ステータス取得テスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
+
         status = manager.get_status()
-        
+
         assert "backends" in status
         assert "available" in status
         assert isinstance(status["backends"], list)
@@ -125,19 +124,19 @@ class TestExportFallbackManager:
     ):
         """レンダリング成功テスト"""
         manager = ExportFallbackManager(auto_detect=False)
-        
-        # MoviePyのみ有効化
+
+        # YMM4_AHKのみ有効化
         for config in manager.configs:
-            config.enabled = config.backend_type == BackendType.MOVIEPY
-        
+            config.enabled = config.backend_type == BackendType.YMM4_AHK
+
         # バックエンドをモック
         mock_video_info = Mock()
         mock_video_info.file_path = Path("output.mp4")
         mock_video_info.duration = 60.0
-        
+
         mock_backend = Mock()
         mock_backend.render = AsyncMock(return_value=mock_video_info)
-        
+
         with patch.object(manager, '_get_backend', return_value=mock_backend):
             result = await manager.render(
                 timeline_plan=timeline_plan,
@@ -145,58 +144,10 @@ class TestExportFallbackManager:
                 slides=mock_slides,
                 transcript=mock_transcript,
             )
-        
+
         assert result.success is True
-        assert result.used_backend == BackendType.MOVIEPY
+        assert result.used_backend == BackendType.YMM4_AHK
         assert result.video_info is not None
-        
-    @pytest.mark.asyncio
-    async def test_render_fallback(
-        self, mock_audio, mock_slides, mock_transcript, timeline_plan
-    ):
-        """フォールバック動作テスト"""
-        configs = [
-            BackendConfig(
-                backend_type=BackendType.YMM4_AHK,
-                enabled=True,
-                priority=1,
-                retry_count=1,
-            ),
-            BackendConfig(
-                backend_type=BackendType.MOVIEPY,
-                enabled=True,
-                priority=2,
-            ),
-        ]
-        manager = ExportFallbackManager(configs=configs, auto_detect=False)
-        
-        # 最初のバックエンドは失敗、2番目は成功
-        mock_video_info = Mock()
-        mock_video_info.file_path = Path("output.mp4")
-        
-        fail_backend = Mock()
-        fail_backend.render = AsyncMock(side_effect=Exception("YMM4エラー"))
-        
-        success_backend = Mock()
-        success_backend.render = AsyncMock(return_value=mock_video_info)
-        
-        def get_backend_mock(backend_type):
-            if backend_type == BackendType.YMM4_AHK:
-                return fail_backend
-            return success_backend
-        
-        with patch.object(manager, '_get_backend', side_effect=get_backend_mock):
-            result = await manager.render(
-                timeline_plan=timeline_plan,
-                audio=mock_audio,
-                slides=mock_slides,
-                transcript=mock_transcript,
-            )
-        
-        assert result.success is True
-        assert result.used_backend == BackendType.MOVIEPY
-        assert BackendType.YMM4_AHK in result.attempted_backends
-        assert BackendType.YMM4_AHK in result.errors
 
     @pytest.mark.asyncio
     async def test_render_all_fail(
@@ -205,17 +156,17 @@ class TestExportFallbackManager:
         """全バックエンド失敗テスト"""
         configs = [
             BackendConfig(
-                backend_type=BackendType.MOVIEPY,
+                backend_type=BackendType.YMM4_AHK,
                 enabled=True,
                 priority=1,
                 retry_count=1,
             ),
         ]
         manager = ExportFallbackManager(configs=configs, auto_detect=False)
-        
+
         fail_backend = Mock()
         fail_backend.render = AsyncMock(side_effect=Exception("レンダリングエラー"))
-        
+
         with patch.object(manager, '_get_backend', return_value=fail_backend):
             result = await manager.render(
                 timeline_plan=timeline_plan,
@@ -223,10 +174,10 @@ class TestExportFallbackManager:
                 slides=mock_slides,
                 transcript=mock_transcript,
             )
-        
+
         assert result.success is False
         assert result.video_info is None
-        assert BackendType.MOVIEPY in result.errors
+        assert BackendType.YMM4_AHK in result.errors
 
     @pytest.mark.asyncio
     async def test_preferred_backend(
@@ -239,29 +190,23 @@ class TestExportFallbackManager:
                 enabled=True,
                 priority=1,
             ),
-            BackendConfig(
-                backend_type=BackendType.MOVIEPY,
-                enabled=True,
-                priority=2,
-            ),
         ]
         manager = ExportFallbackManager(configs=configs, auto_detect=False)
-        
+
         mock_video_info = Mock()
         mock_video_info.file_path = Path("output.mp4")
-        
+
         mock_backend = Mock()
         mock_backend.render = AsyncMock(return_value=mock_video_info)
-        
+
         with patch.object(manager, '_get_backend', return_value=mock_backend):
             result = await manager.render(
                 timeline_plan=timeline_plan,
                 audio=mock_audio,
                 slides=mock_slides,
                 transcript=mock_transcript,
-                preferred_backend=BackendType.MOVIEPY,
+                preferred_backend=BackendType.YMM4_AHK,
             )
-        
-        # MoviePyが最初に試行される（優先指定）
+
         assert result.success is True
-        assert result.attempted_backends[0] == BackendType.MOVIEPY
+        assert result.attempted_backends[0] == BackendType.YMM4_AHK

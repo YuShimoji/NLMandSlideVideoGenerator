@@ -22,13 +22,13 @@ os.chdir(project_root)
 
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
-from slides.slide_generator import SlideGenerator, SlidesPackage
+from slides.slide_generator import SlideGenerator
 
 
 def create_mock_transcript() -> TranscriptInfo:
     """テスト用のモックTranscriptInfoを作成"""
     from datetime import datetime
-    
+
     segments = [
         TranscriptSegment(
             id=1,
@@ -115,28 +115,28 @@ async def test_slide_generator_with_bundle():
     print("\n" + "=" * 60)
     print("テスト1: script_bundle付きスライド生成")
     print("=" * 60)
-    
+
     transcript = create_mock_transcript()
     script_bundle = create_mock_script_bundle_with_slides()
-    
+
     # 設定確認
     prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
     print(f"\n[設定] prefer_gemini_slide_content = {prefer_gemini}")
     print(f"[入力] script_bundle['slides'] = {len(script_bundle['slides'])}枚")
-    
+
     generator = SlideGenerator()
-    
+
     try:
         slides_pkg = await generator.generate_slides(
             transcript=transcript,
             max_slides=10,
             script_bundle=script_bundle,
         )
-        
+
         print(f"\n[結果] 生成されたスライド: {slides_pkg.total_slides}枚")
         print(f"[結果] presentation_id: {slides_pkg.presentation_id}")
         print(f"[結果] title: {slides_pkg.title}")
-        
+
         for i, slide in enumerate(slides_pkg.slides[:3], 1):
             print(f"\n  スライド {i}:")
             print(f"    タイトル: {slide.title}")
@@ -144,10 +144,10 @@ async def test_slide_generator_with_bundle():
             print(f"    duration: {slide.estimated_duration}秒")
             if slide.image_suggestions:
                 print(f"    画像提案: {slide.image_suggestions}")
-        
+
         print("\n✅ テスト1 成功")
         return True
-        
+
     except Exception as e:
         print(f"\n❌ テスト1 失敗: {e}")
         import traceback
@@ -161,28 +161,28 @@ async def test_slide_generator_without_bundle():
     print("\n" + "=" * 60)
     print("テスト2: script_bundleなしスライド生成（従来パス）")
     print("=" * 60)
-    
+
     transcript = create_mock_transcript()
-    
+
     generator = SlideGenerator()
-    
+
     try:
         slides_pkg = await generator.generate_slides(
             transcript=transcript,
             max_slides=5,
             script_bundle=None,
         )
-        
+
         print(f"\n[結果] 生成されたスライド: {slides_pkg.total_slides}枚")
         print(f"[結果] presentation_id: {slides_pkg.presentation_id}")
-        
+
         for i, slide in enumerate(slides_pkg.slides[:3], 1):
             print(f"\n  スライド {i}:")
             print(f"    タイトル: {slide.title}")
-        
+
         print("\n✅ テスト2 成功")
         return True
-        
+
     except Exception as e:
         print(f"\n❌ テスト2 失敗: {e}")
         import traceback
@@ -196,14 +196,14 @@ async def test_prefer_gemini_flag():
     print("\n" + "=" * 60)
     print("テスト3: prefer_gemini_slide_content フラグ確認")
     print("=" * 60)
-    
+
     # 現在の設定値を確認
     prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
     env_value = os.getenv("SLIDES_USE_GEMINI_CONTENT", "未設定")
-    
+
     print(f"\n[環境変数] SLIDES_USE_GEMINI_CONTENT = {env_value}")
     print(f"[設定値] prefer_gemini_slide_content = {prefer_gemini}")
-    
+
     if prefer_gemini:
         print("\n→ Geminiスライド優先モードが有効です")
         print("  script_bundle['slides']がある場合、それを使用してスライドを生成します")
@@ -213,7 +213,7 @@ async def test_prefer_gemini_flag():
         print("\n  Geminiスライドを優先するには:")
         print("    set SLIDES_USE_GEMINI_CONTENT=true")
         print("  を設定してから実行してください")
-    
+
     print("\n✅ テスト3 完了")
     return True
 
@@ -223,29 +223,29 @@ async def main():
     print("=" * 60)
     print("Geminiスライド生成 検証テスト")
     print("=" * 60)
-    
+
     results = []
-    
+
     # テスト実行
     results.append(await test_prefer_gemini_flag())
     results.append(await test_slide_generator_with_bundle())
     results.append(await test_slide_generator_without_bundle())
-    
+
     # 結果サマリー
     print("\n" + "=" * 60)
     print("テスト結果サマリー")
     print("=" * 60)
-    
+
     passed = sum(results)
     total = len(results)
-    
+
     print(f"\n合格: {passed}/{total}")
-    
+
     if passed == total:
         print("\n🎉 全テスト成功!")
     else:
         print("\n⚠️ 一部テストが失敗しました")
-    
+
     return passed == total
 
 

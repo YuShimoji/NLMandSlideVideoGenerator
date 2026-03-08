@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from ..utils.logger import logger
 from core.interfaces import IThumbnailGenerator
-from video_editor.video_composer import ThumbnailInfo, VideoInfo
+from video_editor.models import ThumbnailInfo, VideoInfo
 from slides.slide_generator import SlidesPackage
 from config.settings import settings
 

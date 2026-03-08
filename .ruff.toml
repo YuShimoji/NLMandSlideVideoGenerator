@@ -29,3 +29,6 @@ ignore = [
   "E501",  # Line too long (handled by formatter)
   "F841",  # Local variable assigned but never used - will clean up gradually
 ]
+
+[lint.per-file-ignores]
+"tests/*" = ["E402"]  # sys.path.insert before imports is standard in test files

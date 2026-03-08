@@ -210,6 +210,5 @@ python scripts/run_csv_pipeline.py --csv timeline.csv --audio-dir audio/
 ## 6. 関連ドキュメント
 
 - `docs/user_guide_manual_workflow.md` - ユーザー向けワークフローガイド
-- `docs/tts_batch_softalk_aquestalk.md` - 音声生成バッチ
 - `docs/ymm4_export_spec.md` - YMM4エクスポート仕様
- - `docs/ymm4_integration_arch.md` - YMM4連携アーキテクチャ設計
+- `docs/ymm4_integration_arch.md` - YMM4連携アーキテクチャ設計

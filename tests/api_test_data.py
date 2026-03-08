@@ -35,7 +35,7 @@ def get_test_text():
 
 def get_test_voice_config():
     """TTSテスト用の音声設定"""
-    from audio.tts_integration import VoiceConfig
+    from audio.models import VoiceConfig
     return VoiceConfig(
         voice_id="default",
         language="ja",

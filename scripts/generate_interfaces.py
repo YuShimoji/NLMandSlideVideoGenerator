@@ -74,7 +74,7 @@ class OpenSpecInterfaceGenerator:
             'from notebook_lm.audio_generator import AudioInfo',
             'from notebook_lm.transcript_processor import TranscriptInfo',
             'from slides.slide_generator import SlidesPackage',
-            'from video_editor.video_composer import VideoInfo',
+            'from video_editor.models import VideoInfo',
             'from youtube.uploader import UploadResult, UploadMetadata',
             'from datetime import datetime',
             '',

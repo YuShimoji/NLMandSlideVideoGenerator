@@ -1,40 +1,14 @@
 import sys
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from typing import Any
 
-from datetime import datetime
-import asyncio
 
 # プロジェクトルートをパスに追加
 PROJECT_ROOT = Path(__file__).parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from core.editing.moviepy_backend import MoviePyEditingBackend  # noqa: E402
 from core.editing.ymm4_backend import YMM4EditingBackend  # noqa: E402
-from video_editor.video_composer import VideoInfo  # noqa: E402
-
-
-def test_moviepy_editing_backend_render():
-    """Path B (MoviePy) が削除されたため、NotImplementedError を確認"""
-    backend = MoviePyEditingBackend()
-
-    # モックデータ
-    timeline_plan = {
-        "total_duration": 120.0,
-        "segments": [
-            {"segment_id": "s1", "start": 0.0, "end": 60.0, "script_ref": {}, "assets": [], "effects": []}
-        ]
-    }
-    audio = SimpleNamespace(duration=120.0)
-    slides = SimpleNamespace()
-    transcript = SimpleNamespace()
-
-    # Path B 削除により NotImplementedError が発生することを確認
-    import pytest
-    with pytest.raises(NotImplementedError, match="Path B.*MoviePy.*removed"):
-        asyncio.run(backend.render(timeline_plan, audio, slides, transcript))
 
 
 def test_ymm4_record_export_outputs_includes_template_diff(tmp_path: Path):

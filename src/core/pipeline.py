@@ -33,7 +33,6 @@ from notebook_lm.source_collector import SourceCollector
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor
 from slides.slide_generator import SlideGenerator
-from video_editor.video_composer import VideoComposer
 from youtube.uploader import YouTubeUploader, UploadResult
 from youtube.metadata_generator import MetadataGenerator
 
@@ -76,7 +75,7 @@ class ModularVideoPipeline:
         self.audio_generator = audio_generator or AudioGenerator()
         self.transcript_processor = transcript_processor or TranscriptProcessor()
         self.slide_generator = slide_generator or SlideGenerator()
-        self.video_composer = video_composer or VideoComposer()
+        self.video_composer = video_composer
         self.uploader = uploader or YouTubeUploader()
         self.metadata_generator = metadata_generator or MetadataGenerator()
 

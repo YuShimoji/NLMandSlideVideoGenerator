@@ -1,3 +1,10 @@
+# **DEPRECATED - This task was completed as TASK_015**
+
+See `docs/HANDOVER.md` session 4 summary. This file remains for historical reference only.
+The current TASK_023 is `TASK_023_E2E_ProductionRun.md`.
+
+---
+
 # Task: GitHub Actions CI/CD 本番化
 Status: LAYER_A_DONE
 Tier: 2

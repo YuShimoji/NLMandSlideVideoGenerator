@@ -6,18 +6,17 @@ OpenSpec IThumbnailGeneratorの実装を検証
 
 import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 from pathlib import Path
 import sys
 import tempfile
-import shutil
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 from src.core.thumbnails import AIThumbnailGenerator, TemplateThumbnailGenerator
-from src.video_editor.video_composer import VideoInfo, ThumbnailInfo
+from src.video_editor.models import VideoInfo  # Changed from video_composer
 from datetime import datetime
 from src.slides.slide_generator import SlidesPackage
 

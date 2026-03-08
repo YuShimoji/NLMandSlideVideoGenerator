@@ -197,11 +197,6 @@ dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 - [YMM4エクスポート仕様](docs/ymm4_export_spec.md)
 - [バックログ](docs/backlog.md)
 
-### OpenSpec
-- [OpenSpec開発ガイド](docs/openspec_guide.md)
-- [OpenSpecコンポーネント仕様](docs/openspec_components.md)
-- [OpenSpec開発ワークフロー](docs/openspec_workflow.md)
-
 ## 技術スタック
 
 - **Python 3.11+** / **.NET 9** (YMM4 plugin)

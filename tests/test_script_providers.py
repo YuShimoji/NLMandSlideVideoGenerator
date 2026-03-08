@@ -5,7 +5,6 @@ OpenSpec IScriptProviderの実装を検証
 """
 
 import pytest
-import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from pathlib import Path
 import sys
@@ -66,9 +65,9 @@ class TestGeminiScriptProvider:
     async def test_generate_script_basic(self, provider, mock_sources):
         """基本的なスクリプト生成テスト"""
         topic = "AI技術の最新動向"
-        
+
         result = await provider.generate_script(topic, mock_sources)
-        
+
         assert isinstance(result, dict)
         assert 'title' in result
         assert 'content' in result
@@ -78,7 +77,7 @@ class TestGeminiScriptProvider:
     async def test_generate_script_with_mode(self, provider, mock_sources):
         """モード指定でのスクリプト生成テスト"""
         topic = "機械学習の基礎"
-        
+
         for mode in ['auto', 'assist', 'manual']:
             result = await provider.generate_script(topic, mock_sources, mode)
             assert isinstance(result, dict)
@@ -87,7 +86,7 @@ class TestGeminiScriptProvider:
     async def test_generate_script_empty_sources(self, provider):
         """空のソースリストでのスクリプト生成テスト"""
         topic = "テストトピック"
-        
+
         result = await provider.generate_script(topic, [])
         assert isinstance(result, dict)
 
@@ -96,12 +95,12 @@ class TestGeminiScriptProvider:
         """APIエラー時の処理テスト"""
         topic = "エラーテスト"
         mock_gemini_client.generate_script_from_sources = AsyncMock(side_effect=Exception("API Error"))
-        
+
         with patch('src.core.providers.script.gemini_provider.GeminiIntegration', return_value=mock_gemini_client):
             provider = GeminiScriptProvider()
             provider.api_key = "test_api_key"
             provider.client = mock_gemini_client
-            
+
             with pytest.raises(Exception):
                 await provider.generate_script(topic, mock_sources)
 
@@ -114,8 +113,8 @@ class TestGeminiScriptProvider:
     async def test_script_structure(self, provider, mock_sources):
         """生成されるスクリプトの構造テスト"""
         topic = "構造テスト"
-        
+
         result = await provider.generate_script(topic, mock_sources)
-        
+
         assert isinstance(result, dict)
         assert 'title' in result

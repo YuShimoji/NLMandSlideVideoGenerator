@@ -43,7 +43,6 @@
   - WAV 検出 → AudioInfo 作成 → TranscriptInfo 読み込み → スライド・動画生成 → YMM4 プロジェクト書き出し（任意）
 - 参考ドキュメント:
   - `docs/spec_csv_input_format.md`
-  - `docs/tts_batch_softalk_aquestalk.md`
   - `docs/ymm4_export_spec.md`
 
 ### 2.2 YMM4 エクスポート（既存機能）
@@ -296,7 +295,6 @@ YMM4 を「ゆっくり系音声とタイムライン編集のハブ」として
   - `backlog.md`: タスク一覧と優先度・状態管理
   - `user_guide_manual_workflow.md`: エンドユーザー向け手順書
   - `ymm4_export_spec.md`: YMM4 プロジェクト出力仕様
-  - `tts_batch_softalk_aquestalk.md`: ローカル TTS オプションの仕様
 
 以上により、YMM4 中心フローの設計をコード実装に先立って固定し、
 以降の実装タスク (Y3〜Y5, C-2/C-3 系) を安全に進められる状態とします。

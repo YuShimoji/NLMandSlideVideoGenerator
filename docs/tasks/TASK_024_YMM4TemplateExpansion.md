@@ -1,3 +1,10 @@
+# **DEPRECATED - Future task, not current TASK_024**
+
+The current TASK_024 is `TASK_024_PipelineRefactoring.md` (DONE).
+This file describes a future YMM4 template expansion task and remains for planning reference only.
+
+---
+
 # Task: YMM4テンプレートの表現力拡張と最適化
 
 Status: INBOX

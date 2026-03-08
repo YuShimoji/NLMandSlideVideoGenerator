@@ -16,10 +16,9 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
 from src.core.helpers import build_default_pipeline
-from src.core.interfaces import IScriptProvider, IVoicePipeline, IEditingBackend, IPlatformAdapter
+from src.core.interfaces import IScriptProvider, IPlatformAdapter
 from notebook_lm.audio_generator import AudioInfo
-from slides.slide_generator import SlidesPackage
-from video_editor.video_composer import VideoInfo
+from video_editor.models import VideoInfo
 
 class TestModularPipeline:
     """モジュラーパイプライン統合テスト"""
@@ -37,18 +36,12 @@ class TestModularPipeline:
     async def test_component_interfaces(self):
         """各コンポーネントが適切なインターフェースを実装しているか"""
         from src.core.providers.script.gemini_provider import GeminiScriptProvider
-        from src.core.voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
-        from src.core.editing.moviepy_backend import MoviePyEditingBackend
         from src.core.platforms.youtube_adapter import YouTubePlatformAdapter
 
         script_provider = GeminiScriptProvider()
-        voice_pipeline = TTSVoicePipeline()
-        editing_backend = MoviePyEditingBackend()
         platform_adapter = YouTubePlatformAdapter()
 
         assert isinstance(script_provider, IScriptProvider) or hasattr(script_provider, 'generate_script')
-        assert isinstance(voice_pipeline, IVoicePipeline) or hasattr(voice_pipeline, 'synthesize')
-        assert isinstance(editing_backend, IEditingBackend) or hasattr(editing_backend, 'render')
         assert isinstance(platform_adapter, IPlatformAdapter) or hasattr(platform_adapter, 'upload')
 
     def test_mock_pipeline_execution(self):
@@ -68,12 +61,10 @@ class TestModularPipeline:
         )
 
         with patch('src.core.providers.script.gemini_provider.GeminiScriptProvider.generate_script') as mock_script_gen, \
-             patch('src.core.voice_pipelines.tts_voice_pipeline.TTSVoicePipeline.synthesize') as mock_voice, \
-             patch('src.core.editing.moviepy_backend.MoviePyEditingBackend.render') as mock_edit, \
+             patch('src.core.editing.ymm4_backend.YMM4EditingBackend.render') as mock_edit, \
              patch('src.core.platforms.youtube_adapter.YouTubePlatformAdapter.upload') as mock_upload:
 
             mock_script_gen.return_value = {"title": "Test", "content": "Test", "segments": []}
-            mock_voice.return_value = mock_audio
             mock_edit.return_value = mock_video
             mock_upload.return_value = Mock(url="https://youtube.com/test", video_id="test123")
 

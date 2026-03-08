@@ -67,4 +67,3 @@ python scripts/run_csv_pipeline.py --csv your_timeline.csv --audio-dir your_audi
 
 - [ユーザーガイド](../docs/user_guide_manual_workflow.md)
 - [CSV入力フォーマット仕様](../docs/spec_csv_input_format.md)
-- [音声生成バッチ](../docs/tts_batch_softalk_aquestalk.md)

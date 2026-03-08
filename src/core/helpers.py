@@ -81,18 +81,9 @@ def build_default_pipeline():
         except ValueError as err:
             logger.warning(f"NotebookLMScriptProviderの初期化に失敗しました: {err}")
 
-    if components.get("voice_pipeline") in {"tts", "gemini_tts"}:
-        from .voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
-        voice_pipeline = TTSVoicePipeline()
-
     editing_backend_setting = components.get("editing_backend")
 
-    if editing_backend_setting == "moviepy":
-        from .timeline.basic_planner import BasicTimelinePlanner
-        from .editing.moviepy_backend import MoviePyEditingBackend
-        timeline_planner = BasicTimelinePlanner()
-        editing_backend = MoviePyEditingBackend()
-    elif editing_backend_setting == "ymm4":
+    if editing_backend_setting == "ymm4":
         from .timeline.basic_planner import BasicTimelinePlanner
         from .editing.ymm4_backend import YMM4EditingBackend
         timeline_planner = BasicTimelinePlanner()

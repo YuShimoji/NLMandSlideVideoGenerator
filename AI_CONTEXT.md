@@ -2,8 +2,8 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-03-06T07:45:00+09:00
-- **更新者**: Claude Opus 4.6
+- **最終更新**: 2026-03-07T18:30:00+09:00
+- **更新者**: Claude Sonnet 4.5
 
 ## レポート設定（推奨）
 
@@ -15,7 +15,7 @@
 - **タイトル**: YMM4プラグイン完成 + E2E貫通
 - **Issue**: YMM4プラグインのTODOスタブ実装 → CSV→YMM4→mp4 パイプライン貫通
 - **ブランチ**: master
-- **進捗**: プラグインCS修正完了 (GetAudioDuration, CS1998警告解消)。残TODO 5件 (YMM4 API依存4件 + Gemini API 1件)。
+- **進捗**: Gemini API統合完了 (CsvScriptCompletionPlugin)、.NET Core分離完了、CIワークフロー11→6整理完了、OpenSpec削除完了。残TODO 2件 (YMM4 VoicePlugin API依存)。
 
 ## 決定事項
 
@@ -31,17 +31,21 @@
 - `api_spec_design.py` は設計ファイルとしてmypy除外（mypy.ini設定）。
 - Settings クラスに Dict[str, Any] 型アノテーション追加（mypy対応）。
 - CI Stage 5 (YMM4) は YMM4未インストール環境でスキップ可能に変更。
+- Gemini API統合完了 (CsvScriptCompletionPlugin) - YMM4非依存、無料枠あり。
+- .NET Core分離完了 (NLMSlidePlugin.Core.csproj) - CIでYMM4非依存テスト可能化。
+- CIワークフロー11→6整理完了 - task-validation, documentation, openspec×3削除。
+- OpenSpecフレームワーク削除完了 - spec 0件ロード、import broken、ci-mainと重複のため。
 
-## 品質指標（2026-03-06）
+## 品質指標（2026-03-07）
 
 | 指標 | 値 | 備考 |
 | :--- | :--- | :--- |
 | Ruff errors | **0** | 995→0 (whitespace 977 + code quality 18) |
 | Mypy errors | **0** | 228→0 (76 files checked) |
-| Python Tests | **107 passed, 0 skipped** | 10 skipped→0 (dead test削除 + await修正) |
+| Python Tests | **104 passed, 5 deselected** | 10 skipped→0 (dead test削除 + await修正) |
 | .NET Build | **0 warnings, 0 errors** | CS1998警告解消 |
-| .NET Tests | **13 passed** | benchmark含む |
-| CI stages | **5/5 green** | pytest, mypy, ruff, task reports, YMM4 |
+| .NET Tests | **19 passed** | Core分離後も全通過 |
+| CI workflows | **6/6 green** | 11→6整理完了、deprecated actions全修正 |
 | Health Score | **98/100 (A+)** | 残: テストカバレッジ拡充のみ |
 
 ## リスク/懸念
@@ -53,8 +57,8 @@
 ## テスト
 
 - **command**: `.\venv\Scripts\python.exe -m pytest tests\ -q -m "not slow and not integration" --tb=short --ignore=tests/test_alignment_export.py`
-- **result**: 107 passed, 0 skipped, 5 deselected (8秒) (2026-03-06)
-- **.NET**: `dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q` → 13 passed
+- **result**: 104 passed, 5 deselected (8秒) (2026-03-07)
+- **.NET Core**: `dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q` → 19 passed
 - **CI**: `.\scripts\ci.ps1` (5 stages, all green)
 
 ## CI パイプライン構成
@@ -116,6 +120,10 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - [x] Ruff統合 (2026-03-05: 995→0 errors)
 - [x] Mypy全修正 (2026-03-05: 228→0 errors, 76 files)
 - [x] CI 5段階全緑化 (2026-03-05)
+- [x] Gemini API統合 (2026-03-07: CsvScriptCompletionPlugin)
+- [x] .NET Core分離 (2026-03-07: NLMSlidePlugin.Core.csproj)
+- [x] CIワークフロー整理 (2026-03-07: 11→6、deprecated actions全修正)
+- [x] OpenSpec削除 (2026-03-07: spec 0件、broken imports)
 - [ ] テストカバレッジ拡充 (56% → 80%+)
 - [ ] GitHub Actions CI有効化確認 (Layer B)
 - [ ] Codecov統合
@@ -123,7 +131,8 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 ## 備考（自由記述）
 
 - Python 3.11.0 / venv 環境を使用。
-- テスト: 107 passed, 0 skipped, 5 deselected (~10秒)
+- テスト: 104 passed, 5 deselected (~8秒)
+- .NET: 19 passed (Core分離後も全通過)
 - プロジェクト健全性: Ruff 0 + Mypy 0 + CI全緑 = A+ ランク
 - 残り改善ポイント: テストカバレッジ (56%→80%+)
 
@@ -138,11 +147,14 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - 2026-03-05 日中: Web UI modular化、.NET CI分離、Ruff統合（980 whitespace fixes）。
 - 2026-03-05 夜: Ruff全修正 (995→0)、Mypy全修正 (228→0)、CI 5段階全緑化。Health Score 98/100達成。
 - 2026-03-06: YMM4プラグインGetAudioDuration修正、CS1998警告解消、skippedテスト10件→0件解消。
+- 2026-03-07: Gemini API統合 (CsvScriptCompletionPlugin)、.NET Core分離 (NLMSlidePlugin.Core.csproj)、CIワークフロー11→6整理、OpenSpec削除、deprecated actions全修正。CI全緑維持。
 
 ## 直近 Git Commits
 
 ```
-9dfd512 chore: remove unused usings, fix stale README refs, clean up docs
-4e41921 fix: resolve 10 skipped tests, CS1998 warning, and stale docstrings
-1448cc0 fix(plugin): use WavDurationReader for actual audio duration instead of fixed 3.0s
+08445f5 docs: update HANDOVER with session 4 summary
+6c9e30d docs: update SSOT with session 4 changes (Gemini, Core separation, CI cleanup)
+9aee841 chore(ci): remove redundant task-validation and documentation workflows
+c5cdc88 chore(ci): remove broken OpenSpec workflows and upgrade deprecated actions
+7de98ce fix(ci): upgrade deprecated GitHub Actions from v3 to v4
 ```

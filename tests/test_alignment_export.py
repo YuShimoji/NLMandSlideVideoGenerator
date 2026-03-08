@@ -1,6 +1,4 @@
 
-import pytest
-from pathlib import Path
 from src.notebook_lm.script_alignment import ScriptAlignmentAnalyzer
 
 def test_export_to_csv(tmp_path):
@@ -44,14 +42,14 @@ def test_export_to_csv(tmp_path):
             "matched_claim": "Missing claim"
         }
     ]
-    
+
     output_path = tmp_path / "test_output.csv"
     analyzer.export_to_csv(analysis, output_path)
-    
+
     assert output_path.exists()
     content = output_path.read_text(encoding="utf-8")
     lines = content.strip().splitlines()
-    
+
     # supported と adopted のみが抽出されるはず
     assert len(lines) == 2
     assert "Speaker1,Supported text" in lines[0]
@@ -67,9 +65,9 @@ def test_export_to_csv_default_speaker(tmp_path):
             "status": "adopted"
         }
     ]
-    
+
     output_path = tmp_path / "test_default.csv"
     analyzer.export_to_csv(analysis, output_path)
-    
+
     content = output_path.read_text(encoding="utf-8")
     assert "ナレーター,No speaker text" in content

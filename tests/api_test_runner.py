@@ -2,10 +2,9 @@
 API統合テスト実行クラス
 """
 import asyncio
-from pathlib import Path
 
 from config.settings import settings
-from tests.api_test_data import get_test_sources, get_test_slides_content, get_test_text, get_test_voice_config
+from tests.api_test_data import get_test_sources, get_test_slides_content
 
 
 class APIIntegrationTest:
@@ -86,7 +85,7 @@ class APIIntegrationTest:
                 print(f"  {status_icon} {service}: {'設定済み' if available else '未設定'}")
 
             if missing:
-                print(f"\n⚠️ 不足しているAPI認証情報:")
+                print("\n⚠️ 不足しているAPI認証情報:")
                 for key in missing:
                     print(f"  - {key}")
 
@@ -126,7 +125,7 @@ class APIIntegrationTest:
                 language="ja"
             )
 
-            print(f"✅ スクリプト生成成功:")
+            print("✅ スクリプト生成成功:")
             print(f"  タイトル: {script_info.title}")
             print(f"  セグメント数: {len(script_info.segments)}")
             print(f"  推定時間: {script_info.total_duration_estimate:.1f}秒")
@@ -153,64 +152,9 @@ class APIIntegrationTest:
         print("\n🎵 【テスト 3】音声生成API連携")
         print("-" * 40)
 
-        try:
-            from audio.tts_integration import TTSIntegration
-
-            # API キー設定
-            tts_keys = {
-                "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
-                "openai": settings.OPENAI_API_KEY,
-                "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
-                "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
-                "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
-            }
-
-            tts = TTSIntegration(tts_keys)
-
-            # プロバイダー状況確認
-            provider_status = tts.get_provider_status()
-            print("📊 TTS プロバイダー状況:")
-            for provider, available in provider_status.items():
-                status_icon = "✅" if available else "❌"
-                print(f"  {status_icon} {provider}: {'利用可能' if available else '未設定'}")
-
-            # 利用可能なプロバイダーがある場合、テスト実行
-            available_providers = [p for p, status in provider_status.items() if status]
-
-            if available_providers:
-                print(f"\n🎤 音声生成テスト実行中... (プロバイダー: {available_providers[0]})")
-
-                test_text = get_test_text()
-                output_path = Path(__file__).parent.parent / "data" / "audio" / "test_audio.mp3"
-
-                voice_config = get_test_voice_config()
-
-                audio_info = await tts.generate_audio(
-                    text=test_text,
-                    output_path=output_path,
-                    voice_config=voice_config
-                )
-
-                print(f"✅ 音声生成成功:")
-                print(f"  ファイル: {audio_info.file_path.name}")
-                print(f"  時間: {audio_info.duration:.1f}秒")
-                print(f"  プロバイダー: {audio_info.provider}")
-                print(f"  品質スコア: {audio_info.quality_score:.2f}")
-
-                self.test_results["tts"] = {
-                    "status": "success",
-                    "available_providers": available_providers,
-                    "test_audio_duration": audio_info.duration,
-                    "provider_used": audio_info.provider,
-                    "quality_score": audio_info.quality_score
-                }
-            else:
-                print("⚠️ 利用可能なTTSプロバイダーがありません")
-                self.test_results["tts"] = {"status": "skipped", "reason": "no_providers"}
-
-        except Exception as e:
-            print(f"❌ 音声生成API テスト失敗: {e}")
-            self.test_results["tts"] = {"status": "failed", "error": str(e)}
+        # External TTS providers have been removed. YMM4 handles voice generation.
+        print("External TTS removed. Voice generation is handled by YMM4.")
+        self.test_results["tts"] = {"status": "skipped", "reason": "external_tts_removed"}
 
     async def test_youtube_api(self):
         """YouTube API テスト"""
@@ -292,7 +236,7 @@ class APIIntegrationTest:
                     presentation_title="API連携テスト"
                 )
 
-                print(f"✅ スライド作成成功:")
+                print("✅ スライド作成成功:")
                 print(f"  スライド数: {slides_package.total_slides}枚")
                 print(f"  ファイル: {slides_package.file_path.name}")
 
@@ -370,7 +314,7 @@ class APIIntegrationTest:
                 print(f"❓ {test_name}: {status}")
 
         # 次のアクション提案
-        print(f"\n💡 推奨アクション:")
+        print("\n💡 推奨アクション:")
 
         failed_tests = [name for name, result in self.test_results.items()
                        if result.get("status") == "failed"]
@@ -385,11 +329,11 @@ class APIIntegrationTest:
 
         integration_status = self.test_results.get("integration", {}).get("status")
         if integration_status == "ready":
-            print(f"  🚀 本格的な動画生成テストの実行")
+            print("  🚀 本格的な動画生成テストの実行")
         elif integration_status == "incomplete":
-            print(f"  ⚠️ 不足しているAPI設定の完了")
+            print("  ⚠️ 不足しているAPI設定の完了")
 
-        print(f"\n📊 総合評価: ", end="")
+        print("\n📊 総合評価: ", end="")
         success_count = sum(1 for result in self.test_results.values()
                           if result.get("status") == "success")
         total_count = len(self.test_results)

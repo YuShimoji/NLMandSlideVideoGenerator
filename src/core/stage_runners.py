@@ -17,9 +17,8 @@ from notebook_lm.source_collector import SourceInfo
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
-from audio.tts_integration import TTSIntegration, VoiceConfig
 from slides.slide_generator import SlidesPackage
-from video_editor.video_composer import VideoInfo
+from video_editor.models import VideoInfo
 from youtube.uploader import UploadResult
 
 from .interfaces import (
@@ -118,34 +117,8 @@ async def run_legacy_stage1(
             except Exception as slide_err:
                 logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
 
-            api_keys = {
-                "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
-                "openai": settings.OPENAI_API_KEY,
-                "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
-                "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
-                "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
-            }
-            tts = TTSIntegration(api_keys)
-            audio_output = settings.AUDIO_DIR / f"tts_{timestamp}.mp3"
-            voice_cfg = VoiceConfig(
-                voice_id=settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id", "default"),
-                language=language,
-                gender="female",
-                age_range="adult",
-                accent="japanese" if language == "ja" else "",
-                quality="high",
-            )
-            tts_audio = await tts.generate_audio(tts_text, audio_output, voice_cfg)
-            audio_info = AudioInfo(
-                file_path=tts_audio.file_path,
-                duration=tts_audio.duration,
-                quality_score=tts_audio.quality_score,
-                sample_rate=tts_audio.sample_rate,
-                file_size=tts_audio.file_size,
-                language=language,
-                channels=getattr(tts_audio, "channels", 2),
-            )
-            return script_bundle, audio_info
+            # TTS is handled by YMM4; fall through to AudioGenerator
+            pass
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as exc:
             logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
         except Exception as exc:

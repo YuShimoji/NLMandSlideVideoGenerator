@@ -12,8 +12,6 @@
 ## セットアップ
 
 - **クイックスタート（入口）**: `README.md`
-- **Windows セットアップ（推奨）**: `README_SETUP.md`
-- **Python インストール（補助）**: `PYTHON_INSTALL_GUIDE.md`
 
 ## YMM4連携
 
@@ -30,7 +28,6 @@
 - **開発ガイド**: `docs/development_guide.md`
 - **システム仕様書（概念/長期設計）**: `docs/system_specification.md`
 - **ワークフロー仕様書（概念/全自動フロー）**: `docs/workflow_specification.md`
-- **OpenSpec**: `docs/openspec_guide.md` / `docs/openspec_components.md` / `docs/openspec_workflow.md`
 
 ## 参考（履歴/スナップショット）
 

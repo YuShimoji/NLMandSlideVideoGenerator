@@ -101,7 +101,7 @@ def get_mock_slides_package():
 
 def get_mock_video_info():
     """モック動画情報"""
-    from video_editor.video_composer import VideoInfo
+    from video_editor.models import VideoInfo
     from pathlib import Path
 
     return VideoInfo(

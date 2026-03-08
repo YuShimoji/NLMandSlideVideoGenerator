@@ -15,7 +15,7 @@ from ..utils.tool_detection import find_autohotkey_exe
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from slides.slide_generator import SlidesPackage
-from video_editor.video_composer import VideoInfo
+from video_editor.models import VideoInfo
 
 
 class YMM4EditingBackend(IEditingBackend):

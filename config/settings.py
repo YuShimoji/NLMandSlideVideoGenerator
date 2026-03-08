@@ -200,30 +200,9 @@ class Settings:
             str(PROJECT_ROOT / "token.json")
         ))
 
-        # TTS 設定
-        self.TTS_SETTINGS = {
-            "provider": os.getenv("TTS_PROVIDER", "none"),  # none | openai | elevenlabs | azure | google_cloud
-            "openai": {
-                "model": os.getenv("OPENAI_TTS_MODEL", "gpt-4o-mini-tts"),
-                "voice": os.getenv("OPENAI_TTS_VOICE", "alloy"),
-                "format": os.getenv("OPENAI_TTS_FORMAT", "mp3"),
-            },
-            "elevenlabs": {
-                "api_key": os.getenv("ELEVENLABS_API_KEY", ""),
-                "voice_id": os.getenv("ELEVENLABS_VOICE_ID", ""),
-                "model": os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
-            },
-            "azure": {
-                "key": os.getenv("AZURE_SPEECH_KEY", ""),
-                "region": os.getenv("AZURE_SPEECH_REGION", ""),
-                "voice": os.getenv("AZURE_SPEECH_VOICE", "ja-JP-NanamiNeural"),
-                "format": os.getenv("AZURE_SPEECH_FORMAT", "audio-48khz-192kbitrate-mono-mp3"),
-            },
-            "google_cloud": {
-                "api_key": os.getenv("GOOGLE_CLOUD_TTS_KEY", ""),
-                "voice": os.getenv("GOOGLE_CLOUD_TTS_VOICE", "ja-JP-Neural2-B"),
-                "speaking_rate": float(os.getenv("GOOGLE_CLOUD_TTS_RATE", "1.0")),
-            },
+        # TTS 設定 (external TTS removed; YMM4 handles voice generation)
+        self.TTS_SETTINGS: dict = {
+            "provider": "none",
         }
 
         self.PIPELINE_STAGE_MODES = {
@@ -235,7 +214,7 @@ class Settings:
         self.PIPELINE_COMPONENTS = {
             "script_provider": os.getenv("SCRIPT_PROVIDER", "legacy"),
             "voice_pipeline": os.getenv("VOICE_PIPELINE", "legacy"),
-            "editing_backend": os.getenv("EDITING_BACKEND", "moviepy"),
+            "editing_backend": os.getenv("EDITING_BACKEND", "ymm4"),
             "platform_adapter": os.getenv("PLATFORM_ADAPTER", "youtube"),
             "thumbnail_generator": os.getenv("THUMBNAIL_GENERATOR", "ai"),
         }

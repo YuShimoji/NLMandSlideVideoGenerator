@@ -1,5 +1,3 @@
-"""Voice pipeline implementations"""
+"""Voice pipeline implementations."""
 
-from .tts_voice_pipeline import TTSVoicePipeline
-
-__all__ = ["TTSVoicePipeline"]
+__all__: list[str] = []

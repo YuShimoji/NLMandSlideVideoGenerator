@@ -1,14 +1,11 @@
 """
 動画編集関連モジュール
-字幕付与、エフェクト処理、動画合成機能
+データモデル（VideoInfo, ThumbnailInfo）を提供
 """
 
-from .subtitle_generator import SubtitleGenerator
-from .effect_processor import EffectProcessor
-from .video_composer import VideoComposer
+from .models import VideoInfo, ThumbnailInfo
 
 __all__ = [
-    "SubtitleGenerator",
-    "EffectProcessor",
-    "VideoComposer"
+    "VideoInfo",
+    "ThumbnailInfo",
 ]

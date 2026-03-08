@@ -1,7 +1,5 @@
-import pytest
 from notebook_lm.source_collector import SourceInfo
 from notebook_lm.research_models import ResearchPackage, AlignmentReport
-from dataclasses import asdict
 
 def test_source_info_new_fields():
     source = SourceInfo(
@@ -33,11 +31,11 @@ def test_research_package_serialization():
         sources=[source],
         summary="Test Summary"
     )
-    
+
     data = package.to_dict()
     assert data["package_id"] == "rp_test"
     assert data["sources"][0]["url"] == "https://example.com"
-    
+
     # Restore from dict
     restored = ResearchPackage.from_dict(data)
     assert restored.package_id == "rp_test"
@@ -51,11 +49,11 @@ def test_alignment_report_serialization():
         analysis=[{"segment_index": 1, "status": "supported"}],
         summary={"total": 1}
     )
-    
+
     data = report.to_dict()
     assert data["report_id"] == "ar_test"
     assert data["analysis"][0]["status"] == "supported"
-    
+
     restored = AlignmentReport.from_dict(data)
     assert restored.report_id == "ar_test"
     assert restored.analysis[0]["status"] == "supported"

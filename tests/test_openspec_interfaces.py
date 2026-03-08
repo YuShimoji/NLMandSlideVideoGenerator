@@ -5,8 +5,6 @@
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock
 from pathlib import Path
 import sys
 
@@ -14,13 +12,7 @@ import sys
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from src.core.interfaces import (
-    IScriptProvider, IVoicePipeline, IEditingBackend, IPlatformAdapter,
-    ITimelinePlanner, IAssetRegistry, IContentAdapter
-)
 from src.core.providers.script.gemini_provider import GeminiScriptProvider
-from src.core.voice_pipelines.tts_voice_pipeline import TTSVoicePipeline
-from src.core.editing.moviepy_backend import MoviePyEditingBackend
 from src.core.editing.ymm4_backend import YMM4EditingBackend
 from src.core.platforms.youtube_adapter import YouTubePlatformAdapter
 from src.core.timeline.basic_planner import BasicTimelinePlanner
@@ -40,32 +32,6 @@ class TestOpenSpecInterfaces:
         # メソッドがasync関数であることを確認
         import inspect
         assert inspect.iscoroutinefunction(provider.generate_script)
-
-    @pytest.mark.asyncio
-    async def test_tts_voice_pipeline_interface(self):
-        """TTSVoicePipelineがIVoicePipelineインターフェースを実装しているか"""
-        pipeline = TTSVoicePipeline()
-
-        # IVoicePipelineのメソッドが存在するか確認
-        assert hasattr(pipeline, 'synthesize')
-        assert callable(getattr(pipeline, 'synthesize'))
-
-        # メソッドがasync関数であることを確認
-        import inspect
-        assert inspect.iscoroutinefunction(pipeline.synthesize)
-
-    @pytest.mark.asyncio
-    async def test_moviepy_editing_backend_interface(self):
-        """MoviePyEditingBackendがIEditingBackendインターフェースを実装しているか"""
-        backend = MoviePyEditingBackend()
-
-        # IEditingBackendのメソッドが存在するか確認
-        assert hasattr(backend, 'render')
-        assert callable(getattr(backend, 'render'))
-
-        # メソッドがasync関数であることを確認
-        import inspect
-        assert inspect.iscoroutinefunction(backend.render)
 
     @pytest.mark.asyncio
     async def test_ymm4_editing_backend_interface(self):
@@ -118,14 +84,6 @@ class TestInterfaceCompliance:
         provider = GeminiScriptProvider()
         assert hasattr(provider, 'generate_script')
 
-        # TTSVoicePipeline
-        pipeline = TTSVoicePipeline()
-        assert hasattr(pipeline, 'synthesize')
-
-        # MoviePyEditingBackend
-        backend = MoviePyEditingBackend()
-        assert hasattr(backend, 'render')
-
         # YouTubePlatformAdapter
         adapter = YouTubePlatformAdapter()
         assert hasattr(adapter, 'upload')
@@ -143,13 +101,3 @@ class TestInterfaceCompliance:
         expected_params = ['topic', 'sources', 'mode']
         for param in expected_params:
             assert param in params, f"Missing parameter: {param} in generate_script"
-
-        # TTSVoicePipeline.synthesize
-        pipeline = TTSVoicePipeline()
-        sig = inspect.signature(pipeline.synthesize)
-        params = list(sig.parameters.keys())
-
-        # IVoicePipeline.synthesizeの期待されるパラメータ
-        expected_params = ['script', 'preferred_provider']
-        for param in expected_params:
-            assert param in params, f"Missing parameter: {param} in synthesize"

@@ -152,89 +152,17 @@ class AudioGenerator:
         """
         TTS統合を使用して音声を生成
 
+        External TTS providers have been removed. Use YMM4 for voice generation.
+
         Args:
             script_info: スクリプト情報
 
-        Returns:
-            Path: 生成された音声ファイルのパス
+        Raises:
+            NotImplementedError: Always. TTS is handled by YMM4.
         """
-        logger.debug("TTSで音声生成開始")
-
-        try:
-            from audio.tts_integration import TTSIntegration, VoiceConfig, TTSProvider
-
-            api_keys = {
-                "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
-                "openai": getattr(settings, "OPENAI_API_KEY", ""),
-                "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
-                "azure_region": settings.TTS_SETTINGS.get("azure", {}).get("region", ""),
-                "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
-            }
-
-            tts = TTSIntegration(api_keys)
-
-            # スクリプトを結合
-            full_script = "\n".join([
-                f"{segment.get('section', '')}: {segment.get('content', '')}"
-                for segment in script_info.segments
-            ])
-
-            provider_key = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
-            if provider_key == "none" or provider_key not in settings.TTS_SETTINGS:
-                provider_key = "elevenlabs"
-
-            provider_voice = (
-                settings.TTS_SETTINGS.get(provider_key, {}).get("voice_id")
-                or settings.TTS_SETTINGS.get(provider_key, {}).get("voice")
-                or ""
-            )
-            fallback_voice = (
-                settings.TTS_SETTINGS.get("elevenlabs", {}).get("voice_id")
-                or settings.TTS_SETTINGS.get("azure", {}).get("voice")
-                or settings.TTS_SETTINGS.get("openai", {}).get("voice")
-                or settings.TTS_SETTINGS.get("google_cloud", {}).get("voice")
-                or "default"
-            )
-            voice_id = provider_voice or fallback_voice
-            language = getattr(script_info, "language", None) or "ja"
-
-            voice_config = VoiceConfig(
-                voice_id=voice_id,
-                language=language,
-                gender="female",
-                age_range="adult",
-                accent="japanese" if language == "ja" else "",
-                quality="high",
-            )
-
-            output_path = self.output_dir / f"gemini_tts_{int(time.time())}.mp3"
-
-            try:
-                provider_enum = TTSProvider(provider_key)
-            except ValueError:
-                provider_enum = None
-
-            if provider_enum is not None:
-                status = tts.get_provider_status()
-                if not status.get(provider_enum.value, False):
-                    provider_enum = None
-
-            tts_audio = await tts.generate_audio(
-                text=full_script,
-                output_path=output_path,
-                voice_config=voice_config,
-                provider=provider_enum,
-            )
-
-            logger.debug(f"TTS音声生成完了: {tts_audio.file_path}")
-            return Path(tts_audio.file_path)
-
-        except (ImportError, requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"TTS音声生成失敗: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"TTS音声生成失敗: {e}")
-            raise
+        raise NotImplementedError(
+            "External TTS providers have been removed. Use YMM4 for voice generation."
+        )
 
     async def _generate_placeholder_audio(self) -> AudioInfo:
         """

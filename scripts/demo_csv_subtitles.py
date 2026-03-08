@@ -30,7 +30,9 @@ from core.utils.logger import logger
 from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
-from video_editor.subtitle_generator import SubtitleGenerator
+# SubtitleGenerator was removed (Path B cleanup). This demo is no longer functional.
+# Use YMM4 for subtitle generation instead.
+SubtitleGenerator = None
 
 
 def _find_audio_files(audio_dir: Path) -> List[Path]:
@@ -101,16 +103,11 @@ async def run_demo(
     # CsvTranscriptLoader 側でヒューリスティック配分にフォールバック）
     transcript = await loader.load_from_csv(csv_path, audio_segments=audio_segments)
 
-    # 字幕生成
-    subtitle_generator = SubtitleGenerator()
-    if output_dir is not None:
-        subtitle_generator.output_dir = output_dir
-        subtitle_generator.output_dir.mkdir(parents=True, exist_ok=True)
-
-    srt_path = await subtitle_generator.generate_subtitles(transcript, style=style)
-
-    logger.success(f"字幕生成完了: {srt_path}")
-    return srt_path
+    # 字幕生成 - Path B (MoviePy) removed
+    raise NotImplementedError(
+        "Path B (MoviePy) has been removed. "
+        "Use YMM4 for subtitle generation instead."
+    )
 
 
 def main(argv: Optional[list[str]] = None) -> int:

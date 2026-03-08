@@ -4,8 +4,7 @@
 
 フォールバック戦略:
 1. YMM4 API バックエンド（将来実装, 主にプラグインAPI を想定）- 最高品質、完全自動化
-2. YMM4 AutoHotkey - 中品質、GUI操作による自動化
-3. MoviePy/FFmpeg - 基本品質、確実な動作
+2. YMM4 AutoHotkey - GUI操作による自動化
 
 設計思想:
 - 各バックエンドは IEditingBackend インターフェースを実装
@@ -25,14 +24,13 @@ from ..utils.tool_detection import find_autohotkey_exe, find_ymm4_exe
 from notebook_lm.audio_generator import AudioInfo
 from slides.slide_generator import SlidesPackage
 from notebook_lm.transcript_processor import TranscriptInfo
-from video_editor.video_composer import VideoInfo
+from video_editor.models import VideoInfo
 
 
 class BackendType(Enum):
     """バックエンドタイプ"""
     YMM4_API = "ymm4_api"       # 将来実装
     YMM4_AHK = "ymm4_ahk"       # AutoHotkey
-    MOVIEPY = "moviepy"         # MoviePy/FFmpeg
 
 
 @dataclass
@@ -101,12 +99,6 @@ class ExportFallbackManager:
                 timeout_seconds=300.0,
                 retry_count=2,
             ),
-            BackendConfig(
-                backend_type=BackendType.MOVIEPY,
-                enabled=True,
-                priority=3,
-                timeout_seconds=180.0,
-            ),
         ]
 
     def _detect_available_backends(self) -> None:
@@ -129,9 +121,6 @@ class ExportFallbackManager:
             if backend_type == BackendType.YMM4_AHK:
                 from .ymm4_backend import YMM4EditingBackend
                 self.backends[backend_type] = YMM4EditingBackend()
-            elif backend_type == BackendType.MOVIEPY:
-                from .moviepy_backend import MoviePyEditingBackend
-                self.backends[backend_type] = MoviePyEditingBackend()
             elif backend_type == BackendType.YMM4_API:
                 # 将来実装（YMM4 プラグインAPI 等のバックエンド）
                 raise NotImplementedError("YMM4 API バックエンド（プラグインAPI 等）は未実装です")

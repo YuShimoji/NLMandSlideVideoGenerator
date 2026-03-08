@@ -111,10 +111,10 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
     
     start_time = datetime.now()
     
-    # MoviePyのみ有効化（確実に動作するバックエンド）
+    # YMM4バックエンドのみ有効化（MoviePy removed）
     configs = [
         BackendConfig(
-            backend_type=BackendType.MOVIEPY,
+            backend_type=BackendType.YMM4_API,
             enabled=True,
             priority=1,
             timeout_seconds=120.0,
