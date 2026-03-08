@@ -103,9 +103,6 @@ class ISlideGenerator(Protocol):
         ...
 
 
-# IVideoComposer was removed (Path B deletion, 2026-03-08)
-
-
 class IUploader(Protocol):
     async def authenticate(self) -> bool:
         ...
