@@ -44,7 +44,6 @@ from .exceptions import PipelineError
 from .models import PipelineArtifacts
 from .helpers import build_default_pipeline  # noqa: F401 (Re-exported for backwards compatibility)
 from . import stage_runners as sr
-from . import csv_pipeline_runner as csv_runner
 
 
 class ModularVideoPipeline:
@@ -292,43 +291,6 @@ class ModularVideoPipeline:
         except Exception as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
             raise PipelineError(str(e), recoverable=False)
-
-    async def run_csv_timeline(
-        self,
-        csv_path: Path,
-        audio_dir: Path,
-        topic: Optional[str] = None,
-        quality: str = "1080p",
-        private_upload: bool = True,
-        upload: bool = False,
-        stage_modes: Optional[Dict[str, str]] = None,
-        user_preferences: Optional[Dict[str, Any]] = None,
-        progress_callback: Optional[Callable[[str, float, str], None]] = None,
-        job_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """CSVタイムライン(P10)から動画生成を行う専用パス"""
-        if stage_modes:
-            self.stage_modes.update(stage_modes)
-
-        return await csv_runner.run_csv_timeline(
-            csv_path=csv_path,
-            audio_dir=audio_dir,
-            slide_generator=self.slide_generator,
-            metadata_generator=self.metadata_generator,
-            uploader=self.uploader,
-            timeline_planner=self.timeline_planner,
-            editing_backend=self.editing_backend,
-            platform_adapter=self.platform_adapter,
-            publishing_queue=self.publishing_queue,
-            stage_modes=self.stage_modes,
-            topic=topic,
-            quality=quality,
-            private_upload=private_upload,
-            upload=upload,
-            user_preferences=user_preferences,
-            progress_callback=progress_callback,
-            job_id=job_id,
-        )
 
     @retry_on_failure()
     async def _collect_sources_with_retry(self, topic: str, urls: Optional[List[str]] = None) -> List:

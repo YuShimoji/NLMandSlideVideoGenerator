@@ -43,7 +43,14 @@ function Get-Ymm4Dir([string]$PropsPath) {
     }
 
     [xml]$xml = Get-Content -Raw -Encoding UTF8 $PropsPath
-    $value = $xml.Project.PropertyGroup.YMM4DirPath
+    # Handle multiple PropertyGroup elements (returns array)
+    $value = $null
+    foreach ($pg in $xml.Project.PropertyGroup) {
+        if ($pg.YMM4DirPath) {
+            $value = $pg.YMM4DirPath
+            break
+        }
+    }
     if (-not $value) {
         throw "YMM4DirPath is missing in Directory.Build.props"
     }

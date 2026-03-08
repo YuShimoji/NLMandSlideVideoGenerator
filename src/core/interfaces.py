@@ -103,23 +103,7 @@ class ISlideGenerator(Protocol):
         ...
 
 
-class IVideoComposer(Protocol):
-    async def compose_video(
-        self,
-        audio_file: AudioInfo,
-        slides_file: SlidesPackage,
-        transcript: TranscriptInfo,
-        quality: str = "1080p",
-        bgm_path: Optional[Path] = None
-    ) -> VideoInfo:
-        ...
-
-    async def generate_thumbnail(
-        self,
-        title: str,
-        first_slide_path: Optional[Path] = None,
-    ) -> Optional[Path]:
-        ...
+# IVideoComposer was removed (Path B deletion, 2026-03-08)
 
 
 class IUploader(Protocol):

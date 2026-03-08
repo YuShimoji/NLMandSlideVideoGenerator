@@ -213,7 +213,7 @@ class Settings:
 
         self.PIPELINE_COMPONENTS = {
             "script_provider": os.getenv("SCRIPT_PROVIDER", "legacy"),
-            "voice_pipeline": os.getenv("VOICE_PIPELINE", "legacy"),
+            "voice_pipeline": os.getenv("VOICE_PIPELINE", "none"),
             "editing_backend": os.getenv("EDITING_BACKEND", "ymm4"),
             "platform_adapter": os.getenv("PLATFORM_ADAPTER", "youtube"),
             "thumbnail_generator": os.getenv("THUMBNAIL_GENERATOR", "ai"),
