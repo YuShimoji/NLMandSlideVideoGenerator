@@ -54,6 +54,7 @@ jobs:
       - name: Run Research UI smoke tests
         env:
           PYTHONPATH: .;src
+          PYTHONIOENCODING: utf-8
           RESEARCH_UI_SMOKE_ARTIFACT_DIR: logs\\research_ui_smoke
         run: |
           python -m pytest -q tests/test_research_ui_playwright.py tests/test_alignment_export.py tests/test_script_alignment.py --tb=short
