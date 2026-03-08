@@ -7,7 +7,7 @@ CSV から動画・字幕・サムネイルを生成するパイプライン。P
 環境: Python 3.11 (venv) / .NET 9 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: プロトタイプ後期
-直近の状態: Voice自動生成plan承認済 (.claude/plans/unified-imagining-feather.md)。VoiceSpeakerDiscovery実装がE2Eブロッカー。Plugin deployed。Python 67/1, .NET 34/0 全通過。CI全グリーン（6 workflows）。仕様ドキュメント更新完了（ymm4_export_spec.md, spec-index.json, PROJECT_ALIGNMENT_SSOT.md）。
+直近の状態: Research UI Smoke CI修正完了（logger cp1252エンコーディングエラー解決、_safe_print()追加、PYTHONIOENCODING=utf-8設定）。CI全グリーン（6 workflows全通過: CI, Project Audit, Research UI Smoke, .NET Build, Orchestrator Audit, Release）。Voice自動生成plan承認済 (.claude/plans/unified-imagining-feather.md)。VoiceSpeakerDiscovery実装がE2Eブロッカー。Python 67/1, .NET 34/0 全通過。
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -25,6 +25,7 @@ CSV から動画・字幕・サムネイルを生成するパイプライン。P
 | 2026-03-07 | CI方針: 最小限の必要十分 | 多機能CI/最小CI | broken workflowの保守コスト > 提供価値 |
 | 2026-03-08 | Path B完全削除 (Path A一本化) | 維持/deprecate/完全削除/現状維持 | YMM4一本化方針に合致。YMM4自体がVoicevox連携可能でPath Bの存在意義なし |
 | 2026-03-09 | Voice自動生成UI優先実装 | E2E手動検証先行/Voice UI先行 | YMM4 SDK依存の解決が最終ワークフロー確立に必須 |
+| 2026-03-09 | SimpleLogger encoding-safe化 | logger修正/CI env設定のみ/放置 | Windows CI (cp1252)で日本語ログ出力時のUnicodeEncodeError解決。_safe_print()でフォールバック+PYTHONIOENCODING=utf-8でベルトアンドサスペンダー |
 
 ## Key Paths
 
