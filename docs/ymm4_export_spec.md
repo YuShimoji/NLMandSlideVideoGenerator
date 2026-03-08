@@ -1,7 +1,7 @@
 # YMM4 エクスポート仕様
 
-**最終更新**: 2025-12-02  
-**ステータス**: 実装済み（PoC段階）
+**最終更新**: 2026-03-09
+**ステータス**: 実装済み（Path A一本化、Voice自動生成plan承認済）
 
 ---
 
@@ -24,7 +24,8 @@
 | テンプレート .y4mmp 複製 | ✅ 実装済み | |
 | 音声アセットコピー | ✅ 実装済み | |
 | AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
-| YMM4 API 連携（プラグインAPI 優先, 旧: REST API） | ❌ 未実装 | 将来対応 |
+| YMM4 NLMSlidePlugin (CSV Import) | ✅ 実装済み | CsvImportDialog + Ymm4TimelineImporter |
+| YMM4 Voice自動生成 UI接続 | ⚠️ Plan承認済 | VoiceSpeakerDiscovery + CsvImportDialog拡張 |
 | 動画出力 | ❌ 削除済み | MoviePy backend 削除済み (2026-03-08) |
 
 ---
@@ -473,6 +474,51 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ---
 
+## 10. YMM4 Voice自動生成（Plan承認済）
+
+### 10.1 概要
+
+CSVインポート時にYMM4内蔵の音声エンジンで自動的にボイスを生成する機能。
+
+**Plan file**: `.claude/plans/unified-imagining-feather.md`
+
+### 10.2 アーキテクチャ
+
+```
+CsvImportDialog (WPF)
+  ├─ VoiceSpeakerDiscovery (new)
+  │   └─ 3-layer IVoiceSpeaker enumeration:
+  │       1. AppDomain.GetAssemblies() scan
+  │       2. MainWindow DataContext reflection
+  │       3. Empty list + error log
+  │
+  ├─ CsvVoiceResolver (existing)
+  │   ├─ FindSpeaker(speakerName, availableSpeakers)
+  │   ├─ GenerateVoiceForItemAsync(item, speaker, outputDir)
+  │   └─ GenerateVoicesForTimelineAsync(items, speakers, outputDir, progress)
+  │
+  └─ Ymm4TimelineImporter (existing)
+      └─ AddToTimelineWithVoiceAsync(items, timeline, speakers, voiceOutputDir)
+```
+
+### 10.3 実装状況
+
+| コンポーネント | 状態 | 備考 |
+|---|---|---|
+| CsvVoiceResolver.GenerateVoicesForTimelineAsync | ✅ 実装済み | バックエンドロジック完成 |
+| Ymm4TimelineImporter.AddToTimelineWithVoiceAsync | ✅ 実装済み | Timeline統合完成 |
+| VoiceSpeakerDiscovery | ❌ 未実装 | IVoiceSpeaker enumeration (YMM4 SDK依存) |
+| CsvImportDialog UI拡張 | ❌ 未実装 | Checkbox + output dir picker |
+| ImportWithVoiceGenerationAsync | ❌ 未実装 | Dialog内のイベントハンドラ |
+
+### 10.4 ブロッカー
+
+YMM4 SDK に IVoiceSpeaker 一覧を取得する公式 API が存在しない。
+
+**回避策**: リフレクションによる3層フォールバック（plan参照）
+
+---
+
 ## 11. 変更履歴
 
 | 日付 | 内容 |
@@ -480,3 +526,4 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 | 2025-11-30 | 初版作成（現状実装ベース） |
 | 2025-11-30 | AutoHotkey連携セクション更新（C3-4完了） |
 | 2025-12-01 | フォールバック戦略セクション追加（C3-3完了） |
+| 2026-03-09 | Path A一本化反映、Voice自動生成plan追加 |
