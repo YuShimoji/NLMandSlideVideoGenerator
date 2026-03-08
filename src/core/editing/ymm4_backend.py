@@ -85,14 +85,46 @@ class YMM4EditingBackend(IEditingBackend):
                 self._apply_template_diff(project_dir, project_path)
             except (OSError, shutil.Error, AttributeError, TypeError, ValueError, RuntimeError) as err:
                 logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
-                project_path.touch()
+                self._generate_minimal_project(project_path)
             except Exception as err:
                 logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
-                project_path.touch()
+                self._generate_minimal_project(project_path)
         else:
-            logger.warning(f"YMM4 テンプレートが見つかりません: {self.project_template}")
-            project_path.touch()
+            logger.info(
+                f"YMM4 テンプレート未配置のため最小プロジェクトを生成: {project_path}"
+            )
+            self._generate_minimal_project(project_path)
         return project_path
+
+    def _generate_minimal_project(self, project_path: Path) -> None:
+        """テンプレート未配置時に最小限の有効な YMM4 プロジェクトを生成する。
+
+        YMM4 の .y4mmp/.ymmp は UTF-8 BOM 付き JSON。
+        必須フィールド: FilePath, SelectedTimelineIndex, Timelines[]。
+        """
+        import uuid
+
+        minimal_project = {
+            "FilePath": str(project_path).replace("/", "\\"),
+            "SelectedTimelineIndex": 0,
+            "Timelines": [
+                {
+                    "ID": str(uuid.uuid4()),
+                    "Name": "メイン",
+                    "VideoInfo": {
+                        "FPS": 30,
+                        "Hz": 48000,
+                        "Width": 1920,
+                        "Height": 1080,
+                    },
+                    "Items": [],
+                }
+            ],
+        }
+        content = json.dumps(minimal_project, ensure_ascii=False, indent=2)
+        # YMM4 は UTF-8 BOM を期待する
+        project_path.write_bytes(b"\xef\xbb\xbf" + content.encode("utf-8"))
+        logger.info(f"最小 YMM4 プロジェクトを生成しました: {project_path}")
 
     def _export_plan(
         self,
