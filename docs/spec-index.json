@@ -205,5 +205,14 @@
     "cat": "infra",
     "file": "docs/INDEX.md",
     "summary": "全ドキュメントのマスターインデックス"
+  },
+  {
+    "id": "SP-024",
+    "title": "YMM4 Voice Auto-Generation Plan",
+    "status": "todo",
+    "pct": 0,
+    "cat": "plugin",
+    "file": ".claude/plans/unified-imagining-feather.md",
+    "summary": "CSVインポート時のYMM4ボイス自動生成UI統合 (VoiceSpeakerDiscovery + CsvImportDialog拡張)"
   }
 ]

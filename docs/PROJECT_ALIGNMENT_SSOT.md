@@ -25,7 +25,7 @@ Audience: All Agents
 | `TASK_015` CI/CD強化 | DONE | CIワークフロー11→6整理、.NET Core分離でubuntu CI、deprecated actions修正、全グリーン |
 | `TASK_021` コード品質 | DONE | mypy 0 errors (76 files), ruff 0 |
 | `TASK_022` VOICEVOX統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
-| `TASK_023` E2E実証 | IN_PROGRESS | CSV→mp4パイプライン成功、YMM4エクスポート成功。GUI検証残 |
+| `TASK_023` E2E実証 | IN_PROGRESS | YMM4 Voice自動生成plan承認済 (.claude/plans/unified-imagining-feather.md)。実装待ち |
 | `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
@@ -174,6 +174,8 @@ Audience: All Agents
 - `docs/voice_path_comparison.md`
 - `docs/research_workflow_design.md`
 - `docs/user_guide_manual_workflow.md`
+- `docs/ymm4_export_spec.md`
 - `docs/tasks/TASK_013_YMM4PluginProduction.md`
 - `docs/tasks/TASK_014_AudioOutputOptimization.md`
 - `docs/tasks/TASK_016_SourceResearchAndScriptAlignment.md`
+- `.claude/plans/unified-imagining-feather.md` (Voice自動生成plan)
