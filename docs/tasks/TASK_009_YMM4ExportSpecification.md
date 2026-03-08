@@ -5,7 +5,7 @@ Branch: master
 Owner: Worker
 Created: 2026-02-02T03:59:00Z
 Completed: 2026-02-03T14:55:00Z
-Report: docs/specs/ymm4_export_spec.md 
+Report: docs/ymm4_export_spec.md
 
 ## Objective
 - YMM4（ゆっくりムービーメーカー4）へのエクスポート仕様を策定し、CSV タイムラインとの対応関係を明確化する
@@ -40,7 +40,7 @@ Report: docs/specs/ymm4_export_spec.md
 - 手動でのYMM4編集も可能な状態を維持（プラグイン依存を最小化）
 
 ## DoD
-- [x] エクスポート仕様書を `docs/specs/ymm4_export_spec.md` として作成
+- [x] エクスポート仕様書を `docs/ymm4_export_spec.md` として作成
 - [x] データマッピング表（CSV ↔ YMM4）を含む
 - [x] エクスポートフロー図（mermaidまたは図版）を含む
 - [x] エラーハンドリング方針を明記

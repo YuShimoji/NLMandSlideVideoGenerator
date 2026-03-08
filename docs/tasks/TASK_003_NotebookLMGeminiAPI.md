@@ -22,7 +22,7 @@ Report: docs/reports/REPORT_ORCH_2026-02-03T14-35-00Z.md
 - **APIキー設定支援ツール作成**:
   - `.env.example`: すでに存在（確認済み）
   - `config/settings.py`: `load_dotenv()` 追加
-  - `docs/QUICKSTART_API_SETUP.md`: 最短設定手順ガイド
+  - `docs/api_setup_guide.md`: API設定ガイド
   - `scripts/verify_api_keys.py`: API検証スクリプト（接続テスト成功）
 
 - **検証結果**:
