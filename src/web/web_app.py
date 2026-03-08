@@ -17,6 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.web.ui.pages import (  # noqa: E402
     show_home_page,
     show_pipeline_page,
+    show_csv_pipeline_page,
     show_assets_page,
     show_documentation_page,
     show_settings_page,
@@ -33,6 +34,7 @@ st.set_page_config(
 PAGE_OPTIONS = [
     "🏠 ホーム",
     "🔍 リサーチ・台本照合",
+    "📹 動画を作る（CSV）",
     "🤖 AI生成（API設定後）",
     "📁 生成物一覧",
     "📖 ドキュメント",
@@ -43,6 +45,7 @@ PAGE_OPTIONS = [
 PAGE_ALIASES = {
     "home": "🏠 ホーム",
     "research": "🔍 リサーチ・台本照合",
+    "csv": "📹 動画を作る（CSV）",
     "pipeline": "🤖 AI生成（API設定後）",
     "assets": "📁 生成物一覧",
     "docs": "📖 ドキュメント",
@@ -84,6 +87,8 @@ def main():
     elif page == "🔍 リサーチ・台本照合":
         from src.web.ui.pages import show_research_page
         show_research_page()
+    elif page == "📹 動画を作る（CSV）":
+        show_csv_pipeline_page()
     elif page == "🤖 AI生成（API設定後）":
         show_pipeline_page()
     elif page == "📁 生成物一覧":
