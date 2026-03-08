@@ -31,4 +31,5 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"tests/*" = ["E402"]  # sys.path.insert before imports is standard in test files
+"tests/*" = ["E402"]   # sys.path.insert before imports is standard in test files
+"scripts/*" = ["E402"]  # sys.path.insert before imports is standard in scripts

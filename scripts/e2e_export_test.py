@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import tempfile
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass
 
 # プロジェクトルートをパスに追加
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from config.settings import settings, create_directories
+from config.settings import create_directories
 from core.editing import ExportFallbackManager, BackendType, BackendConfig
 from core.utils.logger import logger
 from notebook_lm.audio_generator import AudioInfo
@@ -88,19 +86,19 @@ def create_test_slides() -> SlidesPackage:
 async def run_e2e_test(use_real_audio: bool = False) -> dict:
     """
     E2E動画書き出しテストを実行
-    
+
     Args:
         use_real_audio: 実際のWAVファイルを使用するか（Falseの場合はモック）
-        
+
     Returns:
         テスト結果の辞書
     """
     logger.info("=" * 60)
     logger.info("E2E動画書き出し検証開始")
     logger.info("=" * 60)
-    
+
     create_directories()
-    
+
     results = {
         "success": False,
         "backend_used": None,
@@ -119,11 +117,11 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
             timeout_seconds=120.0,
         ),
     ]
-    
+
     manager = ExportFallbackManager(configs=configs, auto_detect=False)
-    
+
     logger.info(f"利用可能バックエンド: {manager.get_available_backends()}")
-    
+
     # テスト用データ準備
     if use_real_audio:
         # 実際のWAVファイルを探す
@@ -136,11 +134,11 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
             audio_path = None
     else:
         audio_path = None
-    
+
     test_audio = create_test_audio(audio_path)
     test_transcript = create_test_transcript()
     test_slides = create_test_slides()
-    
+
     timeline_plan = {
         "total_duration": 10.0,
         "segments": [
@@ -152,7 +150,7 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
                 "slide_index": 0,
             },
             {
-                "segment_id": "seg_2", 
+                "segment_id": "seg_2",
                 "start": 5.0,
                 "end": 10.0,
                 "text": "セグメント2",
@@ -161,9 +159,9 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
         ],
         "notes": "E2Eテスト用タイムライン",
     }
-    
+
     logger.info("レンダリング開始...")
-    
+
     try:
         result = await manager.render(
             timeline_plan=timeline_plan,
@@ -172,15 +170,15 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
             transcript=test_transcript,
             quality="720p",  # テスト用に低解像度
         )
-        
+
         end_time = datetime.now()
         results["duration_seconds"] = (end_time - start_time).total_seconds()
-        
+
         if result.success:
             results["success"] = True
             results["backend_used"] = result.used_backend.value if result.used_backend else None
             results["output_path"] = str(result.video_info.file_path) if result.video_info else None
-            
+
             logger.info("=" * 60)
             logger.info("E2E検証成功!")
             logger.info(f"使用バックエンド: {results['backend_used']}")
@@ -189,13 +187,13 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
             logger.info("=" * 60)
         else:
             results["errors"] = [f"{k.value}: {v}" for k, v in result.errors.items()]
-            
+
             logger.error("=" * 60)
             logger.error("E2E検証失敗")
             logger.error(f"試行バックエンド: {[b.value for b in result.attempted_backends]}")
             logger.error(f"エラー: {results['errors']}")
             logger.error("=" * 60)
-            
+
     except asyncio.CancelledError:
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, RuntimeError) as e:
@@ -204,7 +202,7 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
     except Exception as e:
         results["errors"].append(str(e))
         logger.exception(f"E2Eテスト中に例外発生: {e}")
-    
+
     return results
 
 
@@ -213,34 +211,34 @@ async def run_backend_availability_check() -> dict:
     各バックエンドの利用可能性をチェック
     """
     logger.info("バックエンド利用可能性チェック...")
-    
+
     manager = ExportFallbackManager(auto_detect=True)
     status = manager.get_status()
-    
+
     logger.info("バックエンド状態:")
     for backend in status["backends"]:
         enabled_str = "✅" if backend["enabled"] else "❌"
         logger.info(f"  {enabled_str} {backend['type']} (優先度: {backend['priority']})")
-    
+
     return status
 
 
 def main():
     """メイン処理"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="E2E動画書き出し検証")
     parser.add_argument("--real-audio", action="store_true", help="実際のWAVファイルを使用")
     parser.add_argument("--check-only", action="store_true", help="バックエンド確認のみ")
-    
+
     args = parser.parse_args()
-    
+
     if args.check_only:
         result = asyncio.run(run_backend_availability_check())
         print(f"\n利用可能バックエンド: {result['available']}")
     else:
         result = asyncio.run(run_e2e_test(use_real_audio=args.real_audio))
-        
+
         print("\n" + "=" * 40)
         print("E2E検証結果サマリー")
         print("=" * 40)
@@ -250,7 +248,7 @@ def main():
         print(f"所要時間: {result['duration_seconds']:.2f}秒")
         if result['errors']:
             print(f"エラー: {result['errors']}")
-        
+
         return 0 if result['success'] else 1
 
 

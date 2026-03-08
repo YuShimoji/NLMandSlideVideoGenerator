@@ -25,7 +25,6 @@ if str(project_root / "src") not in sys.path:
 
 from core.utils.logger import logger
 
-from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
 
@@ -49,7 +48,7 @@ def _build_audio_segments(audio_files: List[Path]) -> List[AudioInfo]:
     WAV ファイルのメタデータから duration を取得し、AudioInfo(file_path, duration) を構築する。
     それ以外の拡張子の場合は、現在はサポート外としてエラーにする。
     """
-    
+
     segments: List[AudioInfo] = []
     for path in audio_files:
         if path.suffix.lower() != ".wav":

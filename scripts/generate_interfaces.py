@@ -7,7 +7,7 @@ Generates Python interface stubs from OpenSpec definitions.
 import re
 import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import argparse
 
 class OpenSpecInterfaceGenerator:
@@ -86,7 +86,7 @@ class OpenSpecInterfaceGenerator:
 
         for method_name, method_info in methods.items():
             code_lines.extend([
-                f'    @abstractmethod',
+                '    @abstractmethod',
                 f'    async def {method_name}(',
             ])
 

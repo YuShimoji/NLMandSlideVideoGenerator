@@ -165,7 +165,7 @@ async def inspect_timeline(
         lengths = [len((c.get("text") or "")) for c in slide_contents]
         over_threshold = 0
         if effective_max_chars is not None:
-            over_threshold = sum(1 for l in lengths if l > effective_max_chars)
+            over_threshold = sum(1 for length in lengths if length > effective_max_chars)
 
         print("== Summary ==")
         print(f"- slides: {len(slide_contents)}")

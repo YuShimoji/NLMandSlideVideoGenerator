@@ -26,11 +26,11 @@ def check_ffmpeg() -> bool:
     print("\n" + "=" * 50)
     print("FFmpeg チェック")
     print("=" * 50)
-    
+
     info = detect_ffmpeg()
-    
+
     if info.available:
-        print(f"✅ FFmpeg: インストール済み")
+        print("✅ FFmpeg: インストール済み")
         print(f"   パス: {info.path}")
         print(f"   バージョン: {info.version or '不明'}")
         print(f"   libx264: {'✅' if info.has_libx264 else '⚠️ 未検出'}")
@@ -47,13 +47,13 @@ def check_autohotkey() -> bool:
     print("\n" + "=" * 50)
     print("AutoHotkey チェック")
     print("=" * 50)
-    
+
     ahk_exe = find_autohotkey_exe()
     if ahk_exe:
-        print(f"✅ AutoHotkey: インストール済み")
+        print("✅ AutoHotkey: インストール済み")
         print(f"   パス: {ahk_exe}")
         return True
-     
+
     print("❌ AutoHotkey: 未インストール (YMM4自動操作には必要)")
     print("   インストール: https://www.autohotkey.com/")
     return False
@@ -64,13 +64,13 @@ def check_ymm4() -> bool:
     print("\n" + "=" * 50)
     print("YMM4 (ゆっくりMovieMaker4) チェック")
     print("=" * 50)
-    
+
     ymm4_exe = find_ymm4_exe()
     if ymm4_exe:
-        print(f"✅ YMM4: インストール済み")
+        print("✅ YMM4: インストール済み")
         print(f"   パス: {ymm4_exe}")
         return True
-     
+
     print("⚠️ YMM4: 標準パスに見つかりません")
     print("   ダウンロード: https://manjubox.net/ymm4/")
     return False
@@ -81,7 +81,7 @@ def check_python_packages() -> bool:
     print("\n" + "=" * 50)
     print("Python パッケージ チェック")
     print("=" * 50)
-    
+
     packages = [
         ("PIL", "Pillow"),
         ("aiohttp", "aiohttp"),
@@ -89,7 +89,7 @@ def check_python_packages() -> bool:
         ("google.auth", "Google Auth"),
         ("googleapiclient", "Google API Client"),
     ]
-    
+
     all_ok = True
     for module, name in packages:
         try:
@@ -98,7 +98,7 @@ def check_python_packages() -> bool:
         except ImportError:
             print(f"❌ {name}: 未インストール")
             all_ok = False
-    
+
     return all_ok
 
 
@@ -107,23 +107,23 @@ def check_google_api() -> bool:
     print("\n" + "=" * 50)
     print("Google API 認証チェック")
     print("=" * 50)
-    
+
     from config.settings import settings
-    
+
     # クライアントシークレット
     client_secrets = settings.GOOGLE_CLIENT_SECRETS_FILE
     if client_secrets.exists():
         print(f"✅ クライアントシークレット: {client_secrets.name}")
     else:
-        print(f"❌ クライアントシークレット: 未設定")
-        print(f"   セットアップ: python scripts/google_auth_setup.py")
+        print("❌ クライアントシークレット: 未設定")
+        print("   セットアップ: python scripts/google_auth_setup.py")
         return False
-    
+
     # トークン
     token_file = settings.GOOGLE_OAUTH_TOKEN_FILE
     if token_file.exists():
         print(f"✅ OAuthトークン: {token_file.name}")
-        
+
         # トークンの有効性確認
         try:
             from google.oauth2.credentials import Credentials
@@ -143,8 +143,8 @@ def check_google_api() -> bool:
             print(f"⚠️ トークン検証エラー: {e}")
             return False
     else:
-        print(f"❌ OAuthトークン: 未取得")
-        print(f"   認証実行: python scripts/google_auth_setup.py")
+        print("❌ OAuthトークン: 未取得")
+        print("   認証実行: python scripts/google_auth_setup.py")
         return False
 
 
@@ -153,7 +153,7 @@ def main():
     print("\n" + "=" * 60)
     print("NLMandSlideVideoGenerator 環境チェック")
     print("=" * 60)
-    
+
     results = {
         "ffmpeg": check_ffmpeg(),
         "autohotkey": check_autohotkey(),
@@ -161,33 +161,33 @@ def main():
         "python_packages": check_python_packages(),
         "google_api": check_google_api(),
     }
-    
+
     print("\n" + "=" * 50)
     print("サマリー")
     print("=" * 50)
-    
+
     essential_ok = results["python_packages"]
-    
+
     if essential_ok:
         print("✅ 必須コンポーネント: OK")
     else:
         print("❌ 必須コンポーネント: 要対応")
-    
+
     if results["ffmpeg"]:
         print("✅ 動画出力: FFmpegで高品質出力が可能")
     else:
         print("⚠️ 動画出力: FFmpegインストール推奨")
-    
+
     if results["autohotkey"] and results["ymm4"]:
         print("✅ YMM4連携: 利用可能")
     else:
         print("⚠️ YMM4連携: 一部未対応")
-    
+
     if results["google_api"]:
         print("✅ Google Slides API: 利用可能")
     else:
         print("⚠️ Google Slides API: 未設定 (モックモードで動作)")
-    
+
     return 0 if essential_ok else 1
 
 
