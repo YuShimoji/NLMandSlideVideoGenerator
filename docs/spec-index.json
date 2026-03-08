@@ -51,7 +51,7 @@
     "pct": 60,
     "cat": "system",
     "file": "docs/system_architecture.md",
-    "summary": "モジュラーパイプライン3段階構成。Path B MoviePyスタブ化・TTS削除を反映済(2026-03-07)"
+    "summary": "モジュラーパイプライン3段階構成。MoviePy完全削除・TTS全削除・video_composer除去を反映済(2026-03-08)"
   },
   {
     "id": "SP-007",
@@ -60,7 +60,7 @@
     "pct": 50,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "マルチプラットフォーム動画制作の長期設計。TTS/MoviePy/カバレッジ記載を現状反映済(2026-03-07)"
+    "summary": "マルチプラットフォーム動画制作の長期設計。TTS/MoviePy完全削除・YMM4一本化を反映済(2026-03-08)"
   },
   {
     "id": "SP-008",
@@ -168,7 +168,7 @@
     "pct": 70,
     "cat": "infra",
     "file": "docs/TROUBLESHOOTING.md",
-    "summary": "音声/YMM4/動画生成/CI障害の診断手順"
+    "summary": "音声/YMM4/CI障害の診断手順。MoviePyセクション削除済(2026-03-08)"
   },
   {
     "id": "SP-020",

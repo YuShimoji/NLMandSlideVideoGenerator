@@ -1,6 +1,6 @@
 # PROJECT ALIGNMENT SSOT
 
-Updated: 2026-03-07T22:00:00+09:00
+Updated: 2026-03-08T18:00:00+09:00
 Owner: Orchestrator
 Audience: All Agents
 
@@ -30,7 +30,7 @@ Audience: All Agents
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
-| Python tests | 104 passed / 5 deselected | TTS/MoviePy dead tests 削除後 |
+| Python tests | 97 passed / 5 deselected | Path B stub完全削除+レガシー一掃後 |
 | .NET tests | 19 passed / 0 failed | Core分離後 (Gemini API tests +6) |
 
 ## Consistency Audit
@@ -47,6 +47,7 @@ Audience: All Agents
 | CI ワークフロー肥大化 | 11本に膨張、broken多数 | 必要十分に整理 | 6本に統合 (ci-main, ci-rollback, dotnet-build, orchestrator-audit, release, research-ui-smoke) |
 | OpenSpec フレームワーク | spec 0件、import broken | 削除 | 3ワークフロー+2スクリプト削除。SPEC VIEW (spec-index.json) が仕様管理を担う |
 | .NET テスト分離 | YMM4 DLL不在でCI不可 | Core プロジェクト分離 | NLMSlidePlugin.Core.csproj (net9.0, ubuntu CI) |
+| Path B MoviePy | スタブ化後もコード・参照が残存 | 完全削除+レガシー一掃 | 6ファイル削除、データ型をmodels.pyに抽出、video_composerパラメータ除去、34件のレガシー参照修正 (2026-03-08) |
 
 ## Final Output Definition
 
@@ -66,7 +67,7 @@ Audience: All Agents
 |---|---|
 | 背景動画 | 必要時のみ加える |
 | 軽い演出 | zoom / pan / 字幕調整など最低限 |
-| 手動WAV + Python pipeline | 任意ツールでWAV準備 → run_csv_pipeline.py で動画生成（YMM4不使用時の代替） |
+| 手動WAV + Python pipeline | 任意ツールでWAV準備 → run_csv_pipeline.py でYMM4エクスポート生成（直接mp4は不可） |
 
 ### Optional
 
@@ -95,14 +96,16 @@ Audience: All Agents
 > YMM4 が最終レンダラーであり、Python パイプラインは CSV 作成までの前工程に責務を限定する。
 > YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
 
-### Path B: 手動WAV + Python pipeline（Secondary, TTS削除済み）
+### Path B: 手動WAV + Python pipeline（Secondary, MoviePy/TTS削除済み）
 
 1. CSV を作成する（手動 or Research workflow 経由）
 2. 任意のツールで WAV を生成する（001.wav, 002.wav, ... 形式）
-3. `scripts/run_csv_pipeline.py` で mp4 を生成する
+3. `scripts/run_csv_pipeline.py --export-ymm4` で YMM4 プロジェクトを生成する
+4. YMM4 GUI でプロジェクトを開き、動画をレンダリングする
 
-> YMM4 を使わない代替経路。音声ファイルの事前準備が必要。
-> VOICEVOX / SofTalk / AquesTalk のTTS連携コードは 2026-03-04 に削除済み。
+> 直接 mp4 は生成不可（MoviePy は 2026-03-08 に完全削除済み）。
+> editing_backend は YMM4 のみ。出力は YMM4 プロジェクトファイル。
+> TTS連携コード（VOICEVOX / SofTalk / AquesTalk / ElevenLabs / Azure）も全削除済み。
 
 ### Research 先行フロー（Path A/B 共通の前工程）
 
@@ -133,7 +136,7 @@ Audience: All Agents
 | Research | 出典確認、要約、資料パッケージ化 | Research Package |
 | Alignment | 台本との差分比較、採否判断 | Alignment Report / final CSV |
 | Production (Path A) | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
-| Production (Path B) | 手動WAV準備→Python pipeline (TTS連携削除済み) | mp4 / 字幕 / ログ |
+| Production (Path B) | 手動WAV準備→Python pipeline→YMM4エクスポート (MoviePy/TTS全削除済み) | YMM4プロジェクト / ログ |
 
 ## Agent Operating Policy
 
