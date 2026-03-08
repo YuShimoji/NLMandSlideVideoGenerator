@@ -23,7 +23,6 @@ from youtube.uploader import UploadResult
 
 from .interfaces import (
     ISlideGenerator,
-    IVideoComposer,
     ITimelinePlanner,
     IEditingBackend,
     IMetadataGenerator,
@@ -41,7 +40,6 @@ async def run_csv_timeline(
     audio_dir: Path,
     *,
     slide_generator: ISlideGenerator,
-    video_composer: Optional[IVideoComposer] = None,
     metadata_generator: IMetadataGenerator,
     uploader: IUploader,
     timeline_planner: Optional[ITimelinePlanner] = None,
@@ -227,15 +225,8 @@ async def run_csv_timeline(
             )
             editing_outputs = editing_extras.get("export_outputs") or None
         else:
-            if progress_callback:
-                progress_callback("動画合成", 0.7, "動画を合成します...")
-            if video_composer is None:
-                raise RuntimeError(
-                    "video_composer が未設定です。editing_backend または video_composer を指定してください。"
-                )
-            logger.info("Stage2拡張未設定のため従来の VideoComposer を使用 (CSVタイムライン)")
-            video_info = await video_composer.compose_video(
-                audio_info, slides_pkg, transcript, quality, bgm_path=bgm_path
+            raise RuntimeError(
+                "editing_backend が未設定です。YMM4 editing backend を指定してください。"
             )
 
         logger.info(f"動画合成完了: {video_info.file_path}")
@@ -253,13 +244,7 @@ async def run_csv_timeline(
                 if first_slide_candidate.exists():
                     first_slide_path = first_slide_candidate
 
-            if video_composer is not None:
-                thumbnail_path = await video_composer.generate_thumbnail(
-                    title=transcript.title,
-                    first_slide_path=first_slide_path,
-                )
-            else:
-                thumbnail_path = None
+            thumbnail_path = None
             if thumbnail_path:
                 logger.info(f"サムネイル生成完了: {thumbnail_path}")
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:

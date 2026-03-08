@@ -30,7 +30,6 @@ def _run_environment_check():
 
     # Python パッケージ
     packages = [
-        ("moviepy", "MoviePy"),
         ("PIL", "Pillow"),
         ("streamlit", "Streamlit"),
     ]

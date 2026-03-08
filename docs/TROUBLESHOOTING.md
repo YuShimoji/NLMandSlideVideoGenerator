@@ -129,78 +129,22 @@ Get-Content $logPath -Tail 50
 
 ## Video Generation Issues
 
-### 🔴 Problem: Video generation fails with MoviePy errors
+### 🔴 Problem: Video generation - MoviePy removed
 
-**Symptoms:**
-- `run_csv_pipeline.py` crashes during video composition
-- Error: "ffmpeg not found"
-- Error: "Codec not supported"
+**Note:** MoviePy バックエンドは 2026-03-07 に YMM4 一本化方針により削除されました。
 
-**Diagnosis:**
-```bash
-# Check ffmpeg installation
-ffmpeg -version
+**現在のワークフロー:**
+- YMM4 を使用した動画生成が唯一のサポート方法です
+- CSV → YMM4 プロジェクト生成 → YMM4 内で音声生成 → 動画レンダリング
 
-# Test basic video composition
-python -c "from moviepy.editor import *; clip = ColorClip(size=(1280, 720), color=(255, 0, 0), duration=1); clip.write_videofile('test.mp4', fps=30)"
-```
+**移行方法:**
+1. `scripts/run_csv_pipeline.py --export-ymm4` で YMM4 プロジェクトを生成
+2. YMM4 で生成されたプロジェクトを開く
+3. YMM4 GUI で音声生成・動画レンダリングを実行
 
-**Solutions:**
-
-| Solution | Steps | When to Use |
-|----------|-------|-------------|
-| **Install ffmpeg** | 1. Download ffmpeg from [official site](https://ffmpeg.org/download.html)<br>2. Extract to `C:\ffmpeg\`<br>3. Add `C:\ffmpeg\bin` to PATH<br>4. Restart terminal | ffmpeg not found |
-| **Update MoviePy** | 1. Run `pip install --upgrade moviepy`<br>2. Verify version: `pip show moviepy` | Old MoviePy version |
-| **Check Codec** | 1. Use libx264 codec (default)<br>2. Add `codec='libx264'` to write_videofile()<br>3. Verify ffmpeg supports codec: `ffmpeg -codecs \| grep 264` | Codec errors |
-| **Reduce Video Resolution** | 1. Set resolution to 720p instead of 1080p<br>2. Update `video_config.yaml`<br>3. Reduces memory usage | Out of memory errors |
-
-**Codec Compatibility Matrix:**
-| Codec | Support | Quality | Speed | Recommendation |
-|-------|---------|---------|-------|----------------|
-| libx264 | ✅ Universal | High | Medium | **Recommended** |
-| h264_nvenc | ⚠️ NVIDIA GPU | High | Fast | If NVIDIA GPU available |
-| libx265 | ✅ Universal | Very High | Slow | For archival quality |
-| mpeg4 | ✅ Universal | Medium | Fast | For quick previews |
-
----
-
-### 🟡 Problem: Subtitles not appearing in video
-
-**Symptoms:**
-- Video plays but subtitles missing
-- Subtitle timing incorrect
-- Text encoding issues (garbled characters)
-
-**Diagnosis:**
-```bash
-# Verify subtitle generation
-python scripts/run_csv_pipeline.py --csv samples/basic_dialogue/timeline.csv --slides samples/slides --audio samples/audio --output output/test.mp4 --generate-srt
-
-# Check SRT file
-cat output/test.srt
-```
-
-**Solutions:**
-
-| Solution | Steps | When to Use |
-|----------|-------|-------------|
-| **Check CSV Encoding** | 1. Open CSV in Notepad<br>2. Save As → Encoding: UTF-8<br>3. Regenerate subtitles | Garbled Japanese text |
-| **Verify Subtitle Settings** | 1. Check `SUBTITLE_SETTINGS` in `video_composer.py`<br>2. Ensure `add_subtitles=True` in pipeline config<br>3. Verify font supports Japanese (MS Gothic) | Subtitles not enabled |
-| **Adjust Timing** | 1. Check audio file durations<br>2. Verify CSV timeline has correct timestamps<br>3. Use `duration` column in CSV | Subtitle timing off |
-| **Check Font Installation** | 1. Verify font exists: `C:\Windows\Fonts\msgothic.ttc`<br>2. Install missing fonts<br>3. Update `fontsize` if text too small | Font errors |
-
-**Subtitle Configuration Example:**
-```python
-SUBTITLE_SETTINGS = {
-    "fontsize": 48,
-    "font": "MS-Gothic",
-    "color": "white",
-    "stroke_color": "black",
-    "stroke_width": 2,
-    "method": "caption",
-    "align": "South",
-}
-```
+**関連ドキュメント:**
+- `docs/user_guide_manual_workflow.md` - YMM4 ワークフロー詳細
+- `docs/ymm4_export_spec.md` - YMM4 エクスポート仕様
 
 ---
 

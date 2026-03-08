@@ -73,7 +73,6 @@ def check_ymm4() -> bool:
      
     print("⚠️ YMM4: 標準パスに見つかりません")
     print("   ダウンロード: https://manjubox.net/ymm4/")
-    print("   (MoviePyフォールバックで動画生成は可能です)")
     return False
 
 
@@ -84,7 +83,6 @@ def check_python_packages() -> bool:
     print("=" * 50)
     
     packages = [
-        ("moviepy", "MoviePy"),
         ("PIL", "Pillow"),
         ("aiohttp", "aiohttp"),
         ("google.generativeai", "Google Generative AI"),
@@ -183,7 +181,7 @@ def main():
     if results["autohotkey"] and results["ymm4"]:
         print("✅ YMM4連携: 利用可能")
     else:
-        print("⚠️ YMM4連携: 一部未対応 (MoviePyで代替可能)")
+        print("⚠️ YMM4連携: 一部未対応")
     
     if results["google_api"]:
         print("✅ Google Slides API: 利用可能")

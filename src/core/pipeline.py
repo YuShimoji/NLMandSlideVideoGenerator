@@ -15,7 +15,6 @@ from .interfaces import (
     IAudioGenerator,
     ITranscriptProcessor,
     ISlideGenerator,
-    IVideoComposer,
     IUploader,
     IMetadataGenerator,
     IScriptProvider,
@@ -57,7 +56,6 @@ class ModularVideoPipeline:
         audio_generator: Optional[IAudioGenerator] = None,
         transcript_processor: Optional[ITranscriptProcessor] = None,
         slide_generator: Optional[ISlideGenerator] = None,
-        video_composer: Optional[IVideoComposer] = None,
         uploader: Optional[IUploader] = None,
         metadata_generator: Optional[IMetadataGenerator] = None,
         script_provider: Optional[IScriptProvider] = None,
@@ -75,7 +73,6 @@ class ModularVideoPipeline:
         self.audio_generator = audio_generator or AudioGenerator()
         self.transcript_processor = transcript_processor or TranscriptProcessor()
         self.slide_generator = slide_generator or SlideGenerator()
-        self.video_composer = video_composer
         self.uploader = uploader or YouTubeUploader()
         self.metadata_generator = metadata_generator or MetadataGenerator()
 
@@ -229,7 +226,6 @@ class ModularVideoPipeline:
                 timeline_planner=self.timeline_planner,
                 editing_backend=self.editing_backend,
                 thumbnail_generator=self.thumbnail_generator,
-                video_composer=self.video_composer,
                 progress_callback=progress_callback,
             )
 
@@ -318,7 +314,6 @@ class ModularVideoPipeline:
             csv_path=csv_path,
             audio_dir=audio_dir,
             slide_generator=self.slide_generator,
-            video_composer=self.video_composer,
             metadata_generator=self.metadata_generator,
             uploader=self.uploader,
             timeline_planner=self.timeline_planner,

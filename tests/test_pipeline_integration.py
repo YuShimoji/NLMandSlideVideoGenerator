@@ -154,7 +154,7 @@ class TestCsvPipelineApiYmm4:
             "upload": False,
         }
 
-        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "moviepy"}, clear=False):
+        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "ymm4"}, clear=False):
             with patch.object(api_mod, "build_default_pipeline", return_value=dummy_pipeline):
                 response = client.post("/api/v1/pipeline/csv", json=payload)
 
@@ -180,12 +180,12 @@ class TestCsvPipelineApiYmm4:
         payload = {
             "csv_path": "C:/dummy/timeline.csv",
             "audio_dir": "C:/dummy/audio",
-            "editing_backend": "moviepy",
+            "editing_backend": "ymm4",
             "export_ymm4": True,
             "upload": False,
         }
 
-        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "moviepy"}, clear=False):
+        with patch.dict(settings.PIPELINE_COMPONENTS, {"editing_backend": "ymm4"}, clear=False):
             with patch.object(api_mod, "build_default_pipeline", return_value=dummy_pipeline):
                 response = client.post("/api/v1/pipeline/csv", json=payload)
                 assert settings.PIPELINE_COMPONENTS["editing_backend"] == "ymm4"

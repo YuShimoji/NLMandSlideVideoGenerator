@@ -51,7 +51,7 @@ flowchart LR
 - **Input Orchestrator**: NotebookLM/外部MCP/手動アップロードなど複数入力経路を抽象化。
 - **Script Provider**: NotebookLM/Gemini、自前プロンプト実行、CSV/PDF手動投入を `IScriptProvider` で差し替え。
 - **Content Adapter**: NotebookLM固有フォーマット（DeepDive等）を一般化し、台本セクション・メタ情報・引用元を抽出して内部スキーマへ変換。
-- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コード(ElevenLabs/OpenAI/Azure/SofTalk/AquesTalk/VOICEVOX)は2026-03-04に削除済み(`src/audio/tts_integration.py`はNo-opスタブ)。
+- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コード(ElevenLabs/OpenAI/Azure/SofTalk/AquesTalk/VOICEVOX)は2026-03-04に削除済み（`src/audio/tts_integration.py`も削除済み）。
 - **Asset Registry**: `data/` 配下への素材登録、再利用用メタデータ管理、差分検知を実装予定。
 
 ### Stage 2: 編集生成レイヤー
@@ -62,7 +62,7 @@ flowchart LR
 - **Renderer**:
   - **YMM4 Project Builder**: YMM4 API (https://ymm-api-docs.vercel.app/) を利用し、テンプレート`.exo`や`.y4mmp`を複製。タイムライン、立ち絵、字幕パーツをAPI経由で挿入。
   - **YMM4 Project Builder**: `src/core/editing/ymm4_backend.py` が `.y4mmp` テンプレート複製を行い、`PIPELINE_COMPONENTS.editing_backend=ymm4` で注入される。YMM4がfinal rendererとして動画書き出しを担当する。
-  - **MoviePy Composer (削除済み)**: `src/video_editor/*` はNo-opスタブ化済み(2026-03-07)。`NotImplementedError`を送出する。
+  - **MoviePy Composer (削除済み)**: MoviePyバックエンドは2026-03-07にYMM4一本化により完全削除。`src/video_editor/*`（video_composer.py, subtitle_generator.py, effect_processor.py）は削除済み。データ型（VideoInfo, ThumbnailInfo）は`src/video_editor/models.py`に移動。
   - **運用メモ**: 現状のYMM4 APIでは書き出し機能が未提供の可能性があるため、AutoHotkey等によるGUI自動操作を併用するフォールバック手段を用意する。テンプレート/スクリプトの指定は `config/settings.py` の `YMM4_SETTINGS` で管理する。
 
 ### Stage 3: 投稿配信レイヤー
@@ -156,8 +156,8 @@ sequenceDiagram
 
 ### フォールバックと拡張ポイント
 - **台本工程**: NotebookLMが利用不可の場合、Gemini + Web MCP、またはユーザーがNotebookLMから抽出したJSON/Markdownをアップロード。
-- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携は削除済み(2026-03-04)。
-- **編集**: YMM4テンプレートベースのレンダリング。MoviePyは削除済み(2026-03-07)。
+- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携（VOICEVOX, SofTalk, AquesTalk, ElevenLabs, Azure, Google Cloud）は2026-03-04に削除済み。
+- **編集**: YMM4テンプレートベースのレンダリング。MoviePyバックエンドは2026-03-07に削除済み（YMM4一本化により不要）。
 - **投稿**: YouTubeへの自動投稿、またはメタデータ/サムネイルのみ作成して手動投稿に切替可能。
 
 ## アーキテクチャの特徴
@@ -172,7 +172,7 @@ sequenceDiagram
 ### 3. **YMM4連携の拡張点**
 - テンプレート `.y4mmp` をベースに、シーン・オブジェクト・字幕をAPIで追加。
 - 生成後にYMM4を起動すれば、ユーザーはGUIで微調整可能。
-- YMM4が利用できない環境では `MoviePyEditingBackend` をフォールバックとして利用し、`run_modular_demo.py` などからモード切替で動作確認できる。
+- MoviePyバックエンドは2026-03-07に削除済み。YMM4がサポートされていない環境では動画生成は利用不可。
 
 ### 4. **マルチプラットフォーム投稿**
 - YouTube以外にTikTok/Shortsを視野に入れ、動画縦横比や長さ、広告挿入ポイントを自動計算して出力。
@@ -183,8 +183,8 @@ sequenceDiagram
 - 台本 -> 映像 -> 投稿までのトレーサビリティをJSONログで記録。
 
 ## 実装ロードマップ概要
-- Stage 1: Script Provider抽象化、NotebookLMフォーマットの正規化、手動アップロードUI/CLIの整備。**実装済み**: `GeminiScriptProvider` と `TTSVoicePipeline` を `build_default_pipeline()` から設定で切替可能。
-- Stage 2: YMM4 APIクライアント実装、テンプレート同期ツール、字幕装飾プリセット。**進捗**: `BasicTimelinePlanner` / `MoviePyEditingBackend` / `YMM4EditingBackend` をモジュラー構成に追加し、設定 `EDITING_BACKEND` で切替可能。
+- Stage 1: Script Provider抽象化、NotebookLMフォーマットの正規化、手動アップロードUI/CLIの整備。**実装済み**: `GeminiScriptProvider` を `build_default_pipeline()` から設定で切替可能。
+- Stage 2: YMM4 APIクライアント実装、テンプレート同期ツール、字幕装飾プリセット。**進捗**: `BasicTimelinePlanner` / `YMM4EditingBackend` をモジュラー構成に追加。MoviePyEditingBackendは2026-03-07削除済み。
 - Stage 3: メタデータテンプレート化、予約投稿/広告挿入API連携、サムネイル自動生成。
 
 これらのモジュールを順次拡張することで、ユーザーがAI自動編集と手動細部調整を柔軟に切り替えられるYouTube/TikTok向け動画制作基盤を実現します。
@@ -192,8 +192,8 @@ sequenceDiagram
 ## モジュラーパイプライン設定とテスト手順
 
 - **設定ファイル**: `config/settings.py` の `PIPELINE_COMPONENTS` により、`script_provider` / `voice_pipeline` / `editing_backend` / `platform_adapter` を切り替えられる。`build_default_pipeline()` (`src/core/pipeline.py`) が設定値を読み取り、該当するモジュールを注入する。
-- **Stage1デフォルト**: `SCRIPT_PROVIDER=gemini` かつ `GEMINI_API_KEY` が設定されている場合、`GeminiScriptProvider` が `IScriptProvider` として利用される。`VOICE_PIPELINE` を `tts` または `gemini_tts` にすると `TTSVoicePipeline` が有効になる。
-- **Stage2デフォルト**: `EDITING_BACKEND=moviepy` で `BasicTimelinePlanner` と `MoviePyEditingBackend` が有効化される。`EDITING_BACKEND=ymm4` にすると `YMM4EditingBackend` が選択され、MoviePy によるフォールバック出力と並行して YMM4 プロジェクトが生成される。
+- **Stage1デフォルト**: `SCRIPT_PROVIDER=gemini` かつ `GEMINI_API_KEY` が設定されている場合、`GeminiScriptProvider` が `IScriptProvider` として利用される。
+- **Stage2デフォルト**: `EDITING_BACKEND=ymm4` で `BasicTimelinePlanner` と `YMM4EditingBackend` が有効化される。MoviePyバックエンドは2026-03-07削除済み。
 - **テスト**:
   - 単体テストは `python -m pytest tests\test_timeline_planner.py` で実行でき、`BasicTimelinePlanner` のタイムライン整合性を検証する。
   - 追加の統合スモークテストとして `run_modular_demo.py` を利用し、`PIPELINE_COMPONENTS` で指定した構成が `ModularVideoPipeline` (`src/core/pipeline.py`) に反映されることを確認する。

@@ -201,20 +201,6 @@ async def update_settings(payload: Dict[str, Any]):
         if api_keys.get("youtube") and _validate_api_key(api_keys["youtube"], "youtube"):
             settings.YOUTUBE_API_KEY = api_keys["youtube"]
             os.environ["YOUTUBE_API_KEY"] = api_keys["youtube"]
-        # TTS providers
-        eleven = api_keys.get("elevenlabs")
-        if eleven:
-            settings.TTS_SETTINGS.setdefault("elevenlabs", {})["api_key"] = eleven
-            os.environ["ELEVENLABS_API_KEY"] = eleven
-        if api_keys.get("azure_speech_key"):
-            settings.TTS_SETTINGS.setdefault("azure", {})["key"] = api_keys["azure_speech_key"]
-            os.environ["AZURE_SPEECH_KEY"] = api_keys["azure_speech_key"]
-        if api_keys.get("azure_speech_region"):
-            settings.TTS_SETTINGS.setdefault("azure", {})["region"] = api_keys["azure_speech_region"]
-            os.environ["AZURE_SPEECH_REGION"] = api_keys["azure_speech_region"]
-        if api_keys.get("google_cloud_tts"):
-            settings.TTS_SETTINGS.setdefault("google_cloud", {})["api_key"] = api_keys["google_cloud_tts"]
-            os.environ["GOOGLE_CLOUD_TTS_KEY"] = api_keys["google_cloud_tts"]
 
     return await get_settings()
 
@@ -300,59 +286,6 @@ async def run_connection_tests():
     except Exception as e:
         results["youtube"] = {"success": False, "message": str(e)}
 
-    # ElevenLabs
-    try:
-        key = settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key")
-        if key:
-            import requests
-            r = requests.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}, timeout=10)
-            results["elevenlabs"] = {"success": r.status_code == 200, "message": f"HTTP {r.status_code}"}
-        else:
-            results["elevenlabs"] = {"success": False, "message": "no key"}
-    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
-        results["elevenlabs"] = {"success": False, "message": str(e)}
-    except Exception as e:
-        results["elevenlabs"] = {"success": False, "message": str(e)}
-
-    # Azure Speech
-    try:
-        key = settings.TTS_SETTINGS.get("azure", {}).get("key")
-        region = settings.TTS_SETTINGS.get("azure", {}).get("region")
-        if key and region:
-            try:
-                import azure.cognitiveservices.speech as speechsdk  # type: ignore
-                _ = speechsdk.SpeechConfig(subscription=key, region=region)
-                results["azure"] = {"success": True, "message": "ok"}
-            except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
-                results["azure"] = {"success": True, "message": f"sdk missing or other: {e}"}
-            except Exception as e:
-                results["azure"] = {"success": True, "message": f"sdk missing or other: {e}"}
-        else:
-            results["azure"] = {"success": False, "message": "no key/region"}
-    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
-        results["azure"] = {"success": False, "message": str(e)}
-    except Exception as e:
-        results["azure"] = {"success": False, "message": str(e)}
-
-    # Google Cloud TTS (HTTP check)
-    try:
-        key = settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key")
-        if key:
-            import requests
-            url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={key}"
-            data = {
-                "input": {"text": "Hello"},
-                "voice": {"languageCode": "en-US", "name": "en-US-Neural2-D"},
-                "audioConfig": {"audioEncoding": "MP3"},
-            }
-            r = requests.post(url, json=data, timeout=10)
-            results["gcp_tts"] = {"success": r.status_code == 200, "message": f"HTTP {r.status_code}"}
-        else:
-            results["gcp_tts"] = {"success": False, "message": "no key"}
-    except (ImportError, AttributeError, TypeError, ValueError, RuntimeError, OSError) as e:
-        results["gcp_tts"] = {"success": False, "message": str(e)}
-    except Exception as e:
-        results["gcp_tts"] = {"success": False, "message": str(e)}
 
     return results
 
@@ -371,7 +304,7 @@ async def run_pipeline(payload: Dict[str, Any]):
     allowed_qualities = {"1080p", "720p", "480p"}
     if quality not in allowed_qualities:
         raise HTTPException(status_code=400, detail=f"'quality' must be one of {sorted(allowed_qualities)}")
-    editing_backend = payload.get("editing_backend") or settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    editing_backend = payload.get("editing_backend") or settings.PIPELINE_COMPONENTS.get("editing_backend", "ymm4")
     private_upload = payload.get("private_upload", True)
     upload = payload.get("upload", False)  # New: control actual upload
 
@@ -528,7 +461,7 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
           "audio_dir": "...",         # 行ごとの音声ファイル(WAV)ディレクトリ
           "topic": "任意のトピック名", # 省略時はCSVファイル名を使用
           "quality": "1080p",         # 任意。既定は 1080p
-          "editing_backend": "moviepy"|"ymm4", # 省略可
+          "editing_backend": "ymm4", # 省略可
           "private_upload": true,      # 任意
           "upload": false              # 実際にアップロードするかどうか
         }
@@ -550,7 +483,7 @@ async def run_pipeline_csv(payload: Dict[str, Any]):
     export_ymm4 = bool(payload.get("export_ymm4"))
     editing_backend = payload.get("editing_backend")
     if not editing_backend:
-        editing_backend = "ymm4" if export_ymm4 else settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+        editing_backend = "ymm4" if export_ymm4 else settings.PIPELINE_COMPONENTS.get("editing_backend", "ymm4")
     elif export_ymm4 and editing_backend != "ymm4":
         # export_ymm4 が明示された場合は優先的にYMM4を利用
         editing_backend = "ymm4"

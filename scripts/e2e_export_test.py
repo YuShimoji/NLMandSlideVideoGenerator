@@ -3,7 +3,7 @@
 E2E動画書き出し検証スクリプト
 
 ExportFallbackManagerを使用して、実際の動画書き出しを検証する。
-MoviePyバックエンドでの基本的な動画生成が動作することを確認。
+YMM4バックエンドでの基本的な動画生成が動作することを確認。
 """
 
 from __future__ import annotations
@@ -108,10 +108,9 @@ async def run_e2e_test(use_real_audio: bool = False) -> dict:
         "errors": [],
         "duration_seconds": 0,
     }
-    
+
     start_time = datetime.now()
-    
-    # YMM4バックエンドのみ有効化（MoviePy removed）
+
     configs = [
         BackendConfig(
             backend_type=BackendType.YMM4_API,

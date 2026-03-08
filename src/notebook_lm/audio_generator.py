@@ -58,13 +58,7 @@ class AudioGenerator:
         if provider_name == "none":
             return False
 
-        api_keys = {
-            "elevenlabs": settings.TTS_SETTINGS.get("elevenlabs", {}).get("api_key", ""),
-            "openai": getattr(settings, "OPENAI_API_KEY", ""),
-            "azure_speech": settings.TTS_SETTINGS.get("azure", {}).get("key", ""),
-            "google_cloud": settings.TTS_SETTINGS.get("google_cloud", {}).get("api_key", ""),
-        }
-        return any(api_keys.values())
+        return False
 
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """

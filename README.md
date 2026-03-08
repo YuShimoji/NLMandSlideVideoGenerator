@@ -4,7 +4,7 @@ YouTube解説動画自動化システム (NLMandSlideVideoGenerator)
 
 ## プロジェクト概要
 
-このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現行の本番SSOTは 2 パス構成です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` の主経路、Path B は `CSV + 行ごとのWAV -> run_csv_pipeline.py -> mp4` の副経路です。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
+このプロジェクトは、YouTube解説動画の制作プロセスを自動化/半自動化するシステムです。現行の本番SSOTは Path A の単一経路構成です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` の主経路として稼働中です。Path B（CSV + WAV → MoviePy → mp4）は 2026-03-07 に削除されました。Gemini/TTS/Google Slides/YouTube 連携は API キーがある場合にのみ有効化されます。
 
 ## ドキュメント
 
@@ -88,11 +88,10 @@ python scripts/run_csv_pipeline.py --csv samples/basic_dialogue/timeline.csv --a
 ### 4. 本格運用開始
 
 ```bash
-# CSVパイプライン（Path B: 事前生成WAV使用）
-python scripts/run_csv_pipeline.py --csv <csv> --audio-dir <dir> --topic "トピック名"
-
 # YMM4エクスポート（Path A: YMM4で音声+動画レンダリング）
 python scripts/run_csv_pipeline.py --csv <csv> --audio-dir <dir> --topic "トピック名" --export-ymm4
+
+# 注: Path B（MoviePy経由の動画生成）は 2026-03-07 に削除されました
 ```
 
 ## 🧩 モジュラーパイプラインの使い方
@@ -158,12 +157,10 @@ src/
 ├── slides/               # スライド生成
 │   ├── slide_generator.py
 │   └── content_splitter.py
-├── audio/                # 音声処理
-│   └── tts_integration.py
-├── video_editor/         # 動画編集
-│   ├── video_composer.py
-│   ├── subtitle_generator.py
-│   └── effect_processor.py
+├── audio/                # 音声処理データ型
+│   └── models.py
+├── video_editor/         # 動画編集データ型
+│   └── models.py
 └── youtube/              # YouTube連携
     └── uploader.py
 ```
@@ -242,8 +239,8 @@ dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 - [x] CSVタイムライン → 動画生成パイプライン
 - [x] Web UI実装（Streamlit）
 - [x] YMM4エクスポート連携
-- [x] フォールバック戦略（MoviePy/FFmpeg）
 - [x] 長文自動分割機能
+- [x] MoviePyバックエンド（削除済 - 2026-03-07にYMM4一本化により削除）
 
 ### 進行中
 - [ ] YMM4 SDK統合 (GenerateVoiceAsync, ImportFromCsv, AddToTimelineAsync)

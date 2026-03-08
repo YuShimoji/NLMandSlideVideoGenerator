@@ -4,7 +4,6 @@
 - CSV: A列=話者名, B列=テキスト
 - 行ごとに分割された音声ファイルを読み込み、各行の duration から
   TranscriptSegment の start/end を決定
-- 生成された TranscriptInfo を SubtitleGenerator に渡し、SRT/ASS/VTT を出力
 
 主に P10 (CSVタイムラインモード) の挙動確認用の簡易デモ。
 """
@@ -26,13 +25,9 @@ if str(project_root / "src") not in sys.path:
 
 from core.utils.logger import logger
 
-# src 配下モジュール
 from config.settings import settings
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
-# SubtitleGenerator was removed (Path B cleanup). This demo is no longer functional.
-# Use YMM4 for subtitle generation instead.
-SubtitleGenerator = None
 
 
 def _find_audio_files(audio_dir: Path) -> List[Path]:
@@ -99,11 +94,8 @@ async def run_demo(
     loader = CsvTranscriptLoader()
     audio_segments = _build_audio_segments(audio_files)
 
-    # TranscriptInfo を生成（行数と音声数が一致しない場合は、
-    # CsvTranscriptLoader 側でヒューリスティック配分にフォールバック）
     transcript = await loader.load_from_csv(csv_path, audio_segments=audio_segments)
 
-    # 字幕生成 - Path B (MoviePy) removed
     raise NotImplementedError(
         "Path B (MoviePy) has been removed. "
         "Use YMM4 for subtitle generation instead."
@@ -121,7 +113,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--style",
         default="default",
-        help="字幕スタイルプリセット名 (SubtitleGeneratorのプリセットを参照)",
+        help="字幕スタイルプリセット名",
     )
 
     args = parser.parse_args(argv)

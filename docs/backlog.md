@@ -93,14 +93,16 @@
 | A3-2 | `slides/slide_generator.py` | 359 | プレゼンテーション作成実装 | 高 |
 | A3-3 | `slides/slide_generator.py` | 425 | スライド作成実装 | 高 |
 
-### A-4: 動画合成・エフェクト実装 
+### A-4: 動画合成・エフェクト実装
+
+**注**: MoviePyバックエンドは 2026-03-07 に削除済み。データ型（VideoInfo, ThumbnailInfo）は `src/video_editor/models.py` に移動。
 
 | ID | ファイル | 内容 | 状態 |
 |----|----------|------|------|
-| A4-1 | `core/editing/moviepy_backend.py` | plan 情報を VideoComposer に渡す | |
-| A4-2 | `video_editor/video_composer.py` | PPTX からの抽出 | |
-| A4-3 | `video_editor/video_composer.py` | FFmpeg フォールバック動画合成 | |
-| A4-4 | `video_editor/video_composer.py` | 座標処理実装 | |
+| A4-1 | `core/editing/ymm4_backend.py` | plan 情報を YMM4 バックエンドに渡す | |
+| A4-2 | （削除済み） | video_composer.py は削除済み | CLOSED |
+| A4-3 | （削除済み） | video_composer.py は削除済み | CLOSED |
+| A4-4 | （削除済み） | video_composer.py は削除済み | CLOSED |
 
 ---
 
@@ -159,7 +161,7 @@
 | ID | 内容 | 状態 |
 |----|------|------|
 | C3-3-1 | `ExportFallbackManager`クラス実装 | |
-| C3-3-2 | API→AHK→MoviePy優先順位設定 | |
+| C3-3-2 | API→AHKフォールバック優先順位設定 (MoviePy削除済) | |
 | C3-3-3 | タイムアウト・リトライロジック | |
 | C3-3-4 | バックエンド自動検出 | |
 | C3-3-5 | テストスイート（10 passed） | |

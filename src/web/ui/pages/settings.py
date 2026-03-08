@@ -92,9 +92,6 @@ def show_settings_page():
         provider_labels = {
             "none": "none (無効)",
             "openai": "OpenAI",
-            "elevenlabs": "ElevenLabs",
-            "azure": "Azure Speech",
-            "google_cloud": "Google Cloud TTS",
         }
         st.text_input(
             "現在のTTSプロバイダ",
@@ -108,8 +105,6 @@ def show_settings_page():
         st.subheader("API キー状態")
         api_keys = [
             ("GEMINI_API_KEY", "Gemini"),
-            ("ELEVENLABS_API_KEY", "ElevenLabs"),
-            ("AZURE_SPEECH_KEY", "Azure Speech"),
         ]
         for env_var, label in api_keys:
             value = os.environ.get(env_var, "")

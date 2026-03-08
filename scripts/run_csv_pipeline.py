@@ -86,7 +86,7 @@ async def _run(args: argparse.Namespace) -> int:
         f"private_upload={private_upload}, export_ymm4={export_ymm4}"
     )
 
-    original_backend = settings.PIPELINE_COMPONENTS.get("editing_backend", "moviepy")
+    original_backend = settings.PIPELINE_COMPONENTS.get("editing_backend", "ymm4")
     if export_ymm4:
         settings.PIPELINE_COMPONENTS["editing_backend"] = "ymm4"
         logger.info("YMM4エクスポートを有効化: editing_backend=ymm4")

@@ -6,7 +6,7 @@ Owner: Worker-A/B
 Created: 2026-02-25T02:20:00+09:00
 Report: docs/inbox/REPORT_TASK_014_AudioOutputOptimization.md
 
-> Policy Note (2026-03-01): 現行 SSOT は Path A/B 構造です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング`、Path B は `CSV + WAV -> run_csv_pipeline.py -> mp4` です。YMM4 は個別 WAV 供給元ではありません。
+> Policy Note (2026-03-07): 現行 SSOT は Path A 単一構造です。Path A は `CSV -> YMM4 -> 音声生成 -> 動画レンダリング` です。Path B（MoviePy バックエンド）は 2026-03-07 に削除されました。
 
 ## Objective
 - ゆっくりボイスを利用できる経路を最優先で安定化する

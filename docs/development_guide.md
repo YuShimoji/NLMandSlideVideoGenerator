@@ -31,10 +31,11 @@ copy .env.example .env
 ### 4. API キーの設定
 `.env` に必要なAPI キーを設定：
 - `GEMINI_API_KEY`
-- `TTS_PROVIDER` と各プロバイダのキー（例: `ELEVENLABS_API_KEY`）
 - `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`（アップロードを使う場合）
 
 詳細は `docs/api_setup_guide.md` を参照してください。
+
+**注**: 外部TTS連携（VOICEVOX, SofTalk, AquesTalk, ElevenLabs, Azure）は 2026-03-04 に削除されました。音声生成は YMM4 内蔵ゆっくりボイスを使用してください。
 
 ## 開発フロー
 
@@ -66,7 +67,7 @@ chore: その他の変更
 - ユーザー視点の手動ワークフロー全体像は `docs/user_guide_manual_workflow.md` を参照してください。
 - 制作パスは以下の通りです:
   - **Path A（Primary）**: CSV → YMM4（NLMSlidePlugin でインポート → 音声生成 → 動画レンダリング）。YMM4 が最終レンダラー。
-  - **Path B（Legacy, 削除済）**: CSV + WAV群 → `run_csv_pipeline.py`。SofTalk/AquesTalk 等で個別WAVを生成して使用。（2026-03-04 にプロジェクトの YMM4 一本化方針により削除）
+  - **Path B（削除済）**: MoviePy バックエンドは 2026-03-07 に削除済み。外部 TTS 連携（VOICEVOX/SofTalk/AquesTalk）も 2026-03-04 削除済み。
 - 新機能の開発後は、Path A の **CSV → YMM4** フローで動作確認を行ってください（Path A は YMM4 GUI 操作のため自動テスト不可）。
 
 ## テスト実行
@@ -174,13 +175,9 @@ python -c "from config.settings import create_directories; create_directories()"
 
 ### よくある問題
 
-#### 1. MoviePyのインストールエラー
-```bash
-# ffmpegのインストール
-# Windows: https://ffmpeg.org/download.html からダウンロード
-# macOS: brew install ffmpeg
-# Ubuntu: sudo apt install ffmpeg
-```
+#### 1. MoviePyのインストールエラー（削除済み）
+
+MoviePy は 2026-03-07 に削除されました。YMM4 を使用してください。
 
 #### 2. Google APIの認証エラー
 - API キーの確認
@@ -253,7 +250,6 @@ pip-compile requirements.in
 ## 参考資料
 
 ### 技術ドキュメント
-- [MoviePy Documentation](https://moviepy.readthedocs.io/)
 - [YouTube Data API](https://developers.google.com/youtube/v3)
 - [Google Slides API](https://developers.google.com/slides)
 

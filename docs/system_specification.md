@@ -18,7 +18,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 | Stage | 主目的 | 主なモジュール | モード切替 |
 |-------|--------|----------------|------------|
 | Stage 1: 素材用意 | 台本・音声・参考素材の準備 | `ScriptProvider`, `VoicePipeline`, `AssetRegistry` | manual / assist / auto |
-| Stage 2: 編集生成 | タイムライン構築・映像生成 | `TimelinePlanner`, `SlideProvider`, `EditingBackend (MoviePy, YMM4)` | assist / auto |
+| Stage 2: 編集生成 | タイムライン構築・映像生成 | `TimelinePlanner`, `SlideProvider`, `EditingBackend (YMM4)` | assist / auto |
 | Stage 3: 投稿配信 | メタデータ生成・投稿 | `MetadataGenerator`, `Scheduler`, `PlatformAdapter` | manual / auto |
 
 ### 1.5 2025-10 更新: モジュラーコンポーネント
@@ -27,7 +27,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
   - `TTSVoicePipeline` (`src/core/voice_pipelines/tts_voice_pipeline.py`) が `IVoicePipeline` を実装し、`PIPELINE_COMPONENTS.voice_pipeline` が `tts` または `gemini_tts` の場合に利用。
 - **Stage2**
   - `TimelinePlan`/`TimelineSegment` (`src/core/timeline/models.py`) および `BasicTimelinePlanner` (`src/core/timeline/basic_planner.py`) により、音声長と台本セグメントからタイムラインを生成。
-  - `MoviePyEditingBackend` (`src/core/editing/moviepy_backend.py`) と `YMM4EditingBackend` (`src/core/editing/ymm4_backend.py`) により、`PIPELINE_COMPONENTS.editing_backend` 設定で MoviePy / YMM4 を切り替え。
+  - `YMM4EditingBackend` (`src/core/editing/ymm4_backend.py`) により動画生成。MoviePyEditingBackendは2026-03-07削除済み。
 - **テスト**
   - `tests/test_timeline_planner.py` を追加し、タイムライン整合性とフォールバック動作を検証。
 
@@ -50,11 +50,11 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 - **処理**:
   - `TimelinePlanner` によるセグメント時間配分とエフェクト指示
   - `Slide/Image Provider` による Google Slides / 手動画像 / NotebookLMスライドの選択
-  - `SubtitleStyler` による装飾プリセット（縁取り、アニメーション対応）
-  - `EffectProcessor` 拡張によるカメラワーク・テロップ・立ち絵制御
+  - 字幕装飾プリセット（縁取り、アニメーション対応）
+  - カメラワーク・テロップ・立ち絵制御
   - `EditingBackend`:
-    - MoviePy 合成（現行実装）
     - YMM4 API を利用した `.y4mmp` / `.exo` テンプレート複製とタイムライン生成
+    - MoviePy 合成（2026-03-07削除済み）
 - **出力**: `VideoInfo`, `TimelinePlan`, YMM4 プロジェクトファイル, プレビュー用動画
 - **特徴**: YMM4 を利用する場合は GUI での手動調整を前提に、差分適用と再レンダリングを自動化
 
@@ -83,7 +83,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 
 #### 2.2.3 エラーハンドリング
 - Stage単位のリトライとフォールバック（例: Gemini失敗時は NotebookLM へ切替）
-- YMM4 API エラー時のテンプレート再同期と MoviePy フォールバック
+- YMM4 API エラー時のテンプレート再同期（MoviePy フォールバックは削除済み）
 - 投稿 API のクォータ監視とキューイング
 
 ### 2.3 拡張ターゲット
@@ -95,7 +95,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 ## 3. 非機能要件
 
 ### 3.1 性能要件
-- **処理時間**: 5分動画で MoviePy 経路は 20 分以内、YMM4 バッチ生成は 10 分以内
+- **処理時間**: 5分動画で YMM4 バッチ生成は 10 分以内
 - **同時処理**: 最大 3 プロジェクトの非同期実行をキュー管理で保証
 - **ファイルサイズ**: 動画 4GB までをサポート
 
@@ -120,7 +120,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
 │ Stage 1       │   │ Stage 2       │   │ Stage 3       │
 │ Script/Assets │──▶│ Editing       │──▶│ Publishing    │
-│               │   │ (MoviePy/YMM4)│   │ (YouTube/TikTok)
+│               │   │ (YMM4)        │   │ (YouTube/TikTok)
 └──────────────┘   └──────────────┘   └──────────────┘
         ▲                   ▲                    ▲
         │                   │                    │
@@ -130,16 +130,16 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 ### 4.2 データフロー
 1. **素材入力**: ユーザー/MCP/NotebookLM/Gemini から素材取得
 2. **台本正規化**: DeepDive JSON/Markdown を `ScriptBundle` に変換
-3. **音声生成**: TTS or 収録音声を `AudioInfo` に統一
+3. **音声生成**: YMM4内蔵ゆっくりボイスによる音声生成
 4. **タイムライン構築**: `TimelinePlanner` が YMM4 対応の指示書を生成
-5. **レンダリング**: YMM4 API（MoviePyは2026-03-07にNo-opスタブ化済み）
+5. **レンダリング**: YMM4 API（MoviePyバックエンドは2026-03-07削除済み）
 6. **メタデータ生成**: 投稿テンプレートから概要欄/タグ/広告位置を生成
 7. **投稿/書き出し**: プラットフォーム別アダプターで自動投稿 or ドラフト作成
 
 ### 4.3 外部システム連携
 - **NotebookLM / Gemini API**: 台本生成・要約補完
 - **MCP Agents**: Web 情報取得、翻訳、要約
-- **TTS**: YMM4内蔵ゆっくりボイス（外部TTSプロバイダーは2026-03-04に削除済み）
+- **TTS**: YMM4内蔵ゆっくりボイス（外部TTSプロバイダー VOICEVOX/SofTalk/AquesTalk/ElevenLabs/Azure/Google Cloudは2026-03-04に削除済み）
 - **Google Slides API**: スライド生成・画像エクスポート
 - **YukkuriMovieMaker4 API**: テンプレートからタイムライン再構築
 - **YouTube Data API / TikTok API**: 投稿・メタデータ設定
@@ -159,7 +159,6 @@ asyncio
 dataclasses
 
 # 動画・音声
-moviepy
 pydub
 
 # 画像・スライド
@@ -172,6 +171,9 @@ httpx / requests
 
 # YMM4 連携
 requests (REST API)
+
+# 削除済みライブラリ (2026-03-07)
+# moviepy - YMM4一本化により削除
 ```
 
 ### 5.3 API 仕様（将来拡張）

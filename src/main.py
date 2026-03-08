@@ -35,7 +35,6 @@ class VideoGenerationPipeline:
         self.audio_generator = AudioGenerator()
         self.transcript_processor = TranscriptProcessor()
         self.slide_generator = SlideGenerator()
-        self.video_composer = None  # Video rendering is handled by YMM4
         self.youtube_uploader = YouTubeUploader()
         self.metadata_generator = MetadataGenerator()
 
@@ -79,18 +78,10 @@ class VideoGenerationPipeline:
                 transcript, max_slides=max_slides
             )
 
-            # Phase 3: 動画編集作業 (Path B無効化: YMM4で実行)
-            if self.video_composer is None:
-                raise RuntimeError(
-                    "video_composer が未設定です。"
-                    "動画合成は YMM4 (Path A) で実行してください。"
-                )
-            logger.info("Phase 3: 動画編集・合成")
-            video_info = await self.video_composer.compose_video(
-                audio_file=audio_info,
-                slides_file=slides_pkg,
-                transcript=transcript,
-                quality=video_quality
+            # Phase 3: 動画編集は YMM4 (Path A) で実行
+            raise RuntimeError(
+                "VideoGenerationPipeline.generate_video() は非推奨です。"
+                "動画合成は YMM4 (Path A) または ModularVideoPipeline を使用してください。"
             )
 
             # Phase 4: YouTubeアップロード
