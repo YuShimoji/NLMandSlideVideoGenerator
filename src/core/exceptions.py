@@ -3,7 +3,7 @@
 
 PipelineError
 ├── ScriptGenerationError   - スクリプト生成失敗
-├── AudioGenerationError    - 音声生成/TTS失敗
+├── AudioGenerationError    - 音声生成失敗
 ├── SlideGenerationError    - スライド生成失敗
 ├── VideoCompositionError   - 動画合成/レンダリング失敗
 ├── UploadError             - アップロード失敗
@@ -28,7 +28,7 @@ class PipelineError(Exception):
         base_messages = {
             "sources": "ソース収集でエラーが発生しました。URLやネットワーク接続を確認してください。",
             "script": "スクリプト生成でエラーが発生しました。トピックを確認してください。",
-            "voice": "音声生成でエラーが発生しました。TTS 設定を確認してください。",
+            "voice": "音声生成でエラーが発生しました。音声設定を確認してください。",
             "slides": "スライド生成でエラーが発生しました。Google Slides API を確認してください。",
             "video": "動画合成でエラーが発生しました。YMM4 の設定を確認してください。",
             "upload": "動画アップロードでエラーが発生しました。YouTube API を確認してください。",
@@ -46,7 +46,7 @@ class ScriptGenerationError(PipelineError):
 
 
 class AudioGenerationError(PipelineError):
-    """音声生成/TTS処理に関するエラー"""
+    """音声生成処理に関するエラー"""
     def __init__(self, message: str, recoverable: bool = True, user_message: Optional[str] = None):
         super().__init__(message, stage="voice", recoverable=recoverable, user_message=user_message)
 

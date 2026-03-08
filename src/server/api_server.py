@@ -300,9 +300,6 @@ class OperationalAPIServer:
         if settings.PIPELINE_COMPONENTS.get("script_provider") == "gemini":
             required_keys.append(("GEMINI_API_KEY", settings.GEMINI_API_KEY))
 
-        if settings.TTS_SETTINGS.get("provider") and settings.TTS_SETTINGS["provider"] != "none":
-            required_keys.append(("TTS settings", str(bool(settings.TTS_SETTINGS))))
-
         missing_keys = [key for key, value in required_keys if not value]
 
         if missing_keys:

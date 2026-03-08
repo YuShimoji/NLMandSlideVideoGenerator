@@ -156,21 +156,12 @@ async def get_settings():
     return {
         "pipeline_components": dict(settings.PIPELINE_COMPONENTS),
         "pipeline_stage_modes": dict(settings.PIPELINE_STAGE_MODES),
-        "tts_provider": settings.TTS_SETTINGS.get("provider", "none"),
         "youtube_privacy_default": settings.YOUTUBE_SETTINGS.get("privacy_default", "private"),
     }
 
 
 @app.post("/api/v1/settings")
 async def update_settings(payload: Dict[str, Any]):
-    # Apply TTS provider
-    provider = payload.get("tts_provider")
-    if provider:
-        settings.TTS_SETTINGS["provider"] = provider
-        os.environ["TTS_PROVIDER"] = provider
-        # update pipeline voice
-        settings.PIPELINE_COMPONENTS["voice_pipeline"] = "tts" if provider != "none" else "legacy"
-
     # Apply pipeline components
     comps = payload.get("pipeline_components", {})
     if isinstance(comps, dict):

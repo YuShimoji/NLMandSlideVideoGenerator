@@ -42,8 +42,8 @@ async def run_legacy_stage1(
 
     script_bundle: Optional[Dict[str, Any]] = None
 
-    if settings.GEMINI_API_KEY and settings.TTS_SETTINGS.get("provider", "none") != "none":
-        logger.info("Gemini + TTS による音声生成パスを使用します")
+    if settings.GEMINI_API_KEY:
+        logger.info("Gemini によるスクリプト・スライド生成パスを使用します")
         try:
             gemini = GeminiIntegration(api_key=settings.GEMINI_API_KEY)
             sources_payload = [
@@ -76,11 +76,6 @@ async def run_legacy_stage1(
             except json.JSONDecodeError:
                 logger.warning("Gemini スクリプトをJSONとして解析できませんでした。生テキストを保持します。")
                 script_bundle = {"title": script_info.title, "content": script_info.content}
-
-            if script_bundle and "segments" in script_bundle:
-                tts_text = "\n\n".join(seg.get("content", "") for seg in script_bundle.get("segments", []))
-            else:
-                tts_text = script_info.content
 
             # Geminiスライド情報の生成（任意）
             prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
@@ -116,12 +111,10 @@ async def run_legacy_stage1(
             except Exception as slide_err:
                 logger.warning(f"Geminiスライド生成でエラーが発生しました（フォールバック継続）: {slide_err}")
 
-            # TTS is handled by YMM4; fall through to AudioGenerator
-            pass
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as exc:
-            logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
+            logger.warning(f"Gemini パスでエラーが発生したため従来モックにフォールバックします: {exc}")
         except Exception as exc:
-            logger.warning(f"Gemini/TTS パスでエラーが発生したため従来モックにフォールバックします: {exc}")
+            logger.warning(f"Gemini パスでエラーが発生したため従来モックにフォールバックします: {exc}")
 
     # フォールバック: 既存AudioGeneratorのみ
     audio_info = await audio_generator.generate_audio(sources)

@@ -40,7 +40,7 @@ class IVoicePipeline(Protocol):
         script: Dict[str, Any],
         preferred_provider: Optional[str] = None,
     ) -> AudioInfo:
-        """TTS/収録音声を統一フォーマットで返す"""
+        """音声を統一フォーマットで返す"""
 
 
 class IAssetRegistry(Protocol):

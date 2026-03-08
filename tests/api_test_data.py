@@ -29,18 +29,5 @@ def get_test_slides_content():
 
 
 def get_test_text():
-    """TTSテスト用のテキスト"""
+    """音声生成テスト用のテキスト"""
     return "これは音声生成のテストです。"
-
-
-def get_test_voice_config():
-    """TTSテスト用の音声設定"""
-    from audio.models import VoiceConfig
-    return VoiceConfig(
-        voice_id="default",
-        language="ja",
-        gender="female",
-        age_range="adult",
-        accent="japanese",
-        quality="high"
-    )

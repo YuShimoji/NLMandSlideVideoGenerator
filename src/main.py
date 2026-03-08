@@ -11,7 +11,7 @@ from typing import Optional, List
 from core.utils.logger import logger
 
 try:
-    from config.settings import settings, create_directories
+    from config.settings import create_directories
 except ImportError as e:
     print(f"設定ファイルの読み込みエラー: {e}")
     sys.exit(1)
@@ -78,32 +78,11 @@ class VideoGenerationPipeline:
                 transcript, max_slides=max_slides
             )
 
-            # Phase 3: 動画編集は YMM4 (Path A) で実行
+            # Phase 3以降は YMM4 (Path A) で実行。このクラスは非推奨。
             raise RuntimeError(
                 "VideoGenerationPipeline.generate_video() は非推奨です。"
                 "動画合成は YMM4 (Path A) または ModularVideoPipeline を使用してください。"
             )
-
-            # Phase 4: YouTubeアップロード
-            logger.info("Phase 4: YouTubeアップロード")
-            # メタデータ生成
-            metadata_dict = await self.metadata_generator.generate_metadata(transcript)
-            # プライバシー設定を反映
-            metadata_dict["privacy_status"] = "private" if private_upload else "public"
-            metadata_dict["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
-
-            # 認証（モック対応）
-            await self.youtube_uploader.authenticate()
-
-            upload_result = await self.youtube_uploader.upload_video(
-                video=video_info,
-                metadata=metadata_dict,
-                thumbnail_path=None
-            )
-            youtube_url = upload_result.video_url
-
-            logger.success(f"動画生成完了: {youtube_url}")
-            return str(youtube_url)
 
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
             logger.error(f"動画生成エラー: {str(e)}")

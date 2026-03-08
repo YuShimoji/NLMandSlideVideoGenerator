@@ -1,11 +1,10 @@
 """
 音声処理モジュール
-データモデル（TTSProvider, VoiceConfig）を提供
+データモデル（VoiceConfig）を提供
 """
 
-from .models import TTSProvider, VoiceConfig
+from .models import VoiceConfig
 
 __all__ = [
-    "TTSProvider",
     "VoiceConfig",
 ]

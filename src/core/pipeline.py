@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import List, Optional, Dict, Any, Callable
 from pathlib import Path
 
-from config.settings import settings, create_directories
+from config.settings import create_directories
 
 from .interfaces import (
     ISourceCollector,
@@ -169,7 +169,7 @@ class ModularVideoPipeline:
                         progress_callback("音声合成", 0.3, "テキスト-to-スピーチで音声を生成します...")
                     audio_info = await self._synthesize_audio_with_retry(
                         script=script_bundle or raw_script,
-                        provider=settings.TTS_SETTINGS.get("provider", "none"),
+                        provider="none",
                     )
                     if self.asset_registry:
                         registered_assets = await self.asset_registry.register_assets(
