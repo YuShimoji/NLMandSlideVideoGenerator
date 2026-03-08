@@ -7,7 +7,7 @@ from typing import List
 import streamlit as st
 
 from config.settings import settings
-from core.logger import logger
+from core.utils.logger import logger
 
 
 def show_assets_page():
