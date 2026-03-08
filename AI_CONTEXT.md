@@ -2,8 +2,8 @@
 
 ## 基本情報
 
-- **最終更新**: 2026-03-07T18:30:00+09:00
-- **更新者**: Claude Sonnet 4.5
+- **最終更新**: 2026-03-08
+- **更新者**: Claude Opus 4.6
 
 ## レポート設定（推奨）
 
@@ -42,7 +42,7 @@
 | :--- | :--- | :--- |
 | Ruff errors | **0** | 995→0 (whitespace 977 + code quality 18) |
 | Mypy errors | **0** | 228→0 (76 files checked) |
-| Python Tests | **104 passed, 5 deselected** | 10 skipped→0 (dead test削除 + await修正) |
+| Python Tests | **97 passed, 5 deselected** | Path B dead code削除に伴いテスト整理 |
 | .NET Build | **0 warnings, 0 errors** | CS1998警告解消 |
 | .NET Tests | **19 passed** | Core分離後も全通過 |
 | CI workflows | **6/6 green** | 11→6整理完了、deprecated actions全修正 |
@@ -50,14 +50,14 @@
 
 ## リスク/懸念
 
-- テストカバレッジ: 31/55モジュール (56%) - 24モジュールが未テスト
+- テストカバレッジ: 30/53モジュール (57%) - 23モジュールが未テスト
 - GitHub Actions CI Layer B: 手動検証待ち（ローカルCIは全緑）
 - YMM4本体のDLLがローカル環境で見つからないため、C#プロジェクトのビルドが制限されている
 
 ## テスト
 
 - **command**: `.\venv\Scripts\python.exe -m pytest tests\ -q -m "not slow and not integration" --tb=short --ignore=tests/test_alignment_export.py`
-- **result**: 104 passed, 5 deselected (8秒) (2026-03-07)
+- **result**: 97 passed, 5 deselected (2026-03-08)
 - **.NET Core**: `dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q` → 19 passed
 - **CI**: `.\scripts\ci.ps1` (5 stages, all green)
 
@@ -84,7 +84,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 | **長期** | MULTI-LANG | 多言語台本自動照合強化 | 構想 | 低 |
 | **長期** | MONETIZE | YouTube自動公開パイプライン | 構想 | 低 |
 
-## 未テストモジュール一覧（24件）
+## 未テストモジュール一覧（23件）
 
 ### Core Infrastructure
 - `src/core/exceptions.py`, `src/core/helpers.py`, `src/core/slide_builder.py`
@@ -97,7 +97,6 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 
 ### Presentation & Video
 - `src/slides/content_splitter.py`, `src/slides/google_slides_client.py`
-- `src/video_editor/effect_processor.py`
 - `src/youtube/metadata_generator.py`, `src/youtube/uploader.py`
 
 ### Web UI
@@ -124,14 +123,15 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - [x] .NET Core分離 (2026-03-07: NLMSlidePlugin.Core.csproj)
 - [x] CIワークフロー整理 (2026-03-07: 11→6、deprecated actions全修正)
 - [x] OpenSpec削除 (2026-03-07: spec 0件、broken imports)
-- [ ] テストカバレッジ拡充 (56% → 80%+)
+- [x] Path B dead code完全削除 (2026-03-08: 6ファイル削除、-1205行)
+- [ ] テストカバレッジ拡充 (57% → 80%+)
 - [ ] GitHub Actions CI有効化確認 (Layer B)
 - [ ] Codecov統合
 
 ## 備考（自由記述）
 
 - Python 3.11.0 / venv 環境を使用。
-- テスト: 104 passed, 5 deselected (~8秒)
+- テスト: 97 passed, 5 deselected
 - .NET: 19 passed (Core分離後も全通過)
 - プロジェクト健全性: Ruff 0 + Mypy 0 + CI全緑 = A+ ランク
 - 残り改善ポイント: テストカバレッジ (56%→80%+)
@@ -148,13 +148,14 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - 2026-03-05 夜: Ruff全修正 (995→0)、Mypy全修正 (228→0)、CI 5段階全緑化。Health Score 98/100達成。
 - 2026-03-06: YMM4プラグインGetAudioDuration修正、CS1998警告解消、skippedテスト10件→0件解消。
 - 2026-03-07: Gemini API統合 (CsvScriptCompletionPlugin)、.NET Core分離 (NLMSlidePlugin.Core.csproj)、CIワークフロー11→6整理、OpenSpec削除、deprecated actions全修正。CI全緑維持。
+- 2026-03-08: Path B dead code完全削除 (tts_integration, moviepy_backend, video_composer等6ファイル)、mypy/ruff修正、lint config整備。97 tests / mypy 0 / ruff 0。
 
 ## 直近 Git Commits
 
 ```
+1a255c5 refactor: remove Path B dead code, fix type safety, clean up lint
 08445f5 docs: update HANDOVER with session 4 summary
 6c9e30d docs: update SSOT with session 4 changes (Gemini, Core separation, CI cleanup)
 9aee841 chore(ci): remove redundant task-validation and documentation workflows
 c5cdc88 chore(ci): remove broken OpenSpec workflows and upgrade deprecated actions
-7de98ce fix(ci): upgrade deprecated GitHub Actions from v3 to v4
 ```

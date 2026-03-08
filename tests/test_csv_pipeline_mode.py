@@ -3,7 +3,7 @@
 
 - 実ファイルとして簡単な CSV と 無音WAV を生成
 - ModularVideoPipeline.run_csv_timeline を実行
-- SlideGenerator / VideoComposer はモックして重い依存を避ける
+- SlideGenerator / EditingBackend はモックして重い依存を避ける
 """
 
 import sys
@@ -39,21 +39,25 @@ async def test_run_csv_timeline_basic(tmp_path: Path):
     _create_silent_wav(audio_dir / "001.wav", duration_sec=1.0)
     _create_silent_wav(audio_dir / "002.wav", duration_sec=2.0)
 
-    # 3) SlideGenerator / VideoComposer をモック
+    # 3) SlideGenerator / EditingBackend をモック
     slide_gen = Mock()
     slide_gen.generate_slides = AsyncMock(return_value=Mock(total_slides=1))
     slide_gen.create_slides_from_content = AsyncMock(return_value=Mock(total_slides=2))
 
-    video_comp = Mock()
     dummy_video_path = tmp_path / "out.mp4"
     dummy_video_path.write_bytes(b"")
-    dummy_video_info = Mock()
-    dummy_video_info.file_path = dummy_video_path
-    video_comp.compose_video = AsyncMock(return_value=dummy_video_info)
+    dummy_video_info = SimpleNamespace(file_path=dummy_video_path)
+
+    timeline_planner = Mock()
+    timeline_planner.build_plan = AsyncMock(return_value={"segments": []})
+
+    editing_backend = Mock()
+    editing_backend.render = AsyncMock(return_value=dummy_video_info)
 
     pipeline = ModularVideoPipeline(
         slide_generator=slide_gen,
-        video_composer=video_comp,
+        timeline_planner=timeline_planner,
+        editing_backend=editing_backend,
     )
 
     result = await pipeline.run_csv_timeline(
@@ -69,7 +73,7 @@ async def test_run_csv_timeline_basic(tmp_path: Path):
     assert artifacts.audio.duration > 0
 
     slide_gen.create_slides_from_content.assert_awaited()
-    video_comp.compose_video.assert_awaited()
+    editing_backend.render.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -87,16 +91,20 @@ async def test_run_csv_timeline_long_line_split(tmp_path: Path):
     slide_gen = Mock()
     slide_gen.create_slides_from_content = AsyncMock(return_value=Mock(total_slides=3))
 
-    video_comp = Mock()
     dummy_video_path = tmp_path / "out.mp4"
     dummy_video_path.write_bytes(b"")
-    dummy_video_info = Mock()
-    dummy_video_info.file_path = dummy_video_path
-    video_comp.compose_video = AsyncMock(return_value=dummy_video_info)
+    dummy_video_info = SimpleNamespace(file_path=dummy_video_path)
+
+    timeline_planner = Mock()
+    timeline_planner.build_plan = AsyncMock(return_value={"segments": []})
+
+    editing_backend = Mock()
+    editing_backend.render = AsyncMock(return_value=dummy_video_info)
 
     pipeline = ModularVideoPipeline(
         slide_generator=slide_gen,
-        video_composer=video_comp,
+        timeline_planner=timeline_planner,
+        editing_backend=editing_backend,
     )
 
     overrides = {

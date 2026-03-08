@@ -23,7 +23,6 @@ from youtube.uploader import UploadResult
 
 from .interfaces import (
     IAudioGenerator,
-    IVideoComposer,
     ITimelinePlanner,
     IEditingBackend,
     IMetadataGenerator,
@@ -159,7 +158,6 @@ async def run_stage2_video_render(
     timeline_planner: Optional[ITimelinePlanner] = None,
     editing_backend: Optional[IEditingBackend] = None,
     thumbnail_generator: Optional[ThumbnailGeneratorProtocol] = None,
-    video_composer: Optional[IVideoComposer] = None,
     editing_extras: Optional[Dict[str, Any]] = None,
     progress_callback: Optional[Callable[[str, float, str], None]] = None,
 ) -> tuple[VideoInfo, Optional[Path], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
@@ -184,7 +182,7 @@ async def run_stage2_video_render(
         )
 
         if progress_callback:
-            progress_callback("動画レンダリング", 0.75, "MoviePyで動画をレンダリングします...")
+            progress_callback("動画レンダリング", 0.75, "動画をレンダリングします...")
 
         if editing_extras is None:
             editing_extras = {"export_outputs": {}}
@@ -217,12 +215,10 @@ async def run_stage2_video_render(
                 logger.warning(f"サムネイル生成に失敗しました: {thumb_err}")
                 thumbnail_path = None
     else:
-        if progress_callback:
-            progress_callback("動画合成", 0.7, "MoviePyで動画を合成します...")
-        logger.info("Stage2拡張未設定のため従来の VideoComposer を使用")
-        if video_composer is None:
-            raise ValueError("video_composer is required when timeline_planner and editing_backend are not provided")
-        video_info = await video_composer.compose_video(audio_info, slides_pkg, transcript, quality)
+        raise ValueError(
+            "timeline_planner and editing_backend are required. "
+            "VideoComposer (Path B) has been removed; use YMM4 editing backend."
+        )
 
     logger.info(f"動画合成完了: {video_info.file_path}")
     if progress_callback:

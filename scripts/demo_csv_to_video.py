@@ -3,7 +3,6 @@
 
 - CSV: A列=話者名, B列=テキスト
 - 行ごとの WAV 音声を結合して1本の音声にし、TranscriptInfo のタイミングと同期
-- SlideGenerator / VideoComposer を使って簡易動画を生成
 
 P10 (CSVタイムラインモード) のエンドツーエンド確認用のモック寄りデモです。
 本番運用前の接着テスト・ワークフロー検証に利用してください。
@@ -29,7 +28,6 @@ from config.settings import settings, create_directories
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.csv_transcript_loader import CsvTranscriptLoader
 from slides.slide_generator import SlideGenerator
-# VideoComposer removed - Path B (MoviePy) is now stubbed
 
 
 def _find_audio_files(audio_dir: Path) -> List[Path]:
@@ -165,16 +163,10 @@ async def run_demo(
     slide_generator = SlideGenerator()
     slides_pkg = await slide_generator.generate_slides(transcript, max_slides=max_slides)
 
-    # 動画合成 - Path B (MoviePy) is now stubbed, use YMM4 export instead
-    # video_composer = VideoComposer()
-    # video_info = await video_composer.compose_video(...)
     raise NotImplementedError(
         "Path B (MoviePy) is no longer supported. "
         "Use run_csv_pipeline.py with --export-ymm4 flag to generate YMM4 projects instead."
     )
-
-    # logger.success(f"動画生成完了: {video_info.file_path}")
-    # return video_info.file_path
 
 
 def main(argv: Optional[list[str]] = None) -> int:
