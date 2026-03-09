@@ -49,6 +49,9 @@ class AudioGenerator:
         self.output_dir = settings.AUDIO_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # NotebookLM 側の進行状況ポーリングをシミュレーションするための状態
+        self._job_poll_count = {}
+
         # 代替ワークフロー用: Gemini API キー設定
         self.gemini_api_key = settings.GEMINI_API_KEY if hasattr(settings, 'GEMINI_API_KEY') else None
         self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
@@ -226,6 +229,7 @@ class AudioGenerator:
         await asyncio.sleep(1.0)
 
         job_id = f"audio_job_{int(time.time())}_{session_id[-4:]}"
+        self._job_poll_count[job_id] = 0
         logger.debug(f"音声生成ジョブ開始: {job_id}")
 
         return job_id
@@ -243,19 +247,21 @@ class AudioGenerator:
         logger.info("音声生成完了を待機中...")
 
         max_wait_time = 600  # 10分
-        check_interval = 30  # 30秒間隔
+        default_check_interval = 30  # 実運用想定: 30秒間隔
+        simulated_check_interval = 1  # シミュレーション時: 1秒間隔
+        is_simulated_job = job_id in self._job_poll_count
+        check_interval = simulated_check_interval if is_simulated_job else default_check_interval
 
         for elapsed in range(0, max_wait_time, check_interval):
             logger.debug(f"生成状況確認中... ({elapsed}秒経過)")
 
-            # TODO: 実際の生成状況確認実装
             status = await self._check_generation_status(job_id)
 
             if status == "completed":
                 audio_url = await self._get_audio_download_url(job_id)
                 logger.info("音声生成完了")
                 return audio_url
-            elif status == "failed":
+            if status == "failed":
                 raise Exception("音声生成に失敗しました")
 
             await asyncio.sleep(check_interval)
@@ -272,12 +278,15 @@ class AudioGenerator:
         Returns:
             str: 生成状況 ("processing", "completed", "failed")
         """
-        # 生成状況確認のシミュレーション
-        # 実際にはブラウザ上のプログレスバーやテキストを確認する
-
-        # ジョブIDに基づいて完了したことにする（デモ・テスト用）
         logger.debug(f"ジョブ状況確認: {job_id}")
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
+
+        poll_count = int(self._job_poll_count.get(job_id, 0)) + 1
+        self._job_poll_count[job_id] = poll_count
+
+        # 3回目のポーリングまでは処理中、4回目以降で完了とみなす
+        if poll_count <= 3:
+            return "processing"
 
         return "completed"
 

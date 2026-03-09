@@ -226,10 +226,8 @@ artifacts.editing_outputs = {
 
 ```bash
 # CSV タイムラインモードで YMM4 エクスポート
-python scripts/run_csv_pipeline.py \
-  --csv data/timeline.csv \
-  --audio-dir data/audio/timeline01 \
-  --export-ymm4
+streamlit run src/web/web_app.py
+# ブラウザで「CSV Pipeline」ページを選択し、CSV/音声素材を入力して実行
 
 # 通常モードで YMM4 バックエンド使用
 # (config/settings.py で EDITING_BACKEND=ymm4 を設定)

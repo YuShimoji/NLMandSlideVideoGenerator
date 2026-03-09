@@ -14,7 +14,7 @@
 
 ### 全体フロー
 
-1. **[Python] パイプライン実行** (`run_csv_pipeline.py` or Web UI)  
+1. **[Python] パイプライン実行** (Web UI / `inspect_csv_timeline.py`)  
    出力物: `project.y4mmp`, 音声ファイル群, `ymm4_automation.ahk`
 2. **[YMM4 / AHK] プロジェクトの読み込みと確認**  
    AutoHotkey スクリプトを実行するか、手動でYMM4を開き、生成されたプロジェクトを開く。
@@ -34,7 +34,9 @@
 Web UI、または以下のコマンドを使用して CSV から YMM4用のプロジェクトファイルを生成します。
 
 ```powershell
-python scripts/run_csv_pipeline.py --csv data/timeline.csv --audio-dir data/audio/timeline01 --export-ymm4
+streamlit run src/web/web_app.py
+# ブラウザで「CSV Pipeline」ページを選択
+# CSV と音声ディレクトリを指定して実行
 ```
 
 実行後、`data/ymm4/ymm4_project_YYYYMMDD_HHMMSS/` にプロジェクトファイル群が生成されていることを確認します。

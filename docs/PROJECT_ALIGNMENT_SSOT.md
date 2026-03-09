@@ -69,7 +69,7 @@ Audience: All Agents
 |---|---|
 | 背景動画 | 必要時のみ加える |
 | 軽い演出 | zoom / pan / 字幕調整など最低限 |
-| 手動WAV + Python pipeline | 任意ツールでWAV準備 → run_csv_pipeline.py でYMM4エクスポート生成（直接mp4は不可） |
+| 手動WAV + Python pipeline | 廃止済み（2026-03-08）。現行は Web UI の CSV Pipeline でYMM4エクスポート生成 |
 
 ### Optional
 

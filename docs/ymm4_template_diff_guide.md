@@ -125,14 +125,14 @@ CSVの話者名をキーとして、対応する色を指定します。
 
 ```bash
 export YMM4_TEMPLATE_DIFF_FILE=/path/to/my_custom_diff.json
-python scripts/run_csv_pipeline.py --csv ... --audio-dir ... --export-ymm4
+streamlit run src/web/web_app.py  # CSV Pipeline ページで実行
 ```
 
 ### 方法3: 環境変数でJSON直接指定
 
 ```bash
 export YMM4_TEMPLATE_DIFF='{"subtitle_style": {"font_size": 36}}'
-python scripts/run_csv_pipeline.py --csv ... --audio-dir ... --export-ymm4
+streamlit run src/web/web_app.py  # CSV Pipeline ページで実行
 ```
 
 ---

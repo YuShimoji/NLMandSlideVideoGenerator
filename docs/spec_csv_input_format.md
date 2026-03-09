@@ -178,7 +178,7 @@ Speaker1,では始めましょう
 
 **実行:**
 ```bash
-python scripts/run_csv_pipeline.py --csv timeline.csv --audio-dir audio/
+python scripts/inspect_csv_timeline.py --csv timeline.csv --audio-dir audio/
 ```
 
 ### 4.2 2話者対話のサンプル
