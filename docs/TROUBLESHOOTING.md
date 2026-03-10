@@ -156,7 +156,7 @@ Get-Content $logPath -Tail 50
 
 **Symptoms:**
 - `venv\Scripts\activate` doesn't work
-- ImportError: No module named 'moviepy'
+- ImportError for missing packages
 - Wrong Python version
 
 **Diagnosis:**
@@ -183,10 +183,13 @@ Test-Path .\venv
 **Expected Environment:**
 ```
 Python 3.11.0
-moviepy==1.0.3
 pillow>=9.0.0
 pandas>=1.5.0
+streamlit>=1.28.0
+google-generativeai (if using Gemini)
 ```
+
+**注**: MoviePy は 2026-03-07 に削除されました。動画生成は YMM4 を使用します。
 
 ---
 

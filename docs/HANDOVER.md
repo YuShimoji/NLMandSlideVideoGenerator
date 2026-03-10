@@ -21,7 +21,7 @@ Type: Session 6 Handover
 ### Completed Work
 1. **E2Eパイプライン調査**: Path A全体フロー調査、ギャップ特定
 2. **YMM4プラグインデプロイ**: NLMSlidePlugin.dll + Core.dll をYMM4 plugin dirに配置
-3. **Voice自動生成プラン策定**: plan file `unified-imagining-feather.md` (approved)
+3. **Voice自動生成プラン策定**: `docs/ymm4_export_spec.md` セクション10 (approved)
 4. **テスト確認**: Python 67/1, .NET 34/0
 
 ### Key Discovery
@@ -71,4 +71,4 @@ Type: Session 6 Handover
 ## Primary References
 
 - `docs/PROJECT_ALIGNMENT_SSOT.md`
-- Plan file: `.claude/plans/unified-imagining-feather.md`
+- Voice自動生成プラン: `docs/ymm4_export_spec.md` セクション10

@@ -7,6 +7,10 @@ Created: 2026-03-02T22:00:00+09:00
 Completed: 2026-03-03T
 Report: AI_CONTEXT.md
 
+> **注記 (2026-03-10)**: このタスクで抽出された `csv_pipeline_runner.py` および `run_csv_pipeline.py` は、
+> 2026-03-08 の Path B 削除に伴い廃止されました。このドキュメントはリファクタリング作業の履歴記録として保持されています。
+> 現在の CSV パイプライン実行は Web UI の「CSV Pipeline」ページを使用してください。
+
 ## Objective
 - `src/core/pipeline.py`（1384行）を保守可能な規模に分割する
 - `run()` メソッドと `run_csv_timeline()` メソッドの重複コードを統合する

@@ -212,7 +212,7 @@
     "status": "todo",
     "pct": 0,
     "cat": "plugin",
-    "file": ".claude/plans/unified-imagining-feather.md",
+    "file": "docs/ymm4_export_spec.md",
     "summary": "CSVインポート時のYMM4ボイス自動生成UI統合 (VoiceSpeakerDiscovery + CsvImportDialog拡張)"
   }
 ]

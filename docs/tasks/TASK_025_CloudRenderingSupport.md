@@ -1,10 +1,15 @@
 # Task: クラウドレンダリング対応
-Status: BACKLOG
+Status: BACKLOG (要再検討)
 Tier: 3
 Branch: master
 Owner: TBD
 Created: 2026-03-02T22:00:00+09:00
 Report: (未作成)
+
+> **注記 (2026-03-10)**: このタスクは MoviePy バックエンドを前提に計画されていましたが、
+> 2026-03-08 に MoviePy は削除され、現在は YMM4 のみがレンダリングを担当しています。
+> クラウドレンダリングを実装する場合は、YMM4 をクラウド環境で動作させる方式に再設計が必要です。
+> このタスクは現在の仕様に合わせて見直しが必要です。
 
 ## Objective
 - 動画レンダリング処理をクラウド環境（AWS/GCP/Azure）で実行可能にする
@@ -12,10 +17,12 @@ Report: (未作成)
 - IEditingBackend インターフェースの拡張として、クラウドバックエンドを追加する
 
 ## Context
-- 現在のレンダリング: ローカル MoviePy + FFmpeg（CPU依存、10分動画で5-10分）
+- **現在のレンダリング**: YMM4（Windows GUI依存、ローカル実行のみ）
+- **削除済み**: MoviePy バックエンド（2026-03-08 削除）
 - IEditingBackend プロトコル: `src/core/interfaces.py` で定義済
-- 既存バックエンド: MoviePyEditingBackend, YMM4EditingBackend
+- 既存バックエンド: YMM4EditingBackend のみ
 - 想定ユースケース: 長尺動画（30分+）、4K出力、バッチ処理
+- **課題**: YMM4 は Windows デスクトップアプリのため、クラウド実行には仮想 Windows 環境が必要
 
 ## Deliverables
 
@@ -36,7 +43,7 @@ Report: (未作成)
 
 #### A-3: レンダリングワーカー
 - [ ] `docker/render-worker/Dockerfile` 作成
-  - Python + MoviePy + FFmpeg
+  - **要再設計**: YMM4 を Windows コンテナで実行する方式、または代替レンダリングエンジンを検討
   - REST API で render ジョブ受付
 - [ ] `docker/render-worker/worker.py` 作成
   - ジョブキュー消費
@@ -57,7 +64,7 @@ Report: (未作成)
 | 1 | ローカルDocker | `docker build -t render-worker .` → `docker run` | ワーカー起動、ヘルスチェック応答 |
 | 2 | ジョブ投入 | REST API でレンダリングジョブ送信 | ジョブID返却、ステータス追跡可能 |
 | 3 | レンダリング完了 | サンプルデータでE2E実行 | 動画ファイル生成、ダウンロード可能 |
-| 4 | フォールバック | ワーカー停止状態で実行 | ローカルMoviePyにフォールバック |
+| 4 | フォールバック | ワーカー停止状態で実行 | ローカル YMM4 にフォールバック |
 | 5 | コスト確認 | AWS/GCPでの実行コスト計測 | 10分動画あたりの概算コスト算出 |
 
 ## DoD (Definition of Done)
@@ -72,8 +79,12 @@ Report: (未作成)
 - クラウドアカウント（AWS/GCP/Azure）
 
 ## Technical Notes
-- MoviePy + FFmpeg はCPU依存のため、GPU対応は将来タスク
-- 初期はシンプルなHTTP APIベースのワーカーから始める
+- YMM4 は Windows GUI アプリのため、クラウド実行には以下の選択肢がある:
+  1. Windows Server コンテナ + RDP/仮想デスクトップ環境
+  2. 代替レンダリングエンジン（FFmpeg 直接、または他のライブラリ）への切り替え
+  3. YMM4 の CLI モードまたは API モードの調査（存在する場合）
+- GPU 対応は将来タスク
+- 初期はシンプルな HTTP API ベースのワーカーから始める
 - コンテナオーケストレーション（ECS/Cloud Run）は第2フェーズ
 
 ## Estimated Effort

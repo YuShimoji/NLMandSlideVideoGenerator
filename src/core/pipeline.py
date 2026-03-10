@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from typing import List, Optional, Dict, Any, Callable
-from pathlib import Path
 
 from config.settings import create_directories
 

@@ -176,10 +176,13 @@ Speaker1,では始めましょう
 003.wav  (「では始めましょう」の音声)
 ```
 
-**実行:**
+**検証（オプション）:**
 ```bash
+# CSV と音声ファイルの整合性をチェック（補助スクリプト）
 python scripts/inspect_csv_timeline.py --csv timeline.csv --audio-dir audio/
 ```
+
+**本番実行:** Web UI の「CSV Pipeline」ページを使用してください。
 
 ### 4.2 2話者対話のサンプル
 

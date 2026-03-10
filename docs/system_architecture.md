@@ -128,7 +128,7 @@ classDiagram
 ### 主要インターフェイス
 - `IScriptProvider`: NotebookLM、Gemini、手動CSVなどから `ScriptBundle` を生成。
 - `IVoicePipeline`: TTS/収録音源を共通 `AudioInfo` 形式へ正規化。
-- `IEditingBackend`: MoviePy・YMM4などレンダリング基盤を差し替え。
+- `IEditingBackend`: YMM4 レンダリング基盤を提供（MoviePy バックエンドは 2026-03-07 に削除済み）。
 - `IPublisher`: YouTube/TikTok/ローカル出力等をモジュラー接続。
 
 ## フロー詳細

@@ -34,6 +34,8 @@
 
 ### 2.1 設計上のワークフロー（理想形）
 
+**注**: MoviePy フォールバックは 2026-03-08 に削除されました。現在は YMM4 が唯一のレンダリング手段です。
+
 ```
 ┌─────────────────┐
 │ ScriptBundle    │
@@ -48,7 +50,6 @@
 │  2. YMM4 API でタイムライン挿入         │  # 主に .NET プラグインAPI を想定
 │  3. YMM4 API で書き出し                 │
 │     └─ 失敗時: AutoHotkey でGUI操作     │
-│        └─ 失敗時: MoviePy フォールバック │
 └─────────────────────────────────────────┘
          │
          ▼
@@ -59,7 +60,7 @@
 └─────────────────┘
 ```
 
-### 2.2 現状の実装ワークフロー
+### 2.2 現状の実装ワークフロー（Path A 一本化後）
 
 ```
 ┌─────────────────┐
@@ -77,27 +78,27 @@
 │ 4. slides_payload.json 出力             │
 │ 5. CSV / 音声アセットコピー             │
 │ 6. AutoHotkey スクリプト生成 (PoC)      │
-│ 7. MoviePy フォールバックで動画生成     │
-│ 8. render_metadata.json 出力            │
+│ 7. render_metadata.json 出力            │
 └─────────────────────────────────────────┘
          │
          ▼
 ┌─────────────────┐
-│ VideoInfo       │ ← MoviePy で生成
-│ YMM4 Project    │ ← 手動編集用
+│ YMM4 Project    │ ← ユーザーがYMM4で開き、音声生成+レンダリング
 │ export_outputs  │
 └─────────────────┘
 ```
 
-### 2.3 設計と実装のギャップ
+### 2.3 設計と実装のギャップ（2026-03-10 更新）
 
 | 設計項目 | 設計意図 | 現状 | ギャップ |
 |----------|----------|------|----------|
-| YMM4 API 連携 | API 経由でタイムライン挿入 | 未実装 | 大 |
-| 書き出し方式 | API → AHK → MoviePy の段階フォールバック | 常に MoviePy | 中 |
+| YMM4 API 連携 | API 経由でタイムライン挿入 | .NET Plugin で実装済み | なし |
+| 書き出し方式 | YMM4 で音声生成+レンダリング | YMM4 手動実行 | 自動化は今後の課題 |
 | AutoHotkey | GUI 操作で書き出し | PoC（プレースホルダー） | 中 |
 | テンプレート差分 | 差分適用でカスタマイズ | プロトタイプのみ | 中 |
 | アセット管理 | timeline_plan/slides_payload 出力 | 実装済み | なし |
+
+**注**: MoviePy フォールバックは 2026-03-08 に削除されました。
 
 ---
 
@@ -357,8 +358,10 @@ AutoHotkey.exe "data/ymm4/ymm4_project_XXXXXX/ymm4_automation.ahk"
 `ExportFallbackManager` クラスが複数の編集バックエンドを優先順位付きで管理し、失敗時に自動的にフォールバックする。
 
 ```
-優先順位: YMM4 API（プラグインAPI 等, 将来実装） → YMM4 AutoHotkey → MoviePy/FFmpeg
+優先順位: YMM4 .NET Plugin API（実装済み） → YMM4 AutoHotkey（PoC）
 ```
+
+**注**: MoviePy/FFmpeg フォールバックは 2026-03-08 に削除されました。
 
 ### 7.2 使用方法
 
@@ -478,7 +481,7 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 CSVインポート時にYMM4内蔵の音声エンジンで自動的にボイスを生成する機能。
 
-**Plan file**: `.claude/plans/unified-imagining-feather.md`
+**Plan**: 本セクション (旧plan file: `.claude/plans/unified-imagining-feather.md` は削除済み)
 
 ### 10.2 アーキテクチャ
 

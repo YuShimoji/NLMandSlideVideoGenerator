@@ -54,7 +54,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
   - カメラワーク・テロップ・立ち絵制御
   - `EditingBackend`:
     - YMM4 API を利用した `.y4mmp` / `.exo` テンプレート複製とタイムライン生成
-    - MoviePy 合成（2026-03-07削除済み）
+    - **注**: MoviePy バックエンドは 2026-03-07 に削除されました。現在は YMM4 のみがサポートされています。
 - **出力**: `VideoInfo`, `TimelinePlan`, YMM4 プロジェクトファイル, プレビュー用動画
 - **特徴**: YMM4 を利用する場合は GUI での手動調整を前提に、差分適用と再レンダリングを自動化
 
@@ -321,32 +321,26 @@ POST /api/v1/templates/sync
 - **キューシステム**: Celery + Redis
 
 ### 5.2 主要ライブラリ
+
+**注**: このセクションは古い仕様を含んでいます。正確な依存関係は `requirements.txt` を参照してください。MoviePy は 2026-03-07 に削除されました。
+
+主要なライブラリ（2026-03 時点）:
 ```python
 # 動画・音声処理
-moviepy==1.0.3
-pydub==0.25.1
+pydub  # 音声処理のみ（動画処理は YMM4 に移行）
 
 # 画像処理
-Pillow==10.0.0
-opencv-python==4.8.0
+Pillow  # スライド生成
 
 # API クライアント
-google-api-python-client==2.100.0
-google-auth-oauthlib==1.0.0
+google-api-python-client
+google-generativeai  # Gemini
 
-# Web スクレイピング
-requests==2.31.0
-beautifulsoup4==4.12.2
-
-# 非同期処理
-celery==5.3.1
-redis==4.6.0
+# Web フレームワーク
+streamlit  # Web UI
 
 # テスト・品質管理
-pytest==7.4.0
-black==23.7.0
-flake8==6.0.0
-mypy==1.5.0
+pytest
 ```
 
 ### 5.3 API 仕様
