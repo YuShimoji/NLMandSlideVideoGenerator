@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using NLMSlidePlugin.Core;
+using NLMSlidePlugin.VoicePlugin;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using YukkuriMovieMaker.Plugin.Voice;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
 
@@ -22,9 +24,9 @@ namespace NLMSlidePlugin.TimelinePlugin
     {
         private Timeline? timeline;
         private string csvPath = string.Empty;
-        private string audioDirectory = string.Empty;
         private string statusMessage = "Select a CSV file.";
         private bool addSubtitles = true;
+        private bool generateVoice = true;
         private List<CsvTimelineItem> previewItems = new();
         private double progressValue;
 
@@ -47,16 +49,6 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
-        public string AudioDirectory
-        {
-            get => audioDirectory;
-            set
-            {
-                audioDirectory = value;
-                OnPropertyChanged();
-            }
-        }
-
         public string StatusMessage
         {
             get => statusMessage;
@@ -73,6 +65,16 @@ namespace NLMSlidePlugin.TimelinePlugin
             set
             {
                 addSubtitles = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool GenerateVoice
+        {
+            get => generateVoice;
+            set
+            {
+                generateVoice = value;
                 OnPropertyChanged();
             }
         }
@@ -118,27 +120,8 @@ namespace NLMSlidePlugin.TimelinePlugin
             if (dialog.ShowDialog() != true) return;
 
             CsvPath = dialog.FileName;
-            var csvDir = Path.GetDirectoryName(CsvPath) ?? string.Empty;
-            var defaultAudioDir = Path.Combine(csvDir, "audio");
-            AudioDirectory = Directory.Exists(defaultAudioDir) ? defaultAudioDir : csvDir;
             StatusMessage = "CSV selected.";
             AppendLog($"CSV selected: {CsvPath}");
-        }
-
-        private void BrowseAudioButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new OpenFileDialog
-            {
-                Title = "Select Any File in Audio Directory",
-                Filter = "All Files (*.*)|*.*",
-                FileName = "Select Folder"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                AudioDirectory = Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
-                AppendLog($"Audio directory selected: {AudioDirectory}");
-            }
         }
 
         private async void PreviewButton_Click(object sender, RoutedEventArgs e)
@@ -165,10 +148,9 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                 // Capture UI state before Task.Run to avoid cross-thread access
                 string capturedCsvPath = CsvPath;
-                string capturedAudioDir = AudioDirectory;
                 var result = await Task.Run(() =>
                 {
-                    var reader = new CsvTimelineReader(capturedCsvPath, capturedAudioDir);
+                    var reader = new CsvTimelineReader(capturedCsvPath);
                     return reader.ReadTimelineWithErrors(progress);
                 });
 
@@ -178,10 +160,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                 foreach (var warn in result.Warnings) AppendLog($"[WARN] {warn}");
                 foreach (var err in result.Errors) AppendLog($"[ERR] {err}");
 
-                StatusMessage = result.Errors.Count > 0 
-                    ? $"Found {result.Items.Count} items with {result.Errors.Count} errors." 
+                StatusMessage = result.Errors.Count > 0
+                    ? $"Found {result.Items.Count} items with {result.Errors.Count} errors."
                     : $"Found {result.Items.Count} items.";
-                
+
                 AppendLog($"Preview done: {result.Items.Count} items, {result.Errors.Count} errors, {result.Warnings.Count} warnings.");
             }
             catch (Exception ex)
@@ -209,20 +191,16 @@ namespace NLMSlidePlugin.TimelinePlugin
                 StatusMessage = "Importing to timeline...";
                 ProgressValue = 0;
                 AppendLog("Starting timeline import...");
-                WriteRuntimeLog($"Importing {PreviewItems.Count} items.");
+                WriteRuntimeLog($"Importing {PreviewItems.Count} items. GenerateVoice={GenerateVoice}");
 
-                var progress = new Progress<int>(v => ProgressValue = v);
-                
-                var result = await ImportToTimelineAsync(PreviewItems, AddSubtitles, progress);
-
-                ProgressValue = 100;
-                StatusMessage = $"Imported {result.ImportedRows} items.";
-                AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TimelineItemsAfterImport}");
-
-                MessageBox.Show(
-                    $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
-                    $"Successfully imported {result.ImportedRows} items.",
-                    "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (GenerateVoice)
+                {
+                    await ImportWithVoiceGenerationAsync();
+                }
+                else
+                {
+                    await ImportWithoutVoiceAsync();
+                }
 
                 DialogResult = true;
                 Close();
@@ -240,12 +218,102 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
+        private async Task ImportWithVoiceGenerationAsync()
+        {
+            // VoiceSpeaker 探索
+            AppendLog("Discovering voice speakers...");
+            WriteRuntimeLog("VoiceSpeakerDiscovery: starting");
+
+            var speakers = VoiceSpeakerDiscovery.GetAvailableSpeakers(out var discoveryErrors);
+            foreach (var err in discoveryErrors)
+            {
+                AppendLog($"[WARN] {err}");
+                WriteRuntimeLog($"VoiceSpeakerDiscovery: {err}");
+            }
+
+            if (speakers.Count == 0)
+            {
+                AppendLog("[WARN] No voice speakers found. Falling back to import without voice.");
+                WriteRuntimeLog("VoiceSpeakerDiscovery: no speakers found, falling back");
+                await ImportWithoutVoiceAsync();
+                return;
+            }
+
+            AppendLog($"Found {speakers.Count} voice speaker(s).");
+            WriteRuntimeLog($"VoiceSpeakerDiscovery: found {speakers.Count} speakers");
+
+            // Voice出力先ディレクトリ
+            var csvDir = Path.GetDirectoryName(CsvPath) ?? string.Empty;
+            var voiceOutputDir = Path.Combine(csvDir, "voice_output");
+
+            // Timeline解決
+            if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
+            {
+                throw new InvalidOperationException($"Timeline not found: {resolveError}");
+            }
+
+            // Voice生成 + タイムライン追加
+            var voiceProgress = new Progress<VoiceGenerationProgress>(p =>
+            {
+                ProgressValue = p.PercentComplete;
+                StatusMessage = $"Generating voice: {p.Current}/{p.Total} ({p.GeneratedCount} generated, {p.SkippedCount} skipped)";
+            });
+
+            var importer = new Ymm4TimelineImporter();
+            var capturedItems = PreviewItems;
+            var capturedAddSubs = AddSubtitles;
+
+            // Voice生成はバックグラウンドスレッドで実行
+            AppendLog("Starting voice generation...");
+            var voiceResult = await Task.Run(async () =>
+            {
+                var resolver = new CsvVoiceResolver();
+                return await resolver.GenerateVoicesForTimelineAsync(
+                    capturedItems, speakers, voiceOutputDir, voiceProgress);
+            });
+
+            AppendLog($"Voice generation done: {voiceResult.GeneratedCount} generated, {voiceResult.SkippedCount} skipped, {voiceResult.FailedCount} failed");
+            foreach (var err in voiceResult.Errors) AppendLog($"[WARN] {err}");
+
+            // タイムライン追加はUIスレッドで実行
+            var dispatcher = Application.Current?.Dispatcher
+                ?? throw new InvalidOperationException("Application dispatcher is not available.");
+            var result = dispatcher.Invoke(() =>
+            {
+                return importer.AddToTimeline(capturedItems, activeTimeline, capturedAddSubs);
+            });
+
+            ProgressValue = 100;
+            StatusMessage = $"Imported {result.ImportedRows} items with voice.";
+            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TotalTimelineItems}");
+
+            MessageBox.Show(
+                $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
+                $"Imported {result.ImportedRows} items.{Environment.NewLine}" +
+                $"Voice: {voiceResult.GeneratedCount} generated, {voiceResult.SkippedCount} skipped, {voiceResult.FailedCount} failed.",
+                "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async Task ImportWithoutVoiceAsync()
+        {
+            var progress = new Progress<int>(v => ProgressValue = v);
+            var result = await ImportToTimelineAsync(PreviewItems, AddSubtitles, progress);
+
+            ProgressValue = 100;
+            StatusMessage = $"Imported {result.ImportedRows} items.";
+            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TimelineItemsAfterImport}");
+
+            MessageBox.Show(
+                $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
+                $"Successfully imported {result.ImportedRows} items.",
+                "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void SetBusy(bool isBusy)
         {
             if (PreviewButton != null) PreviewButton.IsEnabled = !isBusy;
             if (ImportButton != null) ImportButton.IsEnabled = !isBusy;
             if (BrowseCsvButton != null) BrowseCsvButton.IsEnabled = !isBusy;
-            if (BrowseAudioButton != null) BrowseAudioButton.IsEnabled = !isBusy;
         }
 
         private async Task<ImportExecutionResult> ImportToTimelineAsync(List<CsvTimelineItem> items, bool addSubtitles, IProgress<int> progress)
@@ -367,12 +435,6 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                 if (allTimelineItems.Count > 0)
                 {
-                    // TryAddItems(IItem[] items, int frame, int layer, bool isUndoEnabled)
-                    // Note: If we use this overload, it might offset ALL items by (frame, layer).
-                    // We should probably add them one by one or use a different approach if they have different start frames.
-                    // Actually, activeTimeline.Items.Add(item) followed by Refresh might be better if we handle Undo ourselves.
-                    // But TryAddItems is safer for YMM4's internal state.
-                    
                     foreach (var item in allTimelineItems)
                     {
                         activeTimeline.Items.Add(item);

@@ -30,27 +30,17 @@
             </Grid>
         </GroupBox>
 
-        <!-- 音声ディレクトリ -->
-        <GroupBox Grid.Row="1" Header="音声ファイルディレクトリ" Margin="0,0,0,10">
-            <Grid Margin="5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="AudioDirTextBox" Grid.Column="0" IsReadOnly="True"
-                         Text="{Binding AudioDirectory, Mode=TwoWay}"/>
-                <Button x:Name="BrowseAudioButton" Grid.Column="1" Content="参照..." 
-                        Margin="5,0,0,0" Padding="15,3" Click="BrowseAudioButton_Click"/>
-            </Grid>
-        </GroupBox>
-
         <!-- オプション -->
-        <GroupBox Grid.Row="2" Header="インポートオプション" Margin="0,0,0,10">
+        <GroupBox Grid.Row="1" Header="インポートオプション" Margin="0,0,0,10">
             <StackPanel Margin="5">
+                <CheckBox x:Name="GenerateVoiceCheckBox" Content="音声を自動生成（ゆっくりボイス）"
+                          IsChecked="{Binding GenerateVoice, Mode=TwoWay}" Margin="0,0,0,5"/>
                 <CheckBox x:Name="AddSubtitlesCheckBox" Content="字幕を追加"
                           IsChecked="{Binding AddSubtitles, Mode=TwoWay}"/>
             </StackPanel>
         </GroupBox>
+
+        <!-- (Row 2 is unused after audio directory removal) -->
 
         <!-- プレビュー/ログ -->
         <GroupBox Grid.Row="3" Header="インポート情報" Margin="0,0,0,10">
