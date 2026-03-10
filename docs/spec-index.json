@@ -38,11 +38,11 @@
   {
     "id": "SP-005",
     "title": "YMM4 Integration Architecture",
-    "status": "legacy",
-    "pct": 30,
+    "status": "partial",
+    "pct": 50,
     "cat": "plugin",
     "file": "docs/ymm4_integration_arch.md",
-    "summary": "DEPRECATED: Path B (YMM4→WAV→Python) 設計。Path B削除済 (2026-03-08)"
+    "summary": "Path A単一運用の現行アーキテクチャ要約。ymm4_export_specが詳細仕様"
   },
   {
     "id": "SP-006",
@@ -77,8 +77,8 @@
     "status": "legacy",
     "pct": 40,
     "cat": "system",
-    "file": "docs/workflow_specification.md",
-    "summary": "全自動ワークフロー構想。現行SSOTはuser_guide_manual_workflow.md"
+    "file": "docs/archive/workflow_specification.md",
+    "summary": "ARCHIVED: 全自動ワークフロー構想。現行SSOTはuser_guide_manual_workflow.md"
   },
   {
     "id": "SP-010",
@@ -214,5 +214,14 @@
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
     "summary": "CSVインポート時のYMM4ボイス自動生成UI統合 (VoiceSpeakerDiscovery + CsvImportDialog拡張)"
+  },
+  {
+    "id": "SP-025",
+    "title": "E2E Verification Guide",
+    "status": "done",
+    "pct": 90,
+    "cat": "infra",
+    "file": "docs/e2e_verification_guide.md",
+    "summary": "CSV→YMM4→mp4のE2E手動検証手順書。Step 4 (Voice生成) はSP-024完了後に自動化予定"
   }
 ]

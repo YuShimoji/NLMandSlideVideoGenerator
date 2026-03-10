@@ -17,6 +17,7 @@
 
 - **運用責務境界（Web UI / CLI補助）**: docs/workflow_boundary.md 
 
+- **E2E手動検証ガイド**: `docs/e2e_verification_guide.md`
 - **YMM4 騾｣謳ｺ繧｢繝ｼ繧ｭ繝・け繝√Ε**: `docs/ymm4_integration_arch.md`
 - **YMM4 繧ｨ繧ｯ繧ｹ繝昴・繝井ｻ墓ｧ・*: `docs/ymm4_export_spec.md`
 
@@ -29,7 +30,7 @@
 
 - **髢狗匱繧ｬ繧､繝・*: `docs/development_guide.md`
 - **繧ｷ繧ｹ繝・Β莉墓ｧ俶嶌・域ｦょｿｵ/髟ｷ譛溯ｨｭ險茨ｼ・*: `docs/system_specification.md`
-- **繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ莉墓ｧ俶嶌・域ｦょｿｵ/蜈ｨ閾ｪ蜍輔ヵ繝ｭ繝ｼ・・*: `docs/workflow_specification.md`
+- **繝ｯ繝ｼ繧ｯ繝輔Ο繝ｼ莉墓ｧ俶嶌・域ｦょｿｵ/蜈ｨ閾ｪ蜍輔ヵ繝ｭ繝ｼ・・*: `docs/archive/workflow_specification.md` (ARCHIVED)
 
 ## 蜿り・ｼ亥ｱ･豁ｴ/繧ｹ繝翫ャ繝励す繝ｧ繝・ヨ・・
 
