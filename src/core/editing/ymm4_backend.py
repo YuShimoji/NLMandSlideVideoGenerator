@@ -5,7 +5,7 @@ import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 from config.settings import settings
 from ..interfaces import IEditingBackend
@@ -46,7 +46,6 @@ class YMM4EditingBackend(IEditingBackend):
         self._export_plan(project_dir, timeline_plan, audio, transcript)
         self._export_slides_payload(project_dir, extras)
         self._copy_csv_source(project_dir, extras)
-        self._copy_audio_assets(project_dir, extras)
         self._record_export_outputs(project_dir, project_file, extras)
         self._record_execution_hint(project_dir)
 
@@ -200,35 +199,6 @@ class YMM4EditingBackend(IEditingBackend):
         shutil.copy2(source, destination)
         logger.info(f"CSVをコピーしました: {destination}")
 
-    def _copy_audio_assets(self, project_dir: Path, extras: Optional[Dict[str, Any]]) -> None:
-        if not extras:
-            return
-
-        audio_dir = project_dir / "audio"
-        segments_dir = audio_dir / "segments"
-        segments_dir.mkdir(parents=True, exist_ok=True)
-
-        audio_files: Sequence[str] = extras.get("audio_files") or []
-        for idx, audio_path in enumerate(audio_files, start=1):
-            source = Path(audio_path)
-            if not source.exists():
-                logger.warning(f"セグメント音声が見つかりません: {source}")
-                continue
-
-            ext = source.suffix or ".wav"
-            destination = segments_dir / f"{idx:03d}{ext.lower()}"
-            shutil.copy2(source, destination)
-
-        combined_audio = extras.get("combined_audio_path")
-        if combined_audio:
-            combined_source = Path(combined_audio)
-            if combined_source.exists():
-                audio_dir.mkdir(parents=True, exist_ok=True)
-                destination = audio_dir / combined_source.name
-                shutil.copy2(combined_source, destination)
-            else:
-                logger.warning(f"結合音声が見つからないためコピーをスキップします: {combined_source}")
-
     def _record_export_outputs(
         self,
         project_dir: Path,
@@ -250,10 +220,6 @@ class YMM4EditingBackend(IEditingBackend):
         slides_payload_path = project_dir / "slides_payload.json"
         if slides_payload_path.exists():
             payload["slides_payload"] = str(slides_payload_path)
-
-        audio_dir = project_dir / "audio"
-        if audio_dir.exists():
-            payload["audio_dir"] = str(audio_dir)
 
         template_diff_path = project_dir / "template_diff_applied.json"
         if template_diff_path.exists():

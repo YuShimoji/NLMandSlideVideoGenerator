@@ -76,7 +76,7 @@
 │ 2. テンプレート .y4mmp 複製             │
 │ 3. timeline_plan.json 出力              │
 │ 4. slides_payload.json 出力             │
-│ 5. CSV / 音声アセットコピー             │
+│ 5. CSV ソースコピー                      │
 │ 6. AutoHotkey スクリプト生成 (PoC)      │
 │ 7. render_metadata.json 出力            │
 └─────────────────────────────────────────┘
@@ -114,15 +114,11 @@ data/ymm4/ymm4_project_YYYYMMDD_HHMMSS/
 ├── render_metadata.json       # レンダリング結果メタデータ
 ├── RUN_AHK_INSTRUCTIONS.txt   # 手動実行手順
 ├── ymm4_automation.ahk        # 生成された AutoHotkey スクリプト
-├── text/
-│   └── timeline.csv           # 元の CSV（コピー）
-└── audio/
-    ├── segments/
-    │   ├── 001.wav
-    │   ├── 002.wav
-    │   └── ...
-    └── combined.wav           # 結合音声（存在する場合）
+└── text/
+    └── timeline.csv           # 元の CSV（コピー）
 ```
+
+> 音声ファイル(WAV)はPython側では生成・コピーしない。音声合成はYMM4内部で実行される。
 
 ### 3.2 timeline_plan.json
 
@@ -178,7 +174,7 @@ data/ymm4/ymm4_project_YYYYMMDD_HHMMSS/
       "start_time": 0.0,
       "end_time": 5.0,
       "text": "こんにちは、本日は...",
-      "audio_file": "/path/to/001.wav",
+      "audio_file": null,  // 音声はYMM4内部で生成（旧仕様ではWAVパスが入った）
       "subslides": [
         {
           "slide_id": 1,
@@ -213,8 +209,7 @@ artifacts.editing_outputs = {
         "project_file": "/path/to/project.y4mmp",
         "timeline_plan": "/path/to/timeline_plan.json",
         "slides_payload": "/path/to/slides_payload.json",
-        "template_diff": "/path/to/template_diff_applied.json",
-        "audio_dir": "/path/to/audio"
+        "template_diff": "/path/to/template_diff_applied.json"
     }
 }
 ```
@@ -242,7 +237,6 @@ curl -X POST http://localhost:8000/api/v1/pipeline/csv \
   -H "Content-Type: application/json" \
   -d '{
     "csv_path": "data/timeline.csv",
-    "audio_dir": "data/audio/timeline01",
     "export_ymm4": true
   }'
 ```
@@ -250,8 +244,8 @@ curl -X POST http://localhost:8000/api/v1/pipeline/csv \
 ### 4.3 手動 YMM4 編集
 
 1. 出力された `project.y4mmp` を YMM4 で開く
-2. `timeline_plan.json` / `slides_payload.json` を参照してタイムラインを構築
-3. `audio/segments/` 内の音声ファイルを配置
+2. NLMSlidePlugin で `text/timeline.csv` をインポートしてタイムラインを構築
+3. YMM4 内蔵の音声エンジンでボイスを生成
 4. YMM4 で書き出し
 
 ---
