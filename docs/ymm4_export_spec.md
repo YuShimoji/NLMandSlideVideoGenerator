@@ -1,7 +1,7 @@
 # YMM4 エクスポート仕様
 
-**最終更新**: 2026-03-09
-**ステータス**: 実装済み（Path A一本化、Voice自動生成plan承認済）
+**最終更新**: 2026-03-14
+**ステータス**: Voice自動生成完了 / スライド画像配置は未実装（セクション11参照）
 
 ---
 
@@ -25,7 +25,7 @@
 | 音声アセットコピー | ✅ 実装済み | |
 | AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
 | YMM4 NLMSlidePlugin (CSV Import) | ✅ 実装済み | CsvImportDialog + Ymm4TimelineImporter |
-| YMM4 Voice自動生成 UI接続 | ⚠️ Plan承認済 | VoiceSpeakerDiscovery + CsvImportDialog拡張 |
+| YMM4 Voice自動生成 UI接続 | ✅ 実装済み | VoiceSpeakerDiscovery + CsvImportDialog拡張 (SP-024) |
 | 動画出力 | ❌ 削除済み | MoviePy backend 削除済み (2026-03-08) |
 
 ---
@@ -268,7 +268,7 @@ YMM4_SETTINGS = {
 
 PIPELINE_COMPONENTS = {
     # YMM4 バックエンドを使用する場合
-    "editing_backend": "ymm4",  # or "moviepy"
+    "editing_backend": "ymm4",
 }
 ```
 
@@ -395,12 +395,7 @@ configs = [
         timeout_seconds=300.0,
         retry_count=2,
     ),
-    BackendConfig(
-        backend_type=BackendType.MOVIEPY,
-        enabled=True,
-        priority=2,
-        timeout_seconds=180.0,
-    ),
+    # MoviePy backend は 2026-03-08 に削除済み
 ]
 
 manager = ExportFallbackManager(configs=configs)
@@ -502,19 +497,61 @@ CsvImportDialog (WPF)
 |---|---|---|
 | CsvVoiceResolver.GenerateVoicesForTimelineAsync | ✅ 実装済み | バックエンドロジック完成 |
 | Ymm4TimelineImporter.AddToTimelineWithVoiceAsync | ✅ 実装済み | Timeline統合完成 |
-| VoiceSpeakerDiscovery | ❌ 未実装 | IVoiceSpeaker enumeration (YMM4 SDK依存) |
-| CsvImportDialog UI拡張 | ❌ 未実装 | Checkbox + output dir picker |
-| ImportWithVoiceGenerationAsync | ❌ 未実装 | Dialog内のイベントハンドラ |
+| VoiceSpeakerDiscovery | ✅ 実装済み (2026-03-11) | 3層リフレクションフォールバック |
+| CsvImportDialog UI拡張 | ✅ 実装済み (2026-03-11) | 「音声を自動生成」チェックボックス（デフォルトON） |
+| ImportWithVoiceGenerationAsync | ✅ 実装済み (2026-03-11) | Dialog内の統合イベントハンドラ |
 
-### 10.4 ブロッカー
+### 10.4 YMM4「台本」機能との関係
+
+YMM4自体に台本読み込み+音声生成機能が内蔵されている。
+NLMSlidePluginのVoice自動生成は、CSVインポートと音声生成を一括で行う利便性を提供するが、
+YMM4の台本機能で同等のことが手動で実現可能。
+
+| 手段 | 操作 | 自動化度 |
+|------|------|----------|
+| YMM4 台本機能（内蔵） | YMM4 GUIで台本読み込み→音声生成 | 手動 |
+| NLMSlidePlugin Voice生成 | CSVインポート時にチェックボックスONで一括生成 | 半自動 |
+
+現時点ではどちらの手段でもE2E達成可能。プラグインの価値は一括処理の効率化にある。
+
+### 10.5 旧ブロッカー（解決済み）
 
 YMM4 SDK に IVoiceSpeaker 一覧を取得する公式 API が存在しない。
 
-**回避策**: リフレクションによる3層フォールバック（plan参照）
+**解決策**: VoiceSpeakerDiscovery による3層リフレクションフォールバック（実装済み）
 
 ---
 
-## 11. 変更履歴
+## 11. スライド画像配置（未実装 — 最大ギャップ）
+
+### 11.1 現状
+
+プロジェクト名「NLMandSlide**Video**Generator」の核心機能であるスライド画像のタイムライン配置が未実装。
+
+現在のCsvImportDialogは AudioItem（音声）+ TextItem（字幕）のみをタイムラインに配置する。
+slides_payload.json はPython側で出力されるが、YMM4プラグイン側でそれを消費してImageItemを配置する実装がない。
+
+### 11.2 最終形の選択肢（未決定）
+
+| 手段 | 概要 | 利点 | 課題 |
+|------|------|------|------|
+| A: スライド画像自動配置 | slides_payload.jsonから画像パスを読み込み、YMM4 ImageItemとしてタイムラインに配置 | 全自動 | 画像素材の調達が別途必要 |
+| B: YMM4テキストテンプレート | YMM4のテンプレートに説明文を流し込み、図を手動で乗せる | YMM4の表現力を活用 | テンプレート設計が必要 |
+| C: 外部画像自動取得 | Web上から関連画像を自動取得してスライドに配置 | 素材調達の自動化 | 著作権・品質の制御が困難 |
+
+### 11.3 視覚的要件（ユーザー定義）
+
+- 画面全体を埋める絵と説明
+- 何らかの動きが画面内にあること（簡単な図のアニメーション、位置交換など）
+- 視聴者が受け容れやすい表現
+
+### 11.4 次のステップ
+
+方針決定が必要（HUMAN_AUTHORITY領域）。
+
+---
+
+## 12. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
@@ -522,3 +559,4 @@ YMM4 SDK に IVoiceSpeaker 一覧を取得する公式 API が存在しない。
 | 2025-11-30 | AutoHotkey連携セクション更新（C3-4完了） |
 | 2025-12-01 | フォールバック戦略セクション追加（C3-3完了） |
 | 2026-03-09 | Path A一本化反映、Voice自動生成plan追加 |
+| 2026-03-14 | セクション10実装状況更新(全完了)、セクション11スライド配置ギャップ追加、MoviePyレガシー参照修正 |
