@@ -14,7 +14,7 @@ Type: Session 6 Handover
 - **DONE**: `TASK_024` リファクタリング
 - **CLOSED**: `TASK_022` VOICEVOX統合 (WONTFIX)
 - **IN_PROGRESS**: `TASK_023` E2E実証 — Voice自動生成UI接続が次のブロッカー
-- **NEXT**: VoiceSpeakerDiscovery実装 → CsvImportDialog voice生成接続 → E2E手動検証
+- **NEXT**: TASK_023 E2E手動検証 (YMM4 GUIでCSVインポート→Voice自動生成→mp4レンダリング)
 
 ## Session 6 Summary (2026-03-09)
 
@@ -25,9 +25,9 @@ Type: Session 6 Handover
 4. **テスト確認**: Python 67/1, .NET 34/0
 
 ### Key Discovery
-- CsvImportDialog → voice生成UIが**未接続**
-- バックエンド (`CsvVoiceResolver`, `AddToTimelineWithVoiceAsync`) は実装済み
-- Missing piece: `VoiceSpeakerDiscovery` (AppDomain reflection でIVoiceSpeaker一覧取得)
+- SP-024完了: CsvImportDialog + VoiceSpeakerDiscovery + CsvVoiceResolver が接続済み
+- 「音声を自動生成」チェックボックスONでCSVインポート時にVoice自動生成が実行される
+- Voice Speaker未検出時は自動フォールバック（Voiceなしインポート）
 
 ## Quality Gate
 
@@ -63,8 +63,8 @@ Type: Session 6 Handover
 
 | 尺度 | タスク | 状態 |
 |---|---|---|
-| 短期 | Voice自動生成UI接続 | NEXT (plan approved) |
-| 短期 | TASK_023 E2E完走 (YMM4 GUI手動検証) | BLOCKED on voice UI |
+| 短期 | Voice自動生成UI接続 | DONE (SP-024) |
+| 短期 | TASK_023 E2E完走 (YMM4 GUI手動検証) | NEXT |
 | 中期 | ワークフロー標準化 | TODO |
 | 長期 | 品質成熟 | TODO |
 
