@@ -209,8 +209,8 @@
   {
     "id": "SP-024",
     "title": "YMM4 Voice Auto-Generation Plan",
-    "status": "todo",
-    "pct": 0,
+    "status": "done",
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
     "summary": "CSVインポート時のYMM4ボイス自動生成UI統合 (VoiceSpeakerDiscovery + CsvImportDialog拡張)"
@@ -222,6 +222,6 @@
     "pct": 90,
     "cat": "infra",
     "file": "docs/e2e_verification_guide.md",
-    "summary": "CSV→YMM4→mp4のE2E手動検証手順書。Step 4 (Voice生成) はSP-024完了後に自動化予定"
+    "summary": "CSV→YMM4→mp4のE2E手動検証手順書。Step 4 (Voice生成) はSP-024完了済"
   }
 ]

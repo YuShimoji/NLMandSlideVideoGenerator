@@ -36,15 +36,15 @@
 - CIワークフロー11→6整理完了 - task-validation, documentation, openspec×3削除。
 - OpenSpecフレームワーク削除完了 - spec 0件ロード、import broken、ci-mainと重複のため。
 
-## 品質指標（2026-03-07）
+## 品質指標（2026-03-13）
 
 | 指標 | 値 | 備考 |
 | :--- | :--- | :--- |
 | Ruff errors | **0** | 995→0 (whitespace 977 + code quality 18) |
 | Mypy errors | **0** | 228→0 (76 files checked) |
-| Python Tests | **97 passed, 5 deselected** | Path B dead code削除に伴いテスト整理 |
+| Python Tests | **69 passed, 1 deselected** | Path B完全削除+WAVコピーロジック除去後 |
 | .NET Build | **0 warnings, 0 errors** | CS1998警告解消 |
-| .NET Tests | **19 passed** | Core分離後も全通過 |
+| .NET Tests | **34 passed** | Core分離後も全通過。DOTNET_ROOT修正済 |
 | CI workflows | **6/6 green** | 11→6整理完了、deprecated actions全修正 |
 | Health Score | **98/100 (A+)** | 残: テストカバレッジ拡充のみ |
 

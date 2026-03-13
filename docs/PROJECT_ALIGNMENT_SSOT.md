@@ -25,13 +25,13 @@ Audience: All Agents
 | `TASK_015` CI/CD強化 | DONE | CIワークフロー11→6整理、.NET Core分離でubuntu CI、deprecated actions修正、全グリーン |
 | `TASK_021` コード品質 | DONE | mypy 0 errors (76 files), ruff 0 |
 | `TASK_022` VOICEVOX統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
-| `TASK_023` E2E実証 | IN_PROGRESS | YMM4 Voice自動生成plan承認済 (docs/ymm4_export_spec.md セクション10)。実装待ち |
+| `TASK_023` E2E実証 | IN_PROGRESS | SP-024 Voice自動生成UI実装完了。YMM4 GUI手動検証待ち |
 | `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
 | Path B完全削除 | DONE | 15ファイル削除、7ファイル修正、コード・テスト・API・Web UI全削除 (2026-03-08) |
-| Python tests | 67 passed / 1 deselected | Path B完全削除後 |
+| Python tests | 69 passed / 1 deselected | Path B完全削除+WAVコピーロジック除去後 |
 | .NET tests | 34 passed / 0 failed | Core分離後 |
 
 ## Consistency Audit

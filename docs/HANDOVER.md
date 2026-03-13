@@ -33,7 +33,7 @@ Type: Session 6 Handover
 
 | Area | Result |
 |---|---|
-| Python tests | 67 passed, 1 deselected |
+| Python tests | 69 passed, 1 deselected |
 | .NET tests | 34 passed, 0 failures, 0 warnings |
 | CI workflows | 6/6 green |
 | Ruff | 0 errors |
