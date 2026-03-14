@@ -46,6 +46,7 @@ class YMM4EditingBackend(IEditingBackend):
         self._export_plan(project_dir, timeline_plan, audio, transcript)
         self._export_slides_payload(project_dir, extras)
         self._copy_csv_source(project_dir, extras)
+        self._assemble_csv_from_slides(project_dir, extras)
         self._record_export_outputs(project_dir, project_file, extras)
         self._record_execution_hint(project_dir)
 
@@ -198,6 +199,41 @@ class YMM4EditingBackend(IEditingBackend):
         destination = text_dir / source.name
         shutil.copy2(source, destination)
         logger.info(f"CSVをコピーしました: {destination}")
+
+    def _assemble_csv_from_slides(self, project_dir: Path, extras: Optional[Dict[str, Any]]) -> None:
+        """台本セグメント + スライドPNG → CSV自動合成 (SP-032 Gap 2)。
+
+        extras に script_bundle (Dict) と slides_dir (str/Path) が含まれている場合に実行。
+        既にCSVがコピー済みの場合は上書きしない（csv_path優先）。
+        """
+        if not extras:
+            return
+
+        script_bundle = extras.get("script_bundle")
+        slides_dir_raw = extras.get("slides_dir")
+        if not script_bundle or not slides_dir_raw:
+            return
+
+        # csv_path が既に指定されている場合、手動CSVを優先
+        csv_dest = project_dir / "text" / "timeline.csv"
+        if csv_dest.exists():
+            logger.info("CSV既存のため自動合成をスキップします")
+            return
+
+        slides_dir = Path(slides_dir_raw)
+        speaker_mapping = extras.get("speaker_mapping")
+
+        try:
+            from ..csv_assembler import CsvAssembler
+            CsvAssembler.from_script_bundle(
+                script_bundle=script_bundle,
+                slides_dir=slides_dir,
+                output_path=csv_dest,
+                speaker_mapping=speaker_mapping,
+            )
+            logger.info(f"CSV自動合成完了: {csv_dest}")
+        except Exception as err:
+            logger.warning(f"CSV自動合成に失敗しました: {err}")
 
     def _record_export_outputs(
         self,
