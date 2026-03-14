@@ -336,6 +336,11 @@ namespace NLMSlidePlugin.TimelinePlugin
                     int audioCount = 0;
                     int textCount = 0;
                     int imageCount = 0;
+                    int itemsBefore = activeTimeline.Items.Count;
+
+                    // Items is ImmutableList in v4.50+ — must reassign after each Add
+                    var itemsProp = activeTimeline.GetType().GetProperty("Items");
+                    bool itemsHasSetter = itemsProp?.SetMethod != null;
 
                     for (int i = 0; i < items.Count; i++)
                     {
@@ -345,25 +350,40 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                         if (!string.IsNullOrEmpty(item.AudioFilePath) && File.Exists(item.AudioFilePath))
                         {
-                            activeTimeline.Items.Add(new AudioItem(item.AudioFilePath) { Frame = frame, Layer = baseLayer, Length = length });
+                            var audioItem = new AudioItem(item.AudioFilePath) { Frame = frame, Layer = baseLayer, Length = length };
+                            if (itemsHasSetter)
+                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(audioItem));
+                            else
+                                activeTimeline.Items.Add(audioItem);
                             audioCount++;
                         }
 
                         if (addSubtitles && !string.IsNullOrEmpty(item.Text))
                         {
-                            activeTimeline.Items.Add(new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 1, Length = length });
+                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 1, Length = length };
+                            if (itemsHasSetter)
+                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
+                            else
+                                activeTimeline.Items.Add(textItem);
                             textCount++;
                         }
 
                         if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
                         {
-                            activeTimeline.Items.Add(new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 });
+                            var imageItem = new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 };
+                            if (itemsHasSetter)
+                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
+                            else
+                                activeTimeline.Items.Add(imageItem);
                             imageCount++;
                         }
 
                         count++;
                         progress.Report((int)(i * 100.0 / items.Count));
                     }
+
+                    int itemsAfter = activeTimeline.Items.Count;
+                    WriteRuntimeLog($"Import done: added={audioCount + textCount + imageCount}, itemsBefore={itemsBefore}, itemsAfter={itemsAfter}");
 
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
                     return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, activeTimeline.Items.Count);
@@ -455,9 +475,16 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                 if (allTimelineItems.Count > 0)
                 {
+                    // Items is ImmutableList in v4.50+ — must reassign after each Add
+                    var itemsProp = activeTimeline.GetType().GetProperty("Items");
+                    bool useSetter = itemsProp?.SetMethod != null;
+
                     foreach (var item in allTimelineItems)
                     {
-                        activeTimeline.Items.Add(item);
+                        if (useSetter)
+                            itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(item));
+                        else
+                            activeTimeline.Items.Add(item);
                     }
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
                 }
@@ -501,40 +528,52 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
 
             var mainViewModel = mainWindow.DataContext!;
+
+            // Strategy 1: MainViewModel.Timeline (some versions)
+            var directTimeline = GetPropertyValue(mainViewModel, "Timeline") as Timeline;
+            if (directTimeline is not null)
+            {
+                timeline = directTimeline;
+                detail = "source=main-viewmodel-direct";
+                return true;
+            }
+
+            // Strategy 2: MainViewModel.ActiveTimelineViewModel.Timeline (v4.50+)
+            var activeTimelineVm = GetPropertyValue(mainViewModel, "ActiveTimelineViewModel");
+            if (activeTimelineVm is not null)
+            {
+                var tlFromActive = GetPropertyValue(activeTimelineVm, "Timeline") as Timeline
+                                ?? GetFieldValue(activeTimelineVm, "timeline") as Timeline;
+                if (tlFromActive is not null)
+                {
+                    timeline = tlFromActive;
+                    detail = "source=active-timeline-viewmodel";
+                    return true;
+                }
+                WriteRuntimeLog($"ActiveTimelineViewModel found but Timeline is null. Type={activeTimelineVm.GetType().FullName}");
+            }
+
+            // Strategy 3: MainViewModel.TimelineAreaViewModel.ViewModel.Value.Timeline (v4.43)
             var timelineAreaViewModel = GetPropertyValue(mainViewModel, "TimelineAreaViewModel");
-            if (timelineAreaViewModel is null)
+            if (timelineAreaViewModel is not null)
             {
-                detail = "timeline-area-viewmodel-missing";
-                return false;
+                var reactiveViewModel = GetPropertyValue(timelineAreaViewModel, "ViewModel");
+                var timelineViewModel = reactiveViewModel is not null ? GetPropertyValue(reactiveViewModel, "Value") : null;
+                var tlFromArea =
+                    timelineViewModel is not null
+                        ? GetPropertyValue(timelineViewModel, "Timeline") as Timeline
+                          ?? GetFieldValue(timelineViewModel, "timeline") as Timeline
+                        : null;
+                if (tlFromArea is not null)
+                {
+                    timeline = tlFromArea;
+                    detail = "source=timeline-area-viewmodel-legacy";
+                    return true;
+                }
             }
 
-            var reactiveViewModel = GetPropertyValue(timelineAreaViewModel, "ViewModel");
-            if (reactiveViewModel is null)
-            {
-                detail = "timeline-area-reactive-viewmodel-missing";
-                return false;
-            }
-
-            var timelineViewModel = GetPropertyValue(reactiveViewModel, "Value");
-            if (timelineViewModel is null)
-            {
-                detail = "timeline-viewmodel-value-missing";
-                return false;
-            }
-
-            var timelineCandidate =
-                GetPropertyValue(timelineViewModel, "Timeline") as Timeline ??
-                GetFieldValue(timelineViewModel, "timeline") as Timeline;
-
-            if (timelineCandidate is null)
-            {
-                detail = "timeline-field-missing";
-                return false;
-            }
-
-            timeline = timelineCandidate;
-            detail = "source=main-window-reflection";
-            return true;
+            detail = "timeline-not-resolved";
+            return false;
         }
 
         private static object? GetPropertyValue(object instance, string propertyName)
