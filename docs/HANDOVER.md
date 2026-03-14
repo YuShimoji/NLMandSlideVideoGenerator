@@ -1,74 +1,54 @@
 # HANDOVER
 
-Timestamp: 2026-03-09T01:30:00+09:00
+Timestamp: 2026-03-14
 Actor: Claude Code (Driver)
-Type: Session 6 Handover
+Type: Session 7 Handover
 
 ## Current Status
 
-- **DONE**: `TASK_013` YMM4プラグイン本番化
-- **DONE**: `TASK_014` ゆっくりボイス経路整理
-- **DONE**: `TASK_016` Web資料収集とNLM台本調整ワークフロー
-- **DONE**: `TASK_015` CI/CD強化
-- **DONE**: `TASK_021` コード品質
-- **DONE**: `TASK_024` リファクタリング
-- **CLOSED**: `TASK_022` VOICEVOX統合 (WONTFIX)
-- **IN_PROGRESS**: `TASK_023` E2E実証 — Voice自動生成UI接続が次のブロッカー
-- **NEXT**: TASK_023 E2E手動検証 (YMM4 GUIでCSVインポート→Voice自動生成→mp4レンダリング)
+- **DONE**: SP-024 Voice自動生成UI実装
+- **DONE**: SP-026 ImageItem自動配置 (CSV 3列目方式)
+- **DONE**: 仕様整理・レガシー掃除 (backlog.md刷新、MoviePy参照確認、backup削除)
+- **IN_PROGRESS**: `TASK_023` E2E実証 — ImageItem実機テストが次のブロッカー
 
-## Session 6 Summary (2026-03-09)
+## Session 7 Summary (2026-03-14)
 
 ### Completed Work
-1. **E2Eパイプライン調査**: Path A全体フロー調査、ギャップ特定
-2. **YMM4プラグインデプロイ**: NLMSlidePlugin.dll + Core.dll をYMM4 plugin dirに配置
-3. **Voice自動生成プラン策定**: `docs/ymm4_export_spec.md` セクション10 (approved)
-4. **テスト確認**: Python 67/1, .NET 34/0
+1. **ImageItem API調査**: YMM4 DLLバイナリ解析 + .ymmpファイル逆引きでImageItemの構造を完全特定
+2. **SP-026 ImageItem自動配置実装**: CsvTimelineReader, Ymm4TimelineImporter, CsvImportDialog の3ファイル変更
+3. **ビルド確認**: NLMSlidePlugin.dll + Core.dll: 0 error, Python 69/1
+4. **仕様ドキュメント同期**: ymm4_export_spec.md, ymm4_final_workflow.md, spec-index.json, CLAUDE.md, backlog.md
+5. **レガシー掃除**: CsvImportMenuPlugin.cs.backup削除, backlog.md刷新, system_architecture.puml MoviePy修正, project_completion_report.md→archive移動
 
 ### Key Discovery
-- SP-024完了: CsvImportDialog + VoiceSpeakerDiscovery + CsvVoiceResolver が接続済み
-- 「音声を自動生成」チェックボックスONでCSVインポート時にVoice自動生成が実行される
-- Voice Speaker未検出時は自動フォールバック（Voiceなしインポート）
+- YMM4 ImageItem: `$type=YukkuriMovieMaker.Project.Items.ImageItem`, FilePath プロパティで画像パス指定
+- PlaybackRate: ImageItemは100.0 (AudioItem/TextItemの1.0とは異なる、パーセント表記)
+- Layer配置: Audio=N, Text=N+1, Image=N+2
 
 ## Quality Gate
 
 | Area | Result |
 |---|---|
 | Python tests | 69 passed, 1 deselected |
-| .NET tests | 34 passed, 0 failures, 0 warnings |
-| CI workflows | 6/6 green |
-| Ruff | 0 errors |
-| Mypy | 0 errors |
-
-## Project Policy
-
-- 最終出力ターゲット: 16:9 スライド動画
-- 音声: ゆっくりボイス優先 (Path A: YMM4内蔵)
-- Path B: 完全削除済み
-- CI方針: 最小限の必要十分
-- 仕様管理: SPEC VIEW (spec-index.json + Markdown)
+| .NET build | 0 errors, 0 warnings |
+| .NET tests | hostfxr.dll問題で実行不可 (環境依存、コード問題なし) |
 
 ## Production Path
 
-- **Path A (only)**: CSV → YMM4 (NLMSlidePlugin import → voice gen → render) → final mp4
-
-## Voice自動生成 Implementation Plan (approved)
-
-| File | Action |
-|---|---|
-| `ymm4-plugin/VoicePlugin/VoiceSpeakerDiscovery.cs` | 新規: IVoiceSpeaker一覧取得 (3層fallback) |
-| `ymm4-plugin/TimelinePlugin/CsvImportDialog.xaml` | 変更: voice生成UI追加 |
-| `ymm4-plugin/TimelinePlugin/CsvImportDialog.xaml.cs` | 変更: ImportWithVoiceGenerationAsync |
+- **Path A (only)**: CSV(話者,テキスト,画像パス) → YMM4 (NLMSlidePlugin: AudioItem+TextItem+ImageItem) → voice gen (台本機能) → render → mp4
 
 ## Horizon
 
 | 尺度 | タスク | 状態 |
 |---|---|---|
-| 短期 | Voice自動生成UI接続 | DONE (SP-024) |
-| 短期 | TASK_023 E2E完走 (YMM4 GUI手動検証) | NEXT |
-| 中期 | ワークフロー標準化 | TODO |
+| 短期 | ImageItem実機テスト (YMM4でCSVインポート→画像表示確認) | NEXT |
+| 短期 | 画像の位置・サイズ調整 (全画面フィット) | TODO |
+| 中期 | アニメーション (パン・ズーム等) | TODO |
+| 中期 | slides_payload.jsonとの統合 | TODO |
 | 長期 | 品質成熟 | TODO |
 
 ## Primary References
 
-- `docs/PROJECT_ALIGNMENT_SSOT.md`
-- Voice自動生成プラン: `docs/ymm4_export_spec.md` セクション10
+- `docs/ymm4_export_spec.md` — セクション11: ImageItem実装仕様
+- `docs/backlog.md` — 刷新済みバックログ
+- `samples/ymmp/bgtest.ymmp` — ImageItem構造の参照サンプル

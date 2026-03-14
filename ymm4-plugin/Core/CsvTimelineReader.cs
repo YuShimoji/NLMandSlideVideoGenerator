@@ -16,6 +16,7 @@ namespace NLMSlidePlugin.Core
         public string Text { get; set; } = string.Empty;
         public string? AudioFileName => $"{LineNumber:D3}.wav";
         public string? AudioFilePath { get; set; }
+        public string? ImageFilePath { get; set; }
         public double? Duration { get; set; }
         public double StartTime { get; set; }
         public double EndTime => StartTime + (Duration ?? 0);
@@ -219,11 +220,25 @@ namespace NLMSlidePlugin.Core
                 return null;
             }
 
+            string? imagePath = parts.Count >= 3 ? parts[2].Trim() : null;
+            if (!string.IsNullOrEmpty(imagePath) && !File.Exists(imagePath))
+            {
+                errors.Add(new CsvReadError
+                {
+                    LineNumber = lineNumber,
+                    RawLine = line.Length > 100 ? line.Substring(0, 100) + "..." : line,
+                    ErrorMessage = $"画像ファイルが見つかりません: {imagePath}",
+                    Severity = CsvErrorSeverity.Warning
+                });
+                imagePath = null;
+            }
+
             return new CsvTimelineItem
             {
                 LineNumber = lineNumber,
                 Speaker = speaker,
-                Text = text
+                Text = text,
+                ImageFilePath = string.IsNullOrEmpty(imagePath) ? null : imagePath
             };
         }
 

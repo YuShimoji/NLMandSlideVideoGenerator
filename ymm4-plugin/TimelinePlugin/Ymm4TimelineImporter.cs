@@ -66,7 +66,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 {
                     var execResult = AddToTimeline(items, timeline, addSubtitles);
                     result.Success = true;
-                    result.Message = $"{execResult.ImportedRows}件をタイムラインに追加しました（音声: {execResult.AudioItems}件, 字幕: {execResult.TextItems}件）";
+                    result.Message = $"{execResult.ImportedRows}件をタイムラインに追加しました（音声: {execResult.AudioItems}件, 字幕: {execResult.TextItems}件, 画像: {execResult.ImageItems}件）";
                 }
                 else
                 {
@@ -97,6 +97,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int importedRows = 0;
             int audioItemsCount = 0;
             int textItemsCount = 0;
+            int imageItemsCount = 0;
             int skippedRows = 0;
 
             var allTimelineItems = new List<IItem>();
@@ -137,6 +138,21 @@ namespace NLMSlidePlugin.TimelinePlugin
                     hasItemInRow = true;
                 }
 
+                if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
+                {
+                    var image = new ImageItem
+                    {
+                        FilePath = csvItem.ImageFilePath,
+                        Frame = startFrame,
+                        Layer = baseLayer + 2,
+                        Length = lengthFrames,
+                        PlaybackRate = 100.0
+                    };
+                    allTimelineItems.Add(image);
+                    imageItemsCount++;
+                    hasItemInRow = true;
+                }
+
                 if (hasItemInRow)
                     importedRows++;
                 else
@@ -152,7 +168,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 timeline.RefreshTimelineLengthAndMaxLayer();
             }
 
-            return new AddToTimelineResult(importedRows, audioItemsCount, textItemsCount, skippedRows, timeline.Items.Count);
+            return new AddToTimelineResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, skippedRows, timeline.Items.Count);
         }
 
         /// <summary>
@@ -214,6 +230,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         int ImportedRows,
         int AudioItems,
         int TextItems,
+        int ImageItems,
         int SkippedRows,
         int TotalTimelineItems);
 

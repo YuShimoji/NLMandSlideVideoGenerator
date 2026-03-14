@@ -117,10 +117,10 @@ note right of TTSInt
 end note
 
 note right of VideoComp
-  動画合成エンジン
-  - MoviePy統合
-  - 字幕同期
-  - エフェクト適用
+  動画合成エンジン (YMM4一本化)
+  - NLMSlidePlugin (CSVインポート)
+  - AudioItem + TextItem + ImageItem配置
+  - Voice生成 (YMM4台本機能)
 end note
 
 @enduml

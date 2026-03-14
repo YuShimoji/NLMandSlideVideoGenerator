@@ -285,11 +285,11 @@ namespace NLMSlidePlugin.TimelinePlugin
 
             ProgressValue = 100;
             StatusMessage = $"Imported {result.ImportedRows} items with voice.";
-            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TotalTimelineItems}");
+            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, Image={result.ImageItems}, TotalTimeline={result.TotalTimelineItems}");
 
             MessageBox.Show(
                 $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
-                $"Imported {result.ImportedRows} items.{Environment.NewLine}" +
+                $"Imported {result.ImportedRows} items (Image: {result.ImageItems}).{Environment.NewLine}" +
                 $"Voice: {voiceResult.GeneratedCount} generated, {voiceResult.SkippedCount} skipped, {voiceResult.FailedCount} failed.",
                 "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -301,11 +301,11 @@ namespace NLMSlidePlugin.TimelinePlugin
 
             ProgressValue = 100;
             StatusMessage = $"Imported {result.ImportedRows} items.";
-            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, TotalTimeline={result.TimelineItemsAfterImport}");
+            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, Image={result.ImageItems}, TotalTimeline={result.TimelineItemsAfterImport}");
 
             MessageBox.Show(
                 $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
-                $"Successfully imported {result.ImportedRows} items.",
+                $"Successfully imported {result.ImportedRows} items (Image: {result.ImageItems}).",
                 "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -335,6 +335,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     int count = 0;
                     int audioCount = 0;
                     int textCount = 0;
+                    int imageCount = 0;
 
                     for (int i = 0; i < items.Count; i++)
                     {
@@ -354,12 +355,18 @@ namespace NLMSlidePlugin.TimelinePlugin
                             textCount++;
                         }
 
+                        if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
+                        {
+                            activeTimeline.Items.Add(new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 });
+                            imageCount++;
+                        }
+
                         count++;
                         progress.Report((int)(i * 100.0 / items.Count));
                     }
 
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
-                    return new ImportExecutionResult(count, audioCount, textCount, 0, activeTimeline.Items.Count);
+                    return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, activeTimeline.Items.Count);
                 });
             });
         }
@@ -381,12 +388,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                 int importedRows = 0;
                 int audioItemsCount = 0;
                 int textItemsCount = 0;
+                int imageItemsCount = 0;
                 int skippedRows = 0;
 
-                // Add all items in a single batch if possible for better performance
                 var allTimelineItems = new List<IItem>();
-                var startFrames = new List<int>();
-                var layers = new List<int>();
 
                 foreach (var csvItem in items)
                 {
@@ -423,6 +428,21 @@ namespace NLMSlidePlugin.TimelinePlugin
                         hasItemInRow = true;
                     }
 
+                    if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
+                    {
+                        var image = new ImageItem
+                        {
+                            FilePath = csvItem.ImageFilePath,
+                            Frame = startFrame,
+                            Layer = baseLayer + 2,
+                            Length = lengthFrames,
+                            PlaybackRate = 100.0
+                        };
+                        allTimelineItems.Add(image);
+                        imageItemsCount++;
+                        hasItemInRow = true;
+                    }
+
                     if (hasItemInRow)
                     {
                         importedRows++;
@@ -442,7 +462,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
                 }
 
-                return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, skippedRows, activeTimeline.Items.Count);
+                return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, skippedRows, activeTimeline.Items.Count);
             });
         }
 
@@ -572,6 +592,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int ImportedRows,
             int AudioItems,
             int TextItems,
+            int ImageItems,
             int SkippedRows,
             int TimelineItemsAfterImport);
     }

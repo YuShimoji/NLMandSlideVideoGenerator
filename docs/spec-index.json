@@ -30,10 +30,10 @@
     "id": "SP-004",
     "title": "YMM4 Export Specification",
     "status": "partial",
-    "pct": 70,
+    "pct": 85,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様 (timeline_plan.json, slides_payload.json)"
+    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置実装済み。残: アニメーション、画像自動取得"
   },
   {
     "id": "SP-005",
@@ -223,5 +223,14 @@
     "cat": "infra",
     "file": "docs/e2e_verification_guide.md",
     "summary": "CSV→YMM4→mp4のE2E手動検証手順書。Step 4 (Voice生成) はSP-024完了済"
+  },
+  {
+    "id": "SP-026",
+    "title": "ImageItem Auto-Placement",
+    "status": "done",
+    "pct": 100,
+    "cat": "plugin",
+    "file": "docs/ymm4_export_spec.md",
+    "summary": "CSV 3列目に画像パス指定→YMM4 ImageItemとしてタイムライン自動配置。後方互換あり"
   }
 ]
