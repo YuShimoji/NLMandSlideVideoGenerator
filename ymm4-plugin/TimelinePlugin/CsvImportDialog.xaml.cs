@@ -358,24 +358,26 @@ namespace NLMSlidePlugin.TimelinePlugin
                             audioCount++;
                         }
 
-                        if (addSubtitles && !string.IsNullOrEmpty(item.Text))
-                        {
-                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 1, Length = length };
-                            if (itemsHasSetter)
-                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
-                            else
-                                activeTimeline.Items.Add(textItem);
-                            textCount++;
-                        }
-
                         if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
                         {
-                            var imageItem = new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 };
+                            var imageItem = new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
+                            double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                            SetImageZoom(imageItem, fitZoom);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
                             else
                                 activeTimeline.Items.Add(imageItem);
                             imageCount++;
+                        }
+
+                        if (addSubtitles && !string.IsNullOrEmpty(item.Text))
+                        {
+                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 2, Length = length };
+                            if (itemsHasSetter)
+                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
+                            else
+                                activeTimeline.Items.Add(textItem);
+                            textCount++;
                         }
 
                         count++;
@@ -433,33 +435,35 @@ namespace NLMSlidePlugin.TimelinePlugin
                         hasItemInRow = true;
                     }
 
-                    if (shouldAddSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
-                    {
-                        var text = new TextItem
-                        {
-                            Frame = startFrame,
-                            Layer = baseLayer + 1,
-                            Length = lengthFrames,
-                            PlaybackRate = 1.0,
-                            Text = csvItem.Text
-                        };
-                        allTimelineItems.Add(text);
-                        textItemsCount++;
-                        hasItemInRow = true;
-                    }
-
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
                         var image = new ImageItem
                         {
                             FilePath = csvItem.ImageFilePath,
                             Frame = startFrame,
-                            Layer = baseLayer + 2,
+                            Layer = baseLayer + 1,
                             Length = lengthFrames,
                             PlaybackRate = 100.0
                         };
+                        double fitZoom = CalculateFitZoom(csvItem.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                        SetImageZoom(image, fitZoom);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
+                        hasItemInRow = true;
+                    }
+
+                    if (shouldAddSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
+                    {
+                        var text = new TextItem
+                        {
+                            Frame = startFrame,
+                            Layer = baseLayer + 2,
+                            Length = lengthFrames,
+                            PlaybackRate = 1.0,
+                            Text = csvItem.Text
+                        };
+                        allTimelineItems.Add(text);
+                        textItemsCount++;
                         hasItemInRow = true;
                     }
 
@@ -608,6 +612,69 @@ namespace NLMSlidePlugin.TimelinePlugin
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[NLMSlidePlugin] WriteRuntimeLog failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Calculate zoom percentage to fit image to video dimensions (contain mode).
+        /// Returns 100.0 if image size cannot be determined.
+        /// </summary>
+        internal static double CalculateFitZoom(string imagePath, int videoWidth, int videoHeight)
+        {
+            try
+            {
+                var uri = new Uri(imagePath, UriKind.Absolute);
+                var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(
+                    uri,
+                    System.Windows.Media.Imaging.BitmapCreateOptions.DelayCreation,
+                    System.Windows.Media.Imaging.BitmapCacheOption.None);
+                var frame = decoder.Frames[0];
+                int imgW = frame.PixelWidth;
+                int imgH = frame.PixelHeight;
+                if (imgW <= 0 || imgH <= 0) return 100.0;
+
+                double scaleX = (double)videoWidth / imgW;
+                double scaleY = (double)videoHeight / imgH;
+                double scale = Math.Min(scaleX, scaleY);
+                return scale * 100.0;
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"CalculateFitZoom failed for {imagePath}: {ex.Message}");
+                return 100.0;
+            }
+        }
+
+        /// <summary>
+        /// Set the Zoom property on an ImageItem via Reflection.
+        /// Zoom is an AnimationValue type with Values[0].Value.
+        /// </summary>
+        internal static void SetImageZoom(ImageItem imageItem, double zoomPercent)
+        {
+            try
+            {
+                var zoomProp = imageItem.GetType().GetProperty("Zoom");
+                if (zoomProp is null) return;
+                var zoomObj = zoomProp.GetValue(imageItem);
+                if (zoomObj is null) return;
+
+                var valuesProp = zoomObj.GetType().GetProperty("Values");
+                if (valuesProp is null) return;
+                var values = valuesProp.GetValue(zoomObj);
+                if (values is null) return;
+
+                // Values is IList-like, get first element
+                var indexer = values.GetType().GetProperty("Item");
+                if (indexer is null) return;
+                var firstValue = indexer.GetValue(values, new object[] { 0 });
+                if (firstValue is null) return;
+
+                var valueProp = firstValue.GetType().GetProperty("Value");
+                valueProp?.SetValue(firstValue, zoomPercent);
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"SetImageZoom failed: {ex.Message}");
             }
         }
 

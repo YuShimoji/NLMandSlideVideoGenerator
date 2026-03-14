@@ -33,7 +33,7 @@
     "pct": 85,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置実装済み。残: アニメーション、画像自動取得"
+    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置+全画面フィット実装済み。残: アニメーション、画像自動取得"
   },
   {
     "id": "SP-005",
@@ -231,6 +231,51 @@
     "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV 3列目に画像パス指定→YMM4 ImageItemとしてタイムライン自動配置。後方互換あり"
+    "summary": "CSV 3列目に画像パス指定→YMM4 ImageItemとしてタイムライン自動配置+全画面フィット（contain方式）。後方互換あり"
+  },
+  {
+    "id": "SP-027",
+    "title": "Baseline Video E2E",
+    "status": "in_progress",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/video_quality_pipeline_spec.md",
+    "summary": "Phase 0: 全画面フィット+Voice生成の実機E2E完走。ベースライン動画書き出しと品質評価"
+  },
+  {
+    "id": "SP-028",
+    "title": "Post-Voice Timeline Resync",
+    "status": "planned",
+    "pct": 0,
+    "cat": "plugin",
+    "file": "docs/video_quality_pipeline_spec.md",
+    "summary": "Phase 1: Voice生成後の実音声長でImageItem/TextItemのLengthを再計算。タイミング安定化"
+  },
+  {
+    "id": "SP-029",
+    "title": "Ken Burns Auto-Animation",
+    "status": "planned",
+    "pct": 0,
+    "cat": "plugin",
+    "file": "docs/video_quality_pipeline_spec.md",
+    "summary": "Phase 2: ImageItemにZoom/X/Yアニメーション自動付与。パン・ズームで静止画に動きを追加"
+  },
+  {
+    "id": "SP-030",
+    "title": "Transition & Subtitle Template",
+    "status": "planned",
+    "pct": 0,
+    "cat": "plugin",
+    "file": "docs/video_quality_pipeline_spec.md",
+    "summary": "Phase 3: FadeIn/Outトランジション + TextItem字幕テンプレート（位置・フォント・話者色分け）"
+  },
+  {
+    "id": "SP-031",
+    "title": "Style Template & Pre-Export Validation",
+    "status": "planned",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/video_quality_pipeline_spec.md",
+    "summary": "Phase 4: 動画スタイルテンプレートJSON定義 + インポート後品質チェック自動化"
   }
 ]

@@ -123,33 +123,35 @@ namespace NLMSlidePlugin.TimelinePlugin
                     hasItemInRow = true;
                 }
 
-                if (addSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
-                {
-                    var text = new TextItem
-                    {
-                        Frame = startFrame,
-                        Layer = baseLayer + 1,
-                        Length = lengthFrames,
-                        PlaybackRate = 1.0,
-                        Text = csvItem.Text
-                    };
-                    allTimelineItems.Add(text);
-                    textItemsCount++;
-                    hasItemInRow = true;
-                }
-
                 if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                 {
                     var image = new ImageItem
                     {
                         FilePath = csvItem.ImageFilePath,
                         Frame = startFrame,
-                        Layer = baseLayer + 2,
+                        Layer = baseLayer + 1,
                         Length = lengthFrames,
                         PlaybackRate = 100.0
                     };
+                    double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
+                    CsvImportDialog.SetImageZoom(image, fitZoom);
                     allTimelineItems.Add(image);
                     imageItemsCount++;
+                    hasItemInRow = true;
+                }
+
+                if (addSubtitles && !string.IsNullOrWhiteSpace(csvItem.Text))
+                {
+                    var text = new TextItem
+                    {
+                        Frame = startFrame,
+                        Layer = baseLayer + 2,
+                        Length = lengthFrames,
+                        PlaybackRate = 1.0,
+                        Text = csvItem.Text
+                    };
+                    allTimelineItems.Add(text);
+                    textItemsCount++;
                     hasItemInRow = true;
                 }
 

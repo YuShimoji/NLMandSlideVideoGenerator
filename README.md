@@ -193,7 +193,7 @@ dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 
 ## 技術スタック
 
-- **Python 3.11+** / **.NET 9** (YMM4 plugin)
+- **Python 3.11+** / **.NET 10.0** (YMM4 plugin, v4.50+対応)
 - **YMM4** - 音声生成+動画レンダリング (唯一の推奨方法)
 - **Google AI Studio Gemini API** - AI台本生成 (optional)
 - **Streamlit** - Web UI

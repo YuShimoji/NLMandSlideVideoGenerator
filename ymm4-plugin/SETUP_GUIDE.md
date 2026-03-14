@@ -7,8 +7,8 @@
 ## 前提条件
 
 - Windows 10/11
-- .NET 9.0 SDK インストール済み
-- YMM4 v4.33.0.0以降 インストール済み
+- .NET 10.0 SDK インストール済み（YMM4 v4.50+ 対応。`winget install Microsoft.DotNet.SDK.10`）
+- YMM4 v4.50.0.0以降 インストール済み
 - Visual Studio 2022 または VS Code
 
 ## 確認項目
