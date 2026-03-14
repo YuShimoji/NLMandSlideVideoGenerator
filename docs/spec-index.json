@@ -281,8 +281,8 @@
   {
     "id": "SP-032",
     "title": "Material Pipeline Integration",
-    "status": "spec",
-    "pct": 0,
+    "status": "in_progress",
+    "pct": 40,
     "cat": "pipeline",
     "file": "docs/material_pipeline_spec.md",
     "summary": "素材直結パイプライン: リサーチ→台本→スライドPNG→CSV自動合成→YMM4プロジェクト生成を一気通貫化"
