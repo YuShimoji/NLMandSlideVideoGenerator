@@ -277,5 +277,14 @@
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
     "summary": "Phase 4: 動画スタイルテンプレートJSON定義 + インポート後品質チェック自動化"
+  },
+  {
+    "id": "SP-032",
+    "title": "Material Pipeline Integration",
+    "status": "spec",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/material_pipeline_spec.md",
+    "summary": "素材直結パイプライン: リサーチ→台本→スライドPNG→CSV自動合成→YMM4プロジェクト生成を一気通貫化"
   }
 ]
