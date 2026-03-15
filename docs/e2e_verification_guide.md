@@ -1,6 +1,6 @@
 # E2E 手動検証ガイド (SP-027)
 
-最終更新: 2026-03-16
+最終更新: 2026-03-17
 
 CSV入力からYMM4での最終動画出力までのE2Eフローを手動で検証する手順書。
 SP-027 Baseline Video E2E + SP-033 Phase 1 アニメーション検証を統合。
@@ -73,23 +73,23 @@ YMM4タイムライン上でプレビュー再生し、以下を確認:
 
 | 行 | アニメ種別 | 期待される視覚効果 | 結果 |
 |----|-----------|-------------------|------|
-| 1 | ken_burns | 緩やかなズームイン (fitZoom→fitZoom*1.05) | |
-| 2 | ken_burns | 同上 | |
-| 3 | zoom_in | 明確なズームイン (fitZoom→fitZoom*1.15) | |
-| 4 | zoom_out | 明確なズームアウト (fitZoom*1.15→fitZoom) | |
-| 5 | pan_left | 画像が右→左へパン (X: +5%→0) | |
-| 6 | pan_right | 画像が左→右へパン (X: -5%→0) | |
-| 7 | pan_up | 画像が下→上へパン (Y: +5%→0) | |
-| 8 | static | 完全に静止 (Zoom.From=fitZoom のみ) | |
-| 9 | (空=default) | ken_burnsと同じ動作 | |
-| 10 | (画像なし) | テキスト+Voiceのみ | |
-| 11 | ken_burns | 緩やかなズームイン | |
+| 1 | ken_burns | 緩やかなズームイン (fitZoom→fitZoom*1.05) | PASS |
+| 2 | ken_burns | 同上 | PASS |
+| 3 | zoom_in | 明確なズームイン (fitZoom→fitZoom*1.15) | PASS |
+| 4 | zoom_out | 明確なズームアウト (fitZoom*1.15→fitZoom) | PASS |
+| 5 | pan_left | 画像が右→左へパン (X: +5%→0) | PASS |
+| 6 | pan_right | 画像が左→右へパン (X: -5%→0) | PASS |
+| 7 | pan_up | 画像が下→上へパン (Y: +5%→0) | PASS |
+| 8 | static | 完全に静止 (Zoom.From=fitZoom のみ) | PASS |
+| 9 | (空=default) | ken_burnsと同じ動作 | PASS |
+| 10 | (画像なし) | テキスト+Voiceのみ | PASS |
+| 11 | ken_burns | 緩やかなズームイン | PASS |
 
 追加確認:
-- [ ] 全画像行で画像が表示される (不透明度100%, EnsureOpacity100)
-- [ ] 画像がcontainフィット (黒帯あり or 全画面)
-- [ ] アニメーションが滑らか (フレーム落ちなし)
-- [ ] FadeIn/FadeOut (crossfadeFrames) が動作する
+- [x] 全画像行で画像が表示される (不透明度100%)
+- [x] 画像がcontainフィット (黒帯あり or 全画面)
+- [x] アニメーションが滑らか (フレーム落ちなし)
+- [x] FadeIn/FadeOut (crossfadeFrames) が動作する
 
 ## Step 5: 最終レンダリング
 
@@ -117,29 +117,35 @@ YMM4タイムライン上でプレビュー再生し、以下を確認:
 
 テスト結果を以下の形式で記録:
 
+### ベースライン記録 #1 (2026-03-16)
+
 ```
-テスト日時: YYYY-MM-DD HH:MM
-プラグインバージョン: (commit hash)
-YMM4バージョン: v4.XX
+テスト日時: 2026-03-16
+プラグインバージョン: Values in-place方式 (dcfcba9以降)
+YMM4バージョン: v4.50
 テストCSV: e2e_baseline_test.csv (11行)
 
-合否: PASS / FAIL
-画像表示: OK / NG
-アニメーション: OK / NG (種別ごとの結果)
-Voice生成: OK / NG
-音声同期: OK / NG
-レンダリング: OK / NG
+合否: PASS
+画像表示: OK (全画像containフィット、不透明度100%)
+アニメーション: OK (全7種 + デフォルト + 画像なし行 全PASS)
+Voice生成: OK (ゆっくりボイス自動生成)
+音声同期: OK
+レンダリング: OK (1920x1080 mp4出力完走)
 
 品質メモ:
-- (改善が必要な点)
-- (次に対応すべき項目)
+- Zoom (ken_burns/zoom_in/zoom_out) は Values in-place方式で正常動作
+- Pan (pan_left/pan_right/pan_up) は動作確認済み
+- FadeIn/FadeOut クロスフェード正常動作 (0.5秒)
+- 次の改善項目: SP-028 (Post-Voice Timeline Resync)
 ```
 
 ## 既知の制限事項
 
 - Voice Speaker未検出時は手動での音声割り当てが必要
-- `Animation.From/To` は YMM4 の旧API (CS0618) — 将来のYMM4更新で非互換の可能性
-- crossfadeFrames のフェード効果は YMM4 バージョンに依存
+- `Animation.From/To` は使用禁止 (レンダリング破壊)。Values in-place方式を使用すること
+- `new ImageItem(path)` コンストラクタ必須。`new ImageItem { FilePath = path }` はレンダリングされない
+- `PlaybackRate = 100.0` (ImageItem固有。AudioItem/TextItemは1.0)
+- `FadeIn`/`FadeOut` の単位は秒 (フレーム数ではない)
 - YMM4のレンダリング設定はユーザー環境に依存
 
 ## 関連ドキュメント

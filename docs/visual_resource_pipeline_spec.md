@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
-**最終更新**: 2026-03-15
-**ステータス**: Phase 1 実装中
+**最終更新**: 2026-03-17
+**ステータス**: Phase 1 実機テストPASS (Zoom + FadeIn/FadeOut)。残: Pan実装 + ディスパッチ接続
 
 ---
 
@@ -124,15 +124,13 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 `CsvTimelineReader` が4列目をパース。
 `Ymm4TimelineImporter` / `CsvImportDialog` がアニメーション種別に応じたメソッドを呼び分ける。
 
-| メソッド | 対象プロパティ | 備考 |
-|----------|----------------|------|
-| `ApplyKenBurnsZoom` | Zoom | 既存 (100% → 105%) |
-| `ApplyZoomIn` | Zoom | 新規 (100% → 115%) |
-| `ApplyZoomOut` | Zoom | 新規 (115% → 100%) |
-| `ApplyPanLeft` | X | 新規 (+panOffset → 0) |
-| `ApplyPanRight` | X | 新規 (-panOffset → 0) |
-| `ApplyPanUp` | Y | 新規 (+panOffset → 0) |
-| `ApplyImageFade` | Opacity | 既存（全種別で使用） |
+| メソッド | 対象プロパティ | 状態 | 備考 |
+|----------|----------------|------|------|
+| `ApplyZoomDirect` | Zoom | 実装済み | Values in-place方式。ken_burns (100→105%), zoom_in, zoom_out に対応 |
+| `ApplyPanDirect` | X / Y | 未実装 | Values in-place方式で実装予定。pan_left, pan_right, pan_up に対応 |
+| (FadeIn/FadeOut) | Opacity | 実装済み | ImageItem.FadeIn/FadeOut プロパティ (秒指定) で制御 |
+
+**注意**: `Animation.From` / `Animation.To` は deprecated であり、実機テストでレンダリング破壊が確認されたため**使用禁止**。全アニメーションは `Values` (ImmutableList<AnimationValue>) の in-place 変更で実装すること。
 
 pan のオフセット量は画像幅の5%を基準とする（Ken Burns zoom量と視覚的に同程度）。
 
@@ -204,33 +202,95 @@ public string AnimationType { get; set; } = "ken_burns";
 
 - Python側 (AnimationAssigner, CsvAssembler 4列出力): **完了・テスト済み**
 - C# CsvTimelineReader (4列パース + 相対パス解決): **完了・テスト済み**
-- YMM4プラグイン: **Direct API移行完了、YMM4実機テスト待ち**
+- YMM4プラグイン: **Values in-place方式で実機テストPASS (Zoom + FadeIn/FadeOut)。Pan実装+ディスパッチ接続が残タスク**
 
-### 6.2 Direct API 方式
+### 6.2 Values in-place 方式 (実機テスト確定: 2026-03-16)
 
-リフレクション経由の AnimationValue 操作を全廃し、Direct API (`Animation.From/To`) に統一。
-`Animation.From/To` は YMM4 では「旧形式」(CS0618警告) だが動作確認済み。
+#### 経緯
 
-実装内容:
-- `ApplyAnimationByType`: 7種別を Direct API でインライン実装
-  - `Zoom.From/To` + `AnimationType` (直線移動/加減速移動)
-  - `X.From/To`, `Y.From/To` (パンアニメーション)
-- `EnsureOpacity100`: 不要（デフォルトOpacity=100%のため削除）
-- 旧リフレクション版 (`ApplyImageFade`, `ApplyImageCrossfade`, `ApplyKenBurnsZoom`, `ApplyPanAnimation`, `ApplyPositionAnimation`, `SetImageZoom`, `EnsureOpacity100`) を全削除
+1. 旧リフレクション版 (`ApplyImageFade`, `ApplyKenBurnsZoom` 等) — ImageItemの内部状態を破壊し画像が黒表示
+2. Direct API (`Animation.From/To`) — CS0618 deprecated、かつ実機テストでも画像レンダリングを破壊
+3. **Values in-place 方式** (`ApplyZoomDirect`) — 実機テストで正常動作を確認。現行唯一の安定手法
 
-InspectYmm4 による API 調査結果:
-- `Animation` 型: `From`(set), `To`(set), `AnimationType`(get/set), `Values`(ImmutableList)
+#### 現行実装: `ApplyZoomDirect`
+
+```csharp
+// AnimationValue は参照型 → Values[0].Value を直接変更可能
+imageItem.Zoom.Values[0].Value = startZoom;
+
+// 2値キーフレーム: ImmutableList.Add + リフレクション setter
+var val1 = new AnimationValue { Value = endZoom };
+var newValues = zoomValues.Add(val1);
+var valuesProp = imageItem.Zoom.GetType().GetProperty("Values");
+valuesProp?.SetValue(imageItem.Zoom, newValues);
+imageItem.Zoom.AnimationType = AnimationType.直線移動;
+```
+
+#### 重要な制約
+
+- `new ImageItem(path)` コンストラクタ必須。`new ImageItem { FilePath = path }` はレンダリングされない
+- `Animation.From` / `Animation.To` は使用禁止（レンダリング破壊）
+- `PlaybackRate = 100.0` (ImageItem固有。AudioItem/TextItemは1.0)
+- `FadeIn` / `FadeOut` プロパティの単位は**秒**（フレーム数ではない）
+
+#### InspectYmm4 による API 調査結果
+
+- `Animation` 型: `From`(set/deprecated), `To`(set/deprecated), `AnimationType`(get/set), `Values`(ImmutableList<AnimationValue>)
+- `AnimationValue`: 参照型、`.Value` プロパティで値を直接変更可能
 - `AnimationType` enum: `なし`=0, `直線移動`=1, `加減速移動`=103, 各種イージング
-- ImageItem デフォルト: `Opacity.Values[0].Value = 100` (不透明度100%)
+- ImageItem デフォルト: `Opacity.Values[0].Value = 100` (不透明度100%), `Zoom.Values[0].Value = 100`
 
-### 6.3 残タスク
+### 6.3 クロスフェード・アニメーション運用ガイドライン (実機テスト確定: 2026-03-16)
+
+#### FadeIn/FadeOut
+
+| 項目 | 値 | 備考 |
+|------|-----|------|
+| FadeIn/FadeOut | 0.5秒 | `crossfadeSeconds = 0.5` |
+| 交互レイヤー | Layer N+1 / N+2 | 偶数=+1, 奇数=+2 で重なりを許可 |
+| 画像開始位置 | `frame - crossfadeFrames` | 前画像と重ねてクロスフェード |
+| 画像終了位置 | `frame + length + crossfadeFrames` | 次画像と重ねてクロスフェード |
+
+#### 黒背景問題
+
+画像がない区間、またはフェードイン/アウトで重なった画像の合計不透明度が100%未満になる区間では黒背景が表示される。対策:
+
+- 先頭画像: FadeIn区間で前に画像がないため黒が見える → 先頭画像のみ `FadeIn = 0` にするか、背景レイヤーを別途配置
+- 末尾画像: 同様に `FadeOut = 0` にするか、背景レイヤーで対処
+- 中間: 交互レイヤーで前後画像が重なるため、0.5秒のクロスフェードでは実用上問題なし
+
+#### ズームアニメーション
+
+| 項目 | 値 | 備考 |
+|------|-----|------|
+| Ken Burns | 100% → 105% | 緩やかなズームイン。デフォルト |
+| 補間 | 直線移動 | `AnimationType.直線移動` |
+| 説明スライド | **使用禁止** | テキストが動くため視認性が低下する |
+
+**運用ルール**:
+- ズーム量は控えめにすること（5%程度）。強いズームは不要
+- テキスト主体のスライド（説明・図解・一覧表など）には `static` を使用し、ズーム/パンを適用しない
+- フェードとズームが同時に発生すると文字が二重に見えることがある。テキスト主体スライドでは特に注意
+
+#### アニメーション種別選択の原則
+
+| スライド種別 | 推奨アニメーション | 理由 |
+|-------------|-------------------|------|
+| 写真・イラスト（テキスト少） | ken_burns / zoom_in / pan_* | 動きで視覚的関心を維持 |
+| テキスト主体（説明・図解） | static | 文字の可読性を優先 |
+| データ・グラフ・表 | static | 情報読み取りを優先 |
+| タイトル・区切り画面 | zoom_in (控えめ) | 印象付けとして微量のズームは許容 |
+
+### 6.4 残タスク
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 1 | YMM4実機テスト | pending | Direct API方式で7種アニメーション + 不透明度が正常動作するか検証 |
-| 2 | FadeIn/FadeOut確認 | pending | crossfadeFrames がYMM4で正常に動作するか検証 |
-| 3 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
-| 4 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
+| 1 | YMM4実機テスト (Zoom + FadeIn/FadeOut) | done | Values in-place方式でZoom + FadeIn/FadeOut 正常動作確認 |
+| 2 | パンアニメーション (X/Y) 実装 | pending | Values in-place方式でX/Y変位を実装する必要あり。From/To不可 |
+| 3 | アニメーション種別ディスパッチ接続 | pending | CSV 4列目→実際のアニメーション適用を接続。現在は全画像ken_burns固定 |
+| 4 | 説明スライド判定ロジック | pending | AnimationAssignerにテキスト主体判定を追加しstatic自動割当 |
+| 5 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
+| 6 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
 
 ---
 
@@ -242,3 +302,5 @@ InspectYmm4 による API 調査結果:
 | 2026-03-15 | Phase 1 残作業・発見事項を追記。Direct API アプローチ発見 |
 | 2026-03-16 | Direct API全面移行: リフレクション版廃止、7種アニメ+EnsureOpacity100をDirect API化 |
 | 2026-03-16 | コード品質改善: 重複例外ハンドラ統合(6ファイル)、デッドコード除去、CLAUDE.md文字化け修正 |
+| 2026-03-16 | 実機テスト結果反映: From/To→Values in-place方式に全面修正。クロスフェード/ズーム運用ガイドライン追加 |
+| 2026-03-17 | ステータス更新: Phase 1 Zoom+FadeIn/FadeOut実機テストPASS。SP-027 Baseline E2E完了 |

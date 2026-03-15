@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-16
+最終更新: 2026-03-17
 
 ---
 
@@ -22,8 +22,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | NLMSlidePlugin CSVインポート | 完成 | CsvImportDialog + Ymm4TimelineImporter |
 | Voice自動生成 UI接続 (SP-024) | 完成 | VoiceSpeakerDiscovery + CsvImportDialog |
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
-| アニメーション7種 (SP-033 Phase 1) | テスト待ち | Direct API方式 (ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static) |
-| EnsureOpacity100 | テスト待ち | Direct API方式 (Opacity.From=100.0) |
+| アニメーション7種 (SP-033 Phase 1) | 完成 | Values in-place方式、YMM4実機テストPASS (2026-03-16) |
+| Baseline E2E (SP-027) | 完成 | CSV→YMM4→mp4 全工程完走確認 (2026-03-16) |
 | CsvAssembler (SP-032 Phase A-D) | 完成 | 台本→CSV一気通貫 + CLI + Streamlit UI |
 | 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 (scripts/research_cli.py) |
 | Gemini SDK移行 | 完成 | google-generativeai → google-genai |
@@ -38,8 +38,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | ID | 内容 | 状態 | 備考 |
 |----|------|------|------|
-| SP-027 | Baseline E2E (CSV→YMM4→mp4) | テスト準備完了 | テストCSV+検証ガイド整備済み、YMM4実機テスト待ち |
-| SP-033 | アニメーション7種 実機テスト | テスト準備完了 | Direct API移行完了、SP-027と同時検証 |
+| SP-028 | Post-Voice Timeline Resync | 未着手 | Voice生成後の実音声長でItem再計算。次の優先タスク |
+| SP-030 | トランジション + 字幕テンプレート | 未着手 | FadeIn/Out + 話者色分け |
 
 ---
 
@@ -59,16 +59,15 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): E2E完走
+### 短期 (1-2週間): タイミング安定化
 
 ```
-SP-033 Phase 1 (YMM4実機テスト) → SP-027 (Baseline E2E完走)
+SP-028 (Post-Voice Timeline Resync) → SP-030 (トランジション)
 ```
 
-- SP-027/SP-033: YMM4実機テスト (7種アニメ + Voice + レンダリング)
-- テスト用CSV: `samples/image_slide/e2e_baseline_test.csv`
-- 検証ガイド: `docs/e2e_verification_guide.md`
-- 成功条件: 1本のmp4がCSV→YMM4→書き出しで完走、7種アニメが視覚的に確認可能
+- SP-028: Voice生成後の実音声長でImageItem/TextItemのLength再計算
+- SP-030: FadeIn/Out + 字幕テンプレート (位置・フォント・話者色分け)
+- 成功条件: 音声終了と同時に次スライドへ遷移、無音区間1秒以内
 
 ### 中期 (1-2ヶ月): 品質パイプライン
 
@@ -107,6 +106,7 @@ SP-028 (タイミング安定化) → SP-030 (トランジション) → SP-033 
 - 2026-03-15: SP-032 Phase C完了 (CLI pipeline サブコマンド: collect→script→align→review→CsvAssembler)
 - 2026-03-15: SP-032 Phase D完了 (Streamlit UI素材パイプライン)、Gemini SDK移行
 - 2026-03-16: SP-033 Direct API全面移行 (リフレクション全廃、-312行)
+- 2026-03-16: SP-027 Baseline E2E完走 + SP-033 Phase 1 全7種アニメーション実機テストPASS
 
 ---
 

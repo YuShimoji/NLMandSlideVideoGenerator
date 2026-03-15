@@ -1,7 +1,7 @@
 # YMM4 エクスポート仕様
 
-**最終更新**: 2026-03-14
-**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ アニメーション未実装
+**最終更新**: 2026-03-16
+**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ クロスフェード+Zoomアニメーション実装済み（SP-033）
 
 ---
 
@@ -575,11 +575,15 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 - Zoom値をReflection経由でAnimationValue.Values[0].Valueに設定
 - 画像読み込み失敗時はZoom=100.0（デフォルト）にフォールバック
 
-### 11.5 Ken Burns アニメーション（実装済み）
+### 11.5 Ken Burns アニメーション（実装済み・実機確認済み 2026-03-16）
 
-- ImageItem生成時に `ApplyKenBurnsZoom()` で Zoom アニメーションを自動付与
-- AnimationType を「直線」に設定、Values[0]=fitZoom(開始)、Values[1]=fitZoom*1.05(終了)
-- 全3インポートパス（async/sync/Ymm4TimelineImporter）に適用済み
+- ImageItem生成時に `ApplyZoomDirect()` で Zoom アニメーションを自動付与
+- Values[0].Value を in-place 変更（AnimationValue は参照型）
+- 2値キーフレーム: ImmutableList.Add + リフレクション setter で Values プロパティに代入
+- AnimationType を「直線移動」に設定、Values[0]=fitZoom(開始)、Values[1]=fitZoom*1.05(終了)
+- 全3インポートパス（VoiceItem一括/AudioItem/CSV batch）に適用済み
+
+**注意**: `Animation.From` / `Animation.To` は deprecated (CS0618) かつレンダリングを破壊するため使用禁止。
 
 ### 11.6 WAV実尺同期（実装済み）
 
@@ -587,13 +591,32 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 - AudioFilePathが存在する行では、CSV上のDurationではなくWAV実尺でImageItem/TextItemのLengthを決定
 - 全3インポートパスに適用済み
 
-### 11.7 字幕スタイル + 画像フェード（実装済み）
+### 11.7 字幕スタイル（実装済み）
 
 - `ApplySubtitleStyle()`: TextItemのY位置を画面下部（videoHeight*0.35オフセット）に固定、フォントサイズ48
-- `ApplyImageFade()`: ImageItemのOpacityを0→100%でリニアアニメーション（フェードイン）
 - 全3インポートパスに適用済み
 
-### 11.8 品質チェック（実装済み）
+### 11.8 クロスフェードトランジション（実装済み・実機確認済み 2026-03-16）
+
+VoiceItem一括インポートパスで画像間のクロスフェードを実装。
+
+- **FadeIn/FadeOut**: `ImageItem.FadeIn = 0.5` / `ImageItem.FadeOut = 0.5` (秒単位)
+- **交互レイヤー**: 偶数画像はLayer N+1、奇数画像はLayer N+2に配置し、重なりを許可
+- **時間延長**: 各画像の開始を `crossfadeFrames` 分前倒し、終了を同量延長
+
+```
+画像A: |----FadeIn======FadeOut----|
+画像B:                   |----FadeIn======FadeOut----|
+レイヤー:  N+1                    N+2
+```
+
+#### 運用上の注意
+
+- FadeIn/FadeOut の単位は**秒**。フレーム数で指定すると30秒など極端に長いフェードになる
+- 先頭・末尾の画像はフェード区間に前後の画像がないため黒背景が見える
+- フェード+ズーム同時適用時、テキストが二重に見えることがある → テキスト主体スライドには `static` を使用
+
+### 11.9 品質チェック（実装済み）
 
 - `ValidateImportItems()`: インポート前にCSVアイテムを検証
   - ファイル存在確認（音声/画像）
@@ -603,7 +626,19 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
   - 総尺チェック（>1時間で警告）
 - 警告はランタイムログに出力、インポートは続行
 
-### 11.9 未実装（後続スライス）
+### 11.10 ImageItem コンストラクタ制約（実機確認済み 2026-03-16）
+
+ImageItemの生成には必ずファイルパス付きコンストラクタを使用すること。
+
+```csharp
+// 正: 画像が正常にレンダリングされる
+var item = new ImageItem(filePath);
+
+// 誤: 画像が読み込まれない（プレビュー黒表示）
+var item = new ImageItem { FilePath = filePath };
+```
+
+### 11.11 未実装（後続スライス）
 
 - 画像素材の自動取得
 - slides_payload.jsonとの統合（現在はCSV 3列目方式のみ）
@@ -624,3 +659,4 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 | 2026-03-14 | SP-026: ImageItem自動配置実装。セクション11をギャップ→実装完了に更新。CSV 3列目方式 |
 | 2026-03-14 | 全画面フィット実装。Zoom値をcontain計算+Reflection設定。セクション11.4追加 |
 | 2026-03-14 | SP-028/029/030/031実装: Ken Burns(5%ズーム)、WAV実尺同期、字幕スタイル、画像フェード、品質チェック |
+| 2026-03-16 | SP-033実機テスト反映: クロスフェード+Zoom実装確認。From/To禁止、Values in-place方式に統一。運用ガイドライン追加 |

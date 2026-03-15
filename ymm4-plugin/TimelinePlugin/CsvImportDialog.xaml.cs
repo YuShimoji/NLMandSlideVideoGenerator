@@ -1547,64 +1547,11 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
-        // ========== SP-033: アニメーション (Direct API) ==========
-
-        /// <summary>
-        /// SP-033: Direct API 方式でアニメーションを適用。
-        /// Animation.From / Animation.To で開始値・終了値を設定し、
-        /// AnimationType で補間方式を指定する。リフレクション不要。
-        /// </summary>
-#pragma warning disable CS0618 // Animation.From/To は旧形式だが YMM4 v4.50 で動作する
-        internal static void ApplyAnimationByType(ImageItem imageItem, string animationType, double fitZoom, int videoWidth, int videoHeight)
-        {
-            // AnimationType enum: なし=0, 直線移動=1, 加減速移動=103
-            var linear = YukkuriMovieMaker.Commons.AnimationType.直線移動;
-            var easeInOut = YukkuriMovieMaker.Commons.AnimationType.加減速移動;
-
-            switch (animationType)
-            {
-                case "zoom_in":
-                    imageItem.Zoom.AnimationType = easeInOut;
-                    imageItem.Zoom.From = fitZoom;
-                    imageItem.Zoom.To = fitZoom * 1.15;
-                    break;
-                case "zoom_out":
-                    imageItem.Zoom.AnimationType = easeInOut;
-                    imageItem.Zoom.From = fitZoom * 1.15;
-                    imageItem.Zoom.To = fitZoom;
-                    break;
-                case "pan_left":
-                    imageItem.Zoom.From = fitZoom;
-                    imageItem.X.AnimationType = easeInOut;
-                    imageItem.X.From = videoWidth * 0.05;
-                    imageItem.X.To = 0;
-                    break;
-                case "pan_right":
-                    imageItem.Zoom.From = fitZoom;
-                    imageItem.X.AnimationType = easeInOut;
-                    imageItem.X.From = -(videoWidth * 0.05);
-                    imageItem.X.To = 0;
-                    break;
-                case "pan_up":
-                    imageItem.Zoom.From = fitZoom;
-                    imageItem.Y.AnimationType = easeInOut;
-                    imageItem.Y.From = videoHeight * 0.05;
-                    imageItem.Y.To = 0;
-                    break;
-                case "static":
-                    imageItem.Zoom.From = fitZoom;
-                    break;
-                case "ken_burns":
-                default:
-                    imageItem.Zoom.AnimationType = linear;
-                    imageItem.Zoom.From = fitZoom;
-                    imageItem.Zoom.To = fitZoom * 1.05;
-                    break;
-            }
-            // Opacity: デフォルト100%のまま（ApplyImageFade不要）
-            WriteRuntimeLog($"ApplyAnimationByType(Direct): {animationType}, zoom={fitZoom:F1}");
-        }
-#pragma warning restore CS0618
+        // ========== SP-033: アニメーション (Values in-place) ==========
+        // 注意: Animation.From / Animation.To は deprecated (CS0618) かつ
+        // 実機テストでレンダリング破壊が確認されたため使用禁止。
+        // 全アニメーションは Values (ImmutableList<AnimationValue>) の
+        // in-place 変更で実装すること。
 
         /// <summary>
         /// ImageItem の Zoom を直接 Values 代入で設定。

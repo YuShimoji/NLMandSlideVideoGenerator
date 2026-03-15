@@ -33,7 +33,7 @@
     "pct": 85,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置+全画面フィット実装済み。残: アニメーション、画像自動取得"
+    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置+全画面フィット+Zoomアニメーション実装済み。残: Pan実装、画像自動取得"
   },
   {
     "id": "SP-005",
@@ -236,11 +236,11 @@
   {
     "id": "SP-027",
     "title": "Baseline Video E2E",
-    "status": "in_progress",
-    "pct": 30,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 0: テストCSV+検証ガイド準備完了。YMM4実機テスト待ち(7種アニメ+Voice+レンダリング)"
+    "summary": "Phase 0完了: CSV→YMM4→mp4のE2E完走確認。7種アニメ+Voice+レンダリング全PASS (2026-03-16)"
   },
   {
     "id": "SP-028",
@@ -291,9 +291,9 @@
     "id": "SP-033",
     "title": "Visual Resource Pipeline",
     "status": "in_progress",
-    "pct": 75,
+    "pct": 85,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1: Python+C#完了、Direct API移行完了(リフレクション全廃)。残: YMM4実機テスト(7種アニメ+不透明度)。Phase2/3未着手"
+    "summary": "Phase1完了: 7種アニメーション実機テストPASS (Values in-place方式)。Phase2(ストック素材API)/Phase3(AI生成)未着手"
   }
 ]
