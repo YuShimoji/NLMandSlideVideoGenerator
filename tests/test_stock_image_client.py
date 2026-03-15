@@ -299,3 +299,72 @@ class TestGeminiJsonExtraction:
         result = GeminiIntegration._extract_json_from_response(text)
         parsed = json.loads(result)
         assert parsed["title"] == "surrounded"
+
+
+class TestQueryTranslation:
+    """クエリ翻訳テスト。"""
+
+    def test_english_queries_unchanged(self, client: StockImageClient) -> None:
+        """英語のみのクエリは翻訳をスキップ"""
+        queries = ["technology", "artificial intelligence", ""]
+        result = client._translate_queries_to_english(queries)
+        assert result == queries
+
+    def test_japanese_detection(self) -> None:
+        """日本語文字の検出"""
+        from core.visual.stock_image_client import _JAPANESE_RE
+        assert _JAPANESE_RE.search("量子コンピュータ")
+        assert _JAPANESE_RE.search("テスト")
+        assert _JAPANESE_RE.search("漢字")
+        assert not _JAPANESE_RE.search("technology")
+        assert not _JAPANESE_RE.search("AI 2024")
+
+    def test_translate_fallback_on_no_api_key(self, tmp_path: Path) -> None:
+        """Gemini APIキーなし → 元のクエリを返す"""
+        client = StockImageClient(
+            pexels_api_key="", pixabay_api_key="",
+            cache_dir=tmp_path / "cache",
+        )
+        queries = ["量子コンピュータ", "technology"]
+        with patch.dict("os.environ", {"GEMINI_API_KEY": ""}, clear=False):
+            with patch("core.visual.stock_image_client.settings") as mock_settings:
+                mock_settings.GEMINI_API_KEY = ""
+                result = client._translate_queries_to_english(queries)
+        assert result == queries
+
+    def test_translate_with_mock_gemini(self, client: StockImageClient) -> None:
+        """Gemini翻訳のモックテスト"""
+        queries = ["量子コンピュータ", "technology", "深層学習"]
+
+        mock_response = MagicMock()
+        mock_response.text = "1. quantum computer\n2. deep learning"
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.models.generate_content.return_value = mock_response
+
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}, clear=False):
+            with patch("google.genai.Client", return_value=mock_client_instance):
+                result = client._translate_queries_to_english(queries)
+
+        assert result[0] == "quantum computer"
+        assert result[1] == "technology"  # 英語はそのまま
+        assert result[2] == "deep learning"
+
+    def test_mixed_japanese_english(self, client: StockImageClient) -> None:
+        """日本語と英語混在のクエリリスト"""
+        queries = ["AI revolution", "量子ビット", "cloud computing"]
+        # 英語のみ (index 0, 2) は翻訳スキップ
+        # 日本語 (index 1) のみ翻訳対象
+        mock_response = MagicMock()
+        mock_response.text = "1. quantum bit"
+
+        mock_client_instance = MagicMock()
+        mock_client_instance.models.generate_content.return_value = mock_response
+
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}, clear=False):
+            with patch("google.genai.Client", return_value=mock_client_instance):
+                result = client._translate_queries_to_english(queries)
+
+        assert result[0] == "AI revolution"
+        assert result[1] == "quantum bit"
+        assert result[2] == "cloud computing"
