@@ -82,5 +82,10 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// 字幕と音声の間隔（秒）
         /// </summary>
         public double SubtitleOffset { get; set; } = 0.0;
+
+        /// <summary>
+        /// アイテム間のパディング（秒）。音声間に自然な間を作る。
+        /// </summary>
+        public double ItemPaddingSeconds { get; set; } = 0.3;
     }
 }

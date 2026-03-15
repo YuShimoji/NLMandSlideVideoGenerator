@@ -285,7 +285,8 @@ namespace NLMSlidePlugin.Core
         /// <summary>
         /// タイムライン上の開始・終了時刻を計算
         /// </summary>
-        private void CalculateTimeline(List<CsvTimelineItem> items)
+        /// <param name="paddingSeconds">アイテム間のパディング（秒）</param>
+        private void CalculateTimeline(List<CsvTimelineItem> items, double paddingSeconds = 0.3)
         {
             double currentTime = 0;
 
@@ -293,14 +294,8 @@ namespace NLMSlidePlugin.Core
             {
                 item.StartTime = currentTime;
 
-                if (item.Duration.HasValue)
-                {
-                    currentTime += item.Duration.Value;
-                }
-                else
-                {
-                    currentTime += 3.0;
-                }
+                double duration = item.Duration ?? 3.0;
+                currentTime += duration + paddingSeconds;
             }
         }
     }

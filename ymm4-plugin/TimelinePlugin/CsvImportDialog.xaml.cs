@@ -485,8 +485,9 @@ namespace NLMSlidePlugin.TimelinePlugin
                     hasItemInRow = true;
                 }
 
-                // 次のアイテムの開始位置を音声長に基づいて設定
-                nextFrame = frame + currentItemLength;
+                // 次のアイテムの開始位置を音声長+パディングに基づいて設定
+                int paddingFrames = Math.Max(0, (int)Math.Round(0.3 * fps));
+                nextFrame = frame + currentItemLength + paddingFrames;
 
                 if (hasItemInRow) importedRows++;
                 else skippedRows++;
