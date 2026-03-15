@@ -54,7 +54,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
-| スタイル | テンプレートJSON + Pre-Export検証 | Phase 1完了 | SP-031 | Python側: ExportValidator+StyleTemplateManager+3テンプレート。次: C#プラグインでテンプレート参照 |
+| スタイル | テンプレートJSON + Pre-Export検証 | Phase 2完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfadeセクション追加。ValidateImportItems拡張。残: BGMテンプレート |
 | 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み。次: Phase 3 AI画像生成 |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
@@ -64,27 +64,26 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): SP-031 テンプレート化
+### 短期 (1-2週間): SP-033 Phase 3 + 品質改善
 
 ```
-SP-031 テンプレートJSON → SP-033 Phase 3 (AI画像)
+SP-033 Phase 3 (AI画像) → E2E品質改善
 ```
 
-- SP-031: スタイルテンプレートJSON (C#変更あり → 次回E2Eバッチテスト対象)
-- SP-033 Phase 2c: 完了 (Gemini分類+キーワード+翻訳+Orchestrator統合)
+- SP-031: 完了 (style_template.json v1.1 + C#統合 + ValidateImportItems拡張)
+- SP-033 Phase 3: AI生成イラスト (Gemini画像生成統合)
 
-### 中期 (1-2ヶ月): テンプレート化+品質パイプライン
+### 中期 (1-2ヶ月): 品質パイプライン + ドキュメント
 
 ```
-SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
+SP-033 Phase 3 (AI画像) → E2E品質改善 → ドキュメント整備
 ```
 
-- SP-031: スタイルテンプレートJSON + Pre-Export Validation
 - ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
+- BGMテンプレート自動配置 (SP-031残件)
 
-### 長期 (3ヶ月+): テンプレート化・自動化
+### 長期 (3ヶ月+): 自動化
 
-- SP-031: スタイルテンプレートJSON + Pre-Export Validation
 - SP-033 Phase 3: AI生成イラスト
 - Docker化 / CI-CD強化
 - バッチ処理 / 多言語対応
@@ -118,6 +117,8 @@ SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 - 2026-03-17: SP-033 Phase 2c 完了: Gemini分類+キーワード抽出+日英翻訳+Orchestrator統合。テスト228件PASS
 - 2026-03-16: SP-034 パイプラインステップ再開機能: PipelineState永続化+CLI --resume+UI再開セクション+テスト16件PASS
 - 2026-03-17: SP-031 Phase 1 完了: ExportValidator+StyleTemplateManager+3テンプレート(default/cinematic/minimal)+CLI validate/templates。テスト280件PASS
+- 2026-03-17: SP-031 Phase 2 完了: style_template.json v1.1 (video/crossfadeセクション追加)、C# StyleTemplateLoader拡張(VideoConfig/CrossfadeConfig)、ValidateImportItems拡張(連続同一画像検出/統計サマリー)
+- 2026-03-16: SP-031 C#ハードコード値全面テンプレート化: ApplySubtitleStyle/ApplyAnimationDirect/GetSpeakerColor/crossfade/padding/defaultDuration全てstyle_template.json参照に置換
 
 ---
 
