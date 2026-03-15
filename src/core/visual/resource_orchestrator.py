@@ -55,6 +55,7 @@ class VisualResourceOrchestrator:
         self.stock_client = stock_client
         self.ai_provider = ai_provider
         self.topic = topic
+        self.last_stock_images: list = []  # クレジット生成用
 
     def orchestrate(
         self,
@@ -212,6 +213,7 @@ class VisualResourceOrchestrator:
             logger.info("全visualセグメントをスライドにフォールバック")
             return {}, {}
 
+        self.last_stock_images = list(stock_images)
         stock_mapping: Dict[int, Path] = {}
         failed_indices: List[int] = []
         for i, (seg_idx, img) in enumerate(zip(visual_indices, stock_images)):

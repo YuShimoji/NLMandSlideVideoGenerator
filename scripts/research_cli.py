@@ -373,16 +373,37 @@ async def run_pipeline(
 
                 stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
                 classifier = SegmentClassifier(visual_ratio_target=0.4)
+
+                # AI画像フォールバック (SP-033 Phase 3)
+                ai_provider = None
+                try:
+                    from core.visual.ai_image_provider import AIImageProvider
+                    ai_provider = AIImageProvider(cache_dir=work_dir / "stock_images" / "ai_generated")
+                    if not ai_provider.api_key:
+                        ai_provider = None
+                except Exception:
+                    pass
+
                 orchestrator = VisualResourceOrchestrator(
                     classifier=classifier,
                     stock_client=stock_client,
+                    ai_provider=ai_provider,
                     topic=topic,
                 )
                 vis_package = orchestrator.orchestrate(segments, slide_paths)
 
                 stock_count = sum(1 for r in vis_package.resources if r.source == "stock")
                 slide_count = sum(1 for r in vis_package.resources if r.source == "slide")
-                print(f"Orchestrated: stock={stock_count}, slide={slide_count}, total={len(vis_package.resources)}")
+                ai_count = sum(1 for r in vis_package.resources if r.source == "ai")
+                print(f"Orchestrated: stock={stock_count}, ai={ai_count}, slide={slide_count}, total={len(vis_package.resources)}")
+
+                # クレジットファイル生成 (動画概要欄用)
+                if stock_count > 0 and orchestrator.last_stock_images:
+                    credits = stock_client.get_attribution(orchestrator.last_stock_images)
+                    if credits:
+                        credits_path = work_dir / "image_credits.txt"
+                        credits_path.write_text(credits, encoding="utf-8")
+                        print(f"Image credits: {credits_path}")
 
                 state.mark_done("orchestrate", "stock_images/")
                 state.save(work_dir)
@@ -408,9 +429,20 @@ async def run_pipeline(
 
                     stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
                     classifier = SegmentClassifier(visual_ratio_target=0.4)
+
+                    ai_provider = None
+                    try:
+                        from core.visual.ai_image_provider import AIImageProvider
+                        ai_provider = AIImageProvider(cache_dir=work_dir / "stock_images" / "ai_generated")
+                        if not ai_provider.api_key:
+                            ai_provider = None
+                    except Exception:
+                        pass
+
                     orchestrator = VisualResourceOrchestrator(
                         classifier=classifier,
                         stock_client=stock_client,
+                        ai_provider=ai_provider,
                         topic=topic,
                     )
                     vis_package = orchestrator.orchestrate(segments, slide_paths)
