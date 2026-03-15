@@ -230,15 +230,17 @@ Python内部ロジックのみの変更 (分類精度改善、キーワード生
 **Test タスク**:
 6. YMM4実機: Geminiクエリ改善後の画像選択結果確認 — Gemini APIクォータリセット後に検証
 
-### 7.5 Phase 3: AI生成イラスト [将来]
+### 7.5 Phase 3: AI生成イラスト [完了]
 
 **Dev タスク**:
-1. AIImageProvider (Gemini Imagen API)
-2. プロンプト生成ロジック
-3. 画像フォーマット変換
+1. ~~AIImageProvider (Gemini Imagen API)~~ done: `ai_image_provider.py` Imagen 3.0 + MD5キャッシュ + 指数バックオフリトライ
+2. ~~プロンプト生成ロジック~~ done: key_points/section/content優先順位 + style_hint + watermark禁止指示
+3. ~~Orchestrator統合~~ done: stock→AI→slideフォールバック連鎖 + ai_mapping分離 + source="ai"
+4. ~~CLI/UI統合~~ done: GEMINI_API_KEY設定時に自動有効化、追加UIなし
 
-**Test タスク** (Phase 3 Dev完了後に一括):
-4. YMM4実機: AI生成画像のインポート+表示確認
+**Test タスク**:
+5. ~~テスト~~ done: AIImageProvider 15件 + Orchestrator AI統合 6件。全301件PASS
+6. YMM4実機: AI生成画像のインポート+表示確認 — 次回E2Eマイルストーンで実施
 
 ---
 
