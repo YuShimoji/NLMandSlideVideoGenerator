@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-15
+最終更新: 2026-03-16
 
 ---
 
@@ -22,8 +22,11 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | NLMSlidePlugin CSVインポート | 完成 | CsvImportDialog + Ymm4TimelineImporter |
 | Voice自動生成 UI接続 (SP-024) | 完成 | VoiceSpeakerDiscovery + CsvImportDialog |
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
-| CsvAssembler (SP-032 Phase A/B) | 完成 | 台本+スライドPNG→CSV自動合成 + YMM4統合 |
+| アニメーション7種 (SP-033 Phase 1) | テスト待ち | Direct API方式 (ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static) |
+| EnsureOpacity100 | テスト待ち | Direct API方式 (Opacity.From=100.0) |
+| CsvAssembler (SP-032 Phase A-D) | 完成 | 台本→CSV一気通貫 + CLI + Streamlit UI |
 | 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 (scripts/research_cli.py) |
+| Gemini SDK移行 | 完成 | google-generativeai → google-genai |
 | 字幕生成 (SRT/ASS/VTT) | 完成 | |
 | 長文自動分割 | 完成 | |
 | サムネイル自動生成 | 完成 | |
@@ -35,19 +38,55 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | ID | 内容 | 状態 | 備考 |
 |----|------|------|------|
-| TASK_023 | E2E実証 (CSV→YMM4→mp4) | NEXT | Voice確認済み、ImageItem実機テスト待ち |
+| SP-027 | Baseline E2E (CSV→YMM4→mp4) | テスト準備完了 | テストCSV+検証ガイド整備済み、YMM4実機テスト待ち |
+| SP-033 | アニメーション7種 実機テスト | テスト準備完了 | Direct API移行完了、SP-027と同時検証 |
 
 ---
 
 ## 未実装 / 今後の検討
 
-| 領域 | 内容 | 優先度 | 備考 |
-|------|------|--------|------|
-| スライド画像 | 画像の位置・サイズ調整（全画面フィット） | 高 | SP-026後続 |
-| スライド画像 | アニメーション（パン・ズーム等） | 中 | ユーザー要件: 動きがあること |
-| スライド画像 | slides_payload.jsonとの統合 | 低 | 現在はCSV 3列目方式のみ |
-| API連携 | Gemini/Google Slides API統合 | 中 | CsvScriptCompletionPlugin (YMM4内) |
-| 品質 | 型ヒント・Docstring整備 | 低 | 継続 |
+| 領域 | 内容 | 優先度 | 仕様 | 備考 |
+|------|------|--------|------|------|
+| タイミング | Post-Voice Timeline Resync | 高 | SP-028 | Voice生成後の実音声長でItem再計算 |
+| トランジション | FadeIn/Out + 字幕テンプレート | 中 | SP-030 | スライド間遷移 + 字幕位置・色統一 |
+| スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
+| 素材 | ストック素材API (Pexels/Unsplash) | 中 | SP-033 Phase 2 | スライド画像の自動調達 |
+| 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
+| API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
+| 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
+
+---
+
+## ロードマップ
+
+### 短期 (1-2週間): E2E完走
+
+```
+SP-033 Phase 1 (YMM4実機テスト) → SP-027 (Baseline E2E完走)
+```
+
+- SP-027/SP-033: YMM4実機テスト (7種アニメ + Voice + レンダリング)
+- テスト用CSV: `samples/image_slide/e2e_baseline_test.csv`
+- 検証ガイド: `docs/e2e_verification_guide.md`
+- 成功条件: 1本のmp4がCSV→YMM4→書き出しで完走、7種アニメが視覚的に確認可能
+
+### 中期 (1-2ヶ月): 品質パイプライン
+
+```
+SP-028 (タイミング安定化) → SP-030 (トランジション) → SP-033 Phase 2 (素材API)
+```
+
+- SP-028: Voice生成後の実音声長でタイムライン再計算
+- SP-030: FadeIn/Out + 字幕テンプレート (位置・フォント・話者色分け)
+- SP-033 Phase 2: ストック素材API (Pexels/Unsplash) 統合
+- ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
+
+### 長期 (3ヶ月+): テンプレート化・自動化
+
+- SP-031: スタイルテンプレートJSON + Pre-Export Validation
+- SP-033 Phase 3: AI生成イラスト
+- Docker化 / CI-CD強化
+- バッチ処理 / 多言語対応
 
 ---
 
@@ -66,6 +105,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-14: SP-032 CsvAssembler + YMM4 backend統合
 - 2026-03-15: 研究ワークフロー Phase 1-4 完了 (CLI review + E2Eテスト)
 - 2026-03-15: SP-032 Phase C完了 (CLI pipeline サブコマンド: collect→script→align→review→CsvAssembler)
+- 2026-03-15: SP-032 Phase D完了 (Streamlit UI素材パイプライン)、Gemini SDK移行
+- 2026-03-16: SP-033 Direct API全面移行 (リフレクション全廃、-312行)
 
 ---
 

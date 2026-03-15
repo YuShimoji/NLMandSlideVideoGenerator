@@ -237,10 +237,10 @@
     "id": "SP-027",
     "title": "Baseline Video E2E",
     "status": "in_progress",
-    "pct": 0,
+    "pct": 30,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 0: 全画面フィット+Voice生成の実機E2E完走。ベースライン動画書き出しと品質評価"
+    "summary": "Phase 0: テストCSV+検証ガイド準備完了。YMM4実機テスト待ち(7種アニメ+Voice+レンダリング)"
   },
   {
     "id": "SP-028",

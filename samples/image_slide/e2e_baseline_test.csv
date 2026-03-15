@@ -1,0 +1,11 @@
+れいむ,ベースラインテスト開始。全7種のアニメーションを検証します,slides/slide_0001.png,ken_burns
+まりさ,まずケンバーンズ効果。緩やかなズームインが動いているか確認,slides/slide_0001.png,ken_burns
+れいむ,次にズームイン。画像が拡大方向に動くはずです,slides/slide_0002.png,zoom_in
+まりさ,ズームアウト。画像が縮小方向に動きます,slides/slide_0002.png,zoom_out
+れいむ,パン左。画像が右から左へ移動します,slides/slide_0003.png,pan_left
+まりさ,パン右。画像が左から右へ移動します,slides/slide_0003.png,pan_right
+れいむ,パン上。画像が下から上へ移動します,slides/slide_0001.png,pan_up
+まりさ,スタティック。画像は完全に静止しています,slides/slide_0002.png,static
+れいむ,アニメーション列なしの行。デフォルトken_burnsが適用されるはず,slides/slide_0003.png,
+まりさ,画像なしの行。テキストとVoiceのみ表示されるはず,,
+れいむ,以上でベースラインテスト終了です,slides/slide_0001.png,ken_burns
