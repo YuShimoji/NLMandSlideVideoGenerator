@@ -1,7 +1,7 @@
 # 素材直結パイプライン仕様 (SP-032)
 
-**最終更新**: 2026-03-14
-**ステータス**: 仕様整理中
+**最終更新**: 2026-03-15
+**ステータス**: Phase A/B/C完了、Phase D未着手
 
 ---
 
@@ -129,16 +129,16 @@
 | 将来設計 | Gemini Vision APIでスライド画像を評価 → 可読性/情報量/デザインスコア |
 | 初期実装 | 無検閲（スキップ）。人手レビューの場合はStreamlit UIでPNG一覧表示 |
 
-### Step 4: CSV自動合成 ★NEW★
+### Step 4: CSV自動合成 ★実装済み★
 
 | 項目 | 内容 |
 |------|------|
-| 実行主体 | CsvAssembler（新規作成） |
+| 実行主体 | CsvAssembler (`src/core/csv_assembler.py`) |
 | 入力 | ScriptBundle (台本セグメント群) + SlidesPackage (PNG群) |
 | 処理 | セグメントとスライドを1:Nマッチング → CSV 3列形式で出力 |
 | 出力 | timeline.csv (話者,テキスト,画像絶対パス) |
 | 自動/手動 | **自動** |
-| 既存実装 | **未実装（Gap 1）** |
+| 既存実装 | **実装済み** (a764e7e) + SP-033アニメーション拡張 |
 
 **マッチング戦略:**
 
@@ -166,14 +166,14 @@
 - スライド0件 → 画像パス空欄でCSV生成（後方互換）
 - セグメント < スライド → 1:1マッチ、余剰スライドは無視
 
-### Step 5: YMM4プロジェクト生成 ★EXTEND★
+### Step 5: YMM4プロジェクト生成 ★実装済み★
 
 | 項目 | 内容 |
 |------|------|
-| 実行主体 | YMM4EditingBackend (src/core/editing/ymm4_backend.py) |
+| 実行主体 | YMM4EditingBackend (`src/core/editing/ymm4_backend.py`) |
 | 拡張内容 | Step 4で生成したCSVを `text/timeline.csv` に自動配置 |
-| 変更箇所 | `_copy_csv_source()` — CsvAssemblerの出力パスを自動設定 |
-| 既存実装 | **実装済み（拡張が必要）** |
+| 変更箇所 | CsvAssembler.from_script_bundle() 呼び出しを統合済み |
+| 既存実装 | **実装済み** (a764e7e) |
 
 **ユーザー操作（Step 5完了後）:**
 1. YMM4起動
@@ -226,35 +226,41 @@ YMM4EditingBackend ─→ ymm4_project_YYYYMMDD/
 
 ## 4. 実装計画
 
-### Phase A: CsvAssembler実装 (Gap 1)
+### Phase A: CsvAssembler実装 ★完了★
 
-新規ファイル: `src/core/csv_assembler.py`
+`src/core/csv_assembler.py` 実装済み (a764e7e)。SP-033 アニメーション自動割当も統合済み。
 
-```python
-class CsvAssembler:
-    def assemble(
-        self,
-        script_bundle: ScriptBundle,
-        slides_package: SlidesPackage,
-        output_path: Path,
-        speaker_mapping: Optional[Dict[str, str]] = None,
-    ) -> Path:
-        """台本セグメント + スライドPNG → CSV 3列形式"""
+- `assemble()`: セグメント群 + PNG群 → CSV 4列形式 (話者, テキスト, 画像パス, アニメーション種別)
+- `from_script_bundle()`: ScriptBundle辞書 + スライドディレクトリから一括生成
+- テスト: `tests/test_csv_assembler.py`
+
+### Phase B: YMM4EditingBackend拡張 ★完了★
+
+`ymm4_backend.py` に CsvAssembler.from_script_bundle() 呼び出しを統合済み。
+
+### Phase C: CLI pipeline統合 ★完了★
+
+`scripts/research_cli.py pipeline` サブコマンドで一気通貫実行が可能。
+
+```
+python scripts/research_cli.py pipeline \
+  --topic "トピック" \
+  --auto-review \
+  --slides-dir path/to/slides \
+  --speaker-map '{"Host1":"れいむ","Host2":"まりさ"}'
 ```
 
-- speaker_mapping: `{"Host1": "ずんだもん", "Host2": "四国めたん"}` のYMM4話者名マッピング
-- スライドPNGパスは絶対パスで記入
-- テストケース: 均等分割、1:1、セグメント>スライド、スライド0件
+実行フロー: collect → script gen (GeminiProvider) → align → review → CsvAssembler
 
-### Phase B: YMM4EditingBackend拡張 (Gap 2)
+- テスト: `tests/test_research_pipeline.py` (3件)
 
-`_copy_csv_source()` を拡張し、CsvAssemblerの出力を自動的に `text/timeline.csv` にコピー。
+### Phase D: Streamlit UIワンクリック統合 (未着手)
 
-### Phase C: Streamlit UIワンクリック統合
+既存のPipelineページに「Generate Video」ボタンあり。
+パイプライン実行は可能だが、Streamlit UIからの一気通貫実行は未実装。
 
-既存のPipelineページに「全工程実行」ボタンを追加:
-1. リサーチ → 台本生成 → スライド生成 → CSV合成 → YMM4プロジェクト生成
-2. 完了時にプロジェクトディレクトリを表示
+残タスク:
+- [ ] Streamlit UIで collect→align→review→pipeline の一気通貫ボタン追加
 
 ---
 
@@ -299,3 +305,5 @@ NLMSlidePluginのVoiceSpeakerDiscoveryと連携。
 | 日付 | 内容 |
 |------|------|
 | 2026-03-14 | 初版作成。全ステップの自動/手動/品質ゲートを定義 |
+| 2026-03-15 | Phase A/B完了反映。研究ワークフロー Phase 1-4 完了。CLI review コマンド追加 |
+| 2026-03-15 | Phase C完了: CLI pipeline サブコマンド (collect→script→align→review→CsvAssembler一気通貫) |

@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-14
+最終更新: 2026-03-15
 
 ---
 
@@ -22,6 +22,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | NLMSlidePlugin CSVインポート | 完成 | CsvImportDialog + Ymm4TimelineImporter |
 | Voice自動生成 UI接続 (SP-024) | 完成 | VoiceSpeakerDiscovery + CsvImportDialog |
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
+| CsvAssembler (SP-032 Phase A/B) | 完成 | 台本+スライドPNG→CSV自動合成 + YMM4統合 |
+| 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 (scripts/research_cli.py) |
 | 字幕生成 (SRT/ASS/VTT) | 完成 | |
 | 長文自動分割 | 完成 | |
 | サムネイル自動生成 | 完成 | |
@@ -61,6 +63,9 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-08: Path B完全削除、YMM4一本化
 - 2026-03-09: SP-024 Voice自動生成UI完了
 - 2026-03-14: SP-026 ImageItem自動配置完了
+- 2026-03-14: SP-032 CsvAssembler + YMM4 backend統合
+- 2026-03-15: 研究ワークフロー Phase 1-4 完了 (CLI review + E2Eテスト)
+- 2026-03-15: SP-032 Phase C完了 (CLI pipeline サブコマンド: collect→script→align→review→CsvAssembler)
 
 ---
 

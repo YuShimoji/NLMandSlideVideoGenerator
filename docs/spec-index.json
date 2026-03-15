@@ -120,10 +120,10 @@
     "id": "SP-014",
     "title": "Research Workflow Design",
     "status": "done",
-    "pct": 95,
+    "pct": 100,
     "cat": "core",
     "file": "docs/research_workflow_design.md",
-    "summary": "Web調査+NLMスクリプト整合ワークフロー (TASK_016)"
+    "summary": "Web調査+NLMスクリプト整合ワークフロー。Phase 1-5完了 (collect/align/review/E2E/pipeline CLI)"
   },
   {
     "id": "SP-015",
@@ -254,11 +254,11 @@
   {
     "id": "SP-029",
     "title": "Ken Burns Auto-Animation",
-    "status": "planned",
-    "pct": 0,
+    "status": "done",
+    "pct": 100,
     "cat": "plugin",
-    "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 2: ImageItemにZoom/X/Yアニメーション自動付与。パン・ズームで静止画に動きを追加"
+    "file": "docs/visual_resource_pipeline_spec.md",
+    "summary": "SP-033 Phase 1に統合。CSV 4列目でアニメーション種別指定+AnimationAssignerによる自動割当。ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static対応"
   },
   {
     "id": "SP-030",
@@ -282,9 +282,18 @@
     "id": "SP-032",
     "title": "Material Pipeline Integration",
     "status": "in_progress",
-    "pct": 40,
+    "pct": 90,
     "cat": "pipeline",
     "file": "docs/material_pipeline_spec.md",
-    "summary": "素材直結パイプライン: リサーチ→台本→スライドPNG→CSV自動合成→YMM4プロジェクト生成を一気通貫化"
+    "summary": "素材直結パイプライン: Phase A/B/C完了。CLI pipeline サブコマンドで collect→script→align→review→CsvAssembler一気通貫実行可能。残: Phase D Streamlit UI統合"
+  },
+  {
+    "id": "SP-033",
+    "title": "Visual Resource Pipeline",
+    "status": "in_progress",
+    "pct": 35,
+    "cat": "pipeline",
+    "file": "docs/visual_resource_pipeline_spec.md",
+    "summary": "ビジュアルリソース調達パイプライン。Phase1: アニメーション多様化(CSV 4列目+YMM4プラグイン対応)、Phase2: ストック素材API、Phase3: AI生成イラスト"
   }
 ]

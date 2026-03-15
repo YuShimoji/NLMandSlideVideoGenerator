@@ -46,3 +46,35 @@ class AlignmentReport:
     def from_dict(cls, data: Dict[str, Any]) -> 'AlignmentReport':
         """辞書形式から復元"""
         return cls(**data)
+
+    def update_item_status(
+        self,
+        segment_index: int | None,
+        new_status: str,
+        *,
+        new_text: str | None = None,
+        speaker: str | None = None,
+    ) -> bool:
+        """分析アイテムのステータスを更新する。見つかれば True。"""
+        for item in self.analysis:
+            if item.get("segment_index") == segment_index:
+                item["status"] = new_status
+                if new_text is not None:
+                    item["text"] = new_text
+                if speaker is not None:
+                    item["speaker"] = speaker
+                return True
+        return False
+
+    def rebuild_summary(self) -> None:
+        """analysis の現在の内容から summary を再構築する。"""
+        statuses = ["supported", "orphaned", "missing", "conflict", "adopted", "rejected"]
+        self.summary = {
+            "total_segments": sum(
+                1 for item in self.analysis if item.get("segment_index") is not None
+            ),
+        }
+        for status in statuses:
+            count = sum(1 for item in self.analysis if item.get("status") == status)
+            if count > 0:
+                self.summary[status] = count
