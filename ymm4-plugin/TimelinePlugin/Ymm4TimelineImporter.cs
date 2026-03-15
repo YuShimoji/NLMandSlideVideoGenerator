@@ -151,6 +151,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
+                        CsvImportDialog.EnsureOpacity100(image);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -186,6 +187,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
+                        CsvImportDialog.EnsureOpacity100(image);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;

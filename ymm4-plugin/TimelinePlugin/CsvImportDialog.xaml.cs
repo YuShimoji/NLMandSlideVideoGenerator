@@ -496,9 +496,11 @@ namespace NLMSlidePlugin.TimelinePlugin
                         Frame = imageStart,
                         Layer = imageLayer,
                         Length = length,
+                        PlaybackRate = 100.0,
                         FadeIn = crossfadeFrames,
                         FadeOut = crossfadeFrames,
                     };
+
                     double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                     // SP-033: アニメーション種別対応
                     ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
@@ -1086,7 +1088,7 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                         if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
                         {
-                            var imageItem = new ImageItem(item.ImageFilePath) { Frame = frame, Layer = baseLayer + 1, Length = length };
+                            var imageItem = new ImageItem(item.ImageFilePath) { Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
                             double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                             // SP-033: アニメーション種別対応
                             ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
@@ -1839,6 +1841,77 @@ namespace NLMSlidePlugin.TimelinePlugin
             // 正常に動作せず、不透明度が0%固定になる問題があるため無効化。
             // YMM4 デフォルトの不透明度 100% をそのまま使用する。
             // ApplyImageFade(imageItem);
+        }
+
+        /// <summary>
+        /// ImageItem の不透明度を 100% に強制設定する。
+        /// YMM4 の ImageItem デフォルト不透明度が 0% の場合に対応。
+        /// </summary>
+        internal static void EnsureOpacity100(ImageItem imageItem)
+        {
+            try
+            {
+                var opacityProp = imageItem.GetType().GetProperty("Opacity");
+                if (opacityProp is null) { WriteRuntimeLog("EnsureOpacity100: Opacity property not found"); return; }
+                var opacityObj = opacityProp.GetValue(imageItem);
+                if (opacityObj is null) { WriteRuntimeLog("EnsureOpacity100: Opacity value is null"); return; }
+
+                // AnimationType を "固定" (none/constant) に設定
+                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
+                if (animTypeProp is not null)
+                {
+                    var animType = animTypeProp.PropertyType;
+                    if (animType.IsEnum)
+                    {
+                        // まず "固定" を探す、なければ "なし"、それもなければ最初の値
+                        object? targetEnum = null;
+                        object? firstEnum = null;
+                        foreach (var val in Enum.GetValues(animType))
+                        {
+                            firstEnum ??= val;
+                            var name = val.ToString();
+                            if (name == "固定" || name == "なし")
+                            {
+                                targetEnum = val;
+                                break;
+                            }
+                        }
+                        targetEnum ??= firstEnum;
+                        if (targetEnum is not null)
+                        {
+                            animTypeProp.SetValue(opacityObj, targetEnum);
+                            WriteRuntimeLog($"EnsureOpacity100: AnimationType set to '{targetEnum}'");
+                        }
+                    }
+                }
+
+                // Values[0].Value = 100.0 に設定
+                var valuesProp = opacityObj.GetType().GetProperty("Values");
+                if (valuesProp is null) { WriteRuntimeLog("EnsureOpacity100: Values property not found"); return; }
+                var values = valuesProp.GetValue(opacityObj);
+                if (values is null) { WriteRuntimeLog("EnsureOpacity100: Values is null"); return; }
+
+                var indexer = values.GetType().GetProperty("Item");
+                var countProp = values.GetType().GetProperty("Count");
+                int count = countProp != null ? (int)countProp.GetValue(values)! : 0;
+
+                if (count > 0 && indexer is not null)
+                {
+                    var firstValue = indexer.GetValue(values, new object[] { 0 });
+                    var valueProp = firstValue?.GetType().GetProperty("Value");
+                    double currentVal = valueProp != null ? (double)valueProp.GetValue(firstValue)! : -1;
+                    valueProp?.SetValue(firstValue, 100.0);
+                    WriteRuntimeLog($"EnsureOpacity100: Values[0] {currentVal:F1} → 100.0 (count={count})");
+                }
+                else
+                {
+                    WriteRuntimeLog($"EnsureOpacity100: count={count}, cannot set value");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"EnsureOpacity100 failed: {ex.Message}");
+            }
         }
 
         /// <summary>

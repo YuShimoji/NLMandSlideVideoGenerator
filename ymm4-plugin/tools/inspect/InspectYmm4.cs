@@ -2,84 +2,74 @@ using System;
 using System.Linq;
 using System.Reflection;
 
+// Inspect Animation type (Opacity/Zoom property type on VisualItem)
 var dllPath = @"D:\YukkuriMovieMaker_v4\YukkuriMovieMaker.dll";
 var asm = Assembly.LoadFrom(dllPath);
 Type[] types;
 try { types = asm.GetTypes(); }
 catch (ReflectionTypeLoadException ex) { types = ex.Types.Where(t => t != null).ToArray()!; }
 
-// Find ImageItem
-var imageItemType = types.FirstOrDefault(t => t?.Name == "ImageItem");
-if (imageItemType == null)
+var imageItemType = types.First(t => t?.Name == "ImageItem");
+var opacityProp = imageItemType.GetProperty("Opacity");
+Console.WriteLine($"Opacity property type: {opacityProp!.PropertyType.FullName}");
+
+var animType = opacityProp.PropertyType;
+Console.WriteLine($"\nAnimation type: {animType.FullName}");
+Console.WriteLine($"  Base: {animType.BaseType?.FullName}");
+
+Console.WriteLine("\n=== Animation PROPERTIES ===");
+foreach (var p in animType.GetProperties(BindingFlags.Public | BindingFlags.Instance).OrderBy(p => p.Name))
 {
-    Console.WriteLine("ImageItem not found!");
-    // Search for anything with "Image" in the name
-    foreach (var t in types.Where(t => t?.Name?.Contains("Image") == true).Take(20))
-        Console.WriteLine($"  Found: {t!.FullName}");
-    return;
+    Console.WriteLine($"  {p.PropertyType.Name} {p.Name} {{ {(p.CanRead ? "get " : "")}{(p.CanWrite ? "set " : "")}}}");
 }
 
-Console.WriteLine($"TYPE: {imageItemType.FullName}");
-Console.WriteLine($"  BASE: {imageItemType.BaseType?.FullName}");
-foreach (var iface in imageItemType.GetInterfaces().Take(10))
-    Console.WriteLine($"  IFACE: {iface.FullName}");
-
-// Constructors
-Console.WriteLine("\n=== CONSTRUCTORS ===");
-foreach (var ctor in imageItemType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+Console.WriteLine("\n=== Animation METHODS ===");
+foreach (var m in animType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
 {
-    var parms = string.Join(", ", ctor.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
-    Console.WriteLine($"  CTOR({parms})");
-}
-
-// Properties (including inherited)
-Console.WriteLine("\n=== PROPERTIES (declared + inherited) ===");
-var allProps = imageItemType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-foreach (var p in allProps.OrderBy(p => p.Name))
-{
-    var declType = p.DeclaringType?.Name ?? "?";
-    var get = p.CanRead ? "get" : "";
-    var set = p.CanWrite ? "set" : "";
-    Console.WriteLine($"  [{declType}] {p.PropertyType.Name} {p.Name} {{ {get} {set} }}");
-}
-
-// FilePath specifically
-Console.WriteLine("\n=== FilePath details ===");
-var fpProp = imageItemType.GetProperty("FilePath");
-if (fpProp != null)
-{
-    Console.WriteLine($"  Type: {fpProp.PropertyType.FullName}");
-    Console.WriteLine($"  DeclaringType: {fpProp.DeclaringType?.FullName}");
-    Console.WriteLine($"  CanRead: {fpProp.CanRead}, CanWrite: {fpProp.CanWrite}");
-}
-
-// ContentFilePath, SourceFilePath, etc.
-foreach (var name in new[] { "ContentFilePath", "SourceFilePath", "ImagePath", "Path", "Source", "Bitmap", "ImageSource" })
-{
-    var prop = allProps.FirstOrDefault(p => p.Name == name);
-    if (prop != null)
-        Console.WriteLine($"  Found: {prop.PropertyType.Name} {name}");
-}
-
-// Methods (declared only)
-Console.WriteLine("\n=== METHODS (declared) ===");
-foreach (var m in imageItemType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-{
-    if (m.IsSpecialName) continue; // skip get_/set_
+    if (m.IsSpecialName) continue;
     var parms = string.Join(", ", m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
     Console.WriteLine($"  {m.ReturnType.Name} {m.Name}({parms})");
 }
 
-// Also check base class methods
-Console.WriteLine("\n=== BASE CLASS METHODS ===");
-var baseType = imageItemType.BaseType;
-if (baseType != null)
+// Check Values property type
+var valuesProp = animType.GetProperty("Values");
+if (valuesProp != null)
 {
-    Console.WriteLine($"Base: {baseType.FullName}");
-    foreach (var m in baseType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+    Console.WriteLine($"\n=== Values property ===");
+    Console.WriteLine($"  Type: {valuesProp.PropertyType.FullName}");
+    Console.WriteLine($"  CanRead: {valuesProp.CanRead}, CanWrite: {valuesProp.CanWrite}");
+
+    // Check the element type
+    var valuesType = valuesProp.PropertyType;
+    if (valuesType.IsGenericType)
     {
-        if (m.IsSpecialName) continue;
-        var parms = string.Join(", ", m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
-        Console.WriteLine($"  {m.ReturnType.Name} {m.Name}({parms})");
+        var elementType = valuesType.GetGenericArguments()[0];
+        Console.WriteLine($"  Element type: {elementType.FullName}");
+        Console.WriteLine("\n=== AnimationValue PROPERTIES ===");
+        foreach (var p in elementType.GetProperties(BindingFlags.Public | BindingFlags.Instance).OrderBy(p => p.Name))
+            Console.WriteLine($"    {p.PropertyType.Name} {p.Name} {{ {(p.CanRead ? "get " : "")}{(p.CanWrite ? "set " : "")}}}");
     }
+}
+
+// Try to create an ImageItem and check default opacity
+Console.WriteLine("\n=== Default ImageItem Opacity ===");
+try
+{
+    var img = Activator.CreateInstance(imageItemType);
+    var opacity = opacityProp.GetValue(img);
+    var vals = valuesProp!.GetValue(opacity);
+    var countProp = vals!.GetType().GetProperty("Count");
+    int count = (int)countProp!.GetValue(vals)!;
+    Console.WriteLine($"  Count: {count}");
+    var indexer = vals.GetType().GetProperty("Item");
+    if (indexer != null && count > 0)
+    {
+        var first = indexer.GetValue(vals, new object[] { 0 });
+        var vp = first!.GetType().GetProperty("Value");
+        Console.WriteLine($"  Values[0].Value: {vp!.GetValue(first)}");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  Error: {ex.Message}");
 }
