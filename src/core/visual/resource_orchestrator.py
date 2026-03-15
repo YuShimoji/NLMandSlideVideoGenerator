@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from core.utils.logger import logger
 
@@ -41,16 +41,19 @@ class VisualResourceOrchestrator:
         self,
         classifier: Optional[SegmentClassifier] = None,
         stock_client: Optional[Any] = None,  # StockImageClient (Optional import)
+        ai_provider: Optional[Any] = None,  # AIImageProvider (Optional import)
         topic: str = "",
     ) -> None:
         """
         Args:
             classifier: セグメント分類器。None時はデフォルト設定で生成。
             stock_client: StockImageClient インスタンス。Noneの場合はスライドのみ使用。
+            ai_provider: AIImageProvider インスタンス。stock取得失敗時のフォールバック。
             topic: 動画トピック (ストック画像検索のコンテキスト用)。
         """
         self.classifier = classifier or SegmentClassifier()
         self.stock_client = stock_client
+        self.ai_provider = ai_provider
         self.topic = topic
 
     def orchestrate(
@@ -94,14 +97,14 @@ class VisualResourceOrchestrator:
         )
 
         # Step 3: visual セグメントにストック画像を取得・割当
-        stock_mapping = self._fetch_stock_images(
+        stock_mapping, ai_mapping = self._fetch_stock_images(
             segments, classifications, keywords=keywords
         )
 
         # Step 4: リソース統合 + フォールバック
         resources = self._merge_resources(
             segments, classifications, slide_image_paths,
-            slide_mapping, stock_mapping,
+            slide_mapping, stock_mapping, ai_mapping,
         )
 
         # Step 5: 連続同一ソース回避
@@ -150,7 +153,7 @@ class VisualResourceOrchestrator:
         segments: List[Dict[str, Any]],
         classifications: List[SegmentType],
         keywords: Optional[List[str]] = None,
-    ) -> Dict[int, Path]:
+    ) -> Tuple[Dict[int, Path], Dict[int, Path]]:
         """visualセグメントにストック画像を取得する。
 
         Args:
@@ -160,11 +163,12 @@ class VisualResourceOrchestrator:
                 指定時はvisualセグメントのキーワードを検索クエリとして直接使用。
 
         Returns:
-            {segment_index: local_image_path} マッピング。
+            (stock_mapping, ai_mapping) のタプル。
+            各 {segment_index: local_image_path} マッピング。
         """
         if self.stock_client is None:
             logger.info("StockImageClient未設定。visualセグメントはスライドにフォールバック。")
-            return {}
+            return {}, {}
 
         visual_segments = []
         visual_indices = []
@@ -190,7 +194,7 @@ class VisualResourceOrchestrator:
                     visual_queries.append(keywords[i])
 
         if not visual_segments:
-            return {}
+            return {}, {}
 
         logger.info(f"ストック画像検索開始: {len(visual_segments)}セグメント対象")
         if visual_queries:
@@ -206,20 +210,31 @@ class VisualResourceOrchestrator:
         except Exception as e:
             logger.warning(f"ストック画像一括検索失敗: {e}")
             logger.info("全visualセグメントをスライドにフォールバック")
-            return {}
+            return {}, {}
 
-        mapping: Dict[int, Path] = {}
+        stock_mapping: Dict[int, Path] = {}
         failed_indices: List[int] = []
         for i, (seg_idx, img) in enumerate(zip(visual_indices, stock_images)):
             if img.local_path and img.source != "none":
-                mapping[seg_idx] = img.local_path
+                stock_mapping[seg_idx] = img.local_path
             else:
                 failed_indices.append(seg_idx)
 
-        logger.info(f"ストック画像取得: {len(mapping)}/{len(visual_indices)}件成功")
-        if failed_indices:
+        logger.info(f"ストック画像取得: {len(stock_mapping)}/{len(visual_indices)}件成功")
+
+        # AI画像フォールバック: stock取得失敗セグメントに対してAI生成を試行
+        ai_mapping: Dict[int, Path] = {}
+        if failed_indices and self.ai_provider:
+            ai_mapping = self._fetch_ai_images(
+                segments, failed_indices
+            )
+            remaining = [i for i in failed_indices if i not in ai_mapping]
+            if remaining:
+                logger.info(f"スライドにフォールバック: セグメント {remaining}")
+        elif failed_indices:
             logger.info(f"スライドにフォールバック: セグメント {failed_indices}")
-        return mapping
+
+        return stock_mapping, ai_mapping
 
     def _merge_resources(
         self,
@@ -228,13 +243,22 @@ class VisualResourceOrchestrator:
         slide_paths: List[Path],
         slide_mapping: Dict[int, int],
         stock_mapping: Dict[int, Path],
+        ai_mapping: Optional[Dict[int, Path]] = None,
     ) -> List[VisualResource]:
-        """分類結果・スライド・ストック画像を統合してリソースリストを生成する。"""
+        """分類結果・スライド・ストック画像・AI画像を統合してリソースリストを生成する。"""
+        ai_mapping = ai_mapping or {}
         resources: List[VisualResource] = []
         fallback_slide_idx = 0
 
         for i, cls in enumerate(classifications):
-            if cls == SegmentType.VISUAL and i in stock_mapping:
+            if cls == SegmentType.VISUAL and i in ai_mapping:
+                # AI生成画像がある
+                resources.append(VisualResource(
+                    image_path=ai_mapping[i],
+                    animation_type=AnimationType.KEN_BURNS,  # 後でassignで上書き
+                    source="ai",
+                ))
+            elif cls == SegmentType.VISUAL and i in stock_mapping:
                 # ストック画像がある
                 resources.append(VisualResource(
                     image_path=stock_mapping[i],
@@ -322,7 +346,7 @@ class VisualResourceOrchestrator:
         prev_animation: Optional[AnimationType] = None
 
         for r in resources:
-            if r.source == "stock" and r.image_path:
+            if r.source in ("stock", "ai") and r.image_path:
                 animation = cycle[cycle_idx % len(cycle)]
                 if animation == prev_animation and len(cycle) > 1:
                     cycle_idx += 1
@@ -335,3 +359,40 @@ class VisualResourceOrchestrator:
                 prev_animation = AnimationType.STATIC
 
         return resources
+
+    def _fetch_ai_images(
+        self,
+        segments: List[Dict[str, Any]],
+        target_indices: List[int],
+    ) -> Dict[int, Path]:
+        """stock取得失敗セグメントに対してAI画像を生成する。
+
+        Args:
+            segments: 全セグメント群。
+            target_indices: AI生成対象のセグメントインデックス群。
+
+        Returns:
+            {segment_index: local_image_path} マッピング。
+        """
+        if not self.ai_provider:
+            return {}
+
+        target_segments = [segments[i] for i in target_indices]
+        logger.info(f"AI画像生成開始: {len(target_segments)}セグメント対象")
+
+        try:
+            results = self.ai_provider.generate_for_segments(
+                target_segments,
+                topic=self.topic,
+            )
+        except Exception as e:
+            logger.warning(f"AI画像一括生成失敗: {e}")
+            return {}
+
+        mapping: Dict[int, Path] = {}
+        for seg_idx, result in zip(target_indices, results):
+            if result.image_path and not result.error:
+                mapping[seg_idx] = result.image_path
+
+        logger.info(f"AI画像生成: {len(mapping)}/{len(target_indices)}件成功")
+        return mapping

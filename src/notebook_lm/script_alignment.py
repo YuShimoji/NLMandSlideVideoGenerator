@@ -80,6 +80,7 @@ class ScriptAlignmentAnalyzer:
         for segment in normalized_script.get("segments", []):
             segment_index = int(segment.get("index", 0) or 0)
             segment_text = str(segment.get("text", "")).strip()
+            segment_speaker = segment.get("speaker", "")
             claims = self.extract_claims(segment_text, segment.get("key_points"))
 
             if not claims:
@@ -87,6 +88,7 @@ class ScriptAlignmentAnalyzer:
                     {
                         "segment_index": segment_index,
                         "text": segment_text,
+                        "speaker": segment_speaker,
                         "status": "orphaned",
                         "matched_source": None,
                         "matched_claim": None,
@@ -106,6 +108,7 @@ class ScriptAlignmentAnalyzer:
                     {
                         "segment_index": segment_index,
                         "text": segment_text,
+                        "speaker": segment_speaker,
                         "status": "orphaned",
                         "matched_source": None,
                         "matched_claim": None,
@@ -134,6 +137,7 @@ class ScriptAlignmentAnalyzer:
                 {
                     "segment_index": segment_index,
                     "text": segment_text,
+                    "speaker": segment_speaker,
                     "status": status,
                     "matched_source": best_match["url"],
                     "matched_claim": best_match["claim"],
