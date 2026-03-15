@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
 **最終更新**: 2026-03-17
-**ステータス**: Phase 1 実機テストPASS (Zoom + FadeIn/FadeOut)。残: Pan実装 + ディスパッチ接続
+**ステータス**: Phase 1 完了 (全7種アニメーション実装+実機テストPASS)。Phase 2/3 未着手
 
 ---
 
@@ -126,8 +126,9 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 
 | メソッド | 対象プロパティ | 状態 | 備考 |
 |----------|----------------|------|------|
+| `ApplyAnimationDirect` | (ディスパッチャ) | 実装済み | CSV 4列目animationType文字列で全7種をswitch分岐 |
 | `ApplyZoomDirect` | Zoom | 実装済み | Values in-place方式。ken_burns (100→105%), zoom_in, zoom_out に対応 |
-| `ApplyPanDirect` | X / Y | 未実装 | Values in-place方式で実装予定。pan_left, pan_right, pan_up に対応 |
+| `ApplyPositionDirect` | X / Y | 実装済み | Values in-place方式。pan_left, pan_right, pan_up に対応 |
 | (FadeIn/FadeOut) | Opacity | 実装済み | ImageItem.FadeIn/FadeOut プロパティ (秒指定) で制御 |
 
 **注意**: `Animation.From` / `Animation.To` は deprecated であり、実機テストでレンダリング破壊が確認されたため**使用禁止**。全アニメーションは `Values` (ImmutableList<AnimationValue>) の in-place 変更で実装すること。
@@ -202,7 +203,7 @@ public string AnimationType { get; set; } = "ken_burns";
 
 - Python側 (AnimationAssigner, CsvAssembler 4列出力): **完了・テスト済み**
 - C# CsvTimelineReader (4列パース + 相対パス解決): **完了・テスト済み**
-- YMM4プラグイン: **Values in-place方式で実機テストPASS (Zoom + FadeIn/FadeOut)。Pan実装+ディスパッチ接続が残タスク**
+- YMM4プラグイン: **Phase 1完了。ApplyAnimationDirect (全7種ディスパッチ) + ApplyZoomDirect + ApplyPositionDirect 実装+実機テストPASS**
 
 ### 6.2 Values in-place 方式 (実機テスト確定: 2026-03-16)
 
@@ -286,9 +287,9 @@ imageItem.Zoom.AnimationType = AnimationType.直線移動;
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
 | 1 | YMM4実機テスト (Zoom + FadeIn/FadeOut) | done | Values in-place方式でZoom + FadeIn/FadeOut 正常動作確認 |
-| 2 | パンアニメーション (X/Y) 実装 | pending | Values in-place方式でX/Y変位を実装する必要あり。From/To不可 |
-| 3 | アニメーション種別ディスパッチ接続 | pending | CSV 4列目→実際のアニメーション適用を接続。現在は全画像ken_burns固定 |
-| 4 | 説明スライド判定ロジック | pending | AnimationAssignerにテキスト主体判定を追加しstatic自動割当 |
+| 2 | パンアニメーション (X/Y) 実装 | done | ApplyPositionDirect: Values in-place方式でX/Y実装済み |
+| 3 | アニメーション種別ディスパッチ接続 | done | ApplyAnimationDirect: CSV 4列目→全7種switch分岐+全3インポートパスに接続 |
+| 4 | 説明スライド判定ロジック | future | Phase 2以降。AnimationAssignerにテキスト主体判定を追加しstatic自動割当 |
 | 5 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
 | 6 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
 

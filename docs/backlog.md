@@ -24,6 +24,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
 | アニメーション7種 (SP-033 Phase 1) | 完成 | Values in-place方式、YMM4実機テストPASS (2026-03-16) |
 | Baseline E2E (SP-027) | 完成 | CSV→YMM4→mp4 全工程完走確認 (2026-03-16) |
+| Post-Voice Timeline Resync (SP-028) | 完成 | WavDurationReader+VoiceLength同期実装済み |
+| クロスフェード (SP-030 部分) | 完成 | FadeIn/FadeOut 0.5秒、交互レイヤー方式 |
 | CsvAssembler (SP-032 Phase A-D) | 完成 | 台本→CSV一気通貫 + CLI + Streamlit UI |
 | 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 (scripts/research_cli.py) |
 | Gemini SDK移行 | 完成 | google-generativeai → google-genai |
@@ -38,8 +40,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | ID | 内容 | 状態 | 備考 |
 |----|------|------|------|
-| SP-028 | Post-Voice Timeline Resync | 未着手 | Voice生成後の実音声長でItem再計算。次の優先タスク |
-| SP-030 | トランジション + 字幕テンプレート | 未着手 | FadeIn/Out + 話者色分け |
+| SP-030 | 字幕テンプレート | 進行中 (50%) | FadeIn/Out実装済み。残: TextItem字幕テンプレート (話者色分け等) |
+| SP-033 Phase 2 | ストック素材API | 未着手 | Pexels/Pixabay APIでスライド画像自動調達 |
 
 ---
 
@@ -47,8 +49,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
-| タイミング | Post-Voice Timeline Resync | 高 | SP-028 | Voice生成後の実音声長でItem再計算 |
-| トランジション | FadeIn/Out + 字幕テンプレート | 中 | SP-030 | スライド間遷移 + 字幕位置・色統一 |
+| 字幕 | TextItem字幕テンプレート (話者色分け) | 高 | SP-030 | FadeIn/Out実装済み。残: フォント・位置・話者色分け |
 | スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
 | 素材 | ストック素材API (Pexels/Unsplash) | 中 | SP-033 Phase 2 | スライド画像の自動調達 |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
@@ -59,24 +60,22 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): タイミング安定化
+### 短期 (1-2週間): 字幕テンプレート完結
 
 ```
-SP-028 (Post-Voice Timeline Resync) → SP-030 (トランジション)
+SP-030 字幕テンプレート完結
 ```
 
-- SP-028: Voice生成後の実音声長でImageItem/TextItemのLength再計算
-- SP-030: FadeIn/Out + 字幕テンプレート (位置・フォント・話者色分け)
-- 成功条件: 音声終了と同時に次スライドへ遷移、無音区間1秒以内
+- SP-030: TextItem字幕テンプレート (話者色分け、フォント統一、位置固定)
+- 成功条件: 字幕が画面下部で統一スタイル表示、話者ごとに色分け
 
 ### 中期 (1-2ヶ月): 品質パイプライン
 
 ```
-SP-028 (タイミング安定化) → SP-030 (トランジション) → SP-033 Phase 2 (素材API)
+SP-030 字幕完結 → SP-033 Phase 2 (素材API) → SP-031 (テンプレート)
 ```
 
-- SP-028: Voice生成後の実音声長でタイムライン再計算
-- SP-030: FadeIn/Out + 字幕テンプレート (位置・フォント・話者色分け)
+- SP-030: 字幕テンプレート完結
 - SP-033 Phase 2: ストック素材API (Pexels/Unsplash) 統合
 - ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
 
@@ -107,6 +106,7 @@ SP-028 (タイミング安定化) → SP-030 (トランジション) → SP-033 
 - 2026-03-15: SP-032 Phase D完了 (Streamlit UI素材パイプライン)、Gemini SDK移行
 - 2026-03-16: SP-033 Direct API全面移行 (リフレクション全廃、-312行)
 - 2026-03-16: SP-027 Baseline E2E完走 + SP-033 Phase 1 全7種アニメーション実機テストPASS
+- 2026-03-17: SP-028 既存実装発見 (WavDurationReader+VoiceLength同期)、ステータス→done
 
 ---
 

@@ -245,11 +245,11 @@
   {
     "id": "SP-028",
     "title": "Post-Voice Timeline Resync",
-    "status": "planned",
-    "pct": 0,
+    "status": "done",
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 1: Voice生成後の実音声長でImageItem/TextItemのLengthを再計算。タイミング安定化"
+    "summary": "Phase 1完了: WavDurationReader+Ymm4TimelineImporterでWAV実尺同期実装済み。VoiceItem.VoiceLengthからのLength設定も完了"
   },
   {
     "id": "SP-029",
