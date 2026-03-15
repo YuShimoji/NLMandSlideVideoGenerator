@@ -339,6 +339,52 @@ URL: {source.get('url', 'URL不明')}
 
         return min(score, 1.0)
 
+    @staticmethod
+    def _build_mock_content(topic: str) -> dict:
+        """トピック反映型モック台本を生成。Gemini不通時のフォールバック。"""
+        return {
+            "title": f"{topic} - 完全解説",
+            "segments": [
+                {
+                    "section": "導入",
+                    "content": f"こんにちは。今日は{topic}について、最新の動向を詳しく解説していきます。この分野は近年急速に発展しており、注目すべき変化が起きています。",
+                    "duration_estimate": 25.0,
+                    "key_points": [topic, "最新動向"],
+                    "speaker": "Host1",
+                },
+                {
+                    "section": "背景と現状",
+                    "content": f"{topic}の背景を見ていきましょう。技術の進歩により、従来は困難だった課題の解決が可能になりつつあります。特に近年の研究成果は目覚ましいものがあります。",
+                    "duration_estimate": 45.0,
+                    "key_points": [f"{topic}の背景", "技術進歩", "研究成果"],
+                    "speaker": "Host2",
+                },
+                {
+                    "section": "主要な展開",
+                    "content": f"{topic}における主要な展開について説明します。実用化に向けた取り組みが加速しており、産業界でも大きな関心を集めています。",
+                    "duration_estimate": 40.0,
+                    "key_points": [f"{topic}の展開", "実用化", "産業応用"],
+                    "speaker": "Host1",
+                },
+                {
+                    "section": "課題と展望",
+                    "content": f"{topic}にはまだいくつかの課題も残されています。しかし、研究者や企業の努力により、これらの課題は着実に解決に向かっています。",
+                    "duration_estimate": 50.0,
+                    "key_points": [f"{topic}の課題", "解決への取り組み"],
+                    "speaker": "Host2",
+                },
+                {
+                    "section": "まとめ",
+                    "content": f"以上、{topic}について解説しました。この分野は今後もさらなる発展が期待されます。引き続き注目していきましょう。",
+                    "duration_estimate": 30.0,
+                    "key_points": [f"{topic}の将来", "今後の展望"],
+                    "speaker": "Host1",
+                },
+            ],
+            "total_duration_estimate": 190.0,
+            "language": "ja",
+        }
+
     async def _check_rate_limit(self):
         """レート制限をチェック"""
         if self.request_count >= self.max_requests_per_minute:
