@@ -158,9 +158,12 @@ class VisualResourceOrchestrator:
                 if self.topic and "key_points" not in enriched:
                     enriched["key_points"] = [self.topic]
                 elif self.topic:
-                    # トピックをkey_pointsの先頭に追加
+                    # トピックをkey_pointsの先頭に追加（重複回避: 部分一致もチェック）
                     kps = list(enriched.get("key_points", []))
-                    if self.topic not in kps:
+                    already_contains = any(
+                        self.topic in kp or kp in self.topic for kp in kps
+                    )
+                    if not already_contains:
                         kps.insert(0, self.topic)
                     enriched["key_points"] = kps
                 visual_segments.append(enriched)

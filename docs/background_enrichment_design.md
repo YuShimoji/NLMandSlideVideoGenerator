@@ -173,24 +173,70 @@ timeline.csv (speaker, text, image_path, animation_type)
 
 ---
 
-## 7. 実装フェーズ
+## 7. 実装フェーズとテスト戦略
 
-### Phase 2a: 基盤 (今回)
+### 7.1 テストバッチ方針
+
+YMM4実機テストはDLL閉→ビルド→デプロイ→起動→インポート→確認の一連工程が必要で、変更ごとに繰り返すと開発効率が大幅に低下する。以下の方針でテストをバッチ化する。
+
+#### 開発フェーズ (Dev)
+- Python: 自動テスト (`pytest`) で検証
+- C#: `dotnet build -p:SkipPluginCopy=true --no-incremental` でコンパイル検証のみ
+- YMM4は起動したまま、DLLデプロイなし
+
+#### テストフェーズ (Test)
+- 開発フェーズで蓄積した全変更を一括でデプロイ
+- YMM4を閉じる → `dotnet build --no-incremental` (DLL自動コピー) → YMM4起動
+- 包括テストCSV (`samples/image_slide/e2e_baseline_test.csv`) で一括検証
+- テスト結果をランタイムログ (`csv_import_runtime.log`) で自動記録
+
+#### テストフェーズの発生条件
+以下のいずれかに該当する場合のみYMM4実機テストを実施:
+1. C# プラグインコードの変更がある
+2. CSV出力形式の変更がある (新列追加、フォーマット変更)
+3. フェーズマイルストーン (Phase 2b完了、Phase 2c完了)
+4. E2E パイプライン全体の統合確認
+
+Python内部ロジックのみの変更 (分類精度改善、キーワード生成改善等) はYMM4テスト不要。
+
+### 7.2 Phase 2a: 基盤 [完了]
 - SegmentClassifier (ヒューリスティクス)
 - VisualResourceOrchestrator (スライド+ストック統合)
-- StockImageClientテスト
+- StockImageClient (Pexels/Pixabay)
 - CsvAssembler拡張
 
-### Phase 2b: 統合 (次回)
-- material_pipeline.py UI統合
-- research_cli.py pipeline サブコマンド統合
-- E2E動作確認
+テスト: 78件PASS (自動テストのみ、YMM4テスト不要)
 
-### Phase 2c: 改善 (将来)
-- Geminiベース分類
-- 英語クエリ自動翻訳
-- 画像品質スコアリング
-- ストック動画対応
+### 7.3 Phase 2b: パイプライン統合 [次回]
+
+**Dev タスク** (YMM4テスト不要):
+1. research_cli.py pipeline サブコマンドに `--stock-images` フラグ追加
+2. material_pipeline.py Streamlit UI に「ストック画像取得」チェックボックス追加
+3. Pexels/Pixabay API実呼出しテスト (APIキー設定済み)
+4. 実CSVでストック画像パスが正しく出力されることを確認
+
+**Test タスク** (Dev完了後に一括):
+5. YMM4実機: ストック画像付きCSVインポート → 全画像表示+アニメーション確認
+
+### 7.4 Phase 2c: 品質改善 [将来]
+
+**Dev タスク** (YMM4テスト不要):
+1. Geminiベースセグメント分類
+2. 英語クエリ自動翻訳 (日本語キーワード → 英語検索)
+3. 画像品質スコアリング (解像度・アスペクト比)
+
+**Test タスク** (Dev完了後に一括):
+4. YMM4実機: 改善された画像選択+翻訳クエリの結果確認
+
+### 7.5 Phase 3: AI生成イラスト [将来]
+
+**Dev タスク**:
+1. AIImageProvider (Gemini Imagen API)
+2. プロンプト生成ロジック
+3. 画像フォーマット変換
+
+**Test タスク** (Phase 3 Dev完了後に一括):
+4. YMM4実機: AI生成画像のインポート+表示確認
 
 ---
 

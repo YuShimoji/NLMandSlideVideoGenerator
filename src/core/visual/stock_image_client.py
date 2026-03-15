@@ -359,8 +359,11 @@ class StockImageClient:
         content = segment.get("content", "") or segment.get("text", "")
 
         if key_points:
-            # key_points の先頭2つを結合
-            return " ".join(key_points[:2])
+            # key_points の先頭2つを結合（クエリ長制限: 80文字）
+            query = " ".join(key_points[:2])
+            if len(query) > 80:
+                query = key_points[0][:80]
+            return query
 
         if section:
             return section

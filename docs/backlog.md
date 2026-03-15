@@ -42,7 +42,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 |----|------|------|------|
 | SP-030 | 字幕テンプレート | 完了 | FadeIn/Out+字幕テンプレート(Border/Bold/CenterBottom/話者色分け6色)+PlaybackRate修正。実機テスト待ち |
 | SP-033 Phase 2a | ストック素材API + 背景充実化基盤 | 完了 | StockImageClient + SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張。テスト78件PASS |
-| SP-033 Phase 2b | パイプライン統合 | 未着手 | material_pipeline.py / research_cli.py へのOrchestrator統合 + E2E実動作確認 |
+| SP-033 Phase 2b | パイプライン統合 + E2E検証 | 完了 | CLI/UI統合済み + Pexels実API動作確認 + 30分動画テスト (74%ヒット率) + クエリ重複バグ修正 |
 
 ---
 
@@ -52,7 +52,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
 | スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
-| 素材 | ストック素材API + 背景充実化 | Phase 2a完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator。Phase 2b: パイプライン統合待ち |
+| 素材 | ストック素材API + 背景充実化 | Phase 2b完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + パイプライン統合済み。Phase 2c: Geminiキーワード抽出+英語クエリ翻訳 |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
 | 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
@@ -61,15 +61,16 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): Phase 2b パイプライン統合 + 実機テスト
+### 短期 (1-2週間): Phase 2c 検索品質改善
 
 ```
-SP-033 Phase 2b (Orchestrator→パイプライン統合) → SP-030 実機テスト
+SP-033 Phase 2c (Geminiキーワード抽出 + 英語クエリ翻訳) → SP-031 テンプレート化
 ```
 
-- SP-033 Phase 2b: Orchestrator を material_pipeline.py / research_cli.py に統合
-- SP-030: 字幕テンプレート実機テスト待ち
-- Gemini無料枠 (20 req/day) → 有料プランまたはモデル切替の検討
+- SP-033 Phase 2c: ストック画像検索のヒット率改善 (現状74% → 目標90%+)
+  - 日本語key_points → 英語クエリ自動翻訳
+  - Geminiベースのキーワード抽出 (ヒューリスティクスからの段階的移行)
+- SP-031: スタイルテンプレートJSON (C#変更あり → 次回E2Eバッチテスト対象)
 
 ### 中期 (1-2ヶ月): テンプレート化+品質パイプライン
 
@@ -111,6 +112,7 @@ SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 - 2026-03-17: SP-030 既存実装発見 (ApplySubtitleStyle: 話者色6色+Border+CenterBottom)、ステータス→done
 - 2026-03-17: SP-033 Phase 2 StockImageClient完了: Pexels/Pixabay + CLIパイプライン統合 + 30分+対応プロンプト改善
 - 2026-03-16: SP-033 Phase 2a 背景充実化基盤: SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張 + テスト78件PASS
+- 2026-03-16: SP-033 Phase 2b パイプライン統合 + 30分動画E2Eテスト: クエリ重複バグ修正 (48%→74%ヒット率)、CLI/UI統合完了
 
 ---
 

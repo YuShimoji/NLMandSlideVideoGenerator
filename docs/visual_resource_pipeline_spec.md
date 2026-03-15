@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
 **最終更新**: 2026-03-16
-**ステータス**: Phase 1 完了。Phase 2a 実装中 (SegmentClassifier + ResourceOrchestrator + StockImageClient)。Phase 3 未着手
+**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c (Geminiキーワード抽出) 未着手。Phase 3 未着手
 
 ---
 
@@ -347,15 +347,57 @@ Phase 2 はセグメント分類に基づくストック画像の自動調達と
 | 2 | VisualResourceOrchestrator | done | スライド+ストック統合、フォールバック、連続回避 |
 | 3 | StockImageClient | done | Pexels/Pixabay API、キャッシュ、クレジット生成 |
 | 4 | CsvAssembler拡張 | done | assemble_from_package() メソッド追加 |
-| 5 | material_pipeline.py UI統合 | pending | Streamlit UIからOrchestrator呼び出し |
-| 6 | research_cli.py pipeline統合 | pending | CLI pipelineサブコマンドにOrchestrator統合 |
-| 7 | E2E動作確認 | pending | APIキー設定+実際のストック画像取得テスト |
-| 8 | Geminiベースキーワード抽出 | future | Phase 2c |
-| 9 | 英語クエリ自動翻訳 | future | Phase 2c |
+| 5 | material_pipeline.py UI統合 | done | Streamlit UIからOrchestrator呼び出し |
+| 6 | research_cli.py pipeline統合 | done | CLI pipelineサブコマンドにOrchestrator統合 |
+| 7 | E2E動作確認 (Pexels API) | done | APIキー設定+実際のストック画像取得テスト |
+| 8 | クエリ重複バグ修正 | done | topic部分一致チェック + クエリ長制限80文字 |
+| 9 | 30分動画E2Eテスト | done | 90セグメント, visual 31/90(34%), stock取得23/31(74%) |
+| 10 | Geminiベースキーワード抽出 | future | Phase 2c |
+| 11 | 英語クエリ自動翻訳 | future | Phase 2c |
+| 12 | Pixabayフォールバック | future | Phase 2c: Pexels失敗時のセカンダリ検索 |
 
 ---
 
-## 8. 変更履歴
+## 8. テスト戦略
+
+YMM4実機テストはDLLデプロイサイクル (YMM4停止→ビルド→コピー→起動→インポート→確認) が必要で、各変更ごとに実施するとスループットが低下する。テストをバッチ化して開発効率を最大化する。
+
+### テスト区分
+
+| 区分 | 対象 | 手法 | YMM4必要 |
+|------|------|------|----------|
+| **Unit** | Python ロジック | `pytest` 自動実行 | 不要 |
+| **Build** | C# プラグイン | `dotnet build -p:SkipPluginCopy=true` | 不要 |
+| **Integration** | API呼出し + CSV出力 | `pytest` + 実API (Pexels/Pixabay) | 不要 |
+| **E2E** | CSV→YMM4→タイムライン表示 | 手動: DLLデプロイ + YMM4インポート | **必要** |
+
+### E2E テスト実施条件
+
+以下のいずれかに該当する場合のみ:
+1. C# プラグインコードの変更あり
+2. CSV出力形式の変更あり (新列、フォーマット)
+3. フェーズマイルストーン完了時 (2b完了、2c完了)
+
+Python内部ロジックのみの変更はE2Eテスト不要。
+
+### E2E テスト手順
+
+1. 全Python テスト PASS 確認 (`pytest tests/ -x -q`)
+2. C# クリーンビルド PASS 確認 (`dotnet build --no-incremental -p:SkipPluginCopy=true`)
+3. YMM4停止
+4. DLLデプロイ (`dotnet build --no-incremental`)
+5. ランタイムログクリア
+6. YMM4起動 → `e2e_baseline_test.csv` インポート
+7. 検証: 全7種アニメーション + 字幕レイヤー + ストック画像表示
+8. ランタイムログで自動検証 (ApplyAnimationDirect/ApplyZoomDirect/ApplyPositionDirect)
+
+### 包括テストCSV
+
+`samples/image_slide/e2e_baseline_test.csv` を増強し、各フェーズの追加機能もカバーする。フェーズ追加時にテスト行を追記していく。
+
+---
+
+## 9. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
@@ -366,3 +408,6 @@ Phase 2 はセグメント分類に基づくストック画像の自動調達と
 | 2026-03-16 | 実機テスト結果反映: From/To→Values in-place方式に全面修正。クロスフェード/ズーム運用ガイドライン追加 |
 | 2026-03-17 | ステータス更新: Phase 1 Zoom+FadeIn/FadeOut実機テストPASS。SP-027 Baseline E2E完了 |
 | 2026-03-16 | Phase 2a実装: SegmentClassifier + VisualResourceOrchestrator + StockImageClient + CsvAssembler拡張。テスト78件PASS |
+| 2026-03-17 | パンズーム隙間修正 (fitZoom*1.12) + VoiceItem/TextItemレイヤー前面化 (baseLayer+10)。全7種アニメ再テストPASS |
+| 2026-03-17 | テスト戦略セクション追加: Dev/Test フェーズ分離、E2Eバッチ化方針 |
+| 2026-03-16 | Phase 2b完了: パイプライン統合(CLI+UI)、Pexels実API検証、クエリ重複バグ修正(48%→74%)、30分動画E2Eテスト |
