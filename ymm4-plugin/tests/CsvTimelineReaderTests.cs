@@ -94,7 +94,8 @@ namespace NLMSlidePlugin.Tests
             var result = reader.ReadTimeline();
             Assert.Equal(0, result[0].StartTime);
             Assert.Equal(3.0, result[0].EndTime, precision: 1);
-            Assert.Equal(3.0, result[1].StartTime, precision: 1);
+            // StartTime[1] = Duration[0] (3.0) + padding (0.3) = 3.3
+            Assert.Equal(3.3, result[1].StartTime, precision: 1);
         }
 
         // --- 本番化テスト: エラーハンドリング ---
