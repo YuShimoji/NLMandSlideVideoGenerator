@@ -10,6 +10,7 @@ Now split into separate modules for better maintainability:
 - asset_management.py: Asset viewing and management
 - settings.py: Settings display and configuration
 - research.py: Research package alignment
+- material_pipeline.py: Material pipeline (collect → script → align → review → CSV)
 - documentation.py: Documentation viewer
 - tests.py: API tests runner
 - _utils.py: Shared utility functions
@@ -20,6 +21,7 @@ from .pipeline import show_pipeline_page
 from .asset_management import show_assets_page
 from .settings import show_settings_page
 from .research import show_research_page
+from .material_pipeline import show_material_pipeline_page
 from .documentation import show_documentation_page
 from .tests import show_tests_page
 
@@ -33,6 +35,7 @@ __all__ = [
     "show_assets_page",
     "show_settings_page",
     "show_research_page",
+    "show_material_pipeline_page",
     "show_documentation_page",
     "show_tests_page",
     # Utility functions

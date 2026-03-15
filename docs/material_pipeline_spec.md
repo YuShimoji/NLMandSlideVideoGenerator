@@ -1,7 +1,7 @@
 # 素材直結パイプライン仕様 (SP-032)
 
 **最終更新**: 2026-03-15
-**ステータス**: Phase A/B/C完了、Phase D未着手
+**ステータス**: Phase A/B/C/D完了
 
 ---
 
@@ -254,13 +254,15 @@ python scripts/research_cli.py pipeline \
 
 - テスト: `tests/test_research_pipeline.py` (3件)
 
-### Phase D: Streamlit UIワンクリック統合 (未着手)
+### Phase D: Streamlit UIワンクリック統合 (完了)
 
-既存のPipelineページに「Generate Video」ボタンあり。
-パイプライン実行は可能だが、Streamlit UIからの一気通貫実行は未実装。
+専用ページ `src/web/ui/pages/material_pipeline.py` として実装。
 
-残タスク:
-- [ ] Streamlit UIで collect→align→review→pipeline の一気通貫ボタン追加
+- トピック入力 → collect → script gen → align → review → CsvAssembler の一気通貫UI
+- パラメータ: トピック、シードURL、最大ソース数、自動レビュー切替
+- 詳細オプション: スライドPNGディレクトリ、話者マッピングJSON
+- 結果表示: CSVプレビュー、ダウンロード、生成物一覧
+- サイドバー: `📦 素材パイプライン` メニューからアクセス
 
 ---
 

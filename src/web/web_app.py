@@ -33,6 +33,7 @@ st.set_page_config(
 PAGE_OPTIONS = [
     "🏠 ホーム",
     "🔍 リサーチ・台本照合",
+    "📦 素材パイプライン",
     "🤖 AI生成（API設定後）",
     "📁 生成物一覧",
     "📖 ドキュメント",
@@ -43,6 +44,7 @@ PAGE_OPTIONS = [
 PAGE_ALIASES = {
     "home": "🏠 ホーム",
     "research": "🔍 リサーチ・台本照合",
+    "material": "📦 素材パイプライン",
     "pipeline": "🤖 AI生成（API設定後）",
     "assets": "📁 生成物一覧",
     "docs": "📖 ドキュメント",
@@ -84,6 +86,9 @@ def main():
     elif page == "🔍 リサーチ・台本照合":
         from src.web.ui.pages import show_research_page
         show_research_page()
+    elif page == "📦 素材パイプライン":
+        from src.web.ui.pages import show_material_pipeline_page
+        show_material_pipeline_page()
     elif page == "🤖 AI生成（API設定後）":
         show_pipeline_page()
     elif page == "📁 生成物一覧":

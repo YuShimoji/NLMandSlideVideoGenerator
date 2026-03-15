@@ -281,11 +281,11 @@
   {
     "id": "SP-032",
     "title": "Material Pipeline Integration",
-    "status": "in_progress",
-    "pct": 90,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/material_pipeline_spec.md",
-    "summary": "素材直結パイプライン: Phase A/B/C完了。CLI pipeline サブコマンドで collect→script→align→review→CsvAssembler一気通貫実行可能。残: Phase D Streamlit UI統合"
+    "summary": "素材直結パイプライン: Phase A/B/C/D完了。CLI pipeline + Streamlit UI (material_pipeline.py) で collect→script→align→review→CsvAssembler一気通貫実行可能"
   },
   {
     "id": "SP-033",
