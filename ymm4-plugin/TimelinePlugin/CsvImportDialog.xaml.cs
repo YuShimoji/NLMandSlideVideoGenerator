@@ -9,7 +9,9 @@ using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Immutable;
 using System.Windows;
+using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
 
@@ -377,7 +379,8 @@ namespace NLMSlidePlugin.TimelinePlugin
             int importedRows = 0;
             int voiceItemsCount = 0;
             int imageItemsCount = 0;
-            int crossfadeFrames = Math.Max(1, (int)Math.Round(0.5 * fps)); // 0.5秒クロスフェード
+            double crossfadeSeconds = 0.5;
+            int crossfadeFrames = Math.Max(1, (int)Math.Round(crossfadeSeconds * fps));
             int skippedRows = 0;
 
             int nextFrame = 0; // 音声長ベースで次のアイテム開始位置を累積
@@ -497,13 +500,14 @@ namespace NLMSlidePlugin.TimelinePlugin
                         Layer = imageLayer,
                         Length = length,
                         PlaybackRate = 100.0,
-                        FadeIn = crossfadeFrames,
-                        FadeOut = crossfadeFrames,
+                        FadeIn = crossfadeSeconds,
+                        FadeOut = crossfadeSeconds,
                     };
 
+                    // Zoom: 直接APIでKen Burnsアニメーション設定
                     double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                    // SP-033: アニメーション種別対応
-                    ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
+                    WriteRuntimeLog($"  ImageItem: {Path.GetFileName(item.ImageFilePath)}, zoom={fitZoom:F1}→{fitZoom * 1.05:F1}, fade={crossfadeSeconds}s");
 
                     var dispatcher = Application.Current?.Dispatcher;
                     if (dispatcher != null)
@@ -1090,8 +1094,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         {
                             var imageItem = new ImageItem(item.ImageFilePath) { Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
                             double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                            // SP-033: アニメーション種別対応
-                            ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                            ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
                             else
@@ -1189,10 +1192,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                             Frame = startFrame,
                             Layer = baseLayer + 1,
                             Length = lengthFrames,
+                            PlaybackRate = 100.0,
                         };
                         double fitZoom = CalculateFitZoom(csvItem.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                        // SP-033: アニメーション種別対応
-                        ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                        ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -1544,146 +1547,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
-        /// <summary>
-        /// Apply fade-in effect to an ImageItem via Reflection (SP-030).
-        /// Sets Opacity animation from 0% to 100% over fadeFrames.
-        /// </summary>
-        internal static void ApplyImageFade(ImageItem imageItem, int fadeFrames = 10)
-        {
-            try
-            {
-                var opacityProp = imageItem.GetType().GetProperty("Opacity");
-                if (opacityProp is null) return;
-                var opacityObj = opacityProp.GetValue(imageItem);
-                if (opacityObj is null) return;
-
-                // Set AnimationType to "直線" (linear)
-                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
-                if (animTypeProp != null)
-                {
-                    var enumType = animTypeProp.PropertyType;
-                    var enumValues = Enum.GetValues(enumType);
-                    foreach (var ev in enumValues)
-                    {
-                        if (ev.ToString() == "直線")
-                        {
-                            animTypeProp.SetValue(opacityObj, ev);
-                            break;
-                        }
-                    }
-                }
-
-                // Set Values[0] = 0 (start transparent), Values[1] = 100 (end opaque)
-                var valuesProp = opacityObj.GetType().GetProperty("Values");
-                if (valuesProp is null) return;
-                var values = valuesProp.GetValue(opacityObj);
-                if (values is null) return;
-
-                var indexer = values.GetType().GetProperty("Item");
-                if (indexer is null) return;
-                var firstValue = indexer.GetValue(values, new object[] { 0 });
-                var valueProp = firstValue?.GetType().GetProperty("Value");
-                valueProp?.SetValue(firstValue, 0.0); // start at 0% opacity
-
-                // Add second keyframe at 100%
-                var countProp = values.GetType().GetProperty("Count");
-                int count = (int)(countProp?.GetValue(values) ?? 0);
-                if (count < 2)
-                {
-                    var firstValueType = firstValue?.GetType();
-                    if (firstValueType != null)
-                    {
-                        var newValue = Activator.CreateInstance(firstValueType);
-                        var newValueProp = firstValueType.GetProperty("Value");
-                        newValueProp?.SetValue(newValue, 100.0);
-                        var addMethod = values.GetType().GetMethod("Add");
-                        addMethod?.Invoke(values, new[] { newValue });
-                    }
-                }
-                else
-                {
-                    var secondValue = indexer.GetValue(values, new object[] { 1 });
-                    var secondValueProp = secondValue?.GetType().GetProperty("Value");
-                    secondValueProp?.SetValue(secondValue, 100.0);
-                }
-
-                WriteRuntimeLog($"ApplyImageFade: 0% → 100% over {fadeFrames} frames");
-            }
-            catch (Exception ex)
-            {
-                WriteRuntimeLog($"ApplyImageFade failed: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// ImageItem にクロスフェード（フェードイン+フェードアウト）を適用
-        /// Opacity: 0% → 100% → ... → 100% → 0% のエンベロープ
-        /// </summary>
-        internal static void ApplyImageCrossfade(ImageItem imageItem, int fadeFrames = 15)
-        {
-            try
-            {
-                var opacityProp = imageItem.GetType().GetProperty("Opacity");
-                if (opacityProp is null) return;
-                var opacityObj = opacityProp.GetValue(imageItem);
-                if (opacityObj is null) return;
-
-                // AnimationType を "直線" (linear) に設定
-                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
-                if (animTypeProp != null)
-                {
-                    var enumType = animTypeProp.PropertyType;
-                    foreach (var ev in Enum.GetValues(enumType))
-                    {
-                        if (ev.ToString() == "直線")
-                        {
-                            animTypeProp.SetValue(opacityObj, ev);
-                            break;
-                        }
-                    }
-                }
-
-                // Values コレクションを取得
-                var valuesProp = opacityObj.GetType().GetProperty("Values");
-                if (valuesProp is null) return;
-                var values = valuesProp.GetValue(opacityObj);
-                if (values is null) return;
-
-                var indexer = values.GetType().GetProperty("Item");
-                if (indexer is null) return;
-                var firstValue = indexer.GetValue(values, new object[] { 0 });
-                if (firstValue is null) return;
-                var firstValueType = firstValue.GetType();
-                var valueProp = firstValueType.GetProperty("Value");
-                var addMethod = values.GetType().GetMethod("Add");
-
-                // Clear existing values and rebuild: 0% → 100% → 100% → 0%
-                var clearMethod = values.GetType().GetMethod("Clear");
-                clearMethod?.Invoke(values, null);
-
-                void AddKeyframe(double opacity)
-                {
-                    var kf = Activator.CreateInstance(firstValueType);
-                    valueProp?.SetValue(kf, opacity);
-                    addMethod?.Invoke(values, new[] { kf });
-                }
-
-                AddKeyframe(0.0);    // フェードイン開始
-                AddKeyframe(100.0);  // フェードイン完了
-                AddKeyframe(100.0);  // フェードアウト開始
-                AddKeyframe(0.0);    // フェードアウト完了
-
-                WriteRuntimeLog($"ApplyImageCrossfade: 0%→100%→100%→0% over {fadeFrames} frames each");
-            }
-            catch (Exception ex)
-            {
-                // フォールバック: 通常のフェードインのみ
-                WriteRuntimeLog($"ApplyImageCrossfade failed ({ex.Message}), falling back to fade-in");
-                ApplyImageFade(imageItem, fadeFrames);
-            }
-        }
-
-        // ========== SP-033: アニメーションバリアント ==========
+        // ========== SP-033: アニメーション (Direct API) ==========
 
         /// <summary>
         /// SP-033: Direct API 方式でアニメーションを適用。
@@ -1743,21 +1607,37 @@ namespace NLMSlidePlugin.TimelinePlugin
 #pragma warning restore CS0618
 
         /// <summary>
-        /// ImageItem の不透明度を 100% に強制設定する。
-        /// YMM4 の ImageItem デフォルト不透明度が 0% の場合に対応。
+        /// ImageItem の Zoom を直接 Values 代入で設定。
+        /// Animation.From/To は deprecated かつ副作用でレンダリングを破壊するため使用しない。
+        /// ImmutableList&lt;AnimationValue&gt; を新規作成して Values setter に代入する。
         /// </summary>
-        internal static void EnsureOpacity100(ImageItem imageItem)
+        internal static void ApplyZoomDirect(ImageItem imageItem, double startZoom, double endZoom)
         {
             try
             {
-#pragma warning disable CS0618 // Animation.From is obsolete but functional
-                imageItem.Opacity.From = 100.0;
-#pragma warning restore CS0618
-                WriteRuntimeLog("EnsureOpacity100: set via Direct API");
+                // Values[0] を in-place で変更（AnimationValue は参照型）
+                var zoomValues = imageItem.Zoom.Values;
+                if (zoomValues.Count > 0)
+                {
+                    zoomValues[0].Value = startZoom;
+                }
+
+                if (Math.Abs(startZoom - endZoom) > 0.01)
+                {
+                    // Ken Burns: 2つ目の値を追加し、直線移動に設定
+                    // Values は ImmutableList — setter はリフレクション経由で代入
+                    var val1 = new AnimationValue { Value = endZoom };
+                    var newValues = zoomValues.Add(val1);
+                    var valuesProp = imageItem.Zoom.GetType().GetProperty("Values");
+                    valuesProp?.SetValue(imageItem.Zoom, newValues);
+                    imageItem.Zoom.AnimationType = YukkuriMovieMaker.Commons.AnimationType.直線移動;
+                }
+
+                WriteRuntimeLog($"ApplyZoomDirect: {startZoom:F1}% → {endZoom:F1}%");
             }
             catch (Exception ex)
             {
-                WriteRuntimeLog($"EnsureOpacity100 failed: {ex.Message}");
+                WriteRuntimeLog($"ApplyZoomDirect failed: {ex.Message}");
             }
         }
 

@@ -215,8 +215,13 @@ public string AnimationType { get; set; } = "ken_burns";
 - `ApplyAnimationByType`: 7種別を Direct API でインライン実装
   - `Zoom.From/To` + `AnimationType` (直線移動/加減速移動)
   - `X.From/To`, `Y.From/To` (パンアニメーション)
-- `EnsureOpacity100`: `Opacity.From = 100.0` に簡略化
-- 旧リフレクション版 (`SetImageZoom`, `ApplyKenBurnsZoom`, `ApplyPanAnimation`, `ApplyPositionAnimation`) を削除
+- `EnsureOpacity100`: 不要（デフォルトOpacity=100%のため削除）
+- 旧リフレクション版 (`ApplyImageFade`, `ApplyImageCrossfade`, `ApplyKenBurnsZoom`, `ApplyPanAnimation`, `ApplyPositionAnimation`, `SetImageZoom`, `EnsureOpacity100`) を全削除
+
+InspectYmm4 による API 調査結果:
+- `Animation` 型: `From`(set), `To`(set), `AnimationType`(get/set), `Values`(ImmutableList)
+- `AnimationType` enum: `なし`=0, `直線移動`=1, `加減速移動`=103, 各種イージング
+- ImageItem デフォルト: `Opacity.Values[0].Value = 100` (不透明度100%)
 
 ### 6.3 残タスク
 
@@ -224,7 +229,7 @@ public string AnimationType { get; set; } = "ken_burns";
 |---|--------|------|------|
 | 1 | YMM4実機テスト | pending | Direct API方式で7種アニメーション + 不透明度が正常動作するか検証 |
 | 2 | FadeIn/FadeOut確認 | pending | crossfadeFrames がYMM4で正常に動作するか検証 |
-| 3 | 診断ログ整理 | pending | 動作確認後に不要な WriteRuntimeLog を整理 |
+| 3 | コミット | pending | リファクタ完了後 |
 
 ---
 

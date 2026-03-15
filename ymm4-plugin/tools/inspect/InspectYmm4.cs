@@ -51,6 +51,24 @@ if (valuesProp != null)
     }
 }
 
+// Check AnimationType enum values
+var animTypeProp2 = animType.GetProperty("AnimationType");
+if (animTypeProp2 != null)
+{
+    Console.WriteLine("\n=== AnimationType Enum Values ===");
+    var animEnumType = animTypeProp2.PropertyType;
+    foreach (var v in Enum.GetValues(animEnumType))
+        Console.WriteLine($"  {v} = {(int)v}");
+}
+
+// Check X, Y, Zoom properties on ImageItem
+Console.WriteLine("\n=== ImageItem Animation Properties ===");
+foreach (var pName in new[] { "Zoom", "X", "Y", "Opacity", "Rotation" })
+{
+    var prop = imageItemType.GetProperty(pName);
+    Console.WriteLine($"  {pName}: {(prop != null ? prop.PropertyType.Name : "NOT FOUND")}");
+}
+
 // Try to create an ImageItem and check default opacity
 Console.WriteLine("\n=== Default ImageItem Opacity ===");
 try
