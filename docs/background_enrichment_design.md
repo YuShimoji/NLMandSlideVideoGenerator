@@ -218,15 +218,17 @@ Python内部ロジックのみの変更 (分類精度改善、キーワード生
 **Test タスク** (Dev完了後に一括):
 5. YMM4実機: ストック画像付きCSVインポート → 全画像表示+アニメーション確認
 
-### 7.4 Phase 2c: 品質改善 [将来]
+### 7.4 Phase 2c: 品質改善 [完了]
 
 **Dev タスク** (YMM4テスト不要):
-1. Geminiベースセグメント分類
-2. 英語クエリ自動翻訳 (日本語キーワード → 英語検索)
-3. 画像品質スコアリング (解像度・アスペクト比)
+1. ~~Geminiベースセグメント分類~~ done: SegmentClassifier.use_gemini + フォールバック
+2. ~~英語クエリ自動翻訳~~ done: StockImageClient._translate_queries_to_english()
+3. ~~Geminiキーワード抽出~~ done: classify_with_keywords()
+4. ~~Orchestrator統合~~ done: classify_with_keywords→search_for_segments(queries=)
+5. 画像品質スコアリング (解像度・アスペクト比) — 未実装、Phase 3以降で検討
 
-**Test タスク** (Dev完了後に一括):
-4. YMM4実機: 改善された画像選択+翻訳クエリの結果確認
+**Test タスク**:
+6. YMM4実機: Geminiクエリ改善後の画像選択結果確認 — Gemini APIクォータリセット後に検証
 
 ### 7.5 Phase 3: AI生成イラスト [将来]
 
