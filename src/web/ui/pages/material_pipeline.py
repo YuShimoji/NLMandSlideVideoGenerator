@@ -83,6 +83,20 @@ def show_material_pipeline_page():
                 help="台本生成時の目標尺",
             )
 
+        # テンプレート選択
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+        from core.style_template import StyleTemplateManager
+        _tmpl_mgr = StyleTemplateManager()
+        _tmpl_mgr.load_all()
+        _tmpl_names = _tmpl_mgr.list_templates() or ["default"]
+        selected_template = st.selectbox(
+            "スタイルテンプレート",
+            _tmpl_names,
+            index=0,
+            help="字幕・アニメーション・タイミングのプリセット",
+        )
+
     # --- 再開機能 ---
     with st.expander("途中再開 (Resume)"):
         resume_dir_str = st.text_input(
@@ -204,6 +218,22 @@ def show_material_pipeline_page():
                     csv_content = csv_path.read_text(encoding="utf-8")
                     lines = [l for l in csv_content.strip().split("\n") if l]
                     st.metric("CSV行数", len(lines))
+
+            # Pre-Export 検証
+            if csv_path.exists():
+                from core.export_validator import ExportValidator, Severity
+                _validator = ExportValidator(check_image_exists=True)
+                _vresult = _validator.validate_csv(csv_path)
+                if _vresult.passed:
+                    st.success(f"Pre-Export検証: PASS ({_vresult.warning_count} warnings)")
+                else:
+                    st.error(f"Pre-Export検証: FAIL ({_vresult.error_count} errors, {_vresult.warning_count} warnings)")
+                if _vresult.issues:
+                    with st.expander(f"検証結果詳細 ({len(_vresult.issues)}件)"):
+                        for _issue in _vresult.issues:
+                            _icon = {"error": "🔴", "warning": "🟡", "info": "🔵"}[_issue.severity.value]
+                            _row_info = f" (row {_issue.row})" if _issue.row else ""
+                            st.text(f"{_icon} {_issue.code}{_row_info}: {_issue.message}")
 
             # CSVプレビュー
             if csv_path.exists():
