@@ -197,7 +197,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         var text = new TextItem
                         {
                             Frame = startFrame,
-                            Layer = baseLayer + 2,
+                            Layer = baseLayer + 10,
                             Length = lengthFrames,
                             PlaybackRate = 100.0,
                             Text = csvItem.Text

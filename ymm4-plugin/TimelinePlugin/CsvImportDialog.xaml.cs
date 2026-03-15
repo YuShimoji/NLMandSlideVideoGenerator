@@ -1109,7 +1109,7 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                         if (addSubtitles && !string.IsNullOrEmpty(item.Text))
                         {
-                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 };
+                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 10, Length = length, PlaybackRate = 100.0 };
                             ApplySubtitleStyle(textItem, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height, item.Speaker);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
@@ -1214,7 +1214,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         var text = new TextItem
                         {
                             Frame = startFrame,
-                            Layer = baseLayer + 2,
+                            Layer = baseLayer + 10,
                             Length = lengthFrames,
                             PlaybackRate = 100.0,
                             Text = csvItem.Text
@@ -1562,15 +1562,17 @@ namespace NLMSlidePlugin.TimelinePlugin
                     ApplyZoomDirect(imageItem, fitZoom * 1.15, fitZoom);
                     break;
                 case "pan_left":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06); // パンオフセット分を加算して隙間防止
+                    // パンで画面端に隙間を出さないため、パン量の2倍以上ズーム必要
+                    // 計算: zoom >= 1 + 2 * panRatio (片側の余白がパン量以上)
+                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
                     ApplyPositionDirect(imageItem.X, videoWidth * 0.05, 0);
                     break;
                 case "pan_right":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06);
+                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
                     ApplyPositionDirect(imageItem.X, -(videoWidth * 0.05), 0);
                     break;
                 case "pan_up":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06);
+                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
                     ApplyPositionDirect(imageItem.Y, videoHeight * 0.05, 0);
                     break;
                 case "static":
