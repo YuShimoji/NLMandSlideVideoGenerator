@@ -236,10 +236,9 @@ async def run_connection_tests():
     # Gemini
     try:
         if settings.GEMINI_API_KEY:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-pro")
-            _ = model.generate_content("ping")
+            from google import genai
+            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            _ = client.models.generate_content(model="gemini-2.0-flash", contents="ping")
             results["gemini"] = {"success": True, "message": "ok"}
         else:
             results["gemini"] = {"success": False, "message": "no key"}

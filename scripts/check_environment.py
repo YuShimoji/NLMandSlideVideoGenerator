@@ -85,7 +85,7 @@ def check_python_packages() -> bool:
     packages = [
         ("PIL", "Pillow"),
         ("aiohttp", "aiohttp"),
-        ("google.generativeai", "Google Generative AI"),
+        ("google.genai", "Google GenAI SDK"),
         ("google.auth", "Google Auth"),
         ("googleapiclient", "Google API Client"),
     ]

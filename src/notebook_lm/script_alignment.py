@@ -223,10 +223,9 @@ class ScriptAlignmentAnalyzer:
             return
 
         try:
-            import google.generativeai as genai
+            from google import genai
             import json
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            client = genai.Client(api_key=api_key)
 
             sentences_payload = []
             for item in orphaned_items:
@@ -266,7 +265,11 @@ Format:
 }}
 Only output the JSON. Do not include markdown formatting or tags like ```json.
 """
-            resp = await asyncio.to_thread(model.generate_content, prompt)
+            resp = await asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
             text_content = getattr(resp, "text", "")
             content_str = str(text_content).strip() if text_content else ""
 

@@ -110,15 +110,15 @@ async def test_llm_alignment_rescues_orphaned_items():
         ],
     }
 
-    # Gemini APIのモックを設定
+    # Gemini APIのモックを設定 (google-genai SDK)
     mock_llm_response = MagicMock()
     mock_llm_response.text = '{"matches": [{"sentence_id": 1, "matched_claim_keys": ["https://example.com/quantum::IBM announced a 1000-qubit processor"]}]}'
 
-    mock_model_instance = MagicMock()
-    mock_model_instance.generate_content = MagicMock(return_value=mock_llm_response)
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(return_value=mock_llm_response)
+    mock_client_cls = MagicMock(return_value=mock_client)
 
-    with patch("google.generativeai.configure"), \
-         patch("google.generativeai.GenerativeModel", return_value=mock_model_instance), \
+    with patch("google.genai.Client", mock_client_cls), \
          patch("config.settings.settings") as mock_settings:
         mock_settings.GEMINI_API_KEY = "fake-key"
         report = await analyzer.analyze(package, normalized_script)

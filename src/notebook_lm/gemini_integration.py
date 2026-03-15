@@ -144,10 +144,13 @@ URL: {source.get('url', 'URL不明')}
             # 実API呼び出し（APIキーが設定されていれば試行）
             if self.api_key:
                 try:
-                    import google.generativeai as genai
-                    genai.configure(api_key=self.api_key)
-                    model = genai.GenerativeModel(self.model_name)
-                    resp = await asyncio.to_thread(model.generate_content, prompt)
+                    from google import genai
+                    client = genai.Client(api_key=self.api_key)
+                    resp = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=self.model_name,
+                        contents=prompt,
+                    )
                     content_str = getattr(resp, "text", None)
                     if not content_str:
                         try:

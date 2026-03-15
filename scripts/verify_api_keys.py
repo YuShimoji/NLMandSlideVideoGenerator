@@ -78,14 +78,14 @@ def test_gemini_connection():
         return False
 
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        # APIキー設定
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        # クライアント初期化
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
         # モデル一覧取得でテスト
         print("Connecting to Gemini API...")
-        models = genai.list_models()
+        models = client.models.list()
 
         available_models = [m.name for m in models]
 
@@ -99,8 +99,8 @@ def test_gemini_connection():
             return False
 
     except ImportError:
-        print("❌ google-generativeai package not installed")
-        print("   Install with: pip install google-generativeai")
+        print("❌ google-genai package not installed")
+        print("   Install with: pip install google-genai")
         return False
     except Exception as e:
         print(f"❌ Connection failed: {e}")
