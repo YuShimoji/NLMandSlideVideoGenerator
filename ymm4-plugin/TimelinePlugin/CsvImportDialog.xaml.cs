@@ -377,6 +377,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int importedRows = 0;
             int voiceItemsCount = 0;
             int imageItemsCount = 0;
+            int crossfadeFrames = Math.Max(1, (int)Math.Round(0.5 * fps)); // 0.5秒クロスフェード
             int skippedRows = 0;
 
             int nextFrame = 0; // 音声長ベースで次のアイテム開始位置を累積
@@ -480,21 +481,27 @@ namespace NLMSlidePlugin.TimelinePlugin
                     }
                 }
 
-                // ImageItem（VoiceItemの長さに合わせる）
+                // ImageItem（クロスフェード付き、交互レイヤー配置）
                 if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
                 {
-                    int length = currentItemLength;
-                    var imageItem = new ImageItem
+                    // クロスフェード: 前のスライドと重なるように延長
+                    int imageStart = Math.Max(0, frame - crossfadeFrames);
+                    int imageEnd = frame + currentItemLength + crossfadeFrames;
+                    int length = imageEnd - imageStart;
+                    // 交互レイヤー（偶数=+1, 奇数=+2）で重なりを許可
+                    int imageLayer = baseLayer + 1 + (imageItemsCount % 2);
+
+                    var imageItem = new ImageItem(item.ImageFilePath)
                     {
-                        FilePath = item.ImageFilePath,
-                        Frame = frame,
-                        Layer = baseLayer + 1,
+                        Frame = imageStart,
+                        Layer = imageLayer,
                         Length = length,
-                        PlaybackRate = 100.0
+                        FadeIn = crossfadeFrames,
+                        FadeOut = crossfadeFrames,
                     };
                     double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
-                    ApplyImageFade(imageItem);
+                    // SP-033: アニメーション種別対応
+                    ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
 
                     var dispatcher = Application.Current?.Dispatcher;
                     if (dispatcher != null)
@@ -1079,10 +1086,10 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                         if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
                         {
-                            var imageItem = new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
+                            var imageItem = new ImageItem(item.ImageFilePath) { Frame = frame, Layer = baseLayer + 1, Length = length };
                             double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                            ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
-                            ApplyImageFade(imageItem);
+                            // SP-033: アニメーション種別対応
+                            ApplyAnimationByType(imageItem, item.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
                             else
@@ -1175,17 +1182,15 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
-                        var image = new ImageItem
+                        var image = new ImageItem(csvItem.ImageFilePath)
                         {
-                            FilePath = csvItem.ImageFilePath,
                             Frame = startFrame,
                             Layer = baseLayer + 1,
                             Length = lengthFrames,
-                            PlaybackRate = 100.0
                         };
                         double fitZoom = CalculateFitZoom(csvItem.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                        ApplyKenBurnsZoom(image, fitZoom, fitZoom * 1.05);
-                        ApplyImageFade(image);
+                        // SP-033: アニメーション種別対応
+                        ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -1727,6 +1732,210 @@ namespace NLMSlidePlugin.TimelinePlugin
             {
                 WriteRuntimeLog($"ApplyImageFade failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// ImageItem にクロスフェード（フェードイン+フェードアウト）を適用
+        /// Opacity: 0% → 100% → ... → 100% → 0% のエンベロープ
+        /// </summary>
+        internal static void ApplyImageCrossfade(ImageItem imageItem, int fadeFrames = 15)
+        {
+            try
+            {
+                var opacityProp = imageItem.GetType().GetProperty("Opacity");
+                if (opacityProp is null) return;
+                var opacityObj = opacityProp.GetValue(imageItem);
+                if (opacityObj is null) return;
+
+                // AnimationType を "直線" (linear) に設定
+                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
+                if (animTypeProp != null)
+                {
+                    var enumType = animTypeProp.PropertyType;
+                    foreach (var ev in Enum.GetValues(enumType))
+                    {
+                        if (ev.ToString() == "直線")
+                        {
+                            animTypeProp.SetValue(opacityObj, ev);
+                            break;
+                        }
+                    }
+                }
+
+                // Values コレクションを取得
+                var valuesProp = opacityObj.GetType().GetProperty("Values");
+                if (valuesProp is null) return;
+                var values = valuesProp.GetValue(opacityObj);
+                if (values is null) return;
+
+                var indexer = values.GetType().GetProperty("Item");
+                if (indexer is null) return;
+                var firstValue = indexer.GetValue(values, new object[] { 0 });
+                if (firstValue is null) return;
+                var firstValueType = firstValue.GetType();
+                var valueProp = firstValueType.GetProperty("Value");
+                var addMethod = values.GetType().GetMethod("Add");
+
+                // Clear existing values and rebuild: 0% → 100% → 100% → 0%
+                var clearMethod = values.GetType().GetMethod("Clear");
+                clearMethod?.Invoke(values, null);
+
+                void AddKeyframe(double opacity)
+                {
+                    var kf = Activator.CreateInstance(firstValueType);
+                    valueProp?.SetValue(kf, opacity);
+                    addMethod?.Invoke(values, new[] { kf });
+                }
+
+                AddKeyframe(0.0);    // フェードイン開始
+                AddKeyframe(100.0);  // フェードイン完了
+                AddKeyframe(100.0);  // フェードアウト開始
+                AddKeyframe(0.0);    // フェードアウト完了
+
+                WriteRuntimeLog($"ApplyImageCrossfade: 0%→100%→100%→0% over {fadeFrames} frames each");
+            }
+            catch (Exception ex)
+            {
+                // フォールバック: 通常のフェードインのみ
+                WriteRuntimeLog($"ApplyImageCrossfade failed ({ex.Message}), falling back to fade-in");
+                ApplyImageFade(imageItem, fadeFrames);
+            }
+        }
+
+        // ========== SP-033: アニメーションバリアント ==========
+
+        /// <summary>
+        /// SP-033: アニメーション種別に応じた効果をImageItemに適用する。
+        /// CSV 4列目の animation_type 値に基づいてズーム/パン/静止を選択。
+        /// </summary>
+        internal static void ApplyAnimationByType(ImageItem imageItem, string animationType, double fitZoom, int videoWidth, int videoHeight)
+        {
+            switch (animationType)
+            {
+                case "zoom_in":
+                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.15);
+                    break;
+                case "zoom_out":
+                    ApplyKenBurnsZoom(imageItem, fitZoom * 1.15, fitZoom);
+                    break;
+                case "pan_left":
+                    ApplyPanAnimation(imageItem, fitZoom, panX: videoWidth * 0.05, panY: 0);
+                    break;
+                case "pan_right":
+                    ApplyPanAnimation(imageItem, fitZoom, panX: -(videoWidth * 0.05), panY: 0);
+                    break;
+                case "pan_up":
+                    ApplyPanAnimation(imageItem, fitZoom, panX: 0, panY: videoHeight * 0.05);
+                    break;
+                case "static":
+                    SetImageZoom(imageItem, fitZoom);
+                    break;
+                case "ken_burns":
+                default:
+                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
+                    break;
+            }
+            // Note: ApplyImageFade は YMM4 v4.50 でリフレクション経由のキーフレーム追加が
+            // 正常に動作せず、不透明度が0%固定になる問題があるため無効化。
+            // YMM4 デフォルトの不透明度 100% をそのまま使用する。
+            // ApplyImageFade(imageItem);
+        }
+
+        /// <summary>
+        /// SP-033: パンアニメーションをImageItemに適用。
+        /// X/Y の AnimationValue を startOffset → 0 にアニメーションさせる。
+        /// </summary>
+        internal static void ApplyPanAnimation(ImageItem imageItem, double fitZoom, double panX, double panY)
+        {
+            SetImageZoom(imageItem, fitZoom);
+
+            try
+            {
+                if (Math.Abs(panX) > 0.01)
+                    ApplyPositionAnimation(imageItem, "X", panX, 0);
+
+                if (Math.Abs(panY) > 0.01)
+                    ApplyPositionAnimation(imageItem, "Y", panY, 0);
+
+                WriteRuntimeLog($"ApplyPanAnimation: X={panX:F1}, Y={panY:F1}");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyPanAnimation failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// SP-033: ImageItem の位置プロパティ (X or Y) にアニメーションを適用。
+        /// </summary>
+        private static void ApplyPositionAnimation(ImageItem imageItem, string propertyName, double startValue, double endValue)
+        {
+            var prop = imageItem.GetType().GetProperty(propertyName);
+            if (prop is null) return;
+            var animObj = prop.GetValue(imageItem);
+            if (animObj is null) return;
+
+            // AnimationType を "直線" (linear) に設定
+            var animTypeProp = animObj.GetType().GetProperty("AnimationType");
+            if (animTypeProp is not null)
+            {
+                var enumType = animTypeProp.PropertyType;
+                if (enumType.IsEnum)
+                {
+                    foreach (var val in Enum.GetValues(enumType))
+                    {
+                        if (val.ToString() == "直線")
+                        {
+                            animTypeProp.SetValue(animObj, val);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var valuesProp = animObj.GetType().GetProperty("Values");
+            if (valuesProp is null) return;
+            var values = valuesProp.GetValue(animObj);
+            if (values is null) return;
+
+            var indexer = values.GetType().GetProperty("Item");
+            if (indexer is null) return;
+
+            var firstValue = indexer.GetValue(values, new object[] { 0 });
+            if (firstValue is not null)
+            {
+                var valueProp = firstValue.GetType().GetProperty("Value");
+                valueProp?.SetValue(firstValue, startValue);
+            }
+
+            var countProp = values.GetType().GetProperty("Count");
+            int count = countProp is not null ? (int)countProp.GetValue(values)! : 0;
+
+            if (count < 2)
+            {
+                var addMethod = values.GetType().GetMethod("Add");
+                if (addMethod is not null && firstValue is not null)
+                {
+                    var newValue = Activator.CreateInstance(firstValue.GetType());
+                    if (newValue is not null)
+                    {
+                        var valueProp2 = newValue.GetType().GetProperty("Value");
+                        valueProp2?.SetValue(newValue, endValue);
+                        addMethod.Invoke(values, new object[] { newValue });
+                    }
+                }
+            }
+            else
+            {
+                var secondValue = indexer.GetValue(values, new object[] { 1 });
+                if (secondValue is not null)
+                {
+                    var valueProp2 = secondValue.GetType().GetProperty("Value");
+                    valueProp2?.SetValue(secondValue, endValue);
+                }
+            }
+
+            WriteRuntimeLog($"ApplyPositionAnimation: {propertyName} {startValue:F1} → {endValue:F1}");
         }
 
         /// <summary>

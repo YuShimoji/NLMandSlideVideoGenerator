@@ -138,6 +138,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     }
 
                     // ImageItem: VoiceItemモードではbaseLayer+1
+                    // SP-033: アニメーション種別に応じた効果を適用
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
                         var image = new ImageItem
@@ -149,8 +150,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyKenBurnsZoom(image, fitZoom, fitZoom * 1.05);
-                        CsvImportDialog.ApplyImageFade(image);
+                        CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -173,6 +173,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         hasItemInRow = true;
                     }
 
+                    // SP-033: アニメーション種別に応じた効果を適用
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
                         var image = new ImageItem
@@ -184,8 +185,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyKenBurnsZoom(image, fitZoom, fitZoom * 1.05);
-                        CsvImportDialog.ApplyImageFade(image);
+                        CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
