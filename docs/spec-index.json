@@ -291,9 +291,9 @@
     "id": "SP-033",
     "title": "Visual Resource Pipeline",
     "status": "in_progress",
-    "pct": 60,
+    "pct": 75,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1: Python側完了(AnimationAssigner+CSV4列)、C#パース完了、YMM4画像表示OK。残: Direct API方式でアニメーション7種適用検証。Phase2/3未着手"
+    "summary": "Phase1: Python+C#完了、Direct API移行完了(リフレクション全廃)。残: YMM4実機テスト(7種アニメ+不透明度)。Phase2/3未着手"
   }
 ]

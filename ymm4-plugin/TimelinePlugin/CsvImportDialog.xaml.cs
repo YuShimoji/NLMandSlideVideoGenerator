@@ -1457,127 +1457,6 @@ namespace NLMSlidePlugin.TimelinePlugin
         }
 
         /// <summary>
-        /// Set the Zoom property on an ImageItem via Reflection.
-        /// Zoom is an AnimationValue type with Values[0].Value.
-        /// </summary>
-        internal static void SetImageZoom(ImageItem imageItem, double zoomPercent)
-        {
-            try
-            {
-                var zoomProp = imageItem.GetType().GetProperty("Zoom");
-                if (zoomProp is null) return;
-                var zoomObj = zoomProp.GetValue(imageItem);
-                if (zoomObj is null) return;
-
-                var valuesProp = zoomObj.GetType().GetProperty("Values");
-                if (valuesProp is null) return;
-                var values = valuesProp.GetValue(zoomObj);
-                if (values is null) return;
-
-                // Values is IList-like, get first element
-                var indexer = values.GetType().GetProperty("Item");
-                if (indexer is null) return;
-                var firstValue = indexer.GetValue(values, new object[] { 0 });
-                if (firstValue is null) return;
-
-                var valueProp = firstValue.GetType().GetProperty("Value");
-                valueProp?.SetValue(firstValue, zoomPercent);
-            }
-            catch (Exception ex)
-            {
-                WriteRuntimeLog($"SetImageZoom failed: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Apply Ken Burns animation to an ImageItem (SP-029).
-        /// Sets Zoom to animate from startZoom to endZoom over the item's duration.
-        /// </summary>
-        internal static void ApplyKenBurnsZoom(ImageItem imageItem, double startZoom, double endZoom)
-        {
-            try
-            {
-                var zoomProp = imageItem.GetType().GetProperty("Zoom");
-                if (zoomProp is null) return;
-                var zoomObj = zoomProp.GetValue(imageItem);
-                if (zoomObj is null) return;
-
-                // Set AnimationType to "直線" (linear)
-                var animTypeProp = zoomObj.GetType().GetProperty("AnimationType");
-                if (animTypeProp is not null)
-                {
-                    var animType = animTypeProp.PropertyType;
-                    // AnimationType is an enum — find "直線" value
-                    if (animType.IsEnum)
-                    {
-                        foreach (var val in Enum.GetValues(animType))
-                        {
-                            if (val.ToString() == "直線")
-                            {
-                                animTypeProp.SetValue(zoomObj, val);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Set Values to [startZoom, endZoom]
-                var valuesProp = zoomObj.GetType().GetProperty("Values");
-                if (valuesProp is null) return;
-                var values = valuesProp.GetValue(zoomObj);
-                if (values is null) return;
-
-                var indexer = values.GetType().GetProperty("Item");
-                if (indexer is null) return;
-
-                // Set first value (start)
-                var firstValue = indexer.GetValue(values, new object[] { 0 });
-                if (firstValue is not null)
-                {
-                    var valueProp = firstValue.GetType().GetProperty("Value");
-                    valueProp?.SetValue(firstValue, startZoom);
-                }
-
-                // Add second value (end) — need to create a new AnimationValue entry
-                var countProp = values.GetType().GetProperty("Count");
-                int count = countProp is not null ? (int)countProp.GetValue(values)! : 0;
-
-                if (count < 2)
-                {
-                    // Try to add a new value using Add method
-                    var addMethod = values.GetType().GetMethod("Add");
-                    if (addMethod is not null && firstValue is not null)
-                    {
-                        // Create a copy of the first value type
-                        var newValue = Activator.CreateInstance(firstValue.GetType());
-                        if (newValue is not null)
-                        {
-                            var valueProp2 = newValue.GetType().GetProperty("Value");
-                            valueProp2?.SetValue(newValue, endZoom);
-                            addMethod.Invoke(values, new object[] { newValue });
-                        }
-                    }
-                }
-                else
-                {
-                    // Second value already exists, just update it
-                    var secondValue = indexer.GetValue(values, new object[] { 1 });
-                    if (secondValue is not null)
-                    {
-                        var valueProp2 = secondValue.GetType().GetProperty("Value");
-                        valueProp2?.SetValue(secondValue, endZoom);
-                    }
-                }
-
-                WriteRuntimeLog($"ApplyKenBurnsZoom: {startZoom}% → {endZoom}%");
-            }
-            catch (Exception ex)
-            {
-                WriteRuntimeLog($"ApplyKenBurnsZoom failed: {ex.Message}");
-            }
-        }
-
-        /// <summary>
         /// Apply subtitle styling to a TextItem via Reflection (SP-030).
         /// Sets Y position to bottom area, font size, and text color.
         /// </summary>
@@ -1807,41 +1686,61 @@ namespace NLMSlidePlugin.TimelinePlugin
         // ========== SP-033: アニメーションバリアント ==========
 
         /// <summary>
-        /// SP-033: アニメーション種別に応じた効果をImageItemに適用する。
-        /// CSV 4列目の animation_type 値に基づいてズーム/パン/静止を選択。
+        /// SP-033: Direct API 方式でアニメーションを適用。
+        /// Animation.From / Animation.To で開始値・終了値を設定し、
+        /// AnimationType で補間方式を指定する。リフレクション不要。
         /// </summary>
+#pragma warning disable CS0618 // Animation.From/To は旧形式だが YMM4 v4.50 で動作する
         internal static void ApplyAnimationByType(ImageItem imageItem, string animationType, double fitZoom, int videoWidth, int videoHeight)
         {
+            // AnimationType enum: なし=0, 直線移動=1, 加減速移動=103
+            var linear = YukkuriMovieMaker.Commons.AnimationType.直線移動;
+            var easeInOut = YukkuriMovieMaker.Commons.AnimationType.加減速移動;
+
             switch (animationType)
             {
                 case "zoom_in":
-                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.15);
+                    imageItem.Zoom.AnimationType = easeInOut;
+                    imageItem.Zoom.From = fitZoom;
+                    imageItem.Zoom.To = fitZoom * 1.15;
                     break;
                 case "zoom_out":
-                    ApplyKenBurnsZoom(imageItem, fitZoom * 1.15, fitZoom);
+                    imageItem.Zoom.AnimationType = easeInOut;
+                    imageItem.Zoom.From = fitZoom * 1.15;
+                    imageItem.Zoom.To = fitZoom;
                     break;
                 case "pan_left":
-                    ApplyPanAnimation(imageItem, fitZoom, panX: videoWidth * 0.05, panY: 0);
+                    imageItem.Zoom.From = fitZoom;
+                    imageItem.X.AnimationType = easeInOut;
+                    imageItem.X.From = videoWidth * 0.05;
+                    imageItem.X.To = 0;
                     break;
                 case "pan_right":
-                    ApplyPanAnimation(imageItem, fitZoom, panX: -(videoWidth * 0.05), panY: 0);
+                    imageItem.Zoom.From = fitZoom;
+                    imageItem.X.AnimationType = easeInOut;
+                    imageItem.X.From = -(videoWidth * 0.05);
+                    imageItem.X.To = 0;
                     break;
                 case "pan_up":
-                    ApplyPanAnimation(imageItem, fitZoom, panX: 0, panY: videoHeight * 0.05);
+                    imageItem.Zoom.From = fitZoom;
+                    imageItem.Y.AnimationType = easeInOut;
+                    imageItem.Y.From = videoHeight * 0.05;
+                    imageItem.Y.To = 0;
                     break;
                 case "static":
-                    SetImageZoom(imageItem, fitZoom);
+                    imageItem.Zoom.From = fitZoom;
                     break;
                 case "ken_burns":
                 default:
-                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
+                    imageItem.Zoom.AnimationType = linear;
+                    imageItem.Zoom.From = fitZoom;
+                    imageItem.Zoom.To = fitZoom * 1.05;
                     break;
             }
-            // Note: ApplyImageFade は YMM4 v4.50 でリフレクション経由のキーフレーム追加が
-            // 正常に動作せず、不透明度が0%固定になる問題があるため無効化。
-            // YMM4 デフォルトの不透明度 100% をそのまま使用する。
-            // ApplyImageFade(imageItem);
+            // Opacity: デフォルト100%のまま（ApplyImageFade不要）
+            WriteRuntimeLog($"ApplyAnimationByType(Direct): {animationType}, zoom={fitZoom:F1}");
         }
+#pragma warning restore CS0618
 
         /// <summary>
         /// ImageItem の不透明度を 100% に強制設定する。
@@ -1851,164 +1750,15 @@ namespace NLMSlidePlugin.TimelinePlugin
         {
             try
             {
-                var opacityProp = imageItem.GetType().GetProperty("Opacity");
-                if (opacityProp is null) { WriteRuntimeLog("EnsureOpacity100: Opacity property not found"); return; }
-                var opacityObj = opacityProp.GetValue(imageItem);
-                if (opacityObj is null) { WriteRuntimeLog("EnsureOpacity100: Opacity value is null"); return; }
-
-                // AnimationType を "固定" (none/constant) に設定
-                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
-                if (animTypeProp is not null)
-                {
-                    var animType = animTypeProp.PropertyType;
-                    if (animType.IsEnum)
-                    {
-                        // まず "固定" を探す、なければ "なし"、それもなければ最初の値
-                        object? targetEnum = null;
-                        object? firstEnum = null;
-                        foreach (var val in Enum.GetValues(animType))
-                        {
-                            firstEnum ??= val;
-                            var name = val.ToString();
-                            if (name == "固定" || name == "なし")
-                            {
-                                targetEnum = val;
-                                break;
-                            }
-                        }
-                        targetEnum ??= firstEnum;
-                        if (targetEnum is not null)
-                        {
-                            animTypeProp.SetValue(opacityObj, targetEnum);
-                            WriteRuntimeLog($"EnsureOpacity100: AnimationType set to '{targetEnum}'");
-                        }
-                    }
-                }
-
-                // Values[0].Value = 100.0 に設定
-                var valuesProp = opacityObj.GetType().GetProperty("Values");
-                if (valuesProp is null) { WriteRuntimeLog("EnsureOpacity100: Values property not found"); return; }
-                var values = valuesProp.GetValue(opacityObj);
-                if (values is null) { WriteRuntimeLog("EnsureOpacity100: Values is null"); return; }
-
-                var indexer = values.GetType().GetProperty("Item");
-                var countProp = values.GetType().GetProperty("Count");
-                int count = countProp != null ? (int)countProp.GetValue(values)! : 0;
-
-                if (count > 0 && indexer is not null)
-                {
-                    var firstValue = indexer.GetValue(values, new object[] { 0 });
-                    var valueProp = firstValue?.GetType().GetProperty("Value");
-                    double currentVal = valueProp != null ? (double)valueProp.GetValue(firstValue)! : -1;
-                    valueProp?.SetValue(firstValue, 100.0);
-                    WriteRuntimeLog($"EnsureOpacity100: Values[0] {currentVal:F1} → 100.0 (count={count})");
-                }
-                else
-                {
-                    WriteRuntimeLog($"EnsureOpacity100: count={count}, cannot set value");
-                }
+#pragma warning disable CS0618 // Animation.From is obsolete but functional
+                imageItem.Opacity.From = 100.0;
+#pragma warning restore CS0618
+                WriteRuntimeLog("EnsureOpacity100: set via Direct API");
             }
             catch (Exception ex)
             {
                 WriteRuntimeLog($"EnsureOpacity100 failed: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// SP-033: パンアニメーションをImageItemに適用。
-        /// X/Y の AnimationValue を startOffset → 0 にアニメーションさせる。
-        /// </summary>
-        internal static void ApplyPanAnimation(ImageItem imageItem, double fitZoom, double panX, double panY)
-        {
-            SetImageZoom(imageItem, fitZoom);
-
-            try
-            {
-                if (Math.Abs(panX) > 0.01)
-                    ApplyPositionAnimation(imageItem, "X", panX, 0);
-
-                if (Math.Abs(panY) > 0.01)
-                    ApplyPositionAnimation(imageItem, "Y", panY, 0);
-
-                WriteRuntimeLog($"ApplyPanAnimation: X={panX:F1}, Y={panY:F1}");
-            }
-            catch (Exception ex)
-            {
-                WriteRuntimeLog($"ApplyPanAnimation failed: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// SP-033: ImageItem の位置プロパティ (X or Y) にアニメーションを適用。
-        /// </summary>
-        private static void ApplyPositionAnimation(ImageItem imageItem, string propertyName, double startValue, double endValue)
-        {
-            var prop = imageItem.GetType().GetProperty(propertyName);
-            if (prop is null) return;
-            var animObj = prop.GetValue(imageItem);
-            if (animObj is null) return;
-
-            // AnimationType を "直線" (linear) に設定
-            var animTypeProp = animObj.GetType().GetProperty("AnimationType");
-            if (animTypeProp is not null)
-            {
-                var enumType = animTypeProp.PropertyType;
-                if (enumType.IsEnum)
-                {
-                    foreach (var val in Enum.GetValues(enumType))
-                    {
-                        if (val.ToString() == "直線")
-                        {
-                            animTypeProp.SetValue(animObj, val);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            var valuesProp = animObj.GetType().GetProperty("Values");
-            if (valuesProp is null) return;
-            var values = valuesProp.GetValue(animObj);
-            if (values is null) return;
-
-            var indexer = values.GetType().GetProperty("Item");
-            if (indexer is null) return;
-
-            var firstValue = indexer.GetValue(values, new object[] { 0 });
-            if (firstValue is not null)
-            {
-                var valueProp = firstValue.GetType().GetProperty("Value");
-                valueProp?.SetValue(firstValue, startValue);
-            }
-
-            var countProp = values.GetType().GetProperty("Count");
-            int count = countProp is not null ? (int)countProp.GetValue(values)! : 0;
-
-            if (count < 2)
-            {
-                var addMethod = values.GetType().GetMethod("Add");
-                if (addMethod is not null && firstValue is not null)
-                {
-                    var newValue = Activator.CreateInstance(firstValue.GetType());
-                    if (newValue is not null)
-                    {
-                        var valueProp2 = newValue.GetType().GetProperty("Value");
-                        valueProp2?.SetValue(newValue, endValue);
-                        addMethod.Invoke(values, new object[] { newValue });
-                    }
-                }
-            }
-            else
-            {
-                var secondValue = indexer.GetValue(values, new object[] { 1 });
-                if (secondValue is not null)
-                {
-                    var valueProp2 = secondValue.GetType().GetProperty("Value");
-                    valueProp2?.SetValue(secondValue, endValue);
-                }
-            }
-
-            WriteRuntimeLog($"ApplyPositionAnimation: {propertyName} {startValue:F1} → {endValue:F1}");
         }
 
         /// <summary>

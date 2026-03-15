@@ -198,42 +198,33 @@ public string AnimationType { get; set; } = "ken_burns";
 
 ---
 
-## 6. Phase 1 残作業 (2026-03-15時点)
+## 6. Phase 1 残作業 (2026-03-16更新)
 
 ### 6.1 状況
 
 - Python側 (AnimationAssigner, CsvAssembler 4列出力): **完了・テスト済み**
 - C# CsvTimelineReader (4列パース + 相対パス解決): **完了・テスト済み**
-- YMM4プラグイン アニメーション適用: **画像表示は確認済み、アニメーション効果は未確認**
+- YMM4プラグイン: **Direct API移行完了、YMM4実機テスト待ち**
 
-### 6.2 発見事項: YMM4 API アプローチ
+### 6.2 Direct API 方式
 
-リフレクション経由の AnimationValue 操作に問題がある:
-- `ApplyImageFade`: Opacity の Values[0]=0% を設定後、Values[1]=100% のキーフレーム追加が失敗し、画像が透明になる
-- `ApplyKenBurnsZoom`: Zoom の AnimationValue 設定は成功するが、実際の視覚効果が確認できていない
+リフレクション経由の AnimationValue 操作を全廃し、Direct API (`Animation.From/To`) に統一。
+`Animation.From/To` は YMM4 では「旧形式」(CS0618警告) だが動作確認済み。
 
-**代替アプローチを発見**: `imageItem.Zoom.From = fitZoom` でプロパティに直接アクセスできる。
-`Animation.From` は YMM4 では「旧形式」(CS0618警告) だが動作する。
+実装内容:
+- `ApplyAnimationByType`: 7種別を Direct API でインライン実装
+  - `Zoom.From/To` + `AnimationType` (直線移動/加減速移動)
+  - `X.From/To`, `Y.From/To` (パンアニメーション)
+- `EnsureOpacity100`: `Opacity.From = 100.0` に簡略化
+- 旧リフレクション版 (`SetImageZoom`, `ApplyKenBurnsZoom`, `ApplyPanAnimation`, `ApplyPositionAnimation`) を削除
 
 ### 6.3 残タスク
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
-| 1 | Direct API テスト | pending | `Zoom.From/To` で画像ズームが確認できるかYMM4で検証 |
-| 2 | アニメーション7種実装 | pending | 方針確定後。Direct API (`.From/.To`) or リフレクション |
-| 3 | Opacity 方針確定 | pending | `EnsureOpacity100` で十分か、`Opacity.From` 直接設定に切替か |
-| 4 | FadeIn/FadeOut 確認 | pending | crossfadeFrames がYMM4で正常に動作するか検証 |
-| 5 | 診断ログ削除 | pending | 動作確認後に不要な WriteRuntimeLog を整理 |
-| 6 | コミット整理 | pending | 未コミット差分 (CsvImportDialog + Ymm4TimelineImporter + InspectYmm4) |
-
-### 6.4 推奨進め方
-
-1. **Step 1**: `Zoom.From = fitZoom` のみで画像表示 + ズーム効果を確認 (現在のコード状態)
-2. **Step 2**: 確認できたら `Zoom.To = fitZoom * 1.05` を追加し、ズームアニメーションを検証
-3. **Step 3**: 成功すれば全7種を Direct API 方式に移行。`ApplyKenBurnsZoom` 等のリフレクション版は廃止
-4. **Step 4**: `X.From/To`, `Y.From/To` でパンアニメーション実装
-5. **Step 5**: `Opacity.From = 100.0` でフェード不要を確定するか、`Opacity.From=0/To=100` でフェード復活
-6. **Step 6**: 診断ログ整理、コミット
+| 1 | YMM4実機テスト | pending | Direct API方式で7種アニメーション + 不透明度が正常動作するか検証 |
+| 2 | FadeIn/FadeOut確認 | pending | crossfadeFrames がYMM4で正常に動作するか検証 |
+| 3 | 診断ログ整理 | pending | 動作確認後に不要な WriteRuntimeLog を整理 |
 
 ---
 
@@ -243,3 +234,4 @@ public string AnimationType { get; set; } = "ken_burns";
 |------|------|
 | 2026-03-15 | 初版作成。Phase 1-3の段階的設計を定義 |
 | 2026-03-15 | Phase 1 残作業・発見事項を追記。Direct API アプローチ発見 |
+| 2026-03-16 | Direct API全面移行: リフレクション版廃止、7種アニメ+EnsureOpacity100をDirect API化 |
