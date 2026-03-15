@@ -7,7 +7,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: プロトタイプ後期
-直近の状態: SP-033 Phase 2 (ストック素材API) 完了。StockImageClient (Pexels/Pixabay) + CLI --auto-images/--duration統合 + 30分+対応プロンプト改善。Python 191/0。Gemini JSON抽出改善 (Markdownコードブロック対応)。auto-review orphaned adopt修正。残: YMM4実機テスト(7種アニメ+字幕テンプレート)、Gemini無料枠上限対応。
+直近の状態: SP-033 Phase 2全完了 + SP-034 + SP-031 Phase 1完了。E2Eパイプライン全ステップ完走確認済み (collect→script→align→review→orchestrate→assemble)。Pexels実API動作確認。Geminiモデルフォールバックチェーン実装 (2.5-flash→2.0-flash→モック)。Pre-Export Validation統合。Python 280/0。残: YMM4実機テスト(7種アニメ+字幕テンプレート)、Gemini有料プラン検討。
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -35,6 +35,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-17 | SP-033 Phase 2: Pexels/Pixabay二重構成 | Pexels単独/Pixabay単独/両方 | Pexels高品質(200req/h)+Pixabayフォールバック(5000req/h)の冗長構成 |
 | 2026-03-17 | auto-review: orphaned→adopt方針 | adopt/reject | ソース不一致でもスクリプトとしては有効。mockフォールバック時にも有用な出力を保証 |
 | 2026-03-17 | 30分+対応: セグメント数ヒント動的生成 | 固定/動的 | target_durationからセグメント数目安を算出。5分=5-7、15分=10-15、30分=20-30、60分+=30-45 |
+| 2026-03-17 | Geminiモデルフォールバックチェーン | 単一モデル固定/フォールバックチェーン | gemini-2.5-flash(高品質)→gemini-2.0-flash(高クォータ)→モック。GEMINI_MODEL env varで切替可。無料枠20req/day制限への対策 |
 
 ## Key Paths
 

@@ -272,11 +272,11 @@
   {
     "id": "SP-031",
     "title": "Style Template & Pre-Export Validation",
-    "status": "planned",
-    "pct": 0,
+    "status": "done",
+    "pct": 90,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 4: 動画スタイルテンプレートJSON定義 + インポート後品質チェック自動化"
+    "summary": "Phase 4実装: style_template.json v1.1 (video/subtitle/animation/crossfade/timing/validation)、Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み、ValidateImportItems拡張(連続同一画像/統計サマリー)。残: BGMテンプレート"
   },
   {
     "id": "SP-032",
