@@ -30,37 +30,37 @@
     "id": "SP-004",
     "title": "YMM4 Export Specification",
     "status": "partial",
-    "pct": 85,
+    "pct": 95,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem+クロスフェード+Zoomアニメーション実装済み。残: Pan実装、画像自動取得"
+    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem+クロスフェード+7種アニメーション+StyleTemplate統一読み込み実装済み。残: pan_down追加"
   },
   {
     "id": "SP-005",
     "title": "YMM4 Integration Architecture",
-    "status": "partial",
-    "pct": 50,
+    "status": "done",
+    "pct": 95,
     "cat": "plugin",
     "file": "docs/ymm4_integration_arch.md",
-    "summary": "Path A単一運用の現行アーキテクチャ要約。ymm4_export_specが詳細仕様"
+    "summary": "現行Python/C#二層アーキテクチャ。全コンポーネント表+CSV形式+CLI/UI実行導線+関連仕様リンク (2026-03-17更新)"
   },
   {
     "id": "SP-006",
     "title": "System Architecture",
-    "status": "partial",
-    "pct": 60,
+    "status": "done",
+    "pct": 90,
     "cat": "system",
     "file": "docs/system_architecture.md",
-    "summary": "モジュラーパイプライン3段階構成。MoviePy完全削除・TTS全削除・video_composer除去を反映済(2026-03-08)"
+    "summary": "4ステージ構成図+ドメインモデル+フロー詳細+フォールバック連鎖+Gemini統合4用途+テスト体系。実装全反映 (2026-03-17更新)"
   },
   {
     "id": "SP-007",
     "title": "System Specification",
-    "status": "partial",
-    "pct": 50,
+    "status": "done",
+    "pct": 85,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "マルチプラットフォーム動画制作の長期設計。TTS/MoviePy完全削除・YMM4一本化を反映済(2026-03-08)"
+    "summary": "システム仕様書。4ステージ機能要件+非機能要件+技術仕様+ディレクトリ構成。重複セクション削除・実装全反映 (2026-03-17更新)"
   },
   {
     "id": "SP-008",
@@ -273,10 +273,10 @@
     "id": "SP-031",
     "title": "Style Template & Pre-Export Validation",
     "status": "done",
-    "pct": 90,
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 4実装: style_template.json v1.1 (video/subtitle/animation/crossfade/timing/validation)、Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み、ValidateImportItems拡張(連続同一画像/統計サマリー)。残: BGMテンプレート"
+    "summary": "style_template.json v1.1 (video/subtitle/animation/bgm/crossfade/timing/validation)。Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。ExportValidator + ValidateImportItems拡張。BGMテンプレート自動配置 (fadeIn/fadeOut分離対応)"
   },
   {
     "id": "SP-032",
