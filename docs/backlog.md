@@ -47,6 +47,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-034 | パイプラインステップ再開 | 完了 | PipelineState永続化+CLI --resume+UI再開セクション。テスト16件PASS |
 | SP-031 Phase 1 | Pre-Export検証 + テンプレートマネージャー | 完了 | ExportValidator+StyleTemplateManager+CLI validate/templates。テスト280件PASS |
 | SP-033 Phase 3 | AI画像生成 + Orchestrator統合 | 完了 | AIImageProvider (Gemini Imagen) + stock失敗→AI→slideフォールバック連鎖 + CLI/UI統合。テスト301件PASS |
+| SP-033 Phase 3b | テキストスライド自動生成 | 完了 | TextSlideGenerator: source=none→generated変換。PLACEHOLDER_THEMES使用。Orchestrator/CLI統合。テスト38件PASS |
 
 ---
 
@@ -55,7 +56,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
-| スタイル | テンプレートJSON + Pre-Export検証 | Phase 2完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfadeセクション追加。ValidateImportItems拡張。残: BGMテンプレート |
+| スタイル | テンプレートJSON + Pre-Export検証 | 完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfade/bgmセクション。ValidateImportItems拡張。BGMテンプレート自動配置済み |
 | 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み |
 | 素材 | AI生成イラスト | 完了 | SP-033 Phase 3 | AIImageProvider (Gemini Imagen) + Orchestrator統合 + CLI/UI自動有効 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
@@ -81,7 +82,7 @@ E2E品質改善 → ドキュメント整備 → BGMテンプレート
 ```
 
 - ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
-- BGMテンプレート自動配置 (SP-031残件)
+- ~~BGMテンプレート自動配置~~ (SP-031完了: style_template.json bgmセクション + Python/C#統合)
 
 ### 長期 (3ヶ月+): 自動化
 
@@ -120,6 +121,7 @@ E2E品質改善 → ドキュメント整備 → BGMテンプレート
 - 2026-03-17: SP-031 Phase 2 完了: style_template.json v1.1 (video/crossfadeセクション追加)、C# StyleTemplateLoader拡張(VideoConfig/CrossfadeConfig)、ValidateImportItems拡張(連続同一画像検出/統計サマリー)
 - 2026-03-16: SP-031 C#ハードコード値全面テンプレート化: ApplySubtitleStyle/ApplyAnimationDirect/GetSpeakerColor/crossfade/padding/defaultDuration全てstyle_template.json参照に置換
 - 2026-03-17: SP-033 Phase 3 完了: AIImageProvider (Gemini Imagen 3.0) + Orchestrator AI統合 (stock→AI→slideフォールバック連鎖) + source分離。テスト301件PASS
+- 2026-03-17: SP-031 BGMテンプレート完了: style_template.json bgmセクション (volume/fadeIn/fadeOut/layer) + Python/C#双方対応。テスト330件PASS
 
 ---
 
