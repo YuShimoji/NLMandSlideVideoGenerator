@@ -158,23 +158,22 @@ class TestCsvAssemblerAnimation:
         for row in rows:
             assert row[3] in valid, f"Invalid animation type: {row[3]}"
 
-    def test_auto_animation_no_consecutive_duplicates(self, tmp_path):
+    def test_text_slides_default_all_static(self, tmp_path):
+        """デフォルト (text_slides=True) では全画像が static になる。"""
         slides_dir = tmp_path / "slides"
         slides_dir.mkdir()
-        for i in range(8):
+        for i in range(3):
             (slides_dir / f"slide_{i:04d}.png").write_bytes(b"\x89PNG")
         slide_paths = sorted(slides_dir.glob("*.png"))
 
-        segments = [{"speaker": "A", "content": f"t{i}"} for i in range(8)]
+        segments = [{"speaker": "A", "content": f"t{i}"} for i in range(3)]
         out = tmp_path / "out.csv"
         assembler = CsvAssembler()
         assembler.assemble(segments, slide_paths, out, auto_animation=True)
         rows = _read_csv(out)
 
-        for i in range(1, len(rows)):
-            assert rows[i][3] != rows[i - 1][3], (
-                f"Consecutive duplicate animation at row {i}: {rows[i][3]}"
-            )
+        for row in rows:
+            assert row[3] == "static"
 
     def test_auto_animation_disabled(self, tmp_path):
         slides_dir = tmp_path / "slides"

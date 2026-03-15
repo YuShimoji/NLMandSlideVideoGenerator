@@ -18,9 +18,23 @@ class AnimationAssigner:
     2. サイクル方式で順に割当
     3. 同一画像が連続する場合、異なるアニメーションを適用
     4. 画像なしセグメントには STATIC を割当
+    5. text_slides=True のとき、全画像に STATIC を割当（テキスト主体スライド用）
     """
 
-    def __init__(self, cycle: Optional[List[AnimationType]] = None):
+    def __init__(
+        self,
+        cycle: Optional[List[AnimationType]] = None,
+        text_slides: bool = True,
+    ):
+        """
+        Args:
+            cycle: アニメーション種別のサイクル順序。
+            text_slides: True の場合、全画像に STATIC を割当。
+                Google Slides等のテキスト主体画像ではズーム/パンで
+                文字が動いて視認性が低下するため、デフォルトTrue。
+                写真・イラスト主体の画像ではFalseに設定してサイクルを有効化する。
+        """
+        self._text_slides = text_slides
         self._cycle = cycle or AnimationType.cycle_types()
 
     def assign(
@@ -59,6 +73,18 @@ class AnimationAssigner:
                         image_path=None,
                         animation_type=AnimationType.STATIC,
                         source="none",
+                    )
+                )
+                prev_animation = AnimationType.STATIC
+                continue
+
+            if self._text_slides:
+                # テキスト主体スライド: ズーム/パンで文字が動くため STATIC 固定
+                resources.append(
+                    VisualResource(
+                        image_path=img,
+                        animation_type=AnimationType.STATIC,
+                        source="slide",
                     )
                 )
                 prev_animation = AnimationType.STATIC

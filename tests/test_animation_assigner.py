@@ -43,8 +43,19 @@ class TestAnimationAssigner:
             assert r.animation_type == AnimationType.STATIC
             assert r.source == "none"
 
-    def test_with_images_cycles_animations(self):
+    def test_text_slides_default_all_static(self):
+        """デフォルト (text_slides=True) では全画像が STATIC になる。"""
         assigner = AnimationAssigner()
+        paths = [Path(f"slide_{i}.png") for i in range(3)]
+        package = assigner.assign(3, paths)
+
+        for r in package.resources:
+            assert r.animation_type == AnimationType.STATIC
+            assert r.image_path is not None
+            assert r.source == "slide"
+
+    def test_with_images_cycles_animations(self):
+        assigner = AnimationAssigner(text_slides=False)
         paths = [Path(f"slide_{i}.png") for i in range(6)]
         package = assigner.assign(6, paths)
 
@@ -63,7 +74,7 @@ class TestAnimationAssigner:
 
     def test_no_consecutive_duplicates(self):
         """同一アニメーションが2回連続しないことを確認。"""
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         # 7セグメント（サイクル長6 + 1）でも連続しない
         paths = [Path(f"slide_{i}.png") for i in range(7)]
         package = assigner.assign(7, paths)
@@ -76,7 +87,7 @@ class TestAnimationAssigner:
                 assert prev != curr, f"Consecutive duplicate at index {i}: {curr}"
 
     def test_mixed_images_and_none(self):
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         paths = [Path("slide_0.png"), None, Path("slide_1.png"), None]
         package = assigner.assign(4, paths)
 
@@ -86,14 +97,14 @@ class TestAnimationAssigner:
         assert package.resources[3].animation_type == AnimationType.STATIC
 
     def test_single_image(self):
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         package = assigner.assign(1, [Path("slide.png")])
         assert len(package.resources) == 1
         assert package.resources[0].animation_type == AnimationType.KEN_BURNS
 
     def test_image_paths_shorter_than_segments(self):
         """image_pathsがsegment_countより短い場合、Noneで埋められる。"""
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         package = assigner.assign(5, [Path("a.png"), Path("b.png")])
         assert len(package.resources) == 5
         # 最初の2つは画像あり
@@ -105,7 +116,7 @@ class TestAnimationAssigner:
 
     def test_custom_cycle(self):
         custom = [AnimationType.ZOOM_IN, AnimationType.ZOOM_OUT]
-        assigner = AnimationAssigner(cycle=custom)
+        assigner = AnimationAssigner(cycle=custom, text_slides=False)
         paths = [Path(f"s{i}.png") for i in range(4)]
         package = assigner.assign(4, paths)
 
@@ -122,7 +133,7 @@ class TestAnimationAssigner:
 
 class TestAnimationAssignerFromSegments:
     def test_with_segments_and_slides(self):
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         segments = [
             {"speaker": "A", "content": "text1"},
             {"speaker": "B", "content": "text2"},
@@ -134,7 +145,7 @@ class TestAnimationAssignerFromSegments:
         assert all(r.image_path is not None for r in package.resources)
 
     def test_with_mapping(self):
-        assigner = AnimationAssigner()
+        assigner = AnimationAssigner(text_slides=False)
         segments = [
             {"speaker": "A", "content": "t1"},
             {"speaker": "B", "content": "t2"},
@@ -156,3 +167,18 @@ class TestAnimationAssignerFromSegments:
         package = assigner.assign_from_segments(segments, None)
         assert len(package.resources) == 1
         assert package.resources[0].animation_type == AnimationType.STATIC
+
+    def test_text_slides_all_static(self):
+        """text_slides=True (デフォルト) では全画像がSTATICになる。"""
+        assigner = AnimationAssigner()
+        segments = [
+            {"speaker": "A", "content": "text1"},
+            {"speaker": "B", "content": "text2"},
+        ]
+        slides = [Path("s0.png"), Path("s1.png")]
+
+        package = assigner.assign_from_segments(segments, slides)
+        assert len(package.resources) == 2
+        for r in package.resources:
+            assert r.animation_type == AnimationType.STATIC
+            assert r.image_path is not None
