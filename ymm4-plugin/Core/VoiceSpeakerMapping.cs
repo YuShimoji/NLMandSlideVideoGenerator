@@ -65,11 +65,13 @@ namespace NLMSlidePlugin.Core
                 { "Speaker1", new("YukkuriVoice", "reimu") },
                 { "Speaker2", new("YukkuriVoice", "marisa") },
                 { "ナレーター", new("YukkuriVoice", "reimu") },
+                { "Host1", new("YukkuriVoice", "reimu") },
+                { "Host2", new("YukkuriVoice", "marisa") },
 
-                // VOICEVOX（利用可能な場合）
-                { "ずんだもん", new("VOICEVOX", "3") },    // VOICEVOX ずんだもん
-                { "四国めたん", new("VOICEVOX", "2") },    // VOICEVOX 四国めたん
-                { "Zundamon", new("VOICEVOX", "3") },
+                // キャラクター名（すべてYMM4内蔵ゆっくりボイスにマッピング）
+                { "ずんだもん", new("YukkuriVoice", "reimu") },
+                { "四国めたん", new("YukkuriVoice", "marisa") },
+                { "Zundamon", new("YukkuriVoice", "reimu") },
             };
 
             return new VoiceSpeakerMapping(mappings);

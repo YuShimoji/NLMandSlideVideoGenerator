@@ -51,7 +51,7 @@ flowchart LR
 - **Input Orchestrator**: NotebookLM/外部MCP/手動アップロードなど複数入力経路を抽象化。
 - **Script Provider**: NotebookLM/Gemini、自前プロンプト実行、CSV/PDF手動投入を `IScriptProvider` で差し替え。
 - **Content Adapter**: NotebookLM固有フォーマット（DeepDive等）を一般化し、台本セクション・メタ情報・引用元を抽出して内部スキーマへ変換。
-- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コード(ElevenLabs/OpenAI/Azure/SofTalk/AquesTalk/VOICEVOX)は2026-03-04に削除済み（`src/audio/tts_integration.py`も削除済み）。
+- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コードは2026-03-04に全削除済み。
 - **Asset Registry**: `data/` 配下への素材登録、再利用用メタデータ管理、差分検知を実装予定。
 
 ### Stage 2: 編集生成レイヤー
@@ -156,7 +156,7 @@ sequenceDiagram
 
 ### フォールバックと拡張ポイント
 - **台本工程**: NotebookLMが利用不可の場合、Gemini + Web MCP、またはユーザーがNotebookLMから抽出したJSON/Markdownをアップロード。
-- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携（VOICEVOX, SofTalk, AquesTalk, ElevenLabs, Azure, Google Cloud）は2026-03-04に削除済み。
+- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携コードは2026-03-04に全削除済み。
 - **編集**: YMM4テンプレートベースのレンダリング。MoviePyバックエンドは2026-03-07に削除済み（YMM4一本化により不要）。
 - **投稿**: YouTubeへの自動投稿、またはメタデータ/サムネイルのみ作成して手動投稿に切替可能。
 

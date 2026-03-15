@@ -213,6 +213,13 @@ class ModularVideoPipeline:
                 progress_callback("スライド生成", 0.6, f"スライド生成完了: {slides_pkg.total_slides}枚")
 
             # Stage2: 映像タイムライン計画 & レンダリング
+            # SP-032: CsvAssembler統合用のextrasを構築
+            editing_extras: Dict[str, Any] = {"export_outputs": {}}
+            if script_bundle:
+                editing_extras["script_bundle"] = script_bundle
+            if slides_pkg.file_path is not None:
+                editing_extras["slides_dir"] = str(slides_pkg.file_path.parent)
+
             video_info, thumbnail_path, timeline_plan, editing_outputs = await sr.run_stage2_video_render(
                 audio_info=audio_info,
                 slides_pkg=slides_pkg,
@@ -224,6 +231,7 @@ class ModularVideoPipeline:
                 timeline_planner=self.timeline_planner,
                 editing_backend=self.editing_backend,
                 thumbnail_generator=self.thumbnail_generator,
+                editing_extras=editing_extras,
                 progress_callback=progress_callback,
             )
 

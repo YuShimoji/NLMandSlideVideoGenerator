@@ -18,7 +18,7 @@ namespace NLMSlidePlugin.Tests
         [InlineData("Reimu", "YukkuriVoice", "reimu")]
         [InlineData("Speaker1", "YukkuriVoice", "reimu")]
         [InlineData("Speaker2", "YukkuriVoice", "marisa")]
-        [InlineData("ずんだもん", "VOICEVOX", "3")]
+        [InlineData("ずんだもん", "YukkuriVoice", "reimu")]
         public void Resolve_KnownSpeaker_ReturnsCorrectMapping(string speakerName, string expectedApi, string expectedId)
         {
             var mapping = VoiceSpeakerMapping.CreateDefault();
@@ -88,7 +88,7 @@ namespace NLMSlidePlugin.Tests
             var b = new VoiceSpeakerId("YukkuriVoice", "reimu");
             Assert.Equal(a, b);
 
-            var c = new VoiceSpeakerId("VOICEVOX", "3");
+            var c = new VoiceSpeakerId("YukkuriVoice", "marisa");
             Assert.NotEqual(a, c);
         }
     }

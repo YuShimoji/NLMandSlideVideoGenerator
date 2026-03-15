@@ -285,9 +285,9 @@ CSV内の話者名はYMM4のボイス名と一致する必要がある。
 
 | 台本上の話者 | YMM4ボイス名 | 備考 |
 |------------|-------------|------|
-| Host1 / Speaker1 | ずんだもん | デフォルトマッピング |
-| Host2 / Speaker2 | 四国めたん | デフォルトマッピング |
-| ナレーター | (カスタム) | VoiceSpeakerDiscoveryで検索 |
+| Host1 / Speaker1 | れいむ (YukkuriVoice) | デフォルトマッピング |
+| Host2 / Speaker2 | まりさ (YukkuriVoice) | デフォルトマッピング |
+| ナレーター | れいむ (YukkuriVoice) | デフォルトフォールバック |
 
 マッピングはCsvAssembler実行時にオプション指定。
 NLMSlidePluginのVoiceSpeakerDiscoveryと連携。

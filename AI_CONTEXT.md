@@ -24,7 +24,7 @@
 - 外部実行ファイル検出は `src/core/utils/tool_detection.py` に集約。
 - 品質SSOTは 480p/720p/1080p に統一（4K未対応）。
 - CSV → YMM4 で音声生成・動画レンダリング (Path A) が現行SSOT。
-- 音声方針: YMM4内蔵ゆっくりボイス（唯一の推奨方法）。VOICEVOX/SofTalk/AquesTalkは削除済み。
+- 音声方針: YMM4内蔵ゆっくりボイス（唯一の推奨方法）。外部TTS連携コードは全削除済み。
 - ドメイン固有例外階層を `src/core/exceptions.py` に確立。
 - pytest.ini に `pythonpath = . src` を設定し、テストの import 安定化。
 - Ruff import sorting (I001) は無効化 - circular imports を引き起こすため。
@@ -113,7 +113,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - [x] .windsurf/workflows 削除 (2026-03-03)
 - [x] pytest.ini pythonpath設定追加 (2026-03-03)
 - [x] pipeline.py 500行以下への分割 (2026-03-04: 1384行→431行)
-- [x] VOICEVOX/SofTalk/AquesTalk削除 (2026-03-04)
+- [x] 外部TTS連携コード全削除 (2026-03-04)
 - [x] Web UI modular化 (2026-03-05: pages.py→pages/ 8ファイル)
 - [x] .NET CI分離 (2026-03-05)
 - [x] Ruff統合 (2026-03-05: 995→0 errors)
@@ -143,7 +143,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 - 2026-03-02 夜: 総合監査、TASK_021-025起票。
 - 2026-03-03 深夜: TASK_021/022/023 Layer A完了。TASK_024 Pipeline Refactoring完了（1384→431行）。
 - 2026-03-03 夜: shared-workflows脱却、リポジトリクリーンアップ、テスト安定化。
-- 2026-03-04 昼: 迷走期仕様削除 — VOICEVOX/SofTalk/AquesTalkを完全削除。YMM4のみに注力。
+- 2026-03-04 昼: 迷走期仕様削除 — 外部TTS連携コードを完全削除。YMM4のみに注力。
 - 2026-03-05 日中: Web UI modular化、.NET CI分離、Ruff統合（980 whitespace fixes）。
 - 2026-03-05 夜: Ruff全修正 (995→0)、Mypy全修正 (228→0)、CI 5段階全緑化。Health Score 98/100達成。
 - 2026-03-06: YMM4プラグインGetAudioDuration修正、CS1998警告解消、skippedテスト10件→0件解消。

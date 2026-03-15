@@ -49,10 +49,9 @@ Report:
 - [x] README.md にセットアップと使用方法を記載
 
 ## Notes
-- 将来的には他の音声合成エンジン（VOICEVOX等）にも対応できるよう、抽象化を検討（削除済み）
 - 音声ファイルの命名規則は既存のYMM4連携と整合性を保つ
 
-**Superseded**: VOICEVOX/SofTalk/AquesTalk連携コードは 2026-03-04 に削除されました。YMM4 一本化方針により、音声生成は YMM4 が担当します。
+**Superseded**: 外部TTS連携コードは 2026-03-04 に全削除されました。YMM4 一本化方針により、音声生成は YMM4 内蔵ゆっくりボイスが担当します。
 
 ## Implementation Summary
 

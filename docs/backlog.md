@@ -57,7 +57,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2025-11-28: Transcript/Script I/O仕様固定
 - 2025-11-30: CSVタイムラインモード基盤、YMM4エクスポートPoC
 - 2025-12-01: E2E動画書き出し検証、テスト97 passed
-- 2026-03-04: VOICEVOX統合 CLOSED、pipeline.pyリファクタリング(-69%)
+- 2026-03-04: 外部TTS統合 CLOSED、pipeline.pyリファクタリング(-69%)
 - 2026-03-08: Path B完全削除、YMM4一本化
 - 2026-03-09: SP-024 Voice自動生成UI完了
 - 2026-03-14: SP-026 ImageItem自動配置完了

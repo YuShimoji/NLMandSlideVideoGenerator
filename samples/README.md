@@ -1,69 +1,131 @@
 # サンプルファイル
 
-このディレクトリには、動画生成パイプラインをすぐに試せるサンプルファイルが含まれています。
+動画生成パイプラインをすぐに試せるサンプルです。
 
-## basic_dialogue（基本的な対話）
+## サンプル一覧
 
-2人の話者による対話形式のサンプルです。
+### basic_dialogue（音声なし対話）
+
+ゆっくりボイスによる2人の対話サンプル。画像なし。
 
 ```
 basic_dialogue/
-├── timeline.csv    # 台本（10行）
-└── audio/
-    ├── 001.wav    # 1行目の音声
-    ├── 002.wav    # 2行目の音声
-    └── ...        # (計10ファイル)
+├── timeline.csv    # 台本（10行、話者: れいむ/まりさ）
+└── audio/          # テスト用無音WAV (使用しない)
 ```
 
-### 実行方法
+### image_slide（画像付き解説）
 
-#### CLI
+スライド画像付きの解説動画サンプル。全機能の動作確認用。
+
+```
+image_slide/
+├── timeline.csv        # 台本（8行、話者: れいむ/まりさ、画像パス付き）
+├── test_with_images.csv  # 短縮版（6行）
+└── slides/
+    ├── slide_0001.png  # 1920x1080 タイトルスライド
+    ├── slide_0002.png  # 1920x1080 本編スライド
+    └── slide_0003.png  # 1920x1080 まとめスライド
+```
+
+---
+
+## 使い方: サンプルからmp4を書き出すまで
+
+### 前提条件
+
+- YMM4 v4.50+ がインストール済み
+- NLMSlidePlugin がデプロイ済み (`ymm4-plugin/` のビルド成果物を YMM4 plugin フォルダにコピー)
+
+### 手順
+
+#### Step 1: CSVの画像パスを絶対パスに変換
+
+サンプルCSVの画像パスは相対パスなので、YMM4に読み込む前に絶対パスに変換する。
 
 ```bash
-python scripts/run_csv_pipeline.py \
-  --csv samples/basic_dialogue/timeline.csv \
-  --audio-dir samples/basic_dialogue/audio \
-  --topic "AI技術解説サンプル"
+# PowerShell
+$base = (Resolve-Path samples/image_slide).Path
+(Get-Content samples/image_slide/timeline.csv) -replace 'slides/', "$base\slides\" | Set-Content samples/image_slide/timeline_abs.csv
 ```
 
-#### Web UI
+または手動で `slides/slide_0001.png` を `C:\...\samples\image_slide\slides\slide_0001.png` に書き換える。
 
-1. `streamlit run src/web/web_app.py` を実行
-2. サイドバーで「CSV Pipeline」を選択
-3. CSVファイル: `samples/basic_dialogue/timeline.csv` をアップロード
-4. 音声ディレクトリ: `samples/basic_dialogue/audio` を入力
-5. 「動画生成開始」をクリック
+#### Step 2: YMM4で新規プロジェクト作成
 
-### 注意事項
+1. YMM4を起動
+2. 新規プロジェクト → 1920x1080, 30fps
+3. プロジェクトを保存（任意の場所）
 
-- 同梱の音声ファイルは **無音のテスト用** です
-- 実際の動画制作では、**YMM4 内蔵ゆっくりボイス** (Path A) を使用してください
-  - YMM4 を使わない場合は、任意のツールで連番WAVを手動準備してください
+#### Step 3: CSVインポート
+
+1. メニュー → NLMSlidePlugin → 「CSVタイムラインをインポート」
+2. `timeline_abs.csv` (絶対パス版) を選択
+3. 「字幕を追加」「音声を生成」にチェック
+4. 「インポート」をクリック
+
+#### Step 4: インポート結果の確認
+
+タイムラインに以下が配置される:
+
+| レイヤー | 種類 | 内容 |
+|---------|------|------|
+| N | AudioItem | ゆっくりボイス音声 |
+| N+1 | ImageItem | スライド画像（全画面フィット + Ken Burns 5%ズーム + フェードイン） |
+| N+2 | TextItem | 字幕テキスト（画面下部固定、48pt） |
+
+#### Step 5: プレビューと調整
+
+- スペースキーでプレビュー再生
+- 確認ポイント:
+  - 画像が全画面に表示されているか
+  - Ken Burnsのゆるやかなズームが見えるか
+  - 字幕が画面下部に表示されているか
+  - 音声と字幕のタイミングが合っているか
+  - スライド切替時にフェードインが見えるか
+
+#### Step 6: レンダリング
+
+1. ファイル → 動画出力
+2. 出力先とファイル名を指定
+3. レンダリング実行 → mp4
+
+---
 
 ## 自分のサンプルを作成する
 
-### 1. CSVファイルの作成
+### CSV形式
 
 ```csv
-話者名,テロップテキスト
-Speaker1,こんにちは
-Speaker2,よろしくお願いします
+話者名,テロップテキスト,画像パス(任意)
+れいむ,こんにちは,C:\slides\slide_01.png
+まりさ,よろしくお願いします,
 ```
 
-### 2. 音声ファイルの準備
+| 列 | 内容 | 備考 |
+|----|------|------|
+| A列 | 話者名 | YMM4のキャラクター名と一致させる（れいむ、まりさ等） |
+| B列 | テロップテキスト | 読み上げ内容 |
+| C列 | 画像パス（任意） | 絶対パスを推奨。空欄なら画像なし |
 
-CSVの行数に対応する音声ファイルを用意:
-- `001.wav` (1行目)
-- `002.wav` (2行目)
-- ...
+### 話者名のマッピング
 
-### 3. 実行
+| CSV上の話者名 | YMM4音声 |
+|-------------|---------|
+| れいむ / Reimu / Speaker1 | ゆっくりれいむ |
+| まりさ / Marisa / Speaker2 | ゆっくりまりさ |
+| ナレーター / Host1 | ゆっくりれいむ（フォールバック） |
 
-```bash
-python scripts/run_csv_pipeline.py --csv your_timeline.csv --audio-dir your_audio/
-```
+### 画像の準備
+
+- 推奨サイズ: 1920x1080 (16:9)
+- フォーマット: PNG
+- 異なるアスペクト比でも動作する（containフィットで黒帯が付く）
+
+---
 
 ## 関連ドキュメント
 
 - [ユーザーガイド](../docs/user_guide_manual_workflow.md)
 - [CSV入力フォーマット仕様](../docs/spec_csv_input_format.md)
+- [YMM4エクスポート仕様](../docs/ymm4_export_spec.md)

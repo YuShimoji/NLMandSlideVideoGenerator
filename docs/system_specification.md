@@ -139,7 +139,7 @@ NLMandSlideVideoGenerator（NotebookLM and Slide Video Generator）
 ### 4.3 外部システム連携
 - **NotebookLM / Gemini API**: 台本生成・要約補完
 - **MCP Agents**: Web 情報取得、翻訳、要約
-- **TTS**: YMM4内蔵ゆっくりボイス（外部TTSプロバイダー VOICEVOX/SofTalk/AquesTalk/ElevenLabs/Azure/Google Cloudは2026-03-04に削除済み）
+- **TTS**: YMM4内蔵ゆっくりボイス（外部TTSプロバイダーは2026-03-04に全削除済み）
 - **Google Slides API**: スライド生成・画像エクスポート
 - **YukkuriMovieMaker4 API**: テンプレートからタイムライン再構築
 - **YouTube Data API / TikTok API**: 投稿・メタデータ設定

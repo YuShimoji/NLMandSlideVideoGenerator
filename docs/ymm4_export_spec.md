@@ -575,11 +575,40 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 - Zoom値をReflection経由でAnimationValue.Values[0].Valueに設定
 - 画像読み込み失敗時はZoom=100.0（デフォルト）にフォールバック
 
-### 11.5 未実装（後続スライス）
+### 11.5 Ken Burns アニメーション（実装済み）
 
-- アニメーション（パン・ズーム等）
+- ImageItem生成時に `ApplyKenBurnsZoom()` で Zoom アニメーションを自動付与
+- AnimationType を「直線」に設定、Values[0]=fitZoom(開始)、Values[1]=fitZoom*1.05(終了)
+- 全3インポートパス（async/sync/Ymm4TimelineImporter）に適用済み
+
+### 11.6 WAV実尺同期（実装済み）
+
+- `GetWavDurationSeconds()` でWAVファイルヘッダーからバイトレート/データサイズを読み取り実尺を計算
+- AudioFilePathが存在する行では、CSV上のDurationではなくWAV実尺でImageItem/TextItemのLengthを決定
+- 全3インポートパスに適用済み
+
+### 11.7 字幕スタイル + 画像フェード（実装済み）
+
+- `ApplySubtitleStyle()`: TextItemのY位置を画面下部（videoHeight*0.35オフセット）に固定、フォントサイズ48
+- `ApplyImageFade()`: ImageItemのOpacityを0→100%でリニアアニメーション（フェードイン）
+- 全3インポートパスに適用済み
+
+### 11.8 品質チェック（実装済み）
+
+- `ValidateImportItems()`: インポート前にCSVアイテムを検証
+  - ファイル存在確認（音声/画像）
+  - Duration有効性チェック
+  - 空行検出（テキストもオーディオもない行）
+  - ギャップ検出（>1秒）/ オーバーラップ検出（<-0.1秒）
+  - 総尺チェック（>1時間で警告）
+- 警告はランタイムログに出力、インポートは続行
+
+### 11.9 未実装（後続スライス）
+
 - 画像素材の自動取得
 - slides_payload.jsonとの統合（現在はCSV 3列目方式のみ）
+- BGMテンプレート自動配置
+- 話者別字幕色分け
 
 ---
 
@@ -594,3 +623,4 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 | 2026-03-14 | セクション10実装状況更新(全完了)、セクション11スライド配置ギャップ追加、MoviePyレガシー参照修正 |
 | 2026-03-14 | SP-026: ImageItem自動配置実装。セクション11をギャップ→実装完了に更新。CSV 3列目方式 |
 | 2026-03-14 | 全画面フィット実装。Zoom値をcontain計算+Reflection設定。セクション11.4追加 |
+| 2026-03-14 | SP-028/029/030/031実装: Ken Burns(5%ズーム)、WAV実尺同期、字幕スタイル、画像フェード、品質チェック |

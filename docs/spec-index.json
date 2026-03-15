@@ -150,7 +150,7 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/voice_path_comparison.md",
-    "summary": "ゆっくりボイス経路比較+推奨 (YMM4のみ、VOICEVOX等削除済)"
+    "summary": "ゆっくりボイス経路比較+推奨 (YMM4内蔵ゆっくりボイスのみ)"
   },
   {
     "id": "SP-018",

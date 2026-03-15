@@ -24,7 +24,7 @@ Audience: All Agents
 | `TASK_016` Research Workflow | DONE | Phase 3 UI + Playwright smoke + CSV export |
 | `TASK_015` CI/CD強化 | DONE | CIワークフロー11→6整理、.NET Core分離でubuntu CI、deprecated actions修正、全グリーン |
 | `TASK_021` コード品質 | DONE | mypy 0 errors (76 files), ruff 0 |
-| `TASK_022` VOICEVOX統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
+| `TASK_022` 外部TTS統合 | CLOSED (WONTFIX) | YMM4一本化により不要。コード全削除済 |
 | `TASK_023` E2E実証 | IN_PROGRESS | SP-024 Voice自動生成UI実装完了。YMM4 GUI手動検証待ち |
 | `TASK_024` リファクタリング | DONE | pipeline.py 1384→431行 (-69%) |
 | 方針再定義 | DONE | Shorts 撤回、16:9 固定、ゆっくりボイス優先、YMM4一本化 |

@@ -54,8 +54,7 @@ Audio Playback Test: ✅ Passed
 
 ---
 
-> **注**: SofTalk / AquesTalk / VOICEVOX のTTS連携コードは 2026-03-04 に削除されました。
-> 音声生成は YMM4 内蔵ゆっくりボイスを使用してください。
+> **注**: 外部TTS連携コードは 2026-03-04 に全削除されました。音声生成は YMM4 内蔵ゆっくりボイスのみを使用してください。
 
 ## YMM4 Plugin Issues
 

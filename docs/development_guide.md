@@ -35,7 +35,7 @@ copy .env.example .env
 
 詳細は `docs/api_setup_guide.md` を参照してください。
 
-**注**: 外部TTS連携（VOICEVOX, SofTalk, AquesTalk, ElevenLabs, Azure）は 2026-03-04 に削除されました。音声生成は YMM4 内蔵ゆっくりボイスを使用してください。
+**注**: 外部TTS連携コードは 2026-03-04 に全削除されました。音声生成は YMM4 内蔵ゆっくりボイスのみを使用してください。
 
 ## 開発フロー
 
