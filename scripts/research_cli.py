@@ -483,6 +483,21 @@ async def run_pipeline(
         state.mark_done("assemble", "final.csv")
         state.save(work_dir)
 
+    # --- Post-pipeline: Pre-Export Validation ---
+    if reviewed_csv.exists():
+        from core.export_validator import ExportValidator
+        validator = ExportValidator(check_image_exists=True)
+        vresult = validator.validate_csv(reviewed_csv)
+        print(f"\n=== Pre-Export Validation ===")
+        print(vresult.summary())
+        if vresult.issues:
+            for issue in vresult.issues[:10]:
+                icon = {"error": "x", "warning": "!", "info": "i"}[issue.severity.value]
+                row_info = f" (row {issue.row})" if issue.row else ""
+                print(f"  [{icon}] {issue.code}{row_info}: {issue.message}")
+            if len(vresult.issues) > 10:
+                print(f"  ... and {len(vresult.issues) - 10} more issues")
+
     print(f"\n=== Pipeline Complete ===")
     print(f"Output: {reviewed_csv}")
     print(f"Work dir: {work_dir}")

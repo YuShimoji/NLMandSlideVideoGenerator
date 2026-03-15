@@ -33,6 +33,9 @@ namespace NLMSlidePlugin.TimelinePlugin
         private string bgmPath = string.Empty;
         private double bgmVolume = 30.0;
 
+        /// <summary>SP-031: スタイルテンプレート (JSONから読み込み、またはデフォルト値)。</summary>
+        private static StyleTemplateLoader.StyleTemplate _styleTemplate = new();
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public CsvImportDialog(Timeline? timeline = null)
@@ -380,8 +383,9 @@ namespace NLMSlidePlugin.TimelinePlugin
             int importedRows = 0;
             int voiceItemsCount = 0;
             int imageItemsCount = 0;
-            double crossfadeSeconds = 0.5;
-            int crossfadeFrames = Math.Max(1, (int)Math.Round(crossfadeSeconds * fps));
+            bool crossfadeEnabled = _styleTemplate.Crossfade.Enabled;
+            double crossfadeSeconds = _styleTemplate.Crossfade.DurationSeconds;
+            int crossfadeFrames = crossfadeEnabled ? Math.Max(1, (int)Math.Round(crossfadeSeconds * fps)) : 0;
             int skippedRows = 0;
 
             int nextFrame = 0; // 音声長ベースで次のアイテム開始位置を累積
@@ -393,7 +397,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 StatusMessage = $"Processing {i + 1}/{capturedItems.Count}: {item.Speaker}...";
 
                 int frame = nextFrame;
-                int currentItemLength = Math.Max(1, (int)Math.Round((item.Duration ?? 3.0) * fps)); // デフォルト長
+                int currentItemLength = Math.Max(1, (int)Math.Round((item.Duration ?? _styleTemplate.Timing.DefaultDurationSeconds) * fps)); // デフォルト長
                 bool hasItemInRow = false;
 
                 // VoiceItem: テキストがある行にVoiceItemを作成
@@ -530,7 +534,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 }
 
                 // 次のアイテムの開始位置を音声長+パディングに基づいて設定
-                int paddingFrames = Math.Max(0, (int)Math.Round(0.3 * fps));
+                int paddingFrames = Math.Max(0, (int)Math.Round(_styleTemplate.Timing.PaddingSeconds * fps));
                 nextFrame = frame + currentItemLength + paddingFrames;
 
                 if (hasItemInRow) importedRows++;
@@ -1058,6 +1062,12 @@ namespace NLMSlidePlugin.TimelinePlugin
                     // SP-030: Reset speaker color assignments for this import session
                     ResetSpeakerColors();
 
+                    // SP-031: Load style template (JSON から、なければデフォルト値)
+                    _styleTemplate = StyleTemplateLoader.Load(
+                        csvFilePath: CsvPath,
+                        log: msg => WriteRuntimeLog($"[SP-031] {msg}")
+                    );
+
                     // SP-031: Pre-import quality validation
                     var validationWarnings = ValidateImportItems(items);
                     foreach (var w in validationWarnings)
@@ -1144,6 +1154,12 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                 // SP-030: Reset speaker color assignments for this import session
                 ResetSpeakerColors();
+
+                // SP-031: Load style template (JSON から、なければデフォルト値)
+                _styleTemplate = StyleTemplateLoader.Load(
+                    csvFilePath: CsvPath,
+                    log: msg => WriteRuntimeLog($"[SP-031] {msg}")
+                );
 
                 // SP-031: Pre-import quality validation
                 var validationWarnings = ValidateImportItems(items);
@@ -1471,36 +1487,49 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// Apply subtitle styling to a TextItem (SP-030).
         /// Sets position, font, outline, and speaker-specific color.
         /// </summary>
-        internal static void ApplySubtitleStyle(TextItem textItem, int videoWidth, int videoHeight, string? speaker = null, int fontSize = 48)
+        internal static void ApplySubtitleStyle(TextItem textItem, int videoWidth, int videoHeight, string? speaker = null, int fontSize = 0)
         {
             try
             {
+                var st = _styleTemplate.Subtitle;
+                int effectiveFontSize = fontSize > 0 ? fontSize : st.FontSize;
+
                 // Font size (Animation type — use Values in-place)
-                textItem.FontSize.Values[0].Value = fontSize;
+                textItem.FontSize.Values[0].Value = effectiveFontSize;
 
-                // Position: bottom area of screen (Y = 35% of height from center)
-                textItem.Y.Values[0].Value = videoHeight * 0.35;
+                // Position: Y offset from center (template: y_position_ratio)
+                textItem.Y.Values[0].Value = videoHeight * st.YPositionRatio;
 
-                // BasePoint: center-bottom for standard subtitle alignment
-                textItem.BasePoint = BasePoint.CenterBottom;
+                // BasePoint (template: base_point)
+                if (Enum.TryParse<BasePoint>(st.BasePoint, out var bp))
+                    textItem.BasePoint = bp;
+                else
+                    textItem.BasePoint = BasePoint.CenterBottom;
 
-                // MaxWidth: 90% of video width to prevent edge clipping
-                textItem.MaxWidth.Values[0].Value = videoWidth * 0.9;
+                // MaxWidth (template: max_width_ratio)
+                textItem.MaxWidth.Values[0].Value = videoWidth * st.MaxWidthRatio;
 
-                // Word wrap: character-level for Japanese text
-                textItem.WordWrap = WordWrap.Character;
+                // Word wrap (template: word_wrap)
+                if (Enum.TryParse<WordWrap>(st.WordWrap, out var ww))
+                    textItem.WordWrap = ww;
+                else
+                    textItem.WordWrap = WordWrap.Character;
 
-                // Bold for readability
-                textItem.Bold = true;
+                // Bold (template: bold)
+                textItem.Bold = st.Bold;
 
-                // Outline style for readability over images
-                textItem.Style = YukkuriMovieMaker.Project.Items.Style.Border;
-                textItem.StyleColor = Color.FromRgb(0, 0, 0); // black outline
+                // Outline style (template: style, style_color)
+                if (st.Style == "Border")
+                    textItem.Style = YukkuriMovieMaker.Project.Items.Style.Border;
+                else if (st.Style == "Shadow")
+                    textItem.Style = YukkuriMovieMaker.Project.Items.Style.Shadow;
 
-                // Speaker-specific font color
+                textItem.StyleColor = StyleTemplateLoader.ParseHexColor(st.StyleColor);
+
+                // Speaker-specific font color (template: speaker_colors)
                 textItem.FontColor = GetSpeakerColor(speaker);
 
-                WriteRuntimeLog($"ApplySubtitleStyle: fontSize={fontSize}, Y={videoHeight * 0.35:F0}, speaker={speaker ?? "(null)"}, color={textItem.FontColor}");
+                WriteRuntimeLog($"ApplySubtitleStyle: fontSize={effectiveFontSize}, Y={videoHeight * st.YPositionRatio:F0}, speaker={speaker ?? "(null)"}, color={textItem.FontColor}");
             }
             catch (Exception ex)
             {
@@ -1512,7 +1541,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// Speaker name → subtitle color mapping.
         /// Different colors for different speakers to improve readability.
         /// </summary>
-        private static readonly Color[] SpeakerColors = new[]
+        private static readonly Color[] _defaultSpeakerColors = new[]
         {
             Color.FromRgb(255, 255, 255), // white (default / first speaker)
             Color.FromRgb(255, 255, 100), // yellow (second speaker)
@@ -1525,15 +1554,28 @@ namespace NLMSlidePlugin.TimelinePlugin
 
         internal static Color GetSpeakerColor(string? speaker)
         {
+            // SP-031: テンプレートの speaker_colors を優先、なければデフォルト
+            Color[] colors;
+            if (_styleTemplate.SpeakerColors.Count > 0)
+            {
+                colors = _styleTemplate.SpeakerColors
+                    .Select(hex => StyleTemplateLoader.ParseHexColor(hex))
+                    .ToArray();
+            }
+            else
+            {
+                colors = _defaultSpeakerColors;
+            }
+
             if (string.IsNullOrWhiteSpace(speaker))
-                return SpeakerColors[0];
+                return colors[0];
 
             if (!_speakerIndexMap.TryGetValue(speaker, out int idx))
             {
                 idx = _speakerIndexMap.Count;
                 _speakerIndexMap[speaker] = idx;
             }
-            return SpeakerColors[idx % SpeakerColors.Length];
+            return colors[idx % colors.Length];
         }
 
         /// <summary>
@@ -1553,27 +1595,28 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// </summary>
         internal static void ApplyAnimationDirect(ImageItem imageItem, string animationType, double fitZoom, int videoWidth, int videoHeight)
         {
+            var anim = _styleTemplate.Animation;
+
             switch (animationType)
             {
                 case "zoom_in":
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.15);
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * anim.ZoomInRatio);
                     break;
                 case "zoom_out":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.15, fitZoom);
+                    ApplyZoomDirect(imageItem, fitZoom * anim.ZoomOutRatio, fitZoom);
                     break;
                 case "pan_left":
                     // パンで画面端に隙間を出さないため、パン量の2倍以上ズーム必要
-                    // 計算: zoom >= 1 + 2 * panRatio (片側の余白がパン量以上)
-                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
-                    ApplyPositionDirect(imageItem.X, videoWidth * 0.05, 0);
+                    ApplyZoomDirect(imageItem, fitZoom * anim.PanZoomRatio, fitZoom * anim.PanZoomRatio);
+                    ApplyPositionDirect(imageItem.X, videoWidth * anim.PanDistanceRatio, 0);
                     break;
                 case "pan_right":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
-                    ApplyPositionDirect(imageItem.X, -(videoWidth * 0.05), 0);
+                    ApplyZoomDirect(imageItem, fitZoom * anim.PanZoomRatio, fitZoom * anim.PanZoomRatio);
+                    ApplyPositionDirect(imageItem.X, -(videoWidth * anim.PanDistanceRatio), 0);
                     break;
                 case "pan_up":
-                    ApplyZoomDirect(imageItem, fitZoom * 1.12, fitZoom * 1.12);
-                    ApplyPositionDirect(imageItem.Y, videoHeight * 0.05, 0);
+                    ApplyZoomDirect(imageItem, fitZoom * anim.PanZoomRatio, fitZoom * anim.PanZoomRatio);
+                    ApplyPositionDirect(imageItem.Y, videoHeight * anim.PanDistanceRatio, 0);
                     break;
                 case "static":
                     // ズームなし — Zoom を fitZoom 固定、アニメーションなし
@@ -1581,7 +1624,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     break;
                 case "ken_burns":
                 default:
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * anim.KenBurnsZoomRatio);
                     break;
             }
             WriteRuntimeLog($"ApplyAnimationDirect: {animationType}, zoom={fitZoom:F1}");
@@ -1835,16 +1878,17 @@ namespace NLMSlidePlugin.TimelinePlugin
                     warnings.Add($"Row {rowIndex}: No text and no audio — row may be empty");
                 }
 
-                // Check for gaps between items (> 1 second gap)
+                // Check for gaps between items (SP-031: threshold from template)
                 if (prev != null)
                 {
-                    double prevEnd = prev.StartTime + (prev.Duration ?? 3.0);
+                    double defaultDur = _styleTemplate.Timing.DefaultDurationSeconds;
+                    double prevEnd = prev.StartTime + (prev.Duration ?? defaultDur);
                     double gap = item.StartTime - prevEnd;
-                    if (gap > 1.0)
+                    if (gap > _styleTemplate.Validation.WarnGapThresholdSeconds)
                     {
                         warnings.Add($"Row {rowIndex}: Gap of {gap:F1}s detected after previous item");
                     }
-                    if (gap < -0.1)
+                    if (gap < _styleTemplate.Validation.WarnOverlapThresholdSeconds)
                     {
                         warnings.Add($"Row {rowIndex}: Overlap of {-gap:F1}s with previous item");
                     }
@@ -1854,14 +1898,51 @@ namespace NLMSlidePlugin.TimelinePlugin
                 lastItem = item;
             }
 
-            // Total duration check
+            // Total duration check (SP-031: threshold from template)
             if (lastItem != null)
             {
-                double totalDuration = lastItem.StartTime + (lastItem.Duration ?? 3.0);
-                if (totalDuration > 3600)
+                double defaultDur = _styleTemplate.Timing.DefaultDurationSeconds;
+                double totalDuration = lastItem.StartTime + (lastItem.Duration ?? defaultDur);
+                if (totalDuration > _styleTemplate.Validation.MaxTotalDurationSeconds)
                 {
-                    warnings.Add($"Total duration exceeds 1 hour: {totalDuration / 60:F1} minutes");
+                    warnings.Add($"Total duration exceeds limit: {totalDuration / 60:F1} minutes (max: {_styleTemplate.Validation.MaxTotalDurationSeconds / 60:F0} min)");
                 }
+            }
+
+            // SP-031: Summary statistics
+            int totalRows = rowIndex;
+            int audioRows = 0;
+            int imageRows = 0;
+            int textOnlyRows = 0;
+            string? prevImagePath = null;
+            int consecutiveSameImage = 0;
+
+            foreach (var item in items)
+            {
+                bool hasAudio = !string.IsNullOrWhiteSpace(item.AudioFilePath);
+                bool hasImage = !string.IsNullOrWhiteSpace(item.ImageFilePath);
+                bool hasText = !string.IsNullOrWhiteSpace(item.Text);
+
+                if (hasAudio) audioRows++;
+                if (hasImage) imageRows++;
+                if (hasText && !hasAudio && !hasImage) textOnlyRows++;
+
+                // Detect consecutive rows using the same image (potential issue)
+                if (hasImage && item.ImageFilePath == prevImagePath)
+                {
+                    consecutiveSameImage++;
+                }
+                prevImagePath = hasImage ? item.ImageFilePath : null;
+            }
+
+            if (consecutiveSameImage > 0)
+            {
+                warnings.Add($"Info: {consecutiveSameImage} consecutive row(s) use the same image file");
+            }
+
+            if (totalRows > 0 && audioRows == 0 && imageRows == 0)
+            {
+                warnings.Add("Warning: No audio or image files referenced — text-only import");
             }
 
             return warnings;

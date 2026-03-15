@@ -1,7 +1,7 @@
 # YMM4 エクスポート仕様
 
 **最終更新**: 2026-03-17
-**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ クロスフェード+Zoomアニメーション実装済み（SP-033）/ 字幕テンプレート+話者色分け実装済み（SP-030）
+**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ クロスフェード+Zoomアニメーション実装済み（SP-033）/ 字幕テンプレート+話者色分け実装済み（SP-030）/ スタイルテンプレート+品質チェック実装済み（SP-031）
 
 ---
 
@@ -667,7 +667,38 @@ var item = new ImageItem { FilePath = filePath };
 - `BasePoint` enum: LeftTop=0, CenterTop=1, ..., CenterBottom=7, ...
 - `WordWrap` enum: NoWrap=1, WholeWord=3, Character=4
 
-### 11.12 未実装（後続スライス）
+### 11.12 スタイルテンプレート (SP-031: 実装完了 2026-03-17)
+
+`config/style_template.json` でPython・C#双方の動画スタイルを統一管理する。
+
+**テンプレート構成**:
+| セクション | 内容 |
+|---|---|
+| `video` | 解像度 (width/height) + FPS |
+| `subtitle` | フォントサイズ・位置・Bold・Border・WordWrap等 |
+| `speaker_colors` | 話者別色の配列 (6色サイクル) |
+| `animation` | Ken Burns/Zoom/Pan各種倍率 |
+| `crossfade` | 有効/無効 + クロスフェード秒数 |
+| `timing` | パディング秒・デフォルト長 |
+| `validation` | ギャップ/オーバーラップ/総尺の閾値 |
+
+**読み込み順序** (C# `StyleTemplateLoader.Load`):
+1. CSVと同一ディレクトリの `style_template.json`
+2. 明示configディレクトリ
+3. CSVから上位5階層の `config/style_template.json`
+4. ビルトインデフォルト
+
+**品質チェック項目** (`ValidateImportItems`):
+- ファイル存在確認 (audio/image)
+- Duration妥当性 (0以下は警告)
+- 空行検出 (テキスト+音声なし)
+- ギャップ検出 (template閾値超過)
+- オーバーラップ検出 (template閾値超過)
+- 総尺超過チェック
+- 連続同一画像検出
+- 音声/画像なしのテキストのみインポート検出
+
+### 11.13 未実装（後続スライス）
 
 - 画像素材の自動取得
 - slides_payload.jsonとの統合（現在はCSV 3列目方式のみ）
@@ -689,3 +720,4 @@ var item = new ImageItem { FilePath = filePath };
 | 2026-03-14 | SP-028/029/030/031実装: Ken Burns(5%ズーム)、WAV実尺同期、字幕スタイル、画像フェード、品質チェック |
 | 2026-03-16 | SP-033実機テスト反映: クロスフェード+Zoom実装確認。From/To禁止、Values in-place方式に統一。運用ガイドライン追加 |
 | 2026-03-17 | SP-030字幕テンプレート完結: ApplySubtitleStyleリファクタ(リフレクション→直接プロパティ)、話者別色分け、PlaybackRate=100修正、Border/Bold/CenterBottom/MaxWidth/WordWrap追加 |
+| 2026-03-17 | SP-031スタイルテンプレート+品質チェック: style_template.json v1.1 (video/crossfadeセクション追加)、ValidateImportItems拡張(連続同一画像検出・統計サマリー) |

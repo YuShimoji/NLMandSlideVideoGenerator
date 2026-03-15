@@ -5,6 +5,7 @@ NotebookLMの代替としてGoogle AI Studio (Gemini API)を使用
 """
 import asyncio
 import json
+import os
 from datetime import datetime
 from typing import List, Dict, Any
 from dataclasses import dataclass
@@ -34,9 +35,13 @@ class ScriptInfo:
 class GeminiIntegration:
     """Gemini API連携クラス"""
 
-    def __init__(self, api_key: str):
+    # モデルフォールバックチェーン: 高品質→高クォータ
+    DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+
+    def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = model_name or os.environ.get("GEMINI_MODEL", self.DEFAULT_MODELS[0])
+        self.fallback_models = [m for m in self.DEFAULT_MODELS if m != self.model_name]
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.request_count = 0
         self.max_requests_per_minute = 60
@@ -154,57 +159,63 @@ URL: {source.get('url', 'URL不明')}
 """
         return prompt
 
+    async def _try_model(self, model: str, prompt: str) -> GeminiResponse:
+        """指定モデルでAPI呼び出しを試行"""
+        from google import genai
+        client = genai.Client(api_key=self.api_key)
+        resp = await asyncio.to_thread(
+            client.models.generate_content,
+            model=model,
+            contents=prompt,
+        )
+        content_str = getattr(resp, "text", None)
+        if not content_str:
+            try:
+                content_str = json.dumps(resp.to_dict(), ensure_ascii=False)
+            except Exception:
+                content_str = json.dumps({
+                    "title": "生成結果", "segments": [],
+                    "total_duration_estimate": 0, "language": "ja"
+                }, ensure_ascii=False)
+        self.request_count += 1
+        return GeminiResponse(
+            content=content_str,
+            model=model,
+            usage_metadata={},
+            safety_ratings=[],
+            created_at=datetime.now(),
+        )
+
     async def _call_gemini_api(self, prompt: str) -> GeminiResponse:
-        """Gemini APIを呼び出し"""
+        """Gemini APIを呼び出し（モデルフォールバックチェーン付き）"""
         try:
             # レート制限チェック
             await self._check_rate_limit()
 
             # 実API呼び出し（APIキーが設定されていれば試行）
             if self.api_key:
-                try:
-                    from google import genai
-                    client = genai.Client(api_key=self.api_key)
-                    resp = await asyncio.to_thread(
-                        client.models.generate_content,
-                        model=self.model_name,
-                        contents=prompt,
-                    )
-                    content_str = getattr(resp, "text", None)
-                    if not content_str:
-                        try:
-                            content_str = json.dumps(resp.to_dict(), ensure_ascii=False)
-                        except (AttributeError, TypeError, ValueError, OverflowError, RecursionError) as exc:
-                            logger.debug(f"GeminiレスポンスのJSON化に失敗（最低限JSONへフォールバック）: {exc}")
-                            # 念のため最低限のJSONを返す
-                            content_str = json.dumps({
-                                "title": "生成結果",
-                                "segments": [],
-                                "total_duration_estimate": 0,
-                                "language": "ja"
-                            }, ensure_ascii=False)
-                        except Exception as exc:
-                            logger.debug(f"GeminiレスポンスのJSON化で予期しない例外（最低限JSONへフォールバック）: {exc}")
-                            # 念のため最低限のJSONを返す
-                            content_str = json.dumps({
-                                "title": "生成結果",
-                                "segments": [],
-                                "total_duration_estimate": 0,
-                                "language": "ja"
-                            }, ensure_ascii=False)
-                    real_response = GeminiResponse(
-                        content=content_str,
-                        model=self.model_name,
-                        usage_metadata={},
-                        safety_ratings=[],
-                        created_at=datetime.now()
-                    )
-                    self.request_count += 1
-                    return real_response
-                except (ImportError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                    logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
-                except Exception as e:
-                    logger.warning(f"Gemini 実API呼び出しに失敗したためモックへフォールバックします: {e}")
+                models_to_try = [self.model_name] + self.fallback_models
+                last_error = None
+                for model in models_to_try:
+                    try:
+                        response = await self._try_model(model, prompt)
+                        if model != self.model_name:
+                            logger.info(f"フォールバックモデル {model} で生成成功")
+                        return response
+                    except ImportError as e:
+                        logger.warning(f"google-genai SDK未インストール: {e}")
+                        break  # SDK問題はモデル変更で解決しない
+                    except Exception as e:
+                        last_error = e
+                        err_str = str(e).lower()
+                        is_quota = "429" in err_str or "resource" in err_str and "exhaust" in err_str
+                        if is_quota and model != models_to_try[-1]:
+                            logger.warning(f"{model} クォータ超過、次のモデルへフォールバック: {e}")
+                            continue
+                        logger.warning(f"{model} API呼び出し失敗: {e}")
+                        break  # クォータ以外のエラーはフォールバック不要
+                if last_error:
+                    logger.warning(f"全モデル失敗、モックへフォールバック: {last_error}")
 
             # モック実装（フォールバック）
             await asyncio.sleep(2)  # API呼び出し時間をシミュレート
