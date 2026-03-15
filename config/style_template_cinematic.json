@@ -34,6 +34,13 @@
     "pan_distance_ratio": 0.04
   },
 
+  "bgm": {
+    "volume_percent": 25,
+    "fade_in_seconds": 3.0,
+    "fade_out_seconds": 3.0,
+    "layer": 0
+  },
+
   "timing": {
     "crossfade_seconds": 0.8,
     "padding_seconds": 0.5,

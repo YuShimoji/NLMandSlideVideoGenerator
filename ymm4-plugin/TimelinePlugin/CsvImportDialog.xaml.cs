@@ -548,12 +548,14 @@ namespace NLMSlidePlugin.TimelinePlugin
                 try
                 {
                     int bgmLength = nextFrame; // タイムライン全体をカバー
-                    int fadeFrames = Math.Min(fps * 2, bgmLength / 4); // 2秒フェード（最大長の1/4）
+                    var bgmCfg = _styleTemplate.Bgm;
+                    int fadeInFrames = Math.Min((int)(bgmCfg.FadeInSeconds * fps), bgmLength / 4);
+                    int fadeOutFrames = Math.Min((int)(bgmCfg.FadeOutSeconds * fps), bgmLength / 4);
 
                     var bgmItem = new AudioItem(BgmPath)
                     {
                         Frame = 0,
-                        Layer = 0, // 最下層
+                        Layer = bgmCfg.Layer,
                         Length = bgmLength,
                         PlaybackRate = 1.0
                     };
@@ -561,7 +563,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     // 音量設定 (リフレクションで Volume プロパティを探す)
                     double volumeRatio = BgmVolume / 100.0;
                     ApplyBgmVolume(bgmItem, volumeRatio);
-                    ApplyBgmFade(bgmItem, fadeFrames);
+                    ApplyBgmFade(bgmItem, fadeInFrames, fadeOutFrames);
 
                     var dispatcher = Application.Current?.Dispatcher;
                     dispatcher?.Invoke(() =>
@@ -576,7 +578,7 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                     bgmAdded = true;
                     AppendLog($"BGM added: {Path.GetFileName(BgmPath)}, volume={BgmVolume:F0}%, length={bgmLength} frames");
-                    WriteRuntimeLog($"BGM: path={BgmPath}, volume={volumeRatio:F2}, length={bgmLength}, fadeFrames={fadeFrames}");
+                    WriteRuntimeLog($"BGM: path={BgmPath}, volume={volumeRatio:F2}, length={bgmLength}, fadeIn={fadeInFrames}, fadeOut={fadeOutFrames}");
                 }
                 catch (Exception ex)
                 {
@@ -1068,6 +1070,12 @@ namespace NLMSlidePlugin.TimelinePlugin
                         log: msg => WriteRuntimeLog($"[SP-031] {msg}")
                     );
 
+                    // BGM設定: テンプレートのデフォルト値をUIに反映 (ユーザー未変更時)
+                    if (BgmVolume == 30.0) // デフォルト値のままなら上書き
+                    {
+                        BgmVolume = _styleTemplate.Bgm.VolumePercent;
+                    }
+
                     // SP-031: Pre-import quality validation
                     var validationWarnings = ValidateImportItems(items);
                     foreach (var w in validationWarnings)
@@ -1160,6 +1168,12 @@ namespace NLMSlidePlugin.TimelinePlugin
                     csvFilePath: CsvPath,
                     log: msg => WriteRuntimeLog($"[SP-031] {msg}")
                 );
+
+                // BGM設定: テンプレートのデフォルト値をUIに反映 (ユーザー未変更時)
+                if (BgmVolume == 30.0)
+                {
+                    BgmVolume = _styleTemplate.Bgm.VolumePercent;
+                }
 
                 // SP-031: Pre-import quality validation
                 var validationWarnings = ValidateImportItems(items);
@@ -1731,42 +1745,45 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// <summary>
         /// BGMにフェードイン/フェードアウトを適用
         /// </summary>
-        private static void ApplyBgmFade(AudioItem bgmItem, int fadeFrames)
+        private static void ApplyBgmFade(AudioItem bgmItem, int fadeInFrames, int fadeOutFrames)
         {
-            if (fadeFrames <= 0) return;
-
             try
             {
-                // AudioItem の VideoEffects/AfterVideoEffects で音量エンベロープを制御
-                // YMM4 の AudioItem は VideoEffects を持たないため、
-                // FadeIn/FadeOut 用のプロパティをリフレクションで探す
-                foreach (var propName in new[] { "FadeIn", "FadeInFrame", "FadeInFrames" })
+                // FadeIn
+                if (fadeInFrames > 0)
                 {
-                    var prop = bgmItem.GetType().GetProperty(propName,
-                        BindingFlags.Public | BindingFlags.Instance);
-                    if (prop?.CanWrite == true)
+                    foreach (var propName in new[] { "FadeIn", "FadeInFrame", "FadeInFrames" })
                     {
-                        if (prop.PropertyType == typeof(int))
-                            prop.SetValue(bgmItem, fadeFrames);
-                        else if (prop.PropertyType == typeof(double))
-                            prop.SetValue(bgmItem, (double)fadeFrames);
-                        WriteRuntimeLog($"BGM {propName} set to {fadeFrames}");
-                        break;
+                        var prop = bgmItem.GetType().GetProperty(propName,
+                            BindingFlags.Public | BindingFlags.Instance);
+                        if (prop?.CanWrite == true)
+                        {
+                            if (prop.PropertyType == typeof(int))
+                                prop.SetValue(bgmItem, fadeInFrames);
+                            else if (prop.PropertyType == typeof(double))
+                                prop.SetValue(bgmItem, (double)fadeInFrames);
+                            WriteRuntimeLog($"BGM {propName} set to {fadeInFrames}");
+                            break;
+                        }
                     }
                 }
 
-                foreach (var propName in new[] { "FadeOut", "FadeOutFrame", "FadeOutFrames" })
+                // FadeOut
+                if (fadeOutFrames > 0)
                 {
-                    var prop = bgmItem.GetType().GetProperty(propName,
-                        BindingFlags.Public | BindingFlags.Instance);
-                    if (prop?.CanWrite == true)
+                    foreach (var propName in new[] { "FadeOut", "FadeOutFrame", "FadeOutFrames" })
                     {
-                        if (prop.PropertyType == typeof(int))
-                            prop.SetValue(bgmItem, fadeFrames);
-                        else if (prop.PropertyType == typeof(double))
-                            prop.SetValue(bgmItem, (double)fadeFrames);
-                        WriteRuntimeLog($"BGM {propName} set to {fadeFrames}");
-                        break;
+                        var prop = bgmItem.GetType().GetProperty(propName,
+                            BindingFlags.Public | BindingFlags.Instance);
+                        if (prop?.CanWrite == true)
+                        {
+                            if (prop.PropertyType == typeof(int))
+                                prop.SetValue(bgmItem, fadeOutFrames);
+                            else if (prop.PropertyType == typeof(double))
+                                prop.SetValue(bgmItem, (double)fadeOutFrames);
+                            WriteRuntimeLog($"BGM {propName} set to {fadeOutFrames}");
+                            break;
+                        }
                     }
                 }
             }

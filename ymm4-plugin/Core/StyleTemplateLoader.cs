@@ -56,6 +56,14 @@ namespace NLMSlidePlugin.Core
             public double DefaultDurationSeconds { get; set; } = 3.0;
         }
 
+        public class BgmConfig
+        {
+            public double VolumePercent { get; set; } = 30.0;
+            public double FadeInSeconds { get; set; } = 2.0;
+            public double FadeOutSeconds { get; set; } = 2.0;
+            public int Layer { get; set; } = 0;
+        }
+
         public class ValidationConfig
         {
             public double MaxTotalDurationSeconds { get; set; } = 3600.0;
@@ -75,6 +83,7 @@ namespace NLMSlidePlugin.Core
                 "#FFFFFF", "#FFFF64", "#64FFFF", "#64FF96", "#FFB464", "#C896FF"
             };
             public AnimationConfig Animation { get; set; } = new();
+            public BgmConfig Bgm { get; set; } = new();
             public CrossfadeConfig Crossfade { get; set; } = new();
             public TimingConfig Timing { get; set; } = new();
             public ValidationConfig Validation { get; set; } = new();

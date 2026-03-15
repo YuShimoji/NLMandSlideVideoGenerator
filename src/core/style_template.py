@@ -28,6 +28,7 @@ class StyleTemplate:
     subtitle: Dict[str, Any] = field(default_factory=dict)
     speaker_colors: List[str] = field(default_factory=list)
     animation: Dict[str, Any] = field(default_factory=dict)
+    bgm: Dict[str, Any] = field(default_factory=dict)
     crossfade: Dict[str, Any] = field(default_factory=dict)
     timing: Dict[str, Any] = field(default_factory=dict)
     validation: Dict[str, Any] = field(default_factory=dict)
@@ -52,6 +53,8 @@ class StyleTemplate:
         }
         if self.video:
             result["video"] = self.video
+        if self.bgm:
+            result["bgm"] = self.bgm
         if self.crossfade:
             result["crossfade"] = self.crossfade
         return result
@@ -132,6 +135,7 @@ class StyleTemplateManager:
             subtitle=data.get("subtitle", {}),
             speaker_colors=data.get("speaker_colors", []),
             animation=data.get("animation", {}),
+            bgm=data.get("bgm", {}),
             crossfade=data.get("crossfade", {}),
             timing=data.get("timing", {}),
             validation=data.get("validation", {}),
@@ -242,6 +246,12 @@ class StyleTemplateManager:
                 "pan_zoom_ratio": 1.12,
                 "pan_distance_ratio": 0.05,
             },
+            bgm={
+                "volume_percent": 30,
+                "fade_in_seconds": 2.0,
+                "fade_out_seconds": 2.0,
+                "layer": 0,
+            },
             crossfade={
                 "enabled": True,
                 "duration_seconds": 0.5,
@@ -289,6 +299,7 @@ def create_template_variant(
         subtitle=data.get("subtitle", base.subtitle),
         speaker_colors=data.get("speaker_colors", base.speaker_colors),
         animation=data.get("animation", base.animation),
+        bgm=data.get("bgm", base.bgm),
         crossfade=data.get("crossfade", base.crossfade),
         timing=data.get("timing", base.timing),
         validation=data.get("validation", base.validation),

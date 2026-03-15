@@ -199,6 +199,84 @@ class TestSaveTemplate:
         assert loaded.subtitle["font_size"] == 48
 
 
+class TestBgmConfig:
+    """BGMテンプレート設定テスト (SP-031残件)。"""
+
+    def test_bgm_in_builtin_default(self) -> None:
+        mgr = StyleTemplateManager(config_dir=Path("/nonexistent"))
+        template = mgr.get_or_default()
+        assert template.bgm["volume_percent"] == 30
+        assert template.bgm["fade_in_seconds"] == 2.0
+        assert template.bgm["fade_out_seconds"] == 2.0
+        assert template.bgm["layer"] == 0
+
+    def test_bgm_loaded_from_json(self, tmp_path: Path) -> None:
+        data = _valid_template_data("bgm_test")
+        data["bgm"] = {
+            "volume_percent": 25,
+            "fade_in_seconds": 3.0,
+            "fade_out_seconds": 1.5,
+            "layer": 2,
+        }
+        path = _write_template(tmp_path / "style_template_bgm.json", data)
+        mgr = StyleTemplateManager(config_dir=tmp_path)
+        template = mgr.load_file(path)
+        assert template is not None
+        assert template.bgm["volume_percent"] == 25
+        assert template.bgm["fade_in_seconds"] == 3.0
+        assert template.bgm["fade_out_seconds"] == 1.5
+        assert template.bgm["layer"] == 2
+
+    def test_bgm_missing_uses_empty_dict(self, tmp_path: Path) -> None:
+        data = _valid_template_data("no_bgm")
+        path = _write_template(tmp_path / "style_template_nobgm.json", data)
+        mgr = StyleTemplateManager(config_dir=tmp_path)
+        template = mgr.load_file(path)
+        assert template is not None
+        assert template.bgm == {}
+
+    def test_bgm_in_to_dict(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            bgm={"volume_percent": 20, "fade_in_seconds": 1.0},
+            subtitle={"font_size": 48},
+            speaker_colors=["#FFF"],
+        )
+        d = t.to_dict()
+        assert "bgm" in d
+        assert d["bgm"]["volume_percent"] == 20
+
+    def test_bgm_in_variant(self) -> None:
+        base = StyleTemplate(
+            name="base",
+            bgm={"volume_percent": 30, "fade_in_seconds": 2.0},
+            subtitle={"font_size": 48},
+            speaker_colors=["#FFF"],
+            animation={"ken_burns_zoom_ratio": 1.05},
+            timing={"crossfade_seconds": 0.5},
+        )
+        variant = create_template_variant(base, "quiet", {
+            "bgm": {"volume_percent": 15},
+        })
+        assert variant.bgm["volume_percent"] == 15
+
+    def test_bgm_save_and_reload(self, tmp_path: Path) -> None:
+        template = StyleTemplate(
+            name="bgm_save",
+            bgm={"volume_percent": 25, "fade_in_seconds": 3.0, "fade_out_seconds": 3.0, "layer": 0},
+            subtitle={"font_size": 48},
+            speaker_colors=["#FFF"],
+            animation={"ken_burns_zoom_ratio": 1.05},
+            timing={"crossfade_seconds": 0.5},
+        )
+        out = save_template(template, tmp_path / "style_template_bgm.json")
+        mgr = StyleTemplateManager(config_dir=tmp_path)
+        loaded = mgr.load_file(out)
+        assert loaded is not None
+        assert loaded.bgm["volume_percent"] == 25
+        assert loaded.bgm["fade_in_seconds"] == 3.0
+
+
 class TestRealTemplates:
     """実際のconfig/テンプレートファイルの読み込みテスト。"""
 
@@ -209,3 +287,12 @@ class TestRealTemplates:
         default = mgr.get("default")
         assert default is not None
         assert len(default.speaker_colors) >= 4
+
+    def test_project_templates_have_bgm(self) -> None:
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        for name in mgr.list_templates():
+            template = mgr.get(name)
+            assert template is not None
+            assert template.bgm, f"Template '{name}' is missing bgm section"
+            assert "volume_percent" in template.bgm
