@@ -677,7 +677,8 @@ def run_list_templates() -> None:
         desc = tmpl.description if tmpl else ""
         colors = len(tmpl.speaker_colors) if tmpl else 0
         dur = tmpl.timing.get("default_duration_seconds", "?") if tmpl else "?"
-        print(f"  {name:20s} colors={colors}  dur={dur}s  {desc}")
+        bgm_vol = tmpl.bgm.get("volume_percent", "?") if tmpl and tmpl.bgm else "?"
+        print(f"  {name:20s} colors={colors}  dur={dur}s  bgm={bgm_vol}%  {desc}")
     print()
 
 
