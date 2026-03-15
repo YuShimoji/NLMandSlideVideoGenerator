@@ -683,7 +683,8 @@ def run_list_templates() -> None:
 
 def main() -> None:
     raw_args = sys.argv[1:]
-    if raw_args and raw_args[0] not in {"collect", "align", "review", "pipeline", "validate", "templates"}:
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates"}
+    if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
     parser = argparse.ArgumentParser(description="Research and alignment CLI")
@@ -708,16 +709,16 @@ def main() -> None:
     pipe_parser = subparsers.add_parser("pipeline", help="End-to-end: collect → script → align → review → CSV")
     pipe_parser.add_argument("--topic", help="Research topic (required for new run, optional for --resume)")
     pipe_parser.add_argument("--urls", nargs="*", help="Optional seed URLs")
-    pipe_parser.add_argument("--max", type=int, default=defaults.get("max_sources", 5), help="最大ソース数 (default: %(default)s)")
-    pipe_parser.add_argument("--auto-review", action="store_true", default=defaults.get("auto_review", True), help="自動レビュー (default: ON)")
-    pipe_parser.add_argument("--no-auto-review", dest="auto_review", action="store_false", help="手動レビュー")
+    pipe_parser.add_argument("--max", type=int, default=defaults.get("max_sources", 5), help="Max sources (default: %(default)s)")
+    pipe_parser.add_argument("--auto-review", action="store_true", default=defaults.get("auto_review", True), help="Auto review mode (default: ON)")
+    pipe_parser.add_argument("--no-auto-review", dest="auto_review", action="store_false", help="Manual review mode")
     pipe_parser.add_argument("--slides-dir", help="Directory containing slide PNG images")
     pipe_parser.add_argument("--output-dir", help="Output directory for all artifacts")
-    pipe_parser.add_argument("--speaker-map", help='Speaker mapping JSON (default: settings.PIPELINE_DEFAULTS)')
-    pipe_parser.add_argument("--auto-images", action="store_true", default=defaults.get("auto_images", True), help="ストック画像自動収集 (default: ON)")
-    pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="ストック画像を使わない")
-    pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="目標動画尺(秒) (default: %(default)s)")
-    pipe_parser.add_argument("--resume", help="途中再開: 既存work_dirを指定して失敗ステップから再開")
+    pipe_parser.add_argument("--speaker-map", help="Speaker mapping JSON (default: settings.PIPELINE_DEFAULTS)")
+    pipe_parser.add_argument("--auto-images", action="store_true", default=defaults.get("auto_images", True), help="Auto stock image collection (default: ON)")
+    pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="Disable stock images")
+    pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="Target duration in seconds (default: %(default)s)")
+    pipe_parser.add_argument("--resume", help="Resume from existing work_dir")
 
     # validate サブコマンド (SP-031)
     validate_parser = subparsers.add_parser("validate", help="Pre-export CSV validation")
