@@ -43,6 +43,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-030 | 字幕テンプレート | 完了 | FadeIn/Out+字幕テンプレート(Border/Bold/CenterBottom/話者色分け6色)+PlaybackRate修正。実機テスト待ち |
 | SP-033 Phase 2a | ストック素材API + 背景充実化基盤 | 完了 | StockImageClient + SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張。テスト78件PASS |
 | SP-033 Phase 2b | パイプライン統合 + E2E検証 | 完了 | CLI/UI統合済み + Pexels実API動作確認 + 30分動画テスト (74%ヒット率) + クエリ重複バグ修正 |
+| SP-033 Phase 2c | Gemini検索品質改善 | 完了 | Gemini分類+英語キーワード抽出+クエリ翻訳+Orchestrator統合。テスト228件PASS |
 
 ---
 
@@ -52,7 +53,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
 | スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
-| 素材 | ストック素材API + 背景充実化 | Phase 2b完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + パイプライン統合済み。Phase 2c: Geminiキーワード抽出+英語クエリ翻訳 |
+| 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み。次: Phase 3 AI画像生成 |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
 | 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
@@ -61,16 +62,14 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): Phase 2c 検索品質改善
+### 短期 (1-2週間): SP-031 テンプレート化
 
 ```
-SP-033 Phase 2c (Geminiキーワード抽出 + 英語クエリ翻訳) → SP-031 テンプレート化
+SP-031 テンプレートJSON → SP-033 Phase 3 (AI画像)
 ```
 
-- SP-033 Phase 2c: ストック画像検索のヒット率改善 (現状74% → 目標90%+)
-  - 日本語key_points → 英語クエリ自動翻訳
-  - Geminiベースのキーワード抽出 (ヒューリスティクスからの段階的移行)
 - SP-031: スタイルテンプレートJSON (C#変更あり → 次回E2Eバッチテスト対象)
+- SP-033 Phase 2c: 完了 (Gemini分類+キーワード+翻訳+Orchestrator統合)
 
 ### 中期 (1-2ヶ月): テンプレート化+品質パイプライン
 
@@ -114,6 +113,7 @@ SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 - 2026-03-16: SP-033 Phase 2a 背景充実化基盤: SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張 + テスト78件PASS
 - 2026-03-16: SP-033 Phase 2b パイプライン統合 + 30分動画E2Eテスト: クエリ重複バグ修正 (48%→74%ヒット率)、CLI/UI統合完了
 - 2026-03-16: SP-033 Phase 2b エラーハンドリング強化: _request_with_retry (指数バックオフ/429/5xx/接続エラー)、validate_api_keys()、Orchestrator進捗ログ改善
+- 2026-03-17: SP-033 Phase 2c 完了: Gemini分類+キーワード抽出+日英翻訳+Orchestrator統合。テスト228件PASS
 
 ---
 

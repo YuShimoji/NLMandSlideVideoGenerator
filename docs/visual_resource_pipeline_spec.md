@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
 **最終更新**: 2026-03-16
-**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c (Geminiキーワード抽出) 未着手。Phase 3 未着手
+**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c 完了 (Gemini分類+キーワード抽出+Orchestrator統合)。Phase 3 未着手
 
 ---
 
@@ -352,9 +352,11 @@ Phase 2 はセグメント分類に基づくストック画像の自動調達と
 | 7 | E2E動作確認 (Pexels API) | done | APIキー設定+実際のストック画像取得テスト |
 | 8 | クエリ重複バグ修正 | done | topic部分一致チェック + クエリ長制限80文字 |
 | 9 | 30分動画E2Eテスト | done | 90セグメント, visual 31/90(34%), stock取得23/31(74%) |
-| 10 | Geminiベースキーワード抽出 | future | Phase 2c |
-| 11 | 英語クエリ自動翻訳 | future | Phase 2c |
-| 12 | Pixabayフォールバック | future | Phase 2c: Pexels失敗時のセカンダリ検索 |
+| 10 | Geminiベースセグメント分類 | done | SegmentClassifier.use_gemini=True + フォールバック。テスト5件追加 |
+| 11 | Geminiベースキーワード抽出 | done | classify_with_keywords(): 分類+英語キーワード一括取得 |
+| 12 | 英語クエリ自動翻訳 | done | StockImageClient._translate_queries_to_english(): 日本語→英語一括翻訳 |
+| 13 | Pixabayフォールバック | future | Pexels失敗時のセカンダリ検索 (既に_search_pixabay実装済み、search()で自動フォールバック) |
+| 14 | Orchestrator Gemini統合 | done | classify_with_keywords→英語キーワード→search_for_segments(queries=)。テスト3件追加 (228件PASS) |
 
 ---
 
@@ -411,3 +413,5 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 | 2026-03-17 | パンズーム隙間修正 (fitZoom*1.12) + VoiceItem/TextItemレイヤー前面化 (baseLayer+10)。全7種アニメ再テストPASS |
 | 2026-03-17 | テスト戦略セクション追加: Dev/Test フェーズ分離、E2Eバッチ化方針 |
 | 2026-03-16 | Phase 2b完了: パイプライン統合(CLI+UI)、Pexels実API検証、クエリ重複バグ修正(48%→74%)、30分動画E2Eテスト |
+| 2026-03-17 | Phase 2c実装: Geminiベースセグメント分類+キーワード抽出、日本語→英語クエリ翻訳、APIキーis-not-Noneバグ修正。テスト225件PASS |
+| 2026-03-17 | Phase 2c統合完了: Orchestrator→classify_with_keywords→search_for_segments(queries=)パイプライン接続。テスト228件PASS |

@@ -74,8 +74,16 @@ class VisualResourceOrchestrator:
         num_segments = len(segments)
         num_slides = len(slide_image_paths)
 
-        # Step 1: セグメント分類
-        classifications = self.classifier.classify(segments)
+        # Step 1: セグメント分類 (+Geminiキーワード抽出)
+        keywords: Optional[List[str]] = None
+        if self.classifier.use_gemini:
+            classifications, keywords = self.classifier.classify_with_keywords(
+                segments, self.topic
+            )
+            logger.info("Gemini classify_with_keywords 使用")
+        else:
+            classifications = self.classifier.classify(segments)
+
         visual_count = sum(1 for c in classifications if c == SegmentType.VISUAL)
         textual_count = num_segments - visual_count
         logger.info(f"セグメント分類: visual={visual_count}, textual={textual_count}")
@@ -86,7 +94,9 @@ class VisualResourceOrchestrator:
         )
 
         # Step 3: visual セグメントにストック画像を取得・割当
-        stock_mapping = self._fetch_stock_images(segments, classifications)
+        stock_mapping = self._fetch_stock_images(
+            segments, classifications, keywords=keywords
+        )
 
         # Step 4: リソース統合 + フォールバック
         resources = self._merge_resources(
@@ -139,8 +149,15 @@ class VisualResourceOrchestrator:
         self,
         segments: List[Dict[str, Any]],
         classifications: List[SegmentType],
+        keywords: Optional[List[str]] = None,
     ) -> Dict[int, Path]:
         """visualセグメントにストック画像を取得する。
+
+        Args:
+            segments: 全セグメント群。
+            classifications: 分類結果。
+            keywords: Gemini抽出済み英語キーワード群 (全セグメント分)。
+                指定時はvisualセグメントのキーワードを検索クエリとして直接使用。
 
         Returns:
             {segment_index: local_image_path} マッピング。
@@ -151,6 +168,7 @@ class VisualResourceOrchestrator:
 
         visual_segments = []
         visual_indices = []
+        visual_queries: Optional[List[str]] = [] if keywords else None
         for i, (seg, cls) in enumerate(zip(segments, classifications)):
             if cls == SegmentType.VISUAL:
                 # トピックコンテキストをセグメントに追加
@@ -168,17 +186,22 @@ class VisualResourceOrchestrator:
                     enriched["key_points"] = kps
                 visual_segments.append(enriched)
                 visual_indices.append(i)
+                if visual_queries is not None and keywords:
+                    visual_queries.append(keywords[i])
 
         if not visual_segments:
             return {}
 
         logger.info(f"ストック画像検索開始: {len(visual_segments)}セグメント対象")
+        if visual_queries:
+            logger.info(f"Gemini抽出キーワード使用: {len(visual_queries)}件")
 
         try:
             stock_images = self.stock_client.search_for_segments(
                 visual_segments,
                 images_per_segment=1,
                 orientation="landscape",
+                queries=visual_queries if visual_queries else None,
             )
         except Exception as e:
             logger.warning(f"ストック画像一括検索失敗: {e}")

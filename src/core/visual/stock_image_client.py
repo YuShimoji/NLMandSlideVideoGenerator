@@ -178,11 +178,19 @@ class StockImageClient:
         segments: List[Dict[str, Any]],
         images_per_segment: int = 1,
         orientation: str = "landscape",
+        queries: Optional[List[str]] = None,
     ) -> List[StockImage]:
         """台本セグメント群からキーワードを抽出し、一括検索+ダウンロード。
 
         各セグメントの key_points や section 名からクエリを生成し、
         重複を避けながら画像を収集する。
+
+        Args:
+            segments: 台本セグメント群。
+            images_per_segment: セグメントあたりの画像数。
+            orientation: 画像の向き。
+            queries: 事前生成済みクエリ群。指定時はクエリ生成・翻訳をスキップ。
+                セグメントと同じ長さである必要がある。
 
         Returns:
             セグメント順に並んだStockImageリスト (ダウンロード済み)。
@@ -190,9 +198,13 @@ class StockImageClient:
         all_images: List[StockImage] = []
         seen_ids: set[str] = set()
 
-        # 先にクエリを全生成し、日本語があれば一括翻訳
-        raw_queries = [self._build_query_from_segment(seg) for seg in segments]
-        translated = self._translate_queries_to_english(raw_queries)
+        if queries is not None and len(queries) == len(segments):
+            # 事前生成済みクエリを使用 (翻訳済み前提)
+            translated = queries
+        else:
+            # クエリを生成し、日本語があれば一括翻訳
+            raw_queries = [self._build_query_from_segment(seg) for seg in segments]
+            translated = self._translate_queries_to_english(raw_queries)
 
         for i, segment in enumerate(segments):
             query = translated[i]

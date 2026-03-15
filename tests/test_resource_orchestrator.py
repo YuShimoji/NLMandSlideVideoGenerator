@@ -1,6 +1,6 @@
 """VisualResourceOrchestrator テスト (SP-033 Phase 2)"""
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -48,7 +48,7 @@ def _make_mock_stock_client(results_per_call: int = 1) -> MagicMock:
     """StockImageClientのモック。"""
     client = MagicMock()
 
-    def mock_search_for_segments(segments, images_per_segment=1, orientation="landscape"):
+    def mock_search_for_segments(segments, images_per_segment=1, orientation="landscape", queries=None):
         images = []
         for i, _ in enumerate(segments):
             images.append(StockImage(
@@ -208,3 +208,90 @@ class TestSourceProvider:
         orch = VisualResourceOrchestrator()
         result = orch.orchestrate(segments, slides)
         assert result.source_provider == "orchestrator"
+
+
+class TestGeminiKeywordIntegration:
+    """classify_with_keywords → search_for_segments(queries=...) 統合テスト。"""
+
+    def test_gemini_keywords_passed_to_stock_client(self, tmp_path: Path) -> None:
+        """use_gemini=True 時、Geminiキーワードが queries として渡される。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "AI概要", "section": "導入", "key_points": ["AI技術"]},
+            {"content": "データ分析", "section": "データ", "key_points": ["精度90%"]},
+            {"content": "未来展望", "section": "まとめ", "key_points": ["将来予測"]},
+        ]
+
+        stock_client = _make_mock_stock_client()
+        classifier = SegmentClassifier(visual_ratio_target=1.0, use_gemini=True)
+
+        # classify_with_keywords をモック
+        mock_keywords = ["AI technology overview", "data accuracy analysis", "future predictions"]
+        with patch.object(
+            classifier, "classify_with_keywords",
+            return_value=([SegmentType.VISUAL] * 3, mock_keywords),
+        ):
+            orch = VisualResourceOrchestrator(
+                classifier=classifier,
+                stock_client=stock_client,
+                topic="AI",
+            )
+            result = orch.orchestrate(segments, slides)
+
+        # search_for_segments が queries 付きで呼ばれたことを確認
+        call_args = stock_client.search_for_segments.call_args
+        assert call_args is not None
+        assert call_args.kwargs.get("queries") is not None
+        passed_queries = call_args.kwargs["queries"]
+        assert len(passed_queries) == 3
+        assert all(q in mock_keywords for q in passed_queries)
+
+    def test_no_gemini_no_queries_param(self, tmp_path: Path) -> None:
+        """use_gemini=False 時、queries は渡されない。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "概要", "section": "導入", "key_points": ["AI"]},
+        ]
+
+        stock_client = _make_mock_stock_client()
+        classifier = SegmentClassifier(visual_ratio_target=1.0, use_gemini=False)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+        )
+        result = orch.orchestrate(segments, slides)
+
+        call_args = stock_client.search_for_segments.call_args
+        assert call_args is not None
+        # queries が None または渡されていない
+        queries_val = call_args.kwargs.get("queries")
+        assert queries_val is None
+
+    def test_gemini_fallback_no_queries(self, tmp_path: Path) -> None:
+        """classify_with_keywords がフォールバックしても正常動作する。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "概要", "section": "導入", "key_points": ["AI技術"]},
+            {"content": "詳細", "section": "本論", "key_points": ["データ分析"]},
+        ]
+
+        stock_client = _make_mock_stock_client()
+        classifier = SegmentClassifier(visual_ratio_target=1.0, use_gemini=True)
+
+        # classify_with_keywords がフォールバック (元のkey_pointsを返す)
+        with patch.object(
+            classifier, "classify_with_keywords",
+            return_value=(
+                [SegmentType.VISUAL, SegmentType.VISUAL],
+                ["AI技術", "データ分析"],  # 日本語のまま (翻訳失敗想定)
+            ),
+        ):
+            orch = VisualResourceOrchestrator(
+                classifier=classifier,
+                stock_client=stock_client,
+            )
+            result = orch.orchestrate(segments, slides)
+
+        # 正常終了し、結果が返る
+        assert len(result.resources) == 2
