@@ -168,17 +168,20 @@ async def test_e2e_align_and_review_roundtrip(research_tmp):
     report_path = await run_alignment(package_path, script_path)
     report_data = json.loads(report_path.read_text(encoding="utf-8"))
 
-    supported_count = sum(
+    # auto-review: supported→adopted, orphaned/missing→adopted, conflict→rejected
+    # missing項目はtext=Noneのためexportで空行になる → CSV行数はtext有りのadoptedのみ
+    adopted_with_text_count = sum(
         1 for item in report_data["analysis"]
-        if item.get("status") == "supported" and item.get("segment_index") is not None
+        if item.get("status") in ("supported", "orphaned", "missing")
+        and item.get("segment_index") is not None
     )
 
     # review (auto)
     csv_path = tmp_path / "roundtrip.csv"
     await run_review(report_path, output_csv=csv_path, auto_mode=True)
 
-    # CSV行数 == supported + adopted のセグメント数
+    # CSV行数 == text有りadopted数
     csv_lines = [
-        line for line in csv_path.read_text(encoding="utf-8").strip().split("\n") if line
+        line for line in csv_path.read_text(encoding="utf-8").strip().split("\n") if line.strip()
     ]
-    assert len(csv_lines) == supported_count
+    assert len(csv_lines) == adopted_with_text_count

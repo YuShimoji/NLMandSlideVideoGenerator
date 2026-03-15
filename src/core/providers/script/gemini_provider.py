@@ -64,7 +64,8 @@ class GeminiScriptProvider(IScriptProvider):
         )
 
         try:
-            script_bundle = json.loads(script_info.content)
+            cleaned_content = GeminiIntegration._extract_json_from_response(script_info.content)
+            script_bundle = json.loads(cleaned_content)
         except json.JSONDecodeError:
             script_bundle = {
                 "title": script_info.title,

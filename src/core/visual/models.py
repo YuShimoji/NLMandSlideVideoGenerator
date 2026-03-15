@@ -7,6 +7,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
+class SegmentType(Enum):
+    """セグメントの視覚的分類。"""
+
+    VISUAL = "visual"    # ストック画像候補 (物語的・描写的・概念的)
+    TEXTUAL = "textual"  # テキストスライド維持 (データ・手順・リスト)
+
+
 class AnimationType(Enum):
     """YMM4 ImageItem に適用するアニメーション種別。
 

@@ -97,6 +97,21 @@ URL: {source.get('url', 'URL不明')}
         # 言語設定
         lang_instruction = "日本語" if language == "ja" else "英語"
 
+        # 動画尺に応じたセグメント数目安を計算
+        # 1セグメントあたり平均30-60秒 → 長尺ではセグメントを増やす
+        if target_duration <= 300:
+            segment_count_hint = "5-7"
+            avg_segment_sec = 45
+        elif target_duration <= 900:
+            segment_count_hint = "10-15"
+            avg_segment_sec = 50
+        elif target_duration <= 1800:
+            segment_count_hint = "20-30"
+            avg_segment_sec = 55
+        else:
+            segment_count_hint = "30-45"
+            avg_segment_sec = 60
+
         # プロンプト構築
         prompt = f"""
 あなたはYouTube解説動画のスクリプト作成の専門家です。
@@ -115,6 +130,9 @@ URL: {source.get('url', 'URL不明')}
 4. 話し言葉で自然な文体にしてください
 5. 重要なポイントは強調してください
 6. 目安時間: {target_duration/60:.1f}分（約{int(target_duration)}秒）
+7. セグメント数目安: {segment_count_hint}個（各セグメント{avg_segment_sec}秒前後）
+8. 各セグメントの content は200-400文字程度の充実した内容にしてください
+9. key_points はスライド画像検索に使える具体的なキーワードを含めてください
 
 【出力形式】
 以下のJSON形式で出力してください：
@@ -125,8 +143,9 @@ URL: {source.get('url', 'URL不明')}
     {{
       "section": "セクション名",
       "content": "話す内容",
-      "duration_estimate": 30.0,
-      "key_points": ["重要ポイント1", "重要ポイント2"]
+      "duration_estimate": {avg_segment_sec}.0,
+      "key_points": ["重要ポイント1", "重要ポイント2"],
+      "speaker": "Host"
     }}
   ],
   "total_duration_estimate": {target_duration},
@@ -247,6 +266,20 @@ URL: {source.get('url', 'URL不明')}
             logger.error(f"Gemini API呼び出し失敗: {e}")
             raise
 
+    @staticmethod
+    def _extract_json_from_response(text: str) -> str:
+        """GeminiレスポンスからJSON部分を抽出。
+
+        Gemini APIはMarkdownコードブロック (```json ... ```) でJSONを返す場合がある。
+        """
+        import re
+        # ```json ... ``` パターンを検出
+        match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        # そのままJSONとして試行
+        return text.strip()
+
     async def _parse_script_response(
         self,
         response: GeminiResponse,
@@ -255,8 +288,9 @@ URL: {source.get('url', 'URL不明')}
     ) -> ScriptInfo:
         """Gemini APIレスポンスを解析してScriptInfoに変換"""
         try:
-            # JSONレスポンスを解析
-            content_data = json.loads(response.content)
+            # JSONレスポンスを解析 (Markdownコードブロック対応)
+            cleaned = self._extract_json_from_response(response.content)
+            content_data = json.loads(cleaned)
 
             # セグメント情報を構築
             segments = []
@@ -301,9 +335,9 @@ URL: {source.get('url', 'URL不明')}
         """スクリプトの品質スコアを計算"""
         score = 0.0
 
-        # セグメント数の評価（3-7セグメントが理想的）
+        # セグメント数の評価（3以上あれば妥当）
         segment_count = len(segments)
-        if 3 <= segment_count <= 7:
+        if segment_count >= 3:
             score += 0.3
         elif segment_count > 0:
             score += 0.1

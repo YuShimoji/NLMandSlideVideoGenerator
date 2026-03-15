@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .utils.logger import logger
-from .visual.models import AnimationType
+from .visual.models import AnimationType, VisualResourcePackage
 from .visual.animation_assigner import AnimationAssigner
 
 
@@ -120,6 +120,66 @@ class CsvAssembler:
             slide_idx = min(int(i / segments_per_slide), num_slides - 1)
             mapping[i] = slide_idx
         return mapping
+
+    def assemble_from_package(
+        self,
+        script_segments: List[Dict[str, Any]],
+        package: VisualResourcePackage,
+        output_path: Path,
+        speaker_mapping: Optional[Dict[str, str]] = None,
+    ) -> Path:
+        """VisualResourcePackage (Orchestrator出力) からCSVを生成する。
+
+        Orchestratorが画像パスとアニメーション種別を決定済みなので、
+        本メソッドはセグメントとリソースを結合してCSVに書き出すのみ。
+
+        Args:
+            script_segments: 台本セグメント群。
+            package: Orchestrator出力のVisualResourcePackage。
+            output_path: 出力CSVファイルパス。
+            speaker_mapping: 話者名マッピング。
+
+        Returns:
+            出力CSVのパス。
+        """
+        if not script_segments:
+            raise ValueError("台本セグメントが空です。CSVを生成できません。")
+
+        speaker_mapping = speaker_mapping or {}
+        resources = package.resources
+
+        rows: List[List[str]] = []
+        for i, segment in enumerate(script_segments):
+            speaker = segment.get("speaker", "")
+            text = segment.get("content", "") or segment.get("text", "")
+
+            if speaker in speaker_mapping:
+                speaker = speaker_mapping[speaker]
+
+            # リソースから画像パスとアニメーションを取得
+            if i < len(resources):
+                r = resources[i]
+                image_path = str(r.image_path.resolve()) if r.image_path else ""
+                animation = r.animation_type.value
+            else:
+                image_path = ""
+                animation = AnimationType.STATIC.value
+
+            rows.append([speaker, text, image_path, animation])
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            for row in rows:
+                writer.writerow(row)
+
+        stock_count = sum(1 for r in resources if r.source == "stock")
+        slide_count = sum(1 for r in resources if r.source == "slide")
+        logger.info(
+            f"CSV合成完了 (Orchestrator): {len(rows)}行, "
+            f"stock={stock_count}, slide={slide_count} → {output_path}"
+        )
+        return output_path
 
     @classmethod
     def from_script_bundle(

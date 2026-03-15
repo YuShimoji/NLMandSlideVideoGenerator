@@ -27,7 +27,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | Post-Voice Timeline Resync (SP-028) | 完成 | WavDurationReader+VoiceLength同期実装済み |
 | トランジション+字幕テンプレート (SP-030) | 完成 | FadeIn/FadeOut 0.5秒+Border/Bold/CenterBottom/話者色分け6色 |
 | CsvAssembler (SP-032 Phase A-D) | 完成 | 台本→CSV一気通貫 + CLI + Streamlit UI |
-| 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 (scripts/research_cli.py) |
+| 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 + --auto-images + --duration (scripts/research_cli.py) |
 | Gemini SDK移行 | 完成 | google-generativeai → google-genai |
 | 字幕生成 (SRT/ASS/VTT) | 完成 | |
 | 長文自動分割 | 完成 | |
@@ -41,7 +41,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | ID | 内容 | 状態 | 備考 |
 |----|------|------|------|
 | SP-030 | 字幕テンプレート | 完了 | FadeIn/Out+字幕テンプレート(Border/Bold/CenterBottom/話者色分け6色)+PlaybackRate修正。実機テスト待ち |
-| SP-033 Phase 2 | ストック素材API | 未着手 | Pexels/Pixabay APIでスライド画像自動調達 |
+| SP-033 Phase 2a | ストック素材API + 背景充実化基盤 | 完了 | StockImageClient + SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張。テスト78件PASS |
+| SP-033 Phase 2b | パイプライン統合 | 未着手 | material_pipeline.py / research_cli.py へのOrchestrator統合 + E2E実動作確認 |
 
 ---
 
@@ -51,7 +52,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
 | スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
-| 素材 | ストック素材API (Pexels/Unsplash) | 中 | SP-033 Phase 2 | スライド画像の自動調達 |
+| 素材 | ストック素材API + 背景充実化 | Phase 2a完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator。Phase 2b: パイプライン統合待ち |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
 | 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
@@ -60,22 +61,23 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): 実機テスト + ストック素材API着手
+### 短期 (1-2週間): Phase 2b パイプライン統合 + 実機テスト
 
 ```
-SP-030 実機テスト → SP-033 Phase 2 ストック素材API
+SP-033 Phase 2b (Orchestrator→パイプライン統合) → SP-030 実機テスト
 ```
 
-- SP-030: ✅ 字幕テンプレート完了 (実機テスト待ち)
-- SP-033 Phase 2: ストック素材API (Pexels/Pixabay) 統合着手
+- SP-033 Phase 2b: Orchestrator を material_pipeline.py / research_cli.py に統合
+- SP-030: 字幕テンプレート実機テスト待ち
+- Gemini無料枠 (20 req/day) → 有料プランまたはモデル切替の検討
 
-### 中期 (1-2ヶ月): 素材自動調達+テンプレート化
+### 中期 (1-2ヶ月): テンプレート化+品質パイプライン
 
 ```
-SP-033 Phase 2 (素材API) → SP-031 (テンプレート)
+SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 ```
 
-- SP-033 Phase 2: ストック素材API (Pexels/Unsplash) 統合
+- SP-031: スタイルテンプレートJSON + Pre-Export Validation
 - ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
 
 ### 長期 (3ヶ月+): テンプレート化・自動化
@@ -107,6 +109,8 @@ SP-033 Phase 2 (素材API) → SP-031 (テンプレート)
 - 2026-03-16: SP-027 Baseline E2E完走 + SP-033 Phase 1 全7種アニメーション実機テストPASS
 - 2026-03-17: SP-028 既存実装発見 (WavDurationReader+VoiceLength同期)、ステータス→done
 - 2026-03-17: SP-030 既存実装発見 (ApplySubtitleStyle: 話者色6色+Border+CenterBottom)、ステータス→done
+- 2026-03-17: SP-033 Phase 2 StockImageClient完了: Pexels/Pixabay + CLIパイプライン統合 + 30分+対応プロンプト改善
+- 2026-03-16: SP-033 Phase 2a 背景充実化基盤: SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張 + テスト78件PASS
 
 ---
 
@@ -116,3 +120,4 @@ SP-033 Phase 2 (素材API) → SP-031 (テンプレート)
 - `docs/ymm4_final_workflow.md` — 最終ワークフロー
 - `docs/e2e_verification_guide.md` — E2E検証ガイド
 - `docs/PROJECT_ALIGNMENT_SSOT.md` — プロジェクト方針SSOT
+- `docs/background_enrichment_design.md` — 背景充実化設計 (SP-033 Phase 2)

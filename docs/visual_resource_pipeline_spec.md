@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
-**最終更新**: 2026-03-17
-**ステータス**: Phase 1 完了 (全7種アニメーション実装+実機テストPASS)。Phase 2/3 未着手
+**最終更新**: 2026-03-16
+**ステータス**: Phase 1 完了。Phase 2a 実装中 (SegmentClassifier + ResourceOrchestrator + StockImageClient)。Phase 3 未着手
 
 ---
 
@@ -282,20 +282,80 @@ imageItem.Zoom.AnimationType = AnimationType.直線移動;
 | データ・グラフ・表 | static | 情報読み取りを優先 |
 | タイトル・区切り画面 | zoom_in (控えめ) | 印象付けとして微量のズームは許容 |
 
-### 6.4 残タスク
+### 6.4 既知の制約 (実機テスト確定: 2026-03-16)
+
+#### 字幕レイヤー順序
+
+字幕（TextItem）はImageItemより大きいレイヤー番号に配置しないと背景画像の背後に隠れる。現状のプラグイン実装ではImageItemが交互レイヤー（N+1 / N+2）に配置されるため、TextItemはそれより上のレイヤーに配置する必要がある。
+
+- **現象**: 字幕が画像の背後に表示される
+- **原因**: TextItemのLayer < ImageItemのLayer
+- **対策**: TextItemのレイヤーをImageItemより上に設定する（要実装）
+
+#### パン系アニメーションのフィット制約
+
+パン系アニメーション（pan_left, pan_right, pan_up）は、画像のズーム倍率が画面全体をカバーする大きさでないと、パン方向の端に隙間（黒帯）が発生する。
+
+- **現象**: パン開始時または終了時に画像端と画面端の間に隙間が見える
+- **原因**: fitZoomが画面ちょうど（100%）の場合、パンオフセット分だけ画像が画面外に出て余白が生じる
+- **対策**: パン系アニメーション適用時は、fitZoomにオフセット分を加算して画像を大きめに表示する（要実装）
+- **計算例**: pan_left でオフセットが画面幅5%の場合、fitZoom * 1.05 以上にする必要がある
+
+### 6.5 残タスク
 
 | # | タスク | 状態 | 備考 |
 |---|--------|------|------|
 | 1 | YMM4実機テスト (Zoom + FadeIn/FadeOut) | done | Values in-place方式でZoom + FadeIn/FadeOut 正常動作確認 |
 | 2 | パンアニメーション (X/Y) 実装 | done | ApplyPositionDirect: Values in-place方式でX/Y実装済み |
 | 3 | アニメーション種別ディスパッチ接続 | done | ApplyAnimationDirect: CSV 4列目→全7種switch分岐+全3インポートパスに接続 |
-| 4 | 説明スライド判定ロジック | future | Phase 2以降。AnimationAssignerにテキスト主体判定を追加しstatic自動割当 |
+| 4 | 説明スライド判定ロジック | done | SegmentClassifierとして実装。visual/textual分類でアニメーション自動選択 |
 | 5 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
 | 6 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
 
 ---
 
-## 7. 変更履歴
+## 7. Phase 2 詳細設計
+
+### 7.1 概要
+
+Phase 2 はセグメント分類に基づくストック画像の自動調達と、スライドとの混合配置を実現する。
+詳細設計: `docs/background_enrichment_design.md`
+
+### 7.2 新規モジュール
+
+| モジュール | ファイル | 状態 |
+|-----------|----------|------|
+| SegmentClassifier | `src/core/visual/segment_classifier.py` | done |
+| VisualResourceOrchestrator | `src/core/visual/resource_orchestrator.py` | done |
+| StockImageClient | `src/core/visual/stock_image_client.py` | done |
+| CsvAssembler.assemble_from_package() | `src/core/csv_assembler.py` | done |
+
+### 7.3 テスト
+
+| テストファイル | テスト数 | 状態 |
+|---------------|---------|------|
+| `tests/test_segment_classifier.py` | 15 | PASS |
+| `tests/test_stock_image_client.py` | 17 | PASS |
+| `tests/test_resource_orchestrator.py` | 8 | PASS |
+| `tests/test_csv_assembler.py` (既存) | 17 | PASS |
+
+### 7.4 Phase 2 残タスク
+
+| # | タスク | 状態 | 備考 |
+|---|--------|------|------|
+| 1 | SegmentClassifier | done | ヒューリスティクスベース分類、visual_ratio_target調整 |
+| 2 | VisualResourceOrchestrator | done | スライド+ストック統合、フォールバック、連続回避 |
+| 3 | StockImageClient | done | Pexels/Pixabay API、キャッシュ、クレジット生成 |
+| 4 | CsvAssembler拡張 | done | assemble_from_package() メソッド追加 |
+| 5 | material_pipeline.py UI統合 | pending | Streamlit UIからOrchestrator呼び出し |
+| 6 | research_cli.py pipeline統合 | pending | CLI pipelineサブコマンドにOrchestrator統合 |
+| 7 | E2E動作確認 | pending | APIキー設定+実際のストック画像取得テスト |
+| 8 | Geminiベースキーワード抽出 | future | Phase 2c |
+| 9 | 英語クエリ自動翻訳 | future | Phase 2c |
+
+---
+
+## 8. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
@@ -305,3 +365,4 @@ imageItem.Zoom.AnimationType = AnimationType.直線移動;
 | 2026-03-16 | コード品質改善: 重複例外ハンドラ統合(6ファイル)、デッドコード除去、CLAUDE.md文字化け修正 |
 | 2026-03-16 | 実機テスト結果反映: From/To→Values in-place方式に全面修正。クロスフェード/ズーム運用ガイドライン追加 |
 | 2026-03-17 | ステータス更新: Phase 1 Zoom+FadeIn/FadeOut実機テストPASS。SP-027 Baseline E2E完了 |
+| 2026-03-16 | Phase 2a実装: SegmentClassifier + VisualResourceOrchestrator + StockImageClient + CsvAssembler拡張。テスト78件PASS |

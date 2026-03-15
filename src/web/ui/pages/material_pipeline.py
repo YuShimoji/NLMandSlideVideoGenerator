@@ -62,6 +62,11 @@ def show_material_pipeline_page():
                 placeholder="C:\\slides\\my_topic",
                 help="指定するとCsvAssemblerが画像パスをCSVに組み込む",
             )
+            auto_images = st.checkbox(
+                "ストック画像で背景を充実化",
+                value=False,
+                help="Pexels/Pixabay APIからトピックに合った画像を自動取得し、テキストスライドと交互に配置",
+            )
 
         with col_b:
             speaker_map_str = st.text_input(
@@ -69,6 +74,13 @@ def show_material_pipeline_page():
                 value='',
                 placeholder='{"Host1":"れいむ","Host2":"まりさ"}',
                 help="台本上の話者名→YMM4ボイス名の変換",
+            )
+            target_duration = st.number_input(
+                "目標動画尺 (分)",
+                min_value=1,
+                max_value=120,
+                value=5,
+                help="台本生成時の目標尺",
             )
 
     # --- 実行ボタン ---
@@ -111,6 +123,8 @@ def show_material_pipeline_page():
                 auto_review=auto_review,
                 slides_dir=slides_dir,
                 speaker_mapping=speaker_mapping,
+                auto_images=auto_images,
+                target_duration=target_duration * 60.0,
             )
 
         try:
@@ -185,12 +199,59 @@ def show_material_pipeline_page():
             artifacts = list(work_dir.glob("*"))
             if artifacts:
                 for art in sorted(artifacts):
+                    if art.is_dir():
+                        continue
                     icon = "📄"
                     if art.suffix == ".json":
                         icon = "📋"
                     elif art.suffix == ".csv":
                         icon = "📊"
+                    elif art.suffix == ".txt":
+                        icon = "📝"
                     st.text(f"  {icon} {art.name}")
+
+            # --- 画像ギャラリー ---
+            stock_dir = work_dir / "stock_images"
+            if stock_dir.exists():
+                image_files = sorted(stock_dir.glob("*.jpg")) + sorted(stock_dir.glob("*.png"))
+                if image_files:
+                    st.subheader("4. 収集画像ギャラリー")
+                    st.caption(f"{len(image_files)} 枚の画像を収集済み")
+
+                    cols_per_row = 3
+                    for row_start in range(0, len(image_files), cols_per_row):
+                        cols = st.columns(cols_per_row)
+                        for col_idx, img_path in enumerate(
+                            image_files[row_start : row_start + cols_per_row]
+                        ):
+                            with cols[col_idx]:
+                                st.image(
+                                    str(img_path),
+                                    caption=img_path.stem[:30],
+                                    use_container_width=True,
+                                )
+
+            # --- クレジット表示 ---
+            credits_path = work_dir / "image_credits.txt"
+            if credits_path.exists():
+                credits_text = credits_path.read_text(encoding="utf-8")
+                if credits_text.strip():
+                    st.subheader("5. 画像クレジット")
+                    st.text(credits_text)
+                    st.download_button(
+                        "クレジットをダウンロード",
+                        credits_text.encode("utf-8"),
+                        file_name="image_credits.txt",
+                        mime="text/plain",
+                    )
+
+            # --- 台本プレビュー ---
+            script_path = work_dir / "generated_script.json"
+            if script_path.exists():
+                with st.expander("台本プレビュー (JSON)"):
+                    script_data = json.loads(script_path.read_text(encoding="utf-8"))
+                    st.json(script_data)
+
         else:
             st.error(f"パイプラインエラー: {result.get('error', '不明')}")
             if result.get("traceback"):

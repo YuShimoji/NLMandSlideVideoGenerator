@@ -231,6 +231,16 @@ class Settings:
             "fallback_upload": os.getenv("PUBLISHING_FALLBACK", "legacy"),
         }
 
+        # ストック画像API設定 (SP-033 Phase 2)
+        self.STOCK_IMAGE_SETTINGS: Dict[str, Any] = {
+            "pexels_api_key": os.getenv("PEXELS_API_KEY", ""),
+            "pixabay_api_key": os.getenv("PIXABAY_API_KEY", ""),
+            "cache_dir": str(self.DATA_DIR / "stock_images"),
+            "default_orientation": "landscape",
+            "min_width": 1920,
+            "images_per_segment": 1,
+        }
+
         # リトライ設定
         self.RETRY_SETTINGS = {
             "max_retries": 3,

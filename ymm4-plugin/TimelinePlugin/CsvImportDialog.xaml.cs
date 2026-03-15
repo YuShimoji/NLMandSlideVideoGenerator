@@ -445,7 +445,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             if (voiceItem != null)
                             {
                                 voiceItem.Frame = frame;
-                                voiceItem.Layer = baseLayer;
+                                voiceItem.Layer = baseLayer + 3; // ImageItem (baseLayer+1/+2) より上に配置して字幕が隠れないようにする
 
                                 // VoiceLength から Length を確定
                                 if (voiceItem.Length > 0)
@@ -1562,15 +1562,15 @@ namespace NLMSlidePlugin.TimelinePlugin
                     ApplyZoomDirect(imageItem, fitZoom * 1.15, fitZoom);
                     break;
                 case "pan_left":
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom); // Zoom固定
+                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06); // パンオフセット分を加算して隙間防止
                     ApplyPositionDirect(imageItem.X, videoWidth * 0.05, 0);
                     break;
                 case "pan_right":
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom);
+                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06);
                     ApplyPositionDirect(imageItem.X, -(videoWidth * 0.05), 0);
                     break;
                 case "pan_up":
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom);
+                    ApplyZoomDirect(imageItem, fitZoom * 1.06, fitZoom * 1.06);
                     ApplyPositionDirect(imageItem.Y, videoHeight * 0.05, 0);
                     break;
                 case "static":

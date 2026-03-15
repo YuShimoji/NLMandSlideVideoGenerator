@@ -110,9 +110,18 @@ async def run_review(
             item["status"] = "adopted"
 
     if auto_mode:
+        adopted_count = 0
+        rejected_count = 0
         for item in items_needing_review:
-            item["status"] = "rejected"
-        print(f"Auto mode: {review_count} items rejected, supported items adopted.\n")
+            if item.get("status") in ("orphaned", "missing"):
+                # orphaned/missing: ソース不一致だがスクリプトとしては有効 → adopt
+                item["status"] = "adopted"
+                adopted_count += 1
+            else:
+                # conflict: ソースと矛盾 → reject
+                item["status"] = "rejected"
+                rejected_count += 1
+        print(f"Auto mode: {adopted_count} adopted, {rejected_count} rejected (supported items auto-adopted)\n")
     else:
         for idx, item in enumerate(items_needing_review, 1):
             status = item.get("status", "")
@@ -177,8 +186,21 @@ async def run_pipeline(
     slides_dir: Optional[Path] = None,
     output_dir: Optional[Path] = None,
     speaker_mapping: Optional[dict[str, str]] = None,
+    auto_images: bool = False,
+    target_duration: float = 300.0,
 ) -> Path:
-    """collect → script gen → align → review → CSV の一気通貫実行。
+    """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
+
+    Args:
+        topic: リサーチトピック。
+        urls: シードURL群。
+        max_sources: 最大ソース数。
+        auto_review: Trueでレビューを自動承認。
+        slides_dir: 既存スライドPNGディレクトリ。
+        output_dir: 出力ディレクトリ。
+        speaker_mapping: 話者名マッピング。
+        auto_images: Trueでストック画像APIから自動収集。
+        target_duration: 目標動画尺(秒)。デフォルト300秒(5分)。
 
     Returns:
         最終出力CSVのパス。
@@ -211,10 +233,10 @@ async def run_pipeline(
     print("\n=== Step 2: Script Generation (Gemini) ===")
     from core.providers.script.gemini_provider import GeminiScriptProvider
 
-    provider = GeminiScriptProvider()
+    provider = GeminiScriptProvider(target_duration=target_duration)
     script_bundle = await provider.generate_script(topic, sources)
     segments = script_bundle.get("segments", [])
-    print(f"Generated script: {len(segments)} segments")
+    print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
 
     # Save script for alignment
     script_path = work_dir / "generated_script.json"
@@ -238,19 +260,51 @@ async def run_pipeline(
     print("\n=== Step 4: Review ===")
     reviewed_csv = await run_review(report_path, auto_mode=auto_review)
 
-    # --- Step 5: CsvAssembler (if slides available) ---
+    # --- Step 5: Visual Resource Orchestration ---
     slide_paths: list[Path] = []
+    stock_attribution = ""
+
     if slides_dir and slides_dir.exists():
         slide_paths = sorted(slides_dir.glob("*.png"))
+        print(f"\nUsing existing slides: {len(slide_paths)} images")
 
-    if slide_paths:
-        print(f"\n=== Step 5: CsvAssembler ({len(slide_paths)} slides) ===")
+    # Orchestrator パスを使用 (スライド+ストック画像混合)
+    if auto_images:
+        print("\n=== Step 5: Visual Resource Orchestration ===")
+        from core.visual.resource_orchestrator import VisualResourceOrchestrator
+        from core.visual.segment_classifier import SegmentClassifier
+        from core.visual.stock_image_client import StockImageClient
+
+        stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
+        classifier = SegmentClassifier(visual_ratio_target=0.4)
+        orchestrator = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            topic=topic,
+        )
+        package = orchestrator.orchestrate(segments, slide_paths)
+
+        stock_count = sum(1 for r in package.resources if r.source == "stock")
+        slide_count = sum(1 for r in package.resources if r.source == "slide")
+        print(f"Orchestrated: stock={stock_count}, slide={slide_count}, total={len(package.resources)}")
+
+        # クレジット生成
+        stock_images_used = [
+            StockImageClient.StockImage(
+                id="", url="", download_url="", width=0, height=0,
+                photographer=r.metadata.get("photographer", ""),
+                source=r.metadata.get("api_source", ""),
+            )
+            for r in package.resources
+            if r.source == "stock" and r.metadata.get("photographer")
+        ] if hasattr(StockImageClient, 'StockImage') else []
+
+        # Step 6: CsvAssembler (Orchestrator出力から)
+        print(f"\n=== Step 6: CsvAssembler (Orchestrated) ===")
         from core.csv_assembler import CsvAssembler
-
-        assembler = CsvAssembler()
-        # reviewed CSV の内容を読み直してセグメント化
         import csv as csv_mod
 
+        assembler = CsvAssembler()
         assembled_segments: list[dict[str, str]] = []
         with open(reviewed_csv, "r", encoding="utf-8") as f:
             for row in csv_mod.reader(f):
@@ -259,8 +313,32 @@ async def run_pipeline(
 
         if assembled_segments:
             timeline_csv = work_dir / "timeline.csv"
-            assembler.assemble(
+            assembler.assemble_from_package(
                 script_segments=assembled_segments,
+                package=package,
+                output_path=timeline_csv,
+                speaker_mapping=speaker_mapping,
+            )
+            print(f"Timeline CSV: {timeline_csv}")
+            reviewed_csv = timeline_csv
+
+    elif slide_paths:
+        # フォールバック: Orchestratorなし、既存のスライドのみ
+        print(f"\n=== Step 5: CsvAssembler (slides only, {len(slide_paths)} images) ===")
+        from core.csv_assembler import CsvAssembler
+        import csv as csv_mod
+
+        assembler = CsvAssembler()
+        assembled_segments_fb: list[dict[str, str]] = []
+        with open(reviewed_csv, "r", encoding="utf-8") as f:
+            for row in csv_mod.reader(f):
+                if len(row) >= 2:
+                    assembled_segments_fb.append({"speaker": row[0], "text": row[1]})
+
+        if assembled_segments_fb:
+            timeline_csv = work_dir / "timeline.csv"
+            assembler.assemble(
+                script_segments=assembled_segments_fb,
                 slide_image_paths=slide_paths,
                 output_path=timeline_csv,
                 speaker_mapping=speaker_mapping,
@@ -322,6 +400,8 @@ def main() -> None:
     pipe_parser.add_argument("--slides-dir", help="Directory containing slide PNG images")
     pipe_parser.add_argument("--output-dir", help="Output directory for all artifacts")
     pipe_parser.add_argument("--speaker-map", help='Speaker mapping JSON (e.g. \'{"Host1":"れいむ"}\')')
+    pipe_parser.add_argument("--auto-images", action="store_true", help="ストック画像APIから自動収集")
+    pipe_parser.add_argument("--duration", type=float, default=300.0, help="目標動画尺(秒) デフォルト300秒(5分)")
 
     args = parser.parse_args(raw_args)
 
@@ -352,6 +432,8 @@ def main() -> None:
                 slides_dir=Path(args.slides_dir) if args.slides_dir else None,
                 output_dir=Path(args.output_dir) if args.output_dir else None,
                 speaker_mapping=speaker_map,
+                auto_images=bool(args.auto_images),
+                target_duration=args.duration,
             )
         )
         return

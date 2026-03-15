@@ -110,7 +110,7 @@ def _make_report_json(tmp_path: Path) -> Path:
 
 @pytest.mark.asyncio
 async def test_run_review_auto_mode(tmp_path: Path):
-    """autoモードでsupported -> adopted, それ以外 -> rejected になることを確認。"""
+    """autoモードでsupported/orphaned/missing -> adopted, conflict -> rejected になることを確認。"""
     report_path = _make_report_json(tmp_path)
 
     csv_path = await run_review(report_path, auto_mode=True)
@@ -123,12 +123,14 @@ async def test_run_review_auto_mode(tmp_path: Path):
     assert "adopted" in statuses
     assert "rejected" in statuses
     assert "supported" not in statuses  # supportedはadoptedに変換済み
-    assert "orphaned" not in statuses   # orphanedはrejectedに変換済み
+    assert "orphaned" not in statuses   # orphaned→adopted
+    assert "missing" not in statuses    # missing→adopted
 
     # adopted のみがCSVに出力されていることを確認
+    # supported(1) + orphaned(1) = 2件のCSV行 (missing はtext=Noneで空行)
     csv_content = csv_path.read_text(encoding="utf-8").strip()
-    lines = csv_content.split("\n")
-    assert len(lines) == 1  # supportedだった1件のみ
+    lines = [l for l in csv_content.split("\n") if l.strip()]
+    assert len(lines) == 2
     assert "42%" in lines[0]
 
 
@@ -153,7 +155,8 @@ async def test_run_review_rebuilds_summary(tmp_path: Path):
 
     updated = json.loads(report_path.read_text(encoding="utf-8"))
     summary = updated["summary"]
-    assert summary["adopted"] == 1
-    assert summary["rejected"] == 3
+    # supported(1) + orphaned(1) + missing(1) = 3 adopted, conflict(1) = 1 rejected
+    assert summary["adopted"] == 3
+    assert summary["rejected"] == 1
     assert "orphaned" not in summary
     assert "supported" not in summary
