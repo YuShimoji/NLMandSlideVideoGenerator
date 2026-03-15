@@ -66,23 +66,17 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): E2E品質改善
+### 短期: 全SP完了
 
-```
-E2E品質改善 → ドキュメント整備
-```
+- SP-031: 全完了 (style_template.json v1.1 + BGMテンプレート + C#統合 + ValidateImportItems拡張)
+- SP-033: 全Phase完了 (7種アニメ + StockImage + AIImage + TextSlide + Orchestrator統合)
 
-- SP-031: 完了 (style_template.json v1.1 + C#統合 + ValidateImportItems拡張)
-- SP-033 Phase 3: 完了 (AIImageProvider + Orchestrator統合)
+### 中期 (1-2ヶ月): 実運用品質 + ドキュメント
 
-### 中期 (1-2ヶ月): 品質パイプライン + ドキュメント
-
-```
-E2E品質改善 → ドキュメント整備 → BGMテンプレート
-```
-
-- ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
-- ~~BGMテンプレート自動配置~~ (SP-031完了: style_template.json bgmセクション + Python/C#統合)
+- Geminiクォータリセット後の実コンテンツ品質確認
+- YMM4実機テスト: BGMテンプレート + ストック画像CSV + 字幕テンプレート
+- ドキュメント整備: SP-006 (90%), SP-007 (85%)
+- Gemini有料プラン検討 (無料枠20req/day → 本番運用)
 
 ### 長期 (3ヶ月+): 自動化
 
