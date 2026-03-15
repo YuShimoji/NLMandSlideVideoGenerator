@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
-**最終更新**: 2026-03-16
-**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c 完了 (Gemini分類+キーワード抽出+Orchestrator統合)。Phase 3 未着手
+**最終更新**: 2026-03-17
+**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c 完了 (Gemini分類+キーワード抽出+Orchestrator統合)。Phase 3 完了 (AI画像生成+Orchestrator統合)
 
 ---
 
@@ -74,10 +74,13 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 
 | 項目 | 内容 |
 |------|------|
-| 実装対象 | AIImageProvider (Gemini Imagen / Stable Diffusion API) |
-| 入力 | ScriptBundle → 画像プロンプト生成 |
-| 処理 | AIイラスト生成 → 品質チェック → PNG保存 |
-| 出力 | VisualResourcePackage |
+| 実装対象 | `AIImageProvider` (Gemini Imagen 3.0) **実装済み** |
+| 入力 | ScriptBundle → key_points/section/contentから画像プロンプト自動構築 |
+| 処理 | Imagen API → RAIチェック → PNG保存 → MD5キャッシュ |
+| 出力 | `GeneratedImage` (prompt, image_path, enhanced_prompt, error) |
+| フォールバック | stock失敗 → AI生成 → それも失敗 → スライド (3段階) **実装済み** |
+| CLI統合 | `research_cli.py` GEMINI_API_KEY設定時に自動有効化 **実装済み** |
+| テスト | 15件 (provider) + 4件 (orchestrator fallback) PASS |
 
 ---
 
@@ -360,7 +363,72 @@ Phase 2 はセグメント分類に基づくストック画像の自動調達と
 
 ---
 
-## 8. テスト戦略
+## 8. Phase 3 詳細設計
+
+### 8.1 概要
+
+Phase 3 はストック画像取得失敗時のフォールバックとして、Gemini Imagen API による AI 画像自動生成を統合する。
+
+### 8.2 AIImageProvider
+
+| 項目 | 内容 |
+|------|------|
+| ファイル | `src/core/visual/ai_image_provider.py` |
+| モデル | `imagen-3.0-generate-002` |
+| アスペクト比 | `16:9` (動画向け) |
+| API | `google.genai.Client.models.generate_images()` |
+| キャッシュ | MD5(prompt)[:12] ハッシュ → `ai_{hash}.png` |
+| リトライ | 最大3回、指数バックオフ (2^n秒) |
+| 400エラー | リトライなし (プロンプト問題) |
+| 429エラー | バックオフ付きリトライ |
+| RAIフィルタ | 検出時はエラーとして返却 |
+
+### 8.3 プロンプト構築ルール
+
+```
+Topic: {topic}. Subject: {key_points / section / content[:100]}. Style: {style_hint}. No text or watermarks in the image.
+```
+
+優先順位: key_points > section > content > topic > "abstract concept"
+
+### 8.4 Orchestrator 統合
+
+```
+SegmentClassifier
+    ↓ classify / classify_with_keywords
+StockImageClient.search_for_segments()
+    ↓ stock成功 → stock_mapping
+    ↓ stock失敗 → failed_indices
+AIImageProvider.generate_for_segments()
+    ↓ AI成功 → ai_mapping
+    ↓ AI失敗 → スライドフォールバック
+_merge_resources(stock_mapping, ai_mapping)
+    → source="stock" / source="ai" / source="slide"
+_assign_animations()
+    → stock/ai → サイクル (ken_burns/pan/zoom)
+    → slide → STATIC
+```
+
+### 8.5 テスト
+
+| テストファイル | テスト数 | 状態 |
+|---------------|---------|------|
+| `tests/test_ai_image_provider.py` | 15 | PASS |
+| `tests/test_resource_orchestrator.py` (AI統合分) | 6 | PASS |
+
+### 8.6 Phase 3 タスク
+
+| # | タスク | 状態 | 備考 |
+|---|--------|------|------|
+| 1 | AIImageProvider 実装 | done | Gemini Imagen API + キャッシュ + リトライ |
+| 2 | Orchestrator AI統合 | done | _fetch_ai_images + ai_mapping分離 + source="ai" |
+| 3 | CLI統合 | done | run_pipeline内でAIImageProvider自動初期化 (APIキー存在時) |
+| 4 | UI統合 | done | auto_images=True時に自動有効 (追加UIなし) |
+| 5 | テスト | done | AIImageProvider 15件 + Orchestrator AI統合 6件。全301件PASS |
+
+---
+
+## 9. テスト戦略 (全Phase共通)
 
 YMM4実機テストはDLLデプロイサイクル (YMM4停止→ビルド→コピー→起動→インポート→確認) が必要で、各変更ごとに実施するとスループットが低下する。テストをバッチ化して開発効率を最大化する。
 
@@ -399,7 +467,7 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 
 ---
 
-## 9. 変更履歴
+## 10. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
@@ -416,3 +484,4 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 | 2026-03-17 | Phase 2c実装: Geminiベースセグメント分類+キーワード抽出、日本語→英語クエリ翻訳、APIキーis-not-Noneバグ修正。テスト225件PASS |
 | 2026-03-17 | Phase 2c統合完了: Orchestrator→classify_with_keywords→search_for_segments(queries=)パイプライン接続。テスト228件PASS |
 | 2026-03-17 | SP-031 Phase 1: ExportValidator+StyleTemplateManager+3テンプレート+CLI validate/templates。テスト280件PASS |
+| 2026-03-17 | Phase 3完了: AIImageProvider (Gemini Imagen) + Orchestrator AI統合 (stock失敗→AI→slide フォールバック連鎖) + source分離 (ai_mapping)。テスト301件PASS |

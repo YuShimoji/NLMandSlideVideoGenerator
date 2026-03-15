@@ -1,9 +1,10 @@
-"""VisualResourceOrchestrator テスト (SP-033 Phase 2)"""
+"""VisualResourceOrchestrator テスト (SP-033 Phase 2 + Phase 3)"""
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.visual.ai_image_provider import GeneratedImage
 from core.visual.models import AnimationType, SegmentType, VisualResource
 from core.visual.resource_orchestrator import VisualResourceOrchestrator
 from core.visual.segment_classifier import SegmentClassifier
@@ -295,3 +296,217 @@ class TestGeminiKeywordIntegration:
 
         # 正常終了し、結果が返る
         assert len(result.resources) == 2
+
+
+def _make_mock_ai_provider(success_indices: list[int] | None = None) -> MagicMock:
+    """AIImageProviderのモック。success_indicesで成功するセグメントを指定。"""
+    provider = MagicMock()
+
+    def mock_generate(segments, topic="", **kwargs):
+        results = []
+        for i, seg in enumerate(segments):
+            if success_indices is None or i in success_indices:
+                results.append(GeneratedImage(
+                    prompt=f"prompt_{i}",
+                    image_path=Path(f"/tmp/ai_{i}.png"),
+                ))
+            else:
+                results.append(GeneratedImage(
+                    prompt=f"prompt_{i}",
+                    error="generation_failed",
+                ))
+        return results
+
+    provider.generate_for_segments = MagicMock(side_effect=mock_generate)
+    return provider
+
+
+def _make_partial_stock_client(fail_indices: list[int]) -> MagicMock:
+    """一部のセグメントで失敗するStockImageClientモック。"""
+    client = MagicMock()
+    call_count = [0]
+
+    def mock_search(segments, images_per_segment=1, orientation="landscape", queries=None):
+        images = []
+        for i, _ in enumerate(segments):
+            if call_count[0] + i in fail_indices:
+                images.append(StockImage(
+                    id=f"none_{i}",
+                    url="",
+                    download_url="",
+                    width=0,
+                    height=0,
+                    photographer="",
+                    source="none",
+                    local_path=None,
+                ))
+            else:
+                images.append(StockImage(
+                    id=f"stock_{i}",
+                    url=f"https://example.com/{i}",
+                    download_url=f"https://example.com/{i}/dl",
+                    width=1920,
+                    height=1080,
+                    photographer=f"Photo_{i}",
+                    source="pexels",
+                    local_path=Path(f"/tmp/stock_{i}.jpg"),
+                ))
+        call_count[0] += len(segments)
+        return images
+
+    client.search_for_segments = MagicMock(side_effect=mock_search)
+    return client
+
+
+class TestAIImageFallback:
+    """SP-033 Phase 3: stock失敗時のAI画像フォールバック。"""
+
+    def test_ai_fallback_on_stock_failure(self, tmp_path: Path) -> None:
+        """stock取得失敗セグメントにAI画像が割り当てられる。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "概要", "section": "導入", "key_points": ["AI"]},
+            {"content": "詳細", "section": "本論", "key_points": ["ML"]},
+            {"content": "事例", "section": "事例", "key_points": ["DL"]},
+        ]
+
+        # セグメント1 (index 1) だけstock失敗
+        stock_client = _make_partial_stock_client(fail_indices=[1])
+        ai_provider = _make_mock_ai_provider()
+        classifier = SegmentClassifier(visual_ratio_target=1.0)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=ai_provider,
+            topic="tech",
+        )
+        result = orch.orchestrate(segments, slides)
+
+        assert len(result.resources) == 3
+        sources = [r.source for r in result.resources]
+        assert "ai" in sources
+        # stock成功分もある
+        assert "stock" in sources
+
+    def test_ai_source_gets_animation_cycle(self, tmp_path: Path) -> None:
+        """source='ai' にもアニメーションサイクルが適用される。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "seg1", "key_points": ["AI"]},
+            {"content": "seg2", "key_points": ["ML"]},
+        ]
+
+        # 全stock失敗 → 全部AIフォールバック
+        stock_client = _make_partial_stock_client(fail_indices=[0, 1])
+        ai_provider = _make_mock_ai_provider()
+        classifier = SegmentClassifier(visual_ratio_target=1.0)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=ai_provider,
+        )
+        result = orch.orchestrate(segments, slides)
+
+        ai_resources = [r for r in result.resources if r.source == "ai"]
+        assert len(ai_resources) >= 1
+        for r in ai_resources:
+            assert r.animation_type != AnimationType.STATIC
+
+    def test_no_ai_provider_falls_back_to_slide(self, tmp_path: Path) -> None:
+        """ai_provider未設定時、stock失敗 → スライドフォールバック。"""
+        slides = _make_slide_paths(tmp_path, 2)
+        segments = [
+            {"content": "seg1", "key_points": ["AI"]},
+            {"content": "seg2", "key_points": ["ML"]},
+        ]
+
+        stock_client = _make_partial_stock_client(fail_indices=[0, 1])
+        classifier = SegmentClassifier(visual_ratio_target=1.0)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=None,  # AI未設定
+        )
+        result = orch.orchestrate(segments, slides)
+
+        # 全部スライドフォールバック
+        for r in result.resources:
+            assert r.source in ("slide", "none")
+
+    def test_ai_failure_falls_back_to_slide(self, tmp_path: Path) -> None:
+        """AI生成も失敗したセグメントはスライドにフォールバック。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [
+            {"content": "seg1", "key_points": ["AI"]},
+            {"content": "seg2", "key_points": ["ML"]},
+        ]
+
+        stock_client = _make_partial_stock_client(fail_indices=[0, 1])
+        # AI生成も全失敗
+        ai_provider = _make_mock_ai_provider(success_indices=[])
+        classifier = SegmentClassifier(visual_ratio_target=1.0)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=ai_provider,
+        )
+        result = orch.orchestrate(segments, slides)
+
+        # AI失敗 → スライドフォールバック
+        for r in result.resources:
+            assert r.source in ("slide", "none")
+
+    def test_ai_provider_exception_handled(self, tmp_path: Path) -> None:
+        """ai_provider.generate_for_segments が例外を投げても正常動作。"""
+        slides = _make_slide_paths(tmp_path, 1)
+        segments = [{"content": "seg1", "key_points": ["AI"]}]
+
+        stock_client = _make_partial_stock_client(fail_indices=[0])
+        ai_provider = MagicMock()
+        ai_provider.generate_for_segments = MagicMock(
+            side_effect=Exception("API Error")
+        )
+        classifier = SegmentClassifier(visual_ratio_target=1.0)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=ai_provider,
+        )
+        result = orch.orchestrate(segments, slides)
+
+        # 例外でもクラッシュせず結果が返る
+        assert len(result.resources) == 1
+        assert result.resources[0].source in ("slide", "none")
+
+    def test_mixed_stock_ai_slide(self, tmp_path: Path) -> None:
+        """stock/AI/slide が混在するパッケージが正しく生成される。"""
+        slides = _make_slide_paths(tmp_path, 2)
+        segments = [
+            {"content": "概要", "section": "導入", "key_points": ["AI"]},  # visual → stock OK
+            {"content": "説明テキスト", "section": ""},                     # textual → slide
+            {"content": "データ", "section": "分析", "key_points": ["ML"]},  # visual → stock fail → AI
+            {"content": "まとめ", "section": ""},                            # textual → slide
+        ]
+
+        # segment 2 (visual index 1) だけstock失敗
+        stock_client = _make_partial_stock_client(fail_indices=[1])
+        ai_provider = _make_mock_ai_provider()
+        classifier = SegmentClassifier(visual_ratio_target=0.5)
+
+        orch = VisualResourceOrchestrator(
+            classifier=classifier,
+            stock_client=stock_client,
+            ai_provider=ai_provider,
+            topic="tech",
+        )
+        result = orch.orchestrate(segments, slides)
+
+        assert len(result.resources) == 4
+        sources = set(r.source for r in result.resources)
+        # 少なくとも slide が含まれる (textual セグメントがあるため)
+        assert "slide" in sources

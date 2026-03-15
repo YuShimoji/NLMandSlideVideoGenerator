@@ -218,49 +218,12 @@ URL: {source.get('url', 'URL不明')}
                     logger.warning(f"全モデル失敗、モックへフォールバック: {last_error}")
 
             # モック実装（フォールバック）— Host1/Host2対話形式でYMM4 speaker_mapping互換
-            await asyncio.sleep(2)
-            mock_content = {
-                "title": "AI技術の最新動向 - 完全解説",
-                "segments": [
-                    {
-                        "section": "導入",
-                        "content": "こんにちは。今日はAI技術の最新動向について、詳しく解説していきます。人工知能の分野は日々進歩しており、特に生成AIの領域では革新的な変化が起きています。",
-                        "duration_estimate": 25.0,
-                        "key_points": ["AI動向", "生成AIの進歩"],
-                        "speaker": "Host1"
-                    },
-                    {
-                        "section": "生成AIの進歩",
-                        "content": "生成AIの分野から見ていきましょう。大規模言語モデルの性能向上により、より自然で正確なテキスト生成が可能になりました。画像生成技術も大幅に改善され、商用利用も増加しています。",
-                        "duration_estimate": 45.0,
-                        "key_points": ["大規模言語モデル", "画像生成技術", "商用利用"],
-                        "speaker": "Host2"
-                    },
-                    {
-                        "section": "機械学習の効率化",
-                        "content": "機械学習アルゴリズムの効率化も注目すべき点です。新しい最適化手法により、従来よりも少ない計算資源で高い性能を実現できるようになりました。これにより、より多くの企業がAI技術を導入しやすくなっています。",
-                        "duration_estimate": 40.0,
-                        "key_points": ["最適化手法", "計算効率", "企業導入"],
-                        "speaker": "Host1"
-                    },
-                    {
-                        "section": "産業応用の拡大",
-                        "content": "AI技術の産業応用も急速に拡大しています。製造業では品質管理の自動化、金融業ではリスク分析の高度化、医療分野では診断支援システムの導入が進んでいます。",
-                        "duration_estimate": 50.0,
-                        "key_points": ["製造業の自動化", "金融リスク分析", "医療AI診断"],
-                        "speaker": "Host2"
-                    },
-                    {
-                        "section": "まとめ",
-                        "content": "以上、AI技術動向について解説しました。生成AI、機械学習の効率化、産業応用の拡大という3つの観点から見ると、AI技術は確実に私たちの生活と仕事を変革しています。今後もこの分野の発展に注目していきましょう。",
-                        "duration_estimate": 30.0,
-                        "key_points": ["技術変革", "今後の展望"],
-                        "speaker": "Host1"
-                    }
-                ],
-                "total_duration_estimate": 190.0,
-                "language": "ja"
-            }
+            await asyncio.sleep(0.5)
+            # プロンプトからトピック名を抽出
+            import re
+            topic_match = re.search(r"【トピック】\s*\n(.+?)(?:\n|$)", prompt)
+            mock_topic = topic_match.group(1).strip() if topic_match else "最新技術動向"
+            mock_content = self._build_mock_content(mock_topic)
 
             mock_response = GeminiResponse(
                 content=json.dumps(mock_content, ensure_ascii=False, indent=2),

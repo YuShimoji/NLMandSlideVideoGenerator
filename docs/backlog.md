@@ -46,6 +46,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-033 Phase 2c | Gemini検索品質改善 | 完了 | Gemini分類+英語キーワード抽出+クエリ翻訳+Orchestrator統合。テスト228件PASS |
 | SP-034 | パイプラインステップ再開 | 完了 | PipelineState永続化+CLI --resume+UI再開セクション。テスト16件PASS |
 | SP-031 Phase 1 | Pre-Export検証 + テンプレートマネージャー | 完了 | ExportValidator+StyleTemplateManager+CLI validate/templates。テスト280件PASS |
+| SP-033 Phase 3 | AI画像生成 + Orchestrator統合 | 完了 | AIImageProvider (Gemini Imagen) + stock失敗→AI→slideフォールバック連鎖 + CLI/UI統合。テスト301件PASS |
 
 ---
 
@@ -55,8 +56,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
 | スタイル | テンプレートJSON + Pre-Export検証 | Phase 2完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfadeセクション追加。ValidateImportItems拡張。残: BGMテンプレート |
-| 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み。次: Phase 3 AI画像生成 |
-| 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
+| 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み |
+| 素材 | AI生成イラスト | 完了 | SP-033 Phase 3 | AIImageProvider (Gemini Imagen) + Orchestrator統合 + CLI/UI自動有効 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
 | 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
 
@@ -64,19 +65,19 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ## ロードマップ
 
-### 短期 (1-2週間): SP-033 Phase 3 + 品質改善
+### 短期 (1-2週間): E2E品質改善
 
 ```
-SP-033 Phase 3 (AI画像) → E2E品質改善
+E2E品質改善 → ドキュメント整備
 ```
 
 - SP-031: 完了 (style_template.json v1.1 + C#統合 + ValidateImportItems拡張)
-- SP-033 Phase 3: AI生成イラスト (Gemini画像生成統合)
+- SP-033 Phase 3: 完了 (AIImageProvider + Orchestrator統合)
 
 ### 中期 (1-2ヶ月): 品質パイプライン + ドキュメント
 
 ```
-SP-033 Phase 3 (AI画像) → E2E品質改善 → ドキュメント整備
+E2E品質改善 → ドキュメント整備 → BGMテンプレート
 ```
 
 - ドキュメント整備: SP-004 (85%), SP-006 (60%), SP-007 (50%)
@@ -84,7 +85,6 @@ SP-033 Phase 3 (AI画像) → E2E品質改善 → ドキュメント整備
 
 ### 長期 (3ヶ月+): 自動化
 
-- SP-033 Phase 3: AI生成イラスト
 - Docker化 / CI-CD強化
 - バッチ処理 / 多言語対応
 
@@ -119,6 +119,7 @@ SP-033 Phase 3 (AI画像) → E2E品質改善 → ドキュメント整備
 - 2026-03-17: SP-031 Phase 1 完了: ExportValidator+StyleTemplateManager+3テンプレート(default/cinematic/minimal)+CLI validate/templates。テスト280件PASS
 - 2026-03-17: SP-031 Phase 2 完了: style_template.json v1.1 (video/crossfadeセクション追加)、C# StyleTemplateLoader拡張(VideoConfig/CrossfadeConfig)、ValidateImportItems拡張(連続同一画像検出/統計サマリー)
 - 2026-03-16: SP-031 C#ハードコード値全面テンプレート化: ApplySubtitleStyle/ApplyAnimationDirect/GetSpeakerColor/crossfade/padding/defaultDuration全てstyle_template.json参照に置換
+- 2026-03-17: SP-033 Phase 3 完了: AIImageProvider (Gemini Imagen 3.0) + Orchestrator AI統合 (stock→AI→slideフォールバック連鎖) + source分離。テスト301件PASS
 
 ---
 
