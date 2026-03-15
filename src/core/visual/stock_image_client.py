@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,6 +21,9 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 from config.settings import settings
 from core.utils.logger import logger
+
+# 日本語文字パターン (ひらがな、カタカナ、CJK統合漢字)
+_JAPANESE_RE = re.compile(r"[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]")
 
 # リトライ対象のHTTPステータスコード
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
@@ -65,8 +70,8 @@ class StockImageClient:
         pixabay_api_key: Optional[str] = None,
         cache_dir: Optional[Path] = None,
     ) -> None:
-        self.pexels_api_key = pexels_api_key or settings.STOCK_IMAGE_SETTINGS.get("pexels_api_key", "")
-        self.pixabay_api_key = pixabay_api_key or settings.STOCK_IMAGE_SETTINGS.get("pixabay_api_key", "")
+        self.pexels_api_key = pexels_api_key if pexels_api_key is not None else settings.STOCK_IMAGE_SETTINGS.get("pexels_api_key", "")
+        self.pixabay_api_key = pixabay_api_key if pixabay_api_key is not None else settings.STOCK_IMAGE_SETTINGS.get("pixabay_api_key", "")
         self.cache_dir = cache_dir or (settings.DATA_DIR / "stock_images")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -185,8 +190,12 @@ class StockImageClient:
         all_images: List[StockImage] = []
         seen_ids: set[str] = set()
 
+        # 先にクエリを全生成し、日本語があれば一括翻訳
+        raw_queries = [self._build_query_from_segment(seg) for seg in segments]
+        translated = self._translate_queries_to_english(raw_queries)
+
         for i, segment in enumerate(segments):
-            query = self._build_query_from_segment(segment)
+            query = translated[i]
             if not query:
                 logger.debug(f"セグメント{i}: クエリ生成スキップ")
                 all_images.append(StockImage(
@@ -374,6 +383,56 @@ class StockImageClient:
             return content[:40].strip()
 
         return ""
+
+    def _translate_queries_to_english(self, queries: List[str]) -> List[str]:
+        """日本語クエリ群を英語に一括翻訳する。
+
+        Gemini APIを使用。APIキー未設定や翻訳失敗時は元のクエリを返す。
+        """
+        japanese_indices = [i for i, q in enumerate(queries) if q and _JAPANESE_RE.search(q)]
+        if not japanese_indices:
+            return queries
+
+        api_key = os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
+        if not api_key:
+            logger.debug("Gemini APIキー未設定: 日本語クエリをそのまま使用")
+            return queries
+
+        try:
+            from google import genai
+            client = genai.Client(api_key=api_key)
+
+            jp_queries = [queries[i] for i in japanese_indices]
+            numbered = "\n".join(f"{i+1}. {q}" for i, q in enumerate(jp_queries))
+
+            prompt = (
+                "Translate each Japanese keyword/phrase to English for stock photo search. "
+                "Output ONLY the translations, one per line, numbered to match input. "
+                "Keep it concise (2-4 words per line). No explanations.\n\n"
+                f"{numbered}"
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            text = response.text.strip()
+
+            result = list(queries)
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            for idx, line in zip(japanese_indices, lines):
+                # "1. translation" → "translation"
+                cleaned = re.sub(r"^\d+\.\s*", "", line).strip()
+                if cleaned:
+                    result[idx] = cleaned
+                    logger.debug(f"翻訳: '{queries[idx]}' → '{cleaned}'")
+
+            logger.info(f"クエリ翻訳完了: {len(japanese_indices)}件")
+            return result
+
+        except Exception as e:
+            logger.warning(f"クエリ翻訳失敗 (フォールバック: 元のクエリを使用): {e}")
+            return queries
 
     def _request_with_retry(
         self,
