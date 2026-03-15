@@ -445,7 +445,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             if (voiceItem != null)
                             {
                                 voiceItem.Frame = frame;
-                                voiceItem.Layer = baseLayer + 3; // ImageItem (baseLayer+1/+2) より上に配置して字幕が隠れないようにする
+                                voiceItem.Layer = baseLayer + 10; // ImageItem (baseLayer+1/+2) より上に配置して字幕が隠れないようにする
 
                                 // VoiceLength から Length を確定
                                 if (voiceItem.Length > 0)
