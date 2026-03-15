@@ -83,6 +83,31 @@ def show_material_pipeline_page():
                 help="台本生成時の目標尺",
             )
 
+    # --- 再開機能 ---
+    with st.expander("途中再開 (Resume)"):
+        resume_dir_str = st.text_input(
+            "再開するwork_dirパス",
+            value="",
+            placeholder="data/research/rp_20260316_120000",
+            help="以前中断したパイプラインのwork_dirを指定して途中から再開",
+        )
+        if resume_dir_str.strip():
+            resume_path = Path(resume_dir_str.strip())
+            state_file = resume_path / "pipeline_state.json"
+            if state_file.exists():
+                import sys
+                sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+                from core.pipeline_state import PipelineState
+                prev_state = PipelineState.load(resume_path)
+                st.info(f"トピック: {prev_state.topic}")
+                first = prev_state.first_incomplete_step()
+                st.info(f"再開ポイント: {first or '全完了'}")
+                st.code(prev_state.summary())
+            elif resume_path.exists():
+                st.warning("pipeline_state.json が見つかりません（古い形式のwork_dir）")
+            else:
+                st.error("指定パスが存在しません")
+
     # --- 実行ボタン ---
     if "mp_running" not in st.session_state:
         st.session_state.mp_running = False
@@ -91,10 +116,13 @@ def show_material_pipeline_page():
 
     st.divider()
 
+    resume_dir = Path(resume_dir_str.strip()) if resume_dir_str.strip() else None
+    can_execute = (topic.strip() or resume_dir) and not st.session_state.mp_running
+
     if st.button(
-        "パイプライン実行",
+        "パイプライン再開" if resume_dir else "パイプライン実行",
         type="primary",
-        disabled=st.session_state.mp_running or not topic.strip(),
+        disabled=not can_execute,
     ):
         st.session_state.mp_running = True
         st.session_state.mp_result = None
@@ -110,9 +138,6 @@ def show_material_pipeline_page():
                 st.session_state.mp_running = False
                 return
 
-        progress_area = st.empty()
-        status_area = st.empty()
-
         async def _execute():
             from scripts.research_cli import run_pipeline
 
@@ -125,6 +150,7 @@ def show_material_pipeline_page():
                 speaker_mapping=speaker_mapping,
                 auto_images=auto_images,
                 target_duration=target_duration * 60.0,
+                resume_dir=resume_dir,
             )
 
         try:

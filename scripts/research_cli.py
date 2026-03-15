@@ -188,8 +188,12 @@ async def run_pipeline(
     speaker_mapping: Optional[dict[str, str]] = None,
     auto_images: bool = False,
     target_duration: float = 300.0,
+    resume_dir: Optional[Path] = None,
 ) -> Path:
     """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
+
+    各ステップの完了状態を pipeline_state.json に保存し、
+    --resume で途中再開できる。完了済みステップはスキップされる。
 
     Args:
         topic: リサーチトピック。
@@ -201,154 +205,287 @@ async def run_pipeline(
         speaker_mapping: 話者名マッピング。
         auto_images: Trueでストック画像APIから自動収集。
         target_duration: 目標動画尺(秒)。デフォルト300秒(5分)。
+        resume_dir: 再開用の既存work_dirパス。
 
     Returns:
         最終出力CSVのパス。
     """
+    from core.pipeline_state import PipelineState
+
     create_directories()
 
-    # --- Step 1: collect ---
-    print("\n=== Step 1: Source Collection ===")
-    collector = SourceCollector()
-    collector.max_sources = max_sources or settings.RESEARCH_SETTINGS["max_sources"]
-    sources = await collector.collect_sources(topic, urls)
-    print(f"Collected {len(sources)} sources")
+    # --- work_dir 決定 + 状態読み込み ---
+    if resume_dir and resume_dir.exists():
+        work_dir = resume_dir
+        state = PipelineState.load(work_dir)
+        topic = state.topic or topic
+        urls = state.urls or urls
+        print(f"\n=== Pipeline Resume: {work_dir} ===")
+        first = state.first_incomplete_step()
+        print(f"再開ポイント: {first or '全完了'}")
+        print(state.summary())
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        package_id = f"rp_{timestamp}"
+        work_dir = output_dir or (settings.RESEARCH_SETTINGS["data_dir"] / package_id)
+        work_dir.mkdir(parents=True, exist_ok=True)
+        state = PipelineState(
+            topic=topic,
+            urls=urls or [],
+            created_at=datetime.now().isoformat(),
+            params={
+                "max_sources": max_sources,
+                "auto_review": auto_review,
+                "slides_dir": str(slides_dir) if slides_dir else None,
+                "speaker_mapping": speaker_mapping,
+                "auto_images": auto_images,
+                "target_duration": target_duration,
+            },
+        )
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    package_id = f"rp_{timestamp}"
-    work_dir = output_dir or (settings.RESEARCH_SETTINGS["data_dir"] / package_id)
-    work_dir.mkdir(parents=True, exist_ok=True)
-
-    package = ResearchPackage(
-        package_id=package_id,
-        topic=topic,
-        created_at=datetime.now().isoformat(),
-        sources=sources,
-    )
     package_path = work_dir / "package.json"
-    with open(package_path, "w", encoding="utf-8") as handle:
-        json.dump(package.to_dict(), handle, ensure_ascii=False, indent=2)
+    script_path = work_dir / "generated_script.json"
+    report_path = work_dir / "alignment_report.json"
+    final_csv_path = work_dir / "final.csv"
+    timeline_csv_path = work_dir / "timeline.csv"
+
+    # --- Step 1: collect ---
+    if state.is_step_done("collect") and package_path.exists():
+        print("\n=== Step 1: Source Collection [SKIP: 完了済み] ===")
+        with open(package_path, "r", encoding="utf-8") as handle:
+            package = ResearchPackage.from_dict(json.load(handle))
+        sources = package.sources
+    else:
+        print("\n=== Step 1: Source Collection ===")
+        state.mark_running("collect")
+        state.save(work_dir)
+        try:
+            collector = SourceCollector()
+            collector.max_sources = max_sources or settings.RESEARCH_SETTINGS["max_sources"]
+            sources = await collector.collect_sources(topic, urls)
+            print(f"Collected {len(sources)} sources")
+
+            package = ResearchPackage(
+                package_id=work_dir.name,
+                topic=topic,
+                created_at=datetime.now().isoformat(),
+                sources=sources,
+            )
+            with open(package_path, "w", encoding="utf-8") as handle:
+                json.dump(package.to_dict(), handle, ensure_ascii=False, indent=2)
+
+            state.mark_done("collect", "package.json")
+            state.save(work_dir)
+        except Exception as e:
+            state.mark_failed("collect", str(e))
+            state.save(work_dir)
+            raise
 
     # --- Step 2: script generation ---
-    print("\n=== Step 2: Script Generation (Gemini) ===")
-    from core.providers.script.gemini_provider import GeminiScriptProvider
+    if state.is_step_done("script") and script_path.exists():
+        print("\n=== Step 2: Script Generation [SKIP: 完了済み] ===")
+        with open(script_path, "r", encoding="utf-8") as handle:
+            script_bundle = json.load(handle)
+        segments = script_bundle.get("segments", [])
+    else:
+        print("\n=== Step 2: Script Generation (Gemini) ===")
+        state.mark_running("script")
+        state.save(work_dir)
+        try:
+            from core.providers.script.gemini_provider import GeminiScriptProvider
 
-    provider = GeminiScriptProvider(target_duration=target_duration)
-    script_bundle = await provider.generate_script(topic, sources)
-    segments = script_bundle.get("segments", [])
-    print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
+            provider = GeminiScriptProvider(target_duration=target_duration)
+            script_bundle = await provider.generate_script(topic, sources)
+            segments = script_bundle.get("segments", [])
+            print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
 
-    # Save script for alignment
-    script_path = work_dir / "generated_script.json"
-    with open(script_path, "w", encoding="utf-8") as handle:
-        json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
+            with open(script_path, "w", encoding="utf-8") as handle:
+                json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
+
+            state.mark_done("script", "generated_script.json")
+            state.save(work_dir)
+        except Exception as e:
+            state.mark_failed("script", str(e))
+            state.save(work_dir)
+            raise
 
     # --- Step 3: align ---
-    print("\n=== Step 3: Alignment Analysis ===")
-    analyzer = ScriptAlignmentAnalyzer()
-    normalized = await analyzer.load_script(script_path)
-    report = await analyzer.analyze(package, normalized)
-    report_path = analyzer.save_report(report, work_dir)
-    print(
-        f"Alignment: "
-        f"supported={report.summary.get('supported', 0)}, "
-        f"orphaned={report.summary.get('orphaned', 0)}, "
-        f"conflict={report.summary.get('conflict', 0)}"
-    )
+    if state.is_step_done("align") and report_path.exists():
+        print("\n=== Step 3: Alignment Analysis [SKIP: 完了済み] ===")
+    else:
+        print("\n=== Step 3: Alignment Analysis ===")
+        state.mark_running("align")
+        state.save(work_dir)
+        try:
+            analyzer = ScriptAlignmentAnalyzer()
+            normalized = await analyzer.load_script(script_path)
+            report = await analyzer.analyze(package, normalized)
+            report_path = analyzer.save_report(report, work_dir)
+            print(
+                f"Alignment: "
+                f"supported={report.summary.get('supported', 0)}, "
+                f"orphaned={report.summary.get('orphaned', 0)}, "
+                f"conflict={report.summary.get('conflict', 0)}"
+            )
+            state.mark_done("align", "alignment_report.json")
+            state.save(work_dir)
+        except Exception as e:
+            state.mark_failed("align", str(e))
+            state.save(work_dir)
+            raise
 
     # --- Step 4: review ---
-    print("\n=== Step 4: Review ===")
-    reviewed_csv = await run_review(report_path, auto_mode=auto_review)
+    if state.is_step_done("review") and final_csv_path.exists():
+        print("\n=== Step 4: Review [SKIP: 完了済み] ===")
+        reviewed_csv = final_csv_path
+    else:
+        print("\n=== Step 4: Review ===")
+        state.mark_running("review")
+        state.save(work_dir)
+        try:
+            reviewed_csv = await run_review(report_path, auto_mode=auto_review)
+            state.mark_done("review", "final.csv")
+            state.save(work_dir)
+        except Exception as e:
+            state.mark_failed("review", str(e))
+            state.save(work_dir)
+            raise
 
     # --- Step 5: Visual Resource Orchestration ---
     slide_paths: list[Path] = []
-    stock_attribution = ""
 
     if slides_dir and slides_dir.exists():
         slide_paths = sorted(slides_dir.glob("*.png"))
         print(f"\nUsing existing slides: {len(slide_paths)} images")
 
-    # Orchestrator パスを使用 (スライド+ストック画像混合)
     if auto_images:
-        print("\n=== Step 5: Visual Resource Orchestration ===")
-        from core.visual.resource_orchestrator import VisualResourceOrchestrator
-        from core.visual.segment_classifier import SegmentClassifier
-        from core.visual.stock_image_client import StockImageClient
+        if state.is_step_done("orchestrate") and (work_dir / "stock_images").exists():
+            print("\n=== Step 5: Visual Orchestration [SKIP: 完了済み] ===")
+        else:
+            print("\n=== Step 5: Visual Resource Orchestration ===")
+            state.mark_running("orchestrate")
+            state.save(work_dir)
+            try:
+                from core.visual.resource_orchestrator import VisualResourceOrchestrator
+                from core.visual.segment_classifier import SegmentClassifier
+                from core.visual.stock_image_client import StockImageClient
 
-        stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
-        classifier = SegmentClassifier(visual_ratio_target=0.4)
-        orchestrator = VisualResourceOrchestrator(
-            classifier=classifier,
-            stock_client=stock_client,
-            topic=topic,
-        )
-        package = orchestrator.orchestrate(segments, slide_paths)
+                stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
+                classifier = SegmentClassifier(visual_ratio_target=0.4)
+                orchestrator = VisualResourceOrchestrator(
+                    classifier=classifier,
+                    stock_client=stock_client,
+                    topic=topic,
+                )
+                vis_package = orchestrator.orchestrate(segments, slide_paths)
 
-        stock_count = sum(1 for r in package.resources if r.source == "stock")
-        slide_count = sum(1 for r in package.resources if r.source == "slide")
-        print(f"Orchestrated: stock={stock_count}, slide={slide_count}, total={len(package.resources)}")
+                stock_count = sum(1 for r in vis_package.resources if r.source == "stock")
+                slide_count = sum(1 for r in vis_package.resources if r.source == "slide")
+                print(f"Orchestrated: stock={stock_count}, slide={slide_count}, total={len(vis_package.resources)}")
 
-        # クレジット生成
-        stock_images_used = [
-            StockImageClient.StockImage(
-                id="", url="", download_url="", width=0, height=0,
-                photographer=r.metadata.get("photographer", ""),
-                source=r.metadata.get("api_source", ""),
-            )
-            for r in package.resources
-            if r.source == "stock" and r.metadata.get("photographer")
-        ] if hasattr(StockImageClient, 'StockImage') else []
+                state.mark_done("orchestrate", "stock_images/")
+                state.save(work_dir)
+            except Exception as e:
+                state.mark_failed("orchestrate", str(e))
+                state.save(work_dir)
+                raise
 
         # Step 6: CsvAssembler (Orchestrator出力から)
-        print(f"\n=== Step 6: CsvAssembler (Orchestrated) ===")
-        from core.csv_assembler import CsvAssembler
-        import csv as csv_mod
+        if not (state.is_step_done("assemble") and timeline_csv_path.exists()):
+            print(f"\n=== Step 6: CsvAssembler (Orchestrated) ===")
+            state.mark_running("assemble")
+            state.save(work_dir)
+            try:
+                from core.csv_assembler import CsvAssembler
+                import csv as csv_mod
 
-        assembler = CsvAssembler()
-        assembled_segments: list[dict[str, str]] = []
-        with open(reviewed_csv, "r", encoding="utf-8") as f:
-            for row in csv_mod.reader(f):
-                if len(row) >= 2:
-                    assembled_segments.append({"speaker": row[0], "text": row[1]})
+                # Orchestratorの再構築 (resume時)
+                if "vis_package" not in dir():
+                    from core.visual.resource_orchestrator import VisualResourceOrchestrator
+                    from core.visual.segment_classifier import SegmentClassifier
+                    from core.visual.stock_image_client import StockImageClient
 
-        if assembled_segments:
-            timeline_csv = work_dir / "timeline.csv"
-            assembler.assemble_from_package(
-                script_segments=assembled_segments,
-                package=package,
-                output_path=timeline_csv,
-                speaker_mapping=speaker_mapping,
-            )
-            print(f"Timeline CSV: {timeline_csv}")
-            reviewed_csv = timeline_csv
+                    stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
+                    classifier = SegmentClassifier(visual_ratio_target=0.4)
+                    orchestrator = VisualResourceOrchestrator(
+                        classifier=classifier,
+                        stock_client=stock_client,
+                        topic=topic,
+                    )
+                    vis_package = orchestrator.orchestrate(segments, slide_paths)
+
+                assembler = CsvAssembler()
+                assembled_segments: list[dict[str, str]] = []
+                with open(reviewed_csv, "r", encoding="utf-8") as f:
+                    for row in csv_mod.reader(f):
+                        if len(row) >= 2:
+                            assembled_segments.append({"speaker": row[0], "text": row[1]})
+
+                if assembled_segments:
+                    assembler.assemble_from_package(
+                        script_segments=assembled_segments,
+                        package=vis_package,
+                        output_path=timeline_csv_path,
+                        speaker_mapping=speaker_mapping,
+                    )
+                    print(f"Timeline CSV: {timeline_csv_path}")
+                    reviewed_csv = timeline_csv_path
+
+                state.mark_done("assemble", "timeline.csv")
+                state.save(work_dir)
+            except Exception as e:
+                state.mark_failed("assemble", str(e))
+                state.save(work_dir)
+                raise
+        else:
+            print("\n=== Step 6: CsvAssembler [SKIP: 完了済み] ===")
+            reviewed_csv = timeline_csv_path
 
     elif slide_paths:
-        # フォールバック: Orchestratorなし、既存のスライドのみ
-        print(f"\n=== Step 5: CsvAssembler (slides only, {len(slide_paths)} images) ===")
-        from core.csv_assembler import CsvAssembler
-        import csv as csv_mod
+        if not (state.is_step_done("assemble") and timeline_csv_path.exists()):
+            print(f"\n=== Step 5: CsvAssembler (slides only, {len(slide_paths)} images) ===")
+            state.mark_running("assemble")
+            state.save(work_dir)
+            try:
+                from core.csv_assembler import CsvAssembler
+                import csv as csv_mod
 
-        assembler = CsvAssembler()
-        assembled_segments_fb: list[dict[str, str]] = []
-        with open(reviewed_csv, "r", encoding="utf-8") as f:
-            for row in csv_mod.reader(f):
-                if len(row) >= 2:
-                    assembled_segments_fb.append({"speaker": row[0], "text": row[1]})
+                assembler = CsvAssembler()
+                assembled_segments_fb: list[dict[str, str]] = []
+                with open(reviewed_csv, "r", encoding="utf-8") as f:
+                    for row in csv_mod.reader(f):
+                        if len(row) >= 2:
+                            assembled_segments_fb.append({"speaker": row[0], "text": row[1]})
 
-        if assembled_segments_fb:
-            timeline_csv = work_dir / "timeline.csv"
-            assembler.assemble(
-                script_segments=assembled_segments_fb,
-                slide_image_paths=slide_paths,
-                output_path=timeline_csv,
-                speaker_mapping=speaker_mapping,
-            )
-            print(f"Timeline CSV: {timeline_csv}")
-            reviewed_csv = timeline_csv
+                if assembled_segments_fb:
+                    assembler.assemble(
+                        script_segments=assembled_segments_fb,
+                        slide_image_paths=slide_paths,
+                        output_path=timeline_csv_path,
+                        speaker_mapping=speaker_mapping,
+                    )
+                    print(f"Timeline CSV: {timeline_csv_path}")
+                    reviewed_csv = timeline_csv_path
+
+                state.mark_done("assemble", "timeline.csv")
+                state.save(work_dir)
+            except Exception as e:
+                state.mark_failed("assemble", str(e))
+                state.save(work_dir)
+                raise
+        else:
+            print("\n=== Step 5: CsvAssembler [SKIP: 完了済み] ===")
+            reviewed_csv = timeline_csv_path
+    else:
+        # スライドもストックもなし: orchestrate/assembleはスキップ
+        state.mark_done("orchestrate", None)
+        state.mark_done("assemble", "final.csv")
+        state.save(work_dir)
 
     print(f"\n=== Pipeline Complete ===")
     print(f"Output: {reviewed_csv}")
     print(f"Work dir: {work_dir}")
+    print(state.summary())
     return reviewed_csv
 
 
@@ -393,7 +530,7 @@ def main() -> None:
     review_parser.add_argument("--auto", action="store_true", help="Auto mode: adopt supported, reject others")
 
     pipe_parser = subparsers.add_parser("pipeline", help="End-to-end: collect → script → align → review → CSV")
-    pipe_parser.add_argument("--topic", required=True, help="Research topic")
+    pipe_parser.add_argument("--topic", help="Research topic (required for new run, optional for --resume)")
     pipe_parser.add_argument("--urls", nargs="*", help="Optional seed URLs")
     pipe_parser.add_argument("--max", type=int, help="Maximum number of sources")
     pipe_parser.add_argument("--auto-review", action="store_true", help="Auto-review (adopt supported, reject others)")
@@ -402,6 +539,7 @@ def main() -> None:
     pipe_parser.add_argument("--speaker-map", help='Speaker mapping JSON (e.g. \'{"Host1":"れいむ"}\')')
     pipe_parser.add_argument("--auto-images", action="store_true", help="ストック画像APIから自動収集")
     pipe_parser.add_argument("--duration", type=float, default=300.0, help="目標動画尺(秒) デフォルト300秒(5分)")
+    pipe_parser.add_argument("--resume", help="途中再開: 既存work_dirを指定して失敗ステップから再開")
 
     args = parser.parse_args(raw_args)
 
@@ -420,12 +558,15 @@ def main() -> None:
         return
 
     if args.command == "pipeline":
+        resume_dir = Path(args.resume) if args.resume else None
+        if not args.topic and not resume_dir:
+            parser.error("--topic is required for new pipeline runs (or use --resume)")
         speaker_map = None
         if args.speaker_map:
             speaker_map = json.loads(args.speaker_map)
         asyncio.run(
             run_pipeline(
-                topic=args.topic,
+                topic=args.topic or "",
                 urls=args.urls,
                 max_sources=args.max,
                 auto_review=args.auto_review,
@@ -434,6 +575,7 @@ def main() -> None:
                 speaker_mapping=speaker_map,
                 auto_images=bool(args.auto_images),
                 target_duration=args.duration,
+                resume_dir=resume_dir,
             )
         )
         return
