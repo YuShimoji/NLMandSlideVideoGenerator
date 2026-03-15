@@ -1,16 +1,17 @@
 """
-CSV自動合成モジュール (SP-032 Gap 1)
+CSV自動合成モジュール (SP-032 Gap 1, SP-033 拡張)
 
-台本セグメント + スライドPNG → YMM4インポート用CSV (話者,テキスト,画像パス)
+台本セグメント + スライドPNG → YMM4インポート用CSV (話者,テキスト,画像パス[,アニメーション種別])
 """
 from __future__ import annotations
 
 import csv
-import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .utils.logger import logger
+from .visual.models import AnimationType
+from .visual.animation_assigner import AnimationAssigner
 
 
 class CsvAssembler:
@@ -28,14 +29,16 @@ class CsvAssembler:
         slide_image_paths: List[Path],
         output_path: Path,
         speaker_mapping: Optional[Dict[str, str]] = None,
+        auto_animation: bool = True,
     ) -> Path:
-        """台本セグメント + スライドPNG群 → CSV 3列形式で出力。
+        """台本セグメント + スライドPNG群 → CSV 4列形式で出力。
 
         Args:
             script_segments: 台本セグメント群。各要素に speaker, content/text キーを期待。
             slide_image_paths: スライドPNG画像のパス群（順序はスライド番号順）。
             output_path: 出力CSVファイルパス。
             speaker_mapping: 台本上の話者名 → YMM4ボイス名のマッピング。
+            auto_animation: True の場合、アニメーション種別を自動割当する (SP-033)。
 
         Returns:
             出力CSVのパス。
@@ -49,6 +52,22 @@ class CsvAssembler:
 
         # セグメント→スライドのマッピングを計算
         segment_to_slide = self._compute_mapping(num_segments, num_slides)
+
+        # アニメーション割当 (SP-033)
+        animation_types: List[str] = []
+        if auto_animation:
+            assigner = AnimationAssigner()
+            image_list: List[Optional[Path]] = []
+            for i in range(num_segments):
+                slide_idx = segment_to_slide.get(i)
+                if slide_idx is not None and slide_idx < num_slides:
+                    image_list.append(slide_image_paths[slide_idx])
+                else:
+                    image_list.append(None)
+            package = assigner.assign(num_segments, image_list)
+            animation_types = [r.animation_type.value for r in package.resources]
+        else:
+            animation_types = [AnimationType.KEN_BURNS.value] * num_segments
 
         rows: List[List[str]] = []
         for i, segment in enumerate(script_segments):
@@ -65,7 +84,7 @@ class CsvAssembler:
             if slide_idx is not None and slide_idx < num_slides:
                 image_path = str(slide_image_paths[slide_idx].resolve())
 
-            rows.append([speaker, text, image_path])
+            rows.append([speaker, text, image_path, animation_types[i]])
 
         # CSV書き出し
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,6 +129,7 @@ class CsvAssembler:
         output_path: Path,
         speaker_mapping: Optional[Dict[str, str]] = None,
         slide_pattern: str = "slide_{:04d}.png",
+        auto_animation: bool = True,
     ) -> Path:
         """ScriptBundle辞書 + スライドディレクトリからCSVを生成する便利メソッド。
 
@@ -119,6 +139,7 @@ class CsvAssembler:
             output_path: 出力CSVファイルパス。
             speaker_mapping: 話者名マッピング。
             slide_pattern: スライドファイル名パターン (0-indexed)。
+            auto_animation: アニメーション自動割当を有効にする (SP-033)。
 
         Returns:
             出力CSVのパス。
@@ -141,4 +162,5 @@ class CsvAssembler:
             slide_image_paths=slide_paths,
             output_path=output_path,
             speaker_mapping=speaker_mapping,
+            auto_animation=auto_animation,
         )

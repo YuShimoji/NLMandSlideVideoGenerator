@@ -17,6 +17,12 @@ namespace NLMSlidePlugin.Core
         public string? AudioFileName => $"{LineNumber:D3}.wav";
         public string? AudioFilePath { get; set; }
         public string? ImageFilePath { get; set; }
+        /// <summary>
+        /// アニメーション種別 (SP-033)。CSV 4列目から読み取る。
+        /// 有効値: ken_burns, zoom_in, zoom_out, pan_left, pan_right, pan_up, static
+        /// 省略時は ken_burns (既定動作)。
+        /// </summary>
+        public string AnimationType { get; set; } = "ken_burns";
         public double? Duration { get; set; }
         public double StartTime { get; set; }
         public double EndTime => StartTime + (Duration ?? 0);
@@ -221,6 +227,17 @@ namespace NLMSlidePlugin.Core
             }
 
             string? imagePath = parts.Count >= 3 ? parts[2].Trim() : null;
+
+            // 相対パス→絶対パス変換: CSVファイルのディレクトリを基準に解決
+            if (!string.IsNullOrEmpty(imagePath) && !Path.IsPathRooted(imagePath))
+            {
+                var csvDir = Path.GetDirectoryName(_csvFilePath);
+                if (!string.IsNullOrEmpty(csvDir))
+                {
+                    imagePath = Path.GetFullPath(Path.Combine(csvDir, imagePath));
+                }
+            }
+
             if (!string.IsNullOrEmpty(imagePath) && !File.Exists(imagePath))
             {
                 errors.Add(new CsvReadError
@@ -233,12 +250,22 @@ namespace NLMSlidePlugin.Core
                 imagePath = null;
             }
 
+            // SP-033: 4列目からアニメーション種別を読み取る（省略時は ken_burns）
+            string animationType = "ken_burns";
+            if (parts.Count >= 4)
+            {
+                var rawAnim = parts[3].Trim().ToLowerInvariant();
+                if (IsValidAnimationType(rawAnim))
+                    animationType = rawAnim;
+            }
+
             return new CsvTimelineItem
             {
                 LineNumber = lineNumber,
                 Speaker = speaker,
                 Text = text,
-                ImageFilePath = string.IsNullOrEmpty(imagePath) ? null : imagePath
+                ImageFilePath = string.IsNullOrEmpty(imagePath) ? null : imagePath,
+                AnimationType = animationType
             };
         }
 
@@ -297,6 +324,20 @@ namespace NLMSlidePlugin.Core
                 double duration = item.Duration ?? 3.0;
                 currentTime += duration + paddingSeconds;
             }
+        }
+
+        /// <summary>
+        /// SP-033: アニメーション種別文字列が有効かどうかを判定
+        /// </summary>
+        private static bool IsValidAnimationType(string value)
+        {
+            return value switch
+            {
+                "ken_burns" or "zoom_in" or "zoom_out"
+                    or "pan_left" or "pan_right" or "pan_up"
+                    or "static" => true,
+                _ => false,
+            };
         }
     }
 }

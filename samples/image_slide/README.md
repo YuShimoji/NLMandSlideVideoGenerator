@@ -6,14 +6,17 @@ CSV 3列目に画像パスを指定するスライド動画サンプル。
 ## ファイル構成
 
 - `timeline.csv` — 8行、れいむ/まりさの対話、3枚のスライドに均等配分
+- `timeline_animated.csv` — 同内容+4列目アニメーション種別指定 (SP-033)
 - `test_with_images.csv` — 6行の短縮版
 - `slides/slide_0001.png` 〜 `slide_0003.png` — テスト用スライド画像
 
 ## CSVフォーマット
 
 ```
-話者名,テキスト,画像パス（省略可、相対or絶対）
+話者名,テキスト,画像パス（省略可）,アニメーション種別（省略可、SP-033）
 ```
+
+4列目のアニメーション種別: `ken_burns`(デフォルト), `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `pan_up`, `static`
 
 ## 使い方
 

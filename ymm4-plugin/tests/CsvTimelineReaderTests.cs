@@ -148,6 +148,83 @@ namespace NLMSlidePlugin.Tests
             Assert.Equal(3, result.Items.Count);
         }
 
+        // --- SP-033: アニメーション種別テスト ---
+
+        [Fact]
+        public void ReadTimeline_FourthColumnAnimationType_ParsedCorrectly()
+        {
+            var csv = "Speaker1,Hello,C:\\nonexistent.png,zoom_in\nSpeaker2,World,,pan_left";
+            var reader = new CsvTimelineReader(CreateTempCsv(csv));
+            var result = reader.ReadTimeline();
+            Assert.Equal(2, result.Count);
+            Assert.Equal("zoom_in", result[0].AnimationType);
+            Assert.Equal("pan_left", result[1].AnimationType);
+        }
+
+        [Fact]
+        public void ReadTimeline_NoFourthColumn_DefaultsToKenBurns()
+        {
+            var reader = new CsvTimelineReader(CreateTempCsv("Speaker1,Hello"));
+            var result = reader.ReadTimeline();
+            Assert.Single(result);
+            Assert.Equal("ken_burns", result[0].AnimationType);
+        }
+
+        [Fact]
+        public void ReadTimeline_InvalidAnimationType_DefaultsToKenBurns()
+        {
+            var csv = "Speaker1,Hello,,invalid_type";
+            var reader = new CsvTimelineReader(CreateTempCsv(csv));
+            var result = reader.ReadTimeline();
+            Assert.Single(result);
+            Assert.Equal("ken_burns", result[0].AnimationType);
+        }
+
+        [Fact]
+        public void ReadTimeline_AllAnimationTypesValid()
+        {
+            var types = new[] { "ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "static" };
+            var lines = string.Join("\n", types.Select((t, i) => $"S{i},T{i},,{t}"));
+            var reader = new CsvTimelineReader(CreateTempCsv(lines));
+            var result = reader.ReadTimeline();
+            Assert.Equal(7, result.Count);
+            for (int i = 0; i < types.Length; i++)
+            {
+                Assert.Equal(types[i], result[i].AnimationType);
+            }
+        }
+
+        [Fact]
+        public void ReadTimeline_RelativeImagePath_ResolvedToCsvDirectory()
+        {
+            // CSVと同じディレクトリに画像ファイルを作成
+            var tempDir = Path.Combine(Path.GetTempPath(), $"nlm_test_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            var imgDir = Path.Combine(tempDir, "slides");
+            Directory.CreateDirectory(imgDir);
+            var imgPath = Path.Combine(imgDir, "test.png");
+            File.WriteAllBytes(imgPath, new byte[] { 0x89, 0x50, 0x4E, 0x47 }); // PNG header
+
+            var csvPath = Path.Combine(tempDir, "test.csv");
+            File.WriteAllText(csvPath, "Speaker1,Hello,slides/test.png,pan_left", Encoding.UTF8);
+            _tempFiles.Add(csvPath);
+            _tempFiles.Add(imgPath);
+
+            try
+            {
+                var reader = new CsvTimelineReader(csvPath);
+                var result = reader.ReadTimeline();
+                Assert.Single(result);
+                Assert.NotNull(result[0].ImageFilePath);
+                Assert.Equal(imgPath, result[0].ImageFilePath);
+                Assert.Equal("pan_left", result[0].AnimationType);
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+
         // --- 本番化テスト: 大規模CSV ---
 
         [Fact]
