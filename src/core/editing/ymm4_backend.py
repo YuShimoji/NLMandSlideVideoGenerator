@@ -83,9 +83,6 @@ class YMM4EditingBackend(IEditingBackend):
 
                 # テンプレート差分適用プロトタイプ
                 self._apply_template_diff(project_dir, project_path)
-            except (OSError, shutil.Error, AttributeError, TypeError, ValueError, RuntimeError) as err:
-                logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
-                self._generate_minimal_project(project_path)
             except Exception as err:
                 logger.warning(f"YMM4 テンプレート複製に失敗しました: {err}")
                 self._generate_minimal_project(project_path)
@@ -286,8 +283,6 @@ class YMM4EditingBackend(IEditingBackend):
             # AutoHotkeyスクリプト実行
             await self._execute_ahk_script(script_to_run, project_file)
 
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
         except Exception as e:
             logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
 
@@ -376,8 +371,6 @@ class YMM4EditingBackend(IEditingBackend):
                 else:
                     logger.warning(f"AHKスクリプト生成失敗: {result.stderr}")
 
-        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError, RuntimeError) as e:
-            logger.warning(f"カスタムAHKスクリプト生成エラー: {e}")
         except Exception as e:
             logger.warning(f"カスタムAHKスクリプト生成エラー: {e}")
 
@@ -420,8 +413,6 @@ class YMM4EditingBackend(IEditingBackend):
 
         except FileNotFoundError:
             logger.warning("AutoHotkey実行ファイルが見つかりません。手動実行してください。")
-        except (asyncio.TimeoutError, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
         except Exception as e:
             logger.warning(f"AutoHotkeyスクリプト実行エラー: {e}")
 
@@ -473,8 +464,6 @@ class YMM4EditingBackend(IEditingBackend):
             else:
                 logger.info("適用する差分設定が見つからないため、スキップ")
 
-        except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
-            logger.warning(f"テンプレート差分適用エラー: {e}")
         except Exception as e:
             logger.warning(f"テンプレート差分適用エラー: {e}")
 
@@ -509,8 +498,6 @@ class YMM4EditingBackend(IEditingBackend):
                         config = json.load(f)
                     logger.info(f"テンプレート差分設定を読み込み: {diff_path}")
                     return config
-                except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
-                    logger.warning(f"差分設定ファイル読み込みエラー: {e}")
                 except Exception as e:
                     logger.warning(f"差分設定ファイル読み込みエラー: {e}")
 
@@ -523,8 +510,6 @@ class YMM4EditingBackend(IEditingBackend):
                     config = json.load(f)
                 logger.info(f"デフォルトテンプレート差分設定を読み込み: {default_diff}")
                 return config
-            except (OSError, json.JSONDecodeError, UnicodeError, ValueError, TypeError) as e:
-                logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
             except Exception as e:
                 logger.warning(f"デフォルト差分設定読み込みエラー: {e}")
 

@@ -84,9 +84,6 @@ class VideoGenerationPipeline:
                 "動画合成は YMM4 (Path A) または ModularVideoPipeline を使用してください。"
             )
 
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"動画生成エラー: {str(e)}")
-            raise
         except Exception as e:
             logger.error(f"動画生成エラー: {str(e)}")
             raise
@@ -162,10 +159,6 @@ def main():
         print("✅ 動画生成完了!")
         print(f"📺 YouTube URL: {youtube_url}")
 
-    except (OSError, RuntimeError, TypeError, ValueError) as e:
-        print(f"❌ エラーが発生しました: {str(e)}")
-        if debug:
-            raise
     except Exception as e:
         print(f"❌ エラーが発生しました: {str(e)}")
         if debug:

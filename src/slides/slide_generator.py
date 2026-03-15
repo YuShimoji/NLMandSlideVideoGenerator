@@ -133,9 +133,6 @@ class SlideGenerator:
             logger.success(f"スライド生成完了: {slides_package.total_slides}枚")
             return slides_package
 
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"スライド生成エラー: {str(e)}")
-            raise
         except Exception as e:
             logger.error(f"スライド生成エラー: {str(e)}")
             raise
@@ -163,9 +160,6 @@ class SlideGenerator:
         # まずはAPIが利用可能か試みる
         try:
             presentation_id = client.create_presentation(presentation_title)
-        except (AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
-            presentation_id = None
-            logger.warning(f"Slides APIのプレゼン作成に失敗: {e}")
         except Exception as e:
             presentation_id = None
             logger.warning(f"Slides APIのプレゼン作成に失敗: {e}")
@@ -182,8 +176,6 @@ class SlideGenerator:
                     for i, c in enumerate(slide_contents)
                 ]
                 client.add_slides(presentation_id, simplified)
-            except (AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
-                logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
             except Exception as e:
                 logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
 

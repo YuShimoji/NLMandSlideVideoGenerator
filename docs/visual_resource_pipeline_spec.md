@@ -229,7 +229,8 @@ InspectYmm4 による API 調査結果:
 |---|--------|------|------|
 | 1 | YMM4実機テスト | pending | Direct API方式で7種アニメーション + 不透明度が正常動作するか検証 |
 | 2 | FadeIn/FadeOut確認 | pending | crossfadeFrames がYMM4で正常に動作するか検証 |
-| 3 | コミット | pending | リファクタ完了後 |
+| 3 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
+| 4 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
 
 ---
 
@@ -240,3 +241,4 @@ InspectYmm4 による API 調査結果:
 | 2026-03-15 | 初版作成。Phase 1-3の段階的設計を定義 |
 | 2026-03-15 | Phase 1 残作業・発見事項を追記。Direct API アプローチ発見 |
 | 2026-03-16 | Direct API全面移行: リフレクション版廃止、7種アニメ+EnsureOpacity100をDirect API化 |
+| 2026-03-16 | コード品質改善: 重複例外ハンドラ統合(6ファイル)、デッドコード除去、CLAUDE.md文字化け修正 |

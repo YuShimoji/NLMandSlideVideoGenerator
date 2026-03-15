@@ -57,10 +57,7 @@ class AudioGenerator:
         self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
 
     def _tts_is_available(self) -> bool:
-        provider_name = (settings.TTS_SETTINGS.get("provider", "none") or "none").lower()
-        if provider_name == "none":
-            return False
-
+        """External TTS は廃止済み (YMM4 に移行)。常に False を返す。"""
         return False
 
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
@@ -97,9 +94,6 @@ class AudioGenerator:
                 logger.warning("Gemini/TTS 設定が不足しているため、プレースホルダー実装を使用")
                 return await self._generate_placeholder_audio()
 
-        except (requests.RequestException, OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"音声生成エラー: {str(e)}")
-            raise
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
             raise
@@ -407,10 +401,6 @@ class AudioGenerator:
             logger.debug(f"音声品質検証完了: スコア={quality_score:.2f}")
             return audio_info
 
-        except ImportError as e:
-            logger.error(f"音声品質検証エラー: {str(e)}")
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"音声品質検証エラー: {str(e)}")
         except Exception as e:
             logger.error(f"音声品質検証エラー: {str(e)}")
 

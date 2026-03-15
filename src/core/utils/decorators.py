@@ -40,10 +40,5 @@ def retry_on_failure(max_retries: Optional[int] = None, backoff_factor: Optional
                         logger.error(f"All {_max_retries + 1} attempts failed. Last error: {e}")
                         raise last_exception
 
-            # この行は到達しないはず
-            if last_exception is not None:
-                raise last_exception
-            raise RuntimeError("Unexpected code path in retry_on_failure")
-
         return wrapper
     return decorator
