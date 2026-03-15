@@ -169,6 +169,8 @@ class VisualResourceOrchestrator:
         if not visual_segments:
             return {}
 
+        logger.info(f"ストック画像検索開始: {len(visual_segments)}セグメント対象")
+
         try:
             stock_images = self.stock_client.search_for_segments(
                 visual_segments,
@@ -177,14 +179,20 @@ class VisualResourceOrchestrator:
             )
         except Exception as e:
             logger.warning(f"ストック画像一括検索失敗: {e}")
+            logger.info("全visualセグメントをスライドにフォールバック")
             return {}
 
         mapping: Dict[int, Path] = {}
+        failed_indices: List[int] = []
         for i, (seg_idx, img) in enumerate(zip(visual_indices, stock_images)):
             if img.local_path and img.source != "none":
                 mapping[seg_idx] = img.local_path
+            else:
+                failed_indices.append(seg_idx)
 
         logger.info(f"ストック画像取得: {len(mapping)}/{len(visual_indices)}件成功")
+        if failed_indices:
+            logger.info(f"スライドにフォールバック: セグメント {failed_indices}")
         return mapping
 
     def _merge_resources(

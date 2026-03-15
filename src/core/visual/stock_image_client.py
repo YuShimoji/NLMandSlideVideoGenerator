@@ -20,6 +20,11 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 from config.settings import settings
 from core.utils.logger import logger
 
+# リトライ対象のHTTPステータスコード
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+_MAX_RETRIES = 3
+_BACKOFF_BASE = 1.0  # 秒 (1, 2, 4 の指数バックオフ)
+
 
 @dataclass
 class StockImage:
@@ -44,6 +49,11 @@ class StockImageClient:
     1. Pexels (高品質、200 req/hour 無料)
     2. Pixabay (大量、5000 req/hour 無料)
     3. キーなし → 空リスト返却 (エラーにしない)
+
+    エラーハンドリング:
+    - 5xx / 429: 指数バックオフでリトライ (最大3回)
+    - 401 / 403: APIキー無効としてログし、リトライしない
+    - 接続エラー / タイムアウト: リトライ (最大3回)
     """
 
     PEXELS_BASE = "https://api.pexels.com/v1"
@@ -68,6 +78,53 @@ class StockImageClient:
         self._last_request_time: float = 0
         self._min_interval: float = 0.5  # 秒
 
+    def validate_api_keys(self) -> Dict[str, bool]:
+        """APIキーの有効性を事前検証する。
+
+        Returns:
+            {"pexels": True/False, "pixabay": True/False}
+        """
+        result: Dict[str, bool] = {"pexels": False, "pixabay": False}
+
+        if self.pexels_api_key:
+            try:
+                self._rate_limit()
+                resp = self.session.get(
+                    f"{self.PEXELS_BASE}/search",
+                    headers={"Authorization": self.pexels_api_key},
+                    params={"query": "test", "per_page": 1},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    result["pexels"] = True
+                    logger.info("Pexels APIキー検証OK")
+                elif resp.status_code in (401, 403):
+                    logger.error(f"Pexels APIキー無効 (HTTP {resp.status_code})")
+                else:
+                    logger.warning(f"Pexels APIキー検証: HTTP {resp.status_code}")
+            except (ConnectionError, Timeout) as e:
+                logger.warning(f"Pexels APIキー検証: 接続失敗 - {e}")
+
+        if self.pixabay_api_key:
+            try:
+                self._rate_limit()
+                resp = self.session.get(
+                    self.PIXABAY_BASE,
+                    params={"key": self.pixabay_api_key, "q": "test", "per_page": 3},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    result["pixabay"] = True
+                    logger.info("Pixabay APIキー検証OK")
+                elif resp.status_code in (401, 403):
+                    logger.error(f"Pixabay APIキー無効 (HTTP {resp.status_code})")
+                else:
+                    logger.warning(f"Pixabay APIキー検証: HTTP {resp.status_code}")
+            except (ConnectionError, Timeout) as e:
+                logger.warning(f"Pixabay APIキー検証: 接続失敗 - {e}")
+
+        return result
+
     def search(
         self,
         query: str,
@@ -84,6 +141,11 @@ class StockImageClient:
                 if images:
                     logger.info(f"Pexels検索成功: '{query}' → {len(images)}件")
                     return images
+            except HTTPError as e:
+                status = e.response.status_code if e.response is not None else "?"
+                logger.warning(f"Pexels検索失敗 (HTTP {status}): {e}")
+            except (ConnectionError, Timeout) as e:
+                logger.warning(f"Pexels検索失敗 (接続): {e}")
             except Exception as e:
                 logger.warning(f"Pexels検索失敗: {e}")
 
@@ -93,6 +155,11 @@ class StockImageClient:
                 if images:
                     logger.info(f"Pixabay検索成功: '{query}' → {len(images)}件")
                     return images
+            except HTTPError as e:
+                status = e.response.status_code if e.response is not None else "?"
+                logger.warning(f"Pixabay検索失敗 (HTTP {status}): {e}")
+            except (ConnectionError, Timeout) as e:
+                logger.warning(f"Pixabay検索失敗 (接続): {e}")
             except Exception as e:
                 logger.warning(f"Pixabay検索失敗: {e}")
 
@@ -170,15 +237,24 @@ class StockImageClient:
             return image
 
         try:
-            self._rate_limit()
-            response = self.session.get(image.download_url, timeout=30)
-            response.raise_for_status()
+            response = self._request_with_retry(
+                image.download_url,
+                timeout=30,
+                source_name=f"Download({image.source})",
+            )
 
             cache_path.write_bytes(response.content)
             image.local_path = cache_path
             logger.info(f"ダウンロード完了: {image.source}/{image.id} → {cache_path}")
             return image
 
+        except HTTPError as e:
+            status = e.response.status_code if e.response is not None else "?"
+            logger.warning(f"ダウンロード失敗 (HTTP {status}): {image.download_url}")
+            return None
+        except (ConnectionError, Timeout) as e:
+            logger.warning(f"ダウンロード失敗 (接続): {image.download_url} - {e}")
+            return None
         except Exception as e:
             logger.warning(f"ダウンロード失敗: {image.download_url} - {e}")
             return None
@@ -191,8 +267,6 @@ class StockImageClient:
         min_width: int,
     ) -> List[StockImage]:
         """Pexels API検索。"""
-        self._rate_limit()
-
         headers = {"Authorization": self.pexels_api_key}
         params: Dict[str, Any] = {
             "query": query,
@@ -200,13 +274,13 @@ class StockImageClient:
             "orientation": orientation,
         }
 
-        response = self.session.get(
+        response = self._request_with_retry(
             f"{self.PEXELS_BASE}/search",
             headers=headers,
             params=params,
             timeout=10,
+            source_name="Pexels",
         )
-        response.raise_for_status()
         data = response.json()
 
         images: List[StockImage] = []
@@ -242,8 +316,6 @@ class StockImageClient:
         min_width: int,
     ) -> List[StockImage]:
         """Pixabay API検索。"""
-        self._rate_limit()
-
         params: Dict[str, Any] = {
             "key": self.pixabay_api_key,
             "q": query,
@@ -255,12 +327,12 @@ class StockImageClient:
             "lang": "ja",
         }
 
-        response = self.session.get(
+        response = self._request_with_retry(
             self.PIXABAY_BASE,
             params=params,
             timeout=10,
+            source_name="Pixabay",
         )
-        response.raise_for_status()
         data = response.json()
 
         images: List[StockImage] = []
@@ -299,6 +371,81 @@ class StockImageClient:
             return content[:40].strip()
 
         return ""
+
+    def _request_with_retry(
+        self,
+        url: str,
+        *,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        timeout: int = 10,
+        source_name: str = "",
+    ) -> requests.Response:
+        """リトライ付きHTTP GETリクエスト。
+
+        - 5xx / 429: 指数バックオフでリトライ
+        - 401 / 403: リトライせず即座にHTTPError送出
+        - ConnectionError / Timeout: リトライ
+
+        Raises:
+            HTTPError: 401/403 または リトライ上限超過時
+            ConnectionError: リトライ上限超過時
+            Timeout: リトライ上限超過時
+        """
+        last_exception: Optional[Exception] = None
+
+        for attempt in range(_MAX_RETRIES):
+            try:
+                self._rate_limit()
+                response = self.session.get(
+                    url, headers=headers, params=params, timeout=timeout,
+                )
+
+                # 401/403: APIキー無効 — リトライ不要
+                if response.status_code in (401, 403):
+                    logger.error(
+                        f"{source_name} APIキー無効/失効 (HTTP {response.status_code})"
+                    )
+                    response.raise_for_status()
+
+                # 429/5xx: リトライ対象
+                if response.status_code in _RETRYABLE_STATUS_CODES:
+                    wait = _BACKOFF_BASE * (2 ** attempt)
+                    # 429: Retry-After ヘッダーがあれば優先
+                    if response.status_code == 429:
+                        retry_after = response.headers.get("Retry-After")
+                        if retry_after and retry_after.isdigit():
+                            wait = max(wait, float(retry_after))
+                    logger.warning(
+                        f"{source_name} HTTP {response.status_code} "
+                        f"(attempt {attempt + 1}/{_MAX_RETRIES}), "
+                        f"{wait:.1f}秒後にリトライ"
+                    )
+                    time.sleep(wait)
+                    continue
+
+                response.raise_for_status()
+                return response
+
+            except (ConnectionError, Timeout) as e:
+                last_exception = e
+                wait = _BACKOFF_BASE * (2 ** attempt)
+                logger.warning(
+                    f"{source_name} {type(e).__name__} "
+                    f"(attempt {attempt + 1}/{_MAX_RETRIES}), "
+                    f"{wait:.1f}秒後にリトライ"
+                )
+                time.sleep(wait)
+                continue
+
+        # リトライ上限超過
+        if last_exception:
+            raise last_exception
+        # 最終レスポンスがリトライ対象エラーだった場合
+        raise HTTPError(
+            f"{source_name} リトライ上限超過 ({_MAX_RETRIES}回)",
+            response=response,  # type: ignore[possibly-undefined]
+        )
 
     def _rate_limit(self) -> None:
         """簡易レート制限。"""
