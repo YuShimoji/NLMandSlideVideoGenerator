@@ -506,9 +506,70 @@ def _prompt_missing() -> str:
     return {"a": "add", "s": "skip"}.get(choice, "skip")
 
 
+def run_validate(csv_path: Path, template_name: str | None, check_images: bool) -> None:
+    """CSV Pre-Export 検証を実行する。"""
+    from core.export_validator import ExportValidator, Severity
+    from core.style_template import StyleTemplateManager
+
+    template_data = None
+    if template_name:
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        tmpl = mgr.get(template_name)
+        if tmpl:
+            template_data = tmpl.raw
+            print(f"Template: {tmpl.name} ({tmpl.description})")
+        else:
+            print(f"Warning: template '{template_name}' not found, validating without template")
+
+    validator = ExportValidator(
+        check_image_exists=check_images,
+        template=template_data,
+    )
+    result = validator.validate_csv(csv_path)
+
+    print(f"\n{result.summary()}\n")
+
+    if result.issues:
+        for issue in result.issues:
+            icon = {"error": "x", "warning": "!", "info": "i"}[issue.severity.value]
+            row_info = f" (row {issue.row})" if issue.row else ""
+            print(f"  [{icon}] {issue.code}{row_info}: {issue.message}")
+        print()
+
+    dist = result.stats.get("animation_distribution", {})
+    if dist:
+        print("Animation distribution:")
+        for anim, count in sorted(dist.items()):
+            print(f"  {anim:15s} {count}")
+
+    sys.exit(0 if result.passed else 1)
+
+
+def run_list_templates() -> None:
+    """利用可能なスタイルテンプレート一覧を表示する。"""
+    from core.style_template import StyleTemplateManager
+
+    mgr = StyleTemplateManager()
+    count = mgr.load_all()
+
+    if count == 0:
+        print("No templates found in config/")
+        return
+
+    print(f"\nAvailable templates ({count}):\n")
+    for name in mgr.list_templates():
+        tmpl = mgr.get(name)
+        desc = tmpl.description if tmpl else ""
+        colors = len(tmpl.speaker_colors) if tmpl else 0
+        dur = tmpl.timing.get("default_duration_seconds", "?") if tmpl else "?"
+        print(f"  {name:20s} colors={colors}  dur={dur}s  {desc}")
+    print()
+
+
 def main() -> None:
     raw_args = sys.argv[1:]
-    if raw_args and raw_args[0] not in {"collect", "align", "review", "pipeline"}:
+    if raw_args and raw_args[0] not in {"collect", "align", "review", "pipeline", "validate", "templates"}:
         raw_args = ["collect", *raw_args]
 
     parser = argparse.ArgumentParser(description="Research and alignment CLI")
@@ -529,19 +590,39 @@ def main() -> None:
     review_parser.add_argument("--output", help="Output CSV path (default: final.csv in report dir)")
     review_parser.add_argument("--auto", action="store_true", help="Auto mode: adopt supported, reject others")
 
+    defaults = settings.PIPELINE_DEFAULTS
     pipe_parser = subparsers.add_parser("pipeline", help="End-to-end: collect → script → align → review → CSV")
     pipe_parser.add_argument("--topic", help="Research topic (required for new run, optional for --resume)")
     pipe_parser.add_argument("--urls", nargs="*", help="Optional seed URLs")
-    pipe_parser.add_argument("--max", type=int, help="Maximum number of sources")
-    pipe_parser.add_argument("--auto-review", action="store_true", help="Auto-review (adopt supported, reject others)")
+    pipe_parser.add_argument("--max", type=int, default=defaults.get("max_sources", 5), help="最大ソース数 (default: %(default)s)")
+    pipe_parser.add_argument("--auto-review", action="store_true", default=defaults.get("auto_review", True), help="自動レビュー (default: ON)")
+    pipe_parser.add_argument("--no-auto-review", dest="auto_review", action="store_false", help="手動レビュー")
     pipe_parser.add_argument("--slides-dir", help="Directory containing slide PNG images")
     pipe_parser.add_argument("--output-dir", help="Output directory for all artifacts")
-    pipe_parser.add_argument("--speaker-map", help='Speaker mapping JSON (e.g. \'{"Host1":"れいむ"}\')')
-    pipe_parser.add_argument("--auto-images", action="store_true", help="ストック画像APIから自動収集")
-    pipe_parser.add_argument("--duration", type=float, default=300.0, help="目標動画尺(秒) デフォルト300秒(5分)")
+    pipe_parser.add_argument("--speaker-map", help='Speaker mapping JSON (default: settings.PIPELINE_DEFAULTS)')
+    pipe_parser.add_argument("--auto-images", action="store_true", default=defaults.get("auto_images", True), help="ストック画像自動収集 (default: ON)")
+    pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="ストック画像を使わない")
+    pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="目標動画尺(秒) (default: %(default)s)")
     pipe_parser.add_argument("--resume", help="途中再開: 既存work_dirを指定して失敗ステップから再開")
 
+    # validate サブコマンド (SP-031)
+    validate_parser = subparsers.add_parser("validate", help="Pre-export CSV validation")
+    validate_parser.add_argument("csv", help="Path to timeline CSV file")
+    validate_parser.add_argument("--template", help="Style template name (default/cinematic/minimal)")
+    validate_parser.add_argument("--no-image-check", action="store_true", help="Skip image file existence check")
+
+    # templates サブコマンド (SP-031)
+    templates_parser = subparsers.add_parser("templates", help="List available style templates")
+
     args = parser.parse_args(raw_args)
+
+    if args.command == "validate":
+        run_validate(Path(args.csv), args.template, not args.no_image_check)
+        return
+
+    if args.command == "templates":
+        run_list_templates()
+        return
 
     if args.command == "collect":
         asyncio.run(run_research(args.topic, args.urls, args.max))
@@ -561,7 +642,7 @@ def main() -> None:
         resume_dir = Path(args.resume) if args.resume else None
         if not args.topic and not resume_dir:
             parser.error("--topic is required for new pipeline runs (or use --resume)")
-        speaker_map = None
+        speaker_map = settings.PIPELINE_DEFAULTS.get("speaker_mapping")
         if args.speaker_map:
             speaker_map = json.loads(args.speaker_map)
         asyncio.run(

@@ -241,6 +241,16 @@ class Settings:
             "images_per_segment": 1,
         }
 
+        # パイプラインデフォルト設定 (SP-034)
+        self.PIPELINE_DEFAULTS: Dict[str, Any] = {
+            "auto_review": True,
+            "auto_images": True,
+            "target_duration": 300.0,  # 秒 (5分)
+            "max_sources": 5,
+            "speaker_mapping": {"Host1": "れいむ", "Host2": "まりさ"},
+            "visual_ratio_target": 0.4,
+        }
+
         # リトライ設定
         self.RETRY_SETTINGS = {
             "max_retries": 3,
