@@ -389,13 +389,16 @@ async def run_pipeline(
                     stock_client=stock_client,
                     ai_provider=ai_provider,
                     topic=topic,
+                    work_dir=work_dir,
                 )
                 vis_package = orchestrator.orchestrate(segments, slide_paths)
 
                 stock_count = sum(1 for r in vis_package.resources if r.source == "stock")
                 slide_count = sum(1 for r in vis_package.resources if r.source == "slide")
                 ai_count = sum(1 for r in vis_package.resources if r.source == "ai")
-                print(f"Orchestrated: stock={stock_count}, ai={ai_count}, slide={slide_count}, total={len(vis_package.resources)}")
+                gen_count = sum(1 for r in vis_package.resources if r.source == "generated")
+                none_count = sum(1 for r in vis_package.resources if r.source == "none")
+                print(f"Orchestrated: stock={stock_count}, ai={ai_count}, slide={slide_count}, generated={gen_count}, none={none_count}, total={len(vis_package.resources)}")
 
                 # クレジットファイル生成 (動画概要欄用)
                 if stock_count > 0 and orchestrator.last_stock_images:
@@ -444,6 +447,7 @@ async def run_pipeline(
                         stock_client=stock_client,
                         ai_provider=ai_provider,
                         topic=topic,
+                        work_dir=work_dir,
                     )
                     vis_package = orchestrator.orchestrate(segments, slide_paths)
 
@@ -510,10 +514,72 @@ async def run_pipeline(
             print("\n=== Step 5: CsvAssembler [SKIP: 完了済み] ===")
             reviewed_csv = timeline_csv_path
     else:
-        # スライドもストックもなし: orchestrate/assembleはスキップ
-        state.mark_done("orchestrate", None)
-        state.mark_done("assemble", "final.csv")
-        state.save(work_dir)
+        # スライドもストックもなし → テキストスライド自動生成のみで全セグメントに背景確保
+        if not (state.is_step_done("orchestrate")):
+            print("\n=== Step 5: Text Slide Auto-Generation ===")
+            state.mark_running("orchestrate")
+            state.save(work_dir)
+            try:
+                from core.visual.resource_orchestrator import VisualResourceOrchestrator
+                from core.visual.segment_classifier import SegmentClassifier
+
+                classifier = SegmentClassifier(visual_ratio_target=0.4)
+                orchestrator = VisualResourceOrchestrator(
+                    classifier=classifier,
+                    topic=topic,
+                    work_dir=work_dir,
+                )
+                vis_package = orchestrator.orchestrate(segments, slide_image_paths=[])
+
+                gen_count = sum(1 for r in vis_package.resources if r.source == "generated")
+                none_count = sum(1 for r in vis_package.resources if r.source == "none")
+                print(f"Generated text slides: {gen_count}/{len(vis_package.resources)} segments, none={none_count}")
+
+                state.mark_done("orchestrate", "generated_slides/")
+                state.save(work_dir)
+            except Exception as e:
+                state.mark_failed("orchestrate", str(e))
+                state.save(work_dir)
+                raise
+
+            # CsvAssembler
+            if vis_package and not (state.is_step_done("assemble") and timeline_csv_path.exists()):
+                print(f"\n=== Step 6: CsvAssembler (Generated slides) ===")
+                state.mark_running("assemble")
+                state.save(work_dir)
+                try:
+                    from core.csv_assembler import CsvAssembler
+                    import csv as csv_mod
+
+                    assembler = CsvAssembler()
+                    assembled_segments_gen: list[dict[str, str]] = []
+                    with open(reviewed_csv, "r", encoding="utf-8") as f:
+                        for row in csv_mod.reader(f):
+                            if len(row) >= 2:
+                                assembled_segments_gen.append({"speaker": row[0], "text": row[1]})
+
+                    if assembled_segments_gen:
+                        assembler.assemble_from_package(
+                            script_segments=assembled_segments_gen,
+                            package=vis_package,
+                            output_path=timeline_csv_path,
+                            speaker_mapping=speaker_mapping,
+                        )
+                        print(f"Timeline CSV: {timeline_csv_path}")
+                        reviewed_csv = timeline_csv_path
+
+                    state.mark_done("assemble", "timeline.csv")
+                    state.save(work_dir)
+                except Exception as e:
+                    state.mark_failed("assemble", str(e))
+                    state.save(work_dir)
+                    raise
+            elif not vis_package:
+                state.mark_done("assemble", "final.csv")
+                state.save(work_dir)
+        else:
+            state.mark_done("assemble", "final.csv")
+            state.save(work_dir)
 
     # --- Post-pipeline: Pre-Export Validation ---
     if reviewed_csv.exists():

@@ -1,7 +1,10 @@
-"""VisualResourceOrchestrator (SP-033 Phase 2)
+"""VisualResourceOrchestrator (SP-033 Phase 2/3)
 
 スライドPNGとストック画像を統合し、セグメント分類に基づいて
 最適なビジュアルリソースパッケージを生成する。
+
+Phase 3: スライドPNG未提供時、TextSlideGeneratorで自動テキストスライドを生成し
+source="none" セグメントを解消する。
 """
 from __future__ import annotations
 
@@ -43,6 +46,7 @@ class VisualResourceOrchestrator:
         stock_client: Optional[Any] = None,  # StockImageClient (Optional import)
         ai_provider: Optional[Any] = None,  # AIImageProvider (Optional import)
         topic: str = "",
+        work_dir: Optional[Path] = None,
     ) -> None:
         """
         Args:
@@ -50,11 +54,13 @@ class VisualResourceOrchestrator:
             stock_client: StockImageClient インスタンス。Noneの場合はスライドのみ使用。
             ai_provider: AIImageProvider インスタンス。stock取得失敗時のフォールバック。
             topic: 動画トピック (ストック画像検索のコンテキスト用)。
+            work_dir: 作業ディレクトリ。指定時、テキストスライド自動生成を有効化。
         """
         self.classifier = classifier or SegmentClassifier()
         self.stock_client = stock_client
         self.ai_provider = ai_provider
         self.topic = topic
+        self.work_dir = work_dir
         self.last_stock_images: list = []  # クレジット生成用
 
     def orchestrate(
@@ -108,10 +114,13 @@ class VisualResourceOrchestrator:
             slide_mapping, stock_mapping, ai_mapping,
         )
 
-        # Step 5: 連続同一ソース回避
+        # Step 5: source="none" → テキストスライド自動生成
+        resources = self._fill_none_with_text_slides(segments, resources)
+
+        # Step 6: 連続同一ソース回避
         resources = self._enforce_variety(resources, slide_image_paths)
 
-        # Step 6: アニメーション割当
+        # Step 7: アニメーション割当
         resources = self._assign_animations(resources)
 
         return VisualResourcePackage(
@@ -299,6 +308,42 @@ class VisualResourceOrchestrator:
                         source="none",
                     ))
 
+        return resources
+
+    def _fill_none_with_text_slides(
+        self,
+        segments: List[Dict[str, Any]],
+        resources: List[VisualResource],
+    ) -> List[VisualResource]:
+        """source="none" のリソースをテキストスライド自動生成で埋める。
+
+        work_dir が設定されている場合のみ動作する。
+        """
+        none_indices = [
+            i for i, r in enumerate(resources) if r.source == "none"
+        ]
+        if not none_indices or self.work_dir is None:
+            return resources
+
+        from .text_slide_generator import TextSlideGenerator
+
+        gen_dir = self.work_dir / "generated_slides"
+        generator = TextSlideGenerator(output_dir=gen_dir)
+
+        target_segments = [segments[i] for i in none_indices]
+        paths = generator.generate_batch(target_segments, none_indices)
+
+        filled = 0
+        for idx, path in zip(none_indices, paths):
+            if path and path.exists():
+                resources[idx] = VisualResource(
+                    image_path=path,
+                    animation_type=AnimationType.STATIC,
+                    source="generated",
+                )
+                filled += 1
+
+        logger.info(f"テキストスライド自動生成: {filled}/{len(none_indices)}件 (source=none → generated)")
         return resources
 
     def _enforce_variety(

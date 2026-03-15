@@ -7,7 +7,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: プロトタイプ後期
-直近の状態: SP-033 Phase 2全完了 + SP-034 + SP-031 Phase 1完了。E2Eパイプライン全ステップ完走確認済み (collect→script→align→review→orchestrate→assemble)。Pexels実API動作確認。Geminiモデルフォールバックチェーン実装 (2.5-flash→2.0-flash→モック)。Pre-Export Validation統合。Python 280/0。残: YMM4実機テスト(7種アニメ+字幕テンプレート)、Gemini有料プラン検討。
+直近の状態: SP-033 Phase 2全完了 + SP-034 + SP-031 Phase 1完了 + Phase 3基盤。E2Eパイプライン全6ステップ完走確認 (Pexels実API+speaker_mapping+クレジット生成)。Geminiモデルフォールバックチェーン (2.5-flash→2.0-flash→モック)。AIImageProvider基盤追加。Python 301/0。残: Geminiクォータリセット後の実コンテンツ確認、YMM4実機テスト(ストック画像CSV+アニメ+字幕)。
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
