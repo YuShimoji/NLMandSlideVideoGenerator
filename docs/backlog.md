@@ -113,6 +113,7 @@ SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 - 2026-03-17: SP-033 Phase 2 StockImageClient完了: Pexels/Pixabay + CLIパイプライン統合 + 30分+対応プロンプト改善
 - 2026-03-16: SP-033 Phase 2a 背景充実化基盤: SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張 + テスト78件PASS
 - 2026-03-16: SP-033 Phase 2b パイプライン統合 + 30分動画E2Eテスト: クエリ重複バグ修正 (48%→74%ヒット率)、CLI/UI統合完了
+- 2026-03-16: SP-033 Phase 2b エラーハンドリング強化: _request_with_retry (指数バックオフ/429/5xx/接続エラー)、validate_api_keys()、Orchestrator進捗ログ改善
 
 ---
 

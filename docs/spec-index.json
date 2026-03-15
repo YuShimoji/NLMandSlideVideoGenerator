@@ -291,9 +291,9 @@
     "id": "SP-033",
     "title": "Visual Resource Pipeline",
     "status": "in_progress",
-    "pct": 85,
+    "pct": 92,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1完了: 7種アニメーション実機テストPASS (Values in-place方式)。Phase2(ストック素材API)/Phase3(AI生成)未着手"
+    "summary": "Phase1完了: 7種アニメーション実機テストPASS。Phase2完了: StockImageClient+Orchestrator+CLI/UI統合+エラーハンドリング+日本語クエリ翻訳。残: Phase3(AI生成イラスト)"
   }
 ]
