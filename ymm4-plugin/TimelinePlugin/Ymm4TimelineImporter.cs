@@ -92,6 +92,9 @@ namespace NLMSlidePlugin.TimelinePlugin
             int fps = Math.Max(1, timeline.VideoInfo.FPS);
             int baseLayer = GetImportBaseLayer(timeline);
 
+            // SP-030: Reset speaker color assignments for this import session
+            CsvImportDialog.ResetSpeakerColors();
+
             int importedRows = 0;
             int audioItemsCount = 0;
             int textItemsCount = 0;
@@ -196,10 +199,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                             Frame = startFrame,
                             Layer = baseLayer + 2,
                             Length = lengthFrames,
-                            PlaybackRate = 1.0,
+                            PlaybackRate = 100.0,
                             Text = csvItem.Text
                         };
-                        CsvImportDialog.ApplySubtitleStyle(text, timeline.VideoInfo.Height);
+                        CsvImportDialog.ApplySubtitleStyle(text, timeline.VideoInfo.Width, timeline.VideoInfo.Height, csvItem.Speaker);
                         allTimelineItems.Add(text);
                         textItemsCount++;
                         hasItemInRow = true;

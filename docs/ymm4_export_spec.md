@@ -1,7 +1,7 @@
 # YMM4 エクスポート仕様
 
-**最終更新**: 2026-03-16
-**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ クロスフェード+Zoomアニメーション実装済み（SP-033）
+**最終更新**: 2026-03-17
+**ステータス**: Voice自動生成完了 / ImageItem自動配置+全画面フィット実装済み（SP-026）/ クロスフェード+Zoomアニメーション実装済み（SP-033）/ 字幕テンプレート+話者色分け実装済み（SP-030）
 
 ---
 
@@ -638,12 +638,40 @@ var item = new ImageItem(filePath);
 var item = new ImageItem { FilePath = filePath };
 ```
 
-### 11.11 未実装（後続スライス）
+### 11.11 字幕テンプレート (SP-030: 実装完了 2026-03-17)
+
+`ApplySubtitleStyle()` で TextItem に以下のスタイルを一括適用:
+
+| プロパティ | 値 | 備考 |
+|-----------|-----|------|
+| FontSize | 48 | Values in-place (Animation型) |
+| Y | videoHeight * 0.35 | 画面下部。Values in-place |
+| BasePoint | CenterBottom | 字幕の標準アンカー |
+| Bold | true | 視認性向上 |
+| Style | Border | 黒アウトライン |
+| StyleColor | #000000 | アウトライン色 |
+| MaxWidth | videoWidth * 0.9 | 端のクリッピング防止 |
+| WordWrap | Character | 日本語テキスト対応 |
+| FontColor | 話者別 | GetSpeakerColor() で自動割当 |
+| PlaybackRate | 100.0 | TextItemのデフォルトは100 (旧コードは1.0でバグ) |
+
+**話者別色分け** (`GetSpeakerColor`):
+- インポートセッション内で出現順に6色サイクルを割当
+- 色: 白 → 黄 → シアン → 緑 → 橙 → ラベンダー
+- `ResetSpeakerColors()` をインポート開始時に呼び出し
+
+**InspectYmm4 による API 調査結果** (TextItem):
+- `Font` (string, get/set, default: "メイリオ")
+- `FontColor` (`System.Windows.Media.Color`, get/set)
+- `Style` enum: Normal=0, Shadow=1, ShadowLight=2, Border=3, BorderLight=4, SharpBorder=5, SharpBorderLight=6
+- `BasePoint` enum: LeftTop=0, CenterTop=1, ..., CenterBottom=7, ...
+- `WordWrap` enum: NoWrap=1, WholeWord=3, Character=4
+
+### 11.12 未実装（後続スライス）
 
 - 画像素材の自動取得
 - slides_payload.jsonとの統合（現在はCSV 3列目方式のみ）
 - BGMテンプレート自動配置
-- 話者別字幕色分け
 
 ---
 
@@ -660,3 +688,4 @@ var item = new ImageItem { FilePath = filePath };
 | 2026-03-14 | 全画面フィット実装。Zoom値をcontain計算+Reflection設定。セクション11.4追加 |
 | 2026-03-14 | SP-028/029/030/031実装: Ken Burns(5%ズーム)、WAV実尺同期、字幕スタイル、画像フェード、品質チェック |
 | 2026-03-16 | SP-033実機テスト反映: クロスフェード+Zoom実装確認。From/To禁止、Values in-place方式に統一。運用ガイドライン追加 |
+| 2026-03-17 | SP-030字幕テンプレート完結: ApplySubtitleStyleリファクタ(リフレクション→直接プロパティ)、話者別色分け、PlaybackRate=100修正、Border/Bold/CenterBottom/MaxWidth/WordWrap追加 |

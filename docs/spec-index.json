@@ -263,11 +263,11 @@
   {
     "id": "SP-030",
     "title": "Transition & Subtitle Template",
-    "status": "partial",
-    "pct": 50,
+    "status": "done",
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "FadeIn/Outクロスフェード実装済み+実機確認済み(2026-03-16)。残: TextItem字幕テンプレート（話者色分け等）"
+    "summary": "FadeIn/Outクロスフェード+字幕テンプレート(ApplySubtitleStyle: Border/Bold/CenterBottom/話者色分け6色サイクル)+PlaybackRate=100修正。実機テスト待ち"
   },
   {
     "id": "SP-031",

@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Immutable;
 using System.Windows;
+using System.Windows.Media;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
@@ -1054,6 +1055,9 @@ namespace NLMSlidePlugin.TimelinePlugin
                     int imageCount = 0;
                     int itemsBefore = activeTimeline.Items.Count;
 
+                    // SP-030: Reset speaker color assignments for this import session
+                    ResetSpeakerColors();
+
                     // SP-031: Pre-import quality validation
                     var validationWarnings = ValidateImportItems(items);
                     foreach (var w in validationWarnings)
@@ -1105,8 +1109,8 @@ namespace NLMSlidePlugin.TimelinePlugin
 
                         if (addSubtitles && !string.IsNullOrEmpty(item.Text))
                         {
-                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 2, Length = length };
-                            ApplySubtitleStyle(textItem, activeTimeline.VideoInfo.Height);
+                            var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 2, Length = length, PlaybackRate = 100.0 };
+                            ApplySubtitleStyle(textItem, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height, item.Speaker);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
                             else
@@ -1137,6 +1141,9 @@ namespace NLMSlidePlugin.TimelinePlugin
                 {
                     throw new InvalidOperationException($"Timeline context is not available. {resolveError}");
                 }
+
+                // SP-030: Reset speaker color assignments for this import session
+                ResetSpeakerColors();
 
                 // SP-031: Pre-import quality validation
                 var validationWarnings = ValidateImportItems(items);
@@ -1209,10 +1216,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                             Frame = startFrame,
                             Layer = baseLayer + 2,
                             Length = lengthFrames,
-                            PlaybackRate = 1.0,
+                            PlaybackRate = 100.0,
                             Text = csvItem.Text
                         };
-                        ApplySubtitleStyle(text, activeTimeline.VideoInfo.Height);
+                        ApplySubtitleStyle(text, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height, csvItem.Speaker);
                         allTimelineItems.Add(text);
                         textItemsCount++;
                         hasItemInRow = true;
@@ -1461,92 +1468,78 @@ namespace NLMSlidePlugin.TimelinePlugin
         }
 
         /// <summary>
-        /// Apply subtitle styling to a TextItem via Reflection (SP-030).
-        /// Sets Y position to bottom area, font size, and text color.
+        /// Apply subtitle styling to a TextItem (SP-030).
+        /// Sets position, font, outline, and speaker-specific color.
         /// </summary>
-        internal static void ApplySubtitleStyle(TextItem textItem, int videoHeight, int fontSize = 48)
+        internal static void ApplySubtitleStyle(TextItem textItem, int videoWidth, int videoHeight, string? speaker = null, int fontSize = 48)
         {
             try
             {
-                bool ySet = false;
-                bool fontSet = false;
+                // Font size (Animation type — use Values in-place)
+                textItem.FontSize.Values[0].Value = fontSize;
 
-                // Position subtitle at bottom area of screen
-                // Y is an AnimationValue — use the same pattern as Zoom/Opacity
-                var yProp = textItem.GetType().GetProperty("Y");
-                if (yProp != null)
-                {
-                    var yObj = yProp.GetValue(textItem);
-                    if (yObj != null)
-                    {
-                        var valuesProp = yObj.GetType().GetProperty("Values");
-                        if (valuesProp != null)
-                        {
-                            var values = valuesProp.GetValue(yObj);
-                            if (values != null)
-                            {
-                                var indexer = values.GetType().GetProperty("Item");
-                                if (indexer != null)
-                                {
-                                    var firstValue = indexer.GetValue(values, new object[] { 0 });
-                                    var valueProp = firstValue?.GetType().GetProperty("Value");
-                                    if (valueProp != null && valueProp.CanWrite)
-                                    {
-                                        double yPos = videoHeight * 0.35;
-                                        valueProp.SetValue(firstValue, yPos);
-                                        ySet = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                // Position: bottom area of screen (Y = 35% of height from center)
+                textItem.Y.Values[0].Value = videoHeight * 0.35;
 
-                // FontSize — try multiple approaches since it may be read-only
-                var fontSizeProp = textItem.GetType().GetProperty("FontSize");
-                if (fontSizeProp != null)
-                {
-                    if (fontSizeProp.CanWrite)
-                    {
-                        // Direct setter available
-                        fontSizeProp.SetValue(textItem, fontSize);
-                        fontSet = true;
-                    }
-                    else
-                    {
-                        // FontSize is read-only — try setting via backing field
-                        var backingField = textItem.GetType().GetField("<FontSize>k__BackingField",
-                            BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (backingField != null)
-                        {
-                            backingField.SetValue(textItem, fontSize);
-                            fontSet = true;
-                        }
-                        else
-                        {
-                            // Try common field naming patterns
-                            foreach (var fieldName in new[] { "_fontSize", "fontSize", "m_fontSize" })
-                            {
-                                var field = textItem.GetType().GetField(fieldName,
-                                    BindingFlags.NonPublic | BindingFlags.Instance);
-                                if (field != null)
-                                {
-                                    field.SetValue(textItem, fontSize);
-                                    fontSet = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                // BasePoint: center-bottom for standard subtitle alignment
+                textItem.BasePoint = BasePoint.CenterBottom;
 
-                WriteRuntimeLog($"ApplySubtitleStyle: Y={ySet}, fontSize={fontSet} (videoHeight={videoHeight})");
+                // MaxWidth: 90% of video width to prevent edge clipping
+                textItem.MaxWidth.Values[0].Value = videoWidth * 0.9;
+
+                // Word wrap: character-level for Japanese text
+                textItem.WordWrap = WordWrap.Character;
+
+                // Bold for readability
+                textItem.Bold = true;
+
+                // Outline style for readability over images
+                textItem.Style = YukkuriMovieMaker.Project.Items.Style.Border;
+                textItem.StyleColor = Color.FromRgb(0, 0, 0); // black outline
+
+                // Speaker-specific font color
+                textItem.FontColor = GetSpeakerColor(speaker);
+
+                WriteRuntimeLog($"ApplySubtitleStyle: fontSize={fontSize}, Y={videoHeight * 0.35:F0}, speaker={speaker ?? "(null)"}, color={textItem.FontColor}");
             }
             catch (Exception ex)
             {
                 WriteRuntimeLog($"ApplySubtitleStyle failed: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Speaker name → subtitle color mapping.
+        /// Different colors for different speakers to improve readability.
+        /// </summary>
+        private static readonly Color[] SpeakerColors = new[]
+        {
+            Color.FromRgb(255, 255, 255), // white (default / first speaker)
+            Color.FromRgb(255, 255, 100), // yellow (second speaker)
+            Color.FromRgb(100, 255, 255), // cyan (third speaker)
+            Color.FromRgb(100, 255, 150), // green (fourth speaker)
+            Color.FromRgb(255, 180, 100), // orange (fifth speaker)
+            Color.FromRgb(200, 150, 255), // lavender (sixth speaker)
+        };
+        private static readonly Dictionary<string, int> _speakerIndexMap = new();
+
+        internal static Color GetSpeakerColor(string? speaker)
+        {
+            if (string.IsNullOrWhiteSpace(speaker))
+                return SpeakerColors[0];
+
+            if (!_speakerIndexMap.TryGetValue(speaker, out int idx))
+            {
+                idx = _speakerIndexMap.Count;
+                _speakerIndexMap[speaker] = idx;
+            }
+            return SpeakerColors[idx % SpeakerColors.Length];
+        }
+
+        /// <summary>
+        /// Reset speaker color assignments (call at start of each import session).
+        /// </summary>
+        internal static void ResetSpeakerColors() => _speakerIndexMap.Clear();
 
         // ========== SP-033: アニメーション (Values in-place) ==========
         // 注意: Animation.From / Animation.To は deprecated (CS0618) かつ
