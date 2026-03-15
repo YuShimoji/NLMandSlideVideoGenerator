@@ -1,0 +1,46 @@
+{
+  "$schema": "./style_template_schema.json",
+  "version": "1.0.0",
+  "metadata": {
+    "name": "minimal",
+    "description": "ミニマル: 小さめフォント、モノクロ系、高速テンポ"
+  },
+
+  "subtitle": {
+    "font_size": 40,
+    "y_position_ratio": 0.40,
+    "base_point": "CenterBottom",
+    "max_width_ratio": 0.95,
+    "word_wrap": "Character",
+    "bold": false,
+    "style": "Border",
+    "style_color": "#000000"
+  },
+
+  "speaker_colors": [
+    "#E0E0E0",
+    "#B0B0B0",
+    "#D0D0D0",
+    "#C0C0C0"
+  ],
+
+  "animation": {
+    "ken_burns_zoom_ratio": 1.03,
+    "zoom_in_ratio": 1.08,
+    "zoom_out_ratio": 1.08,
+    "pan_zoom_ratio": 1.08,
+    "pan_distance_ratio": 0.03
+  },
+
+  "timing": {
+    "crossfade_seconds": 0.3,
+    "padding_seconds": 0.2,
+    "default_duration_seconds": 2.5
+  },
+
+  "validation": {
+    "max_total_duration_seconds": 3600,
+    "warn_gap_threshold_seconds": 0.5,
+    "warn_overlap_threshold_seconds": -0.1
+  }
+}

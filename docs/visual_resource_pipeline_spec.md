@@ -415,3 +415,4 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 | 2026-03-16 | Phase 2b完了: パイプライン統合(CLI+UI)、Pexels実API検証、クエリ重複バグ修正(48%→74%)、30分動画E2Eテスト |
 | 2026-03-17 | Phase 2c実装: Geminiベースセグメント分類+キーワード抽出、日本語→英語クエリ翻訳、APIキーis-not-Noneバグ修正。テスト225件PASS |
 | 2026-03-17 | Phase 2c統合完了: Orchestrator→classify_with_keywords→search_for_segments(queries=)パイプライン接続。テスト228件PASS |
+| 2026-03-17 | SP-031 Phase 1: ExportValidator+StyleTemplateManager+3テンプレート+CLI validate/templates。テスト280件PASS |

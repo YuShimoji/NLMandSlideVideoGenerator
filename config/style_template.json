@@ -1,0 +1,58 @@
+{
+  "$schema": "./style_template_schema.json",
+  "version": "1.1.0",
+  "metadata": {
+    "name": "default",
+    "description": "NLMSlidePlugin デフォルトスタイルテンプレート (SP-031拡張)"
+  },
+
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 60
+  },
+
+  "subtitle": {
+    "font_size": 48,
+    "y_position_ratio": 0.35,
+    "base_point": "CenterBottom",
+    "max_width_ratio": 0.9,
+    "word_wrap": "Character",
+    "bold": true,
+    "style": "Border",
+    "style_color": "#000000"
+  },
+
+  "speaker_colors": [
+    "#FFFFFF",
+    "#FFFF64",
+    "#64FFFF",
+    "#64FF96",
+    "#FFB464",
+    "#C896FF"
+  ],
+
+  "animation": {
+    "ken_burns_zoom_ratio": 1.05,
+    "zoom_in_ratio": 1.15,
+    "zoom_out_ratio": 1.15,
+    "pan_zoom_ratio": 1.12,
+    "pan_distance_ratio": 0.05
+  },
+
+  "crossfade": {
+    "enabled": true,
+    "duration_seconds": 0.5
+  },
+
+  "timing": {
+    "padding_seconds": 0.3,
+    "default_duration_seconds": 3.0
+  },
+
+  "validation": {
+    "max_total_duration_seconds": 3600,
+    "warn_gap_threshold_seconds": 1.0,
+    "warn_overlap_threshold_seconds": -0.1
+  }
+}

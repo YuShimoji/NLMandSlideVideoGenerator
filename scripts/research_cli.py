@@ -353,6 +353,7 @@ async def run_pipeline(
 
     # --- Step 5: Visual Resource Orchestration ---
     slide_paths: list[Path] = []
+    vis_package = None  # resume時のフォールバック用
 
     if slides_dir and slides_dir.exists():
         slide_paths = sorted(slides_dir.glob("*.png"))
@@ -399,8 +400,8 @@ async def run_pipeline(
                 from core.csv_assembler import CsvAssembler
                 import csv as csv_mod
 
-                # Orchestratorの再構築 (resume時)
-                if "vis_package" not in dir():
+                # Orchestratorの再構築 (resume時/skip時)
+                if vis_package is None:
                     from core.visual.resource_orchestrator import VisualResourceOrchestrator
                     from core.visual.segment_classifier import SegmentClassifier
                     from core.visual.stock_image_client import StockImageClient

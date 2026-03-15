@@ -45,6 +45,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-033 Phase 2b | パイプライン統合 + E2E検証 | 完了 | CLI/UI統合済み + Pexels実API動作確認 + 30分動画テスト (74%ヒット率) + クエリ重複バグ修正 |
 | SP-033 Phase 2c | Gemini検索品質改善 | 完了 | Gemini分類+英語キーワード抽出+クエリ翻訳+Orchestrator統合。テスト228件PASS |
 | SP-034 | パイプラインステップ再開 | 完了 | PipelineState永続化+CLI --resume+UI再開セクション。テスト16件PASS |
+| SP-031 Phase 1 | Pre-Export検証 + テンプレートマネージャー | 完了 | ExportValidator+StyleTemplateManager+CLI validate/templates。テスト280件PASS |
 
 ---
 
@@ -53,7 +54,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
 | 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
-| スタイル | テンプレートJSON + Pre-Export検証 | 中 | SP-031 | 品質を構造で安定化 |
+| スタイル | テンプレートJSON + Pre-Export検証 | Phase 1完了 | SP-031 | Python側: ExportValidator+StyleTemplateManager+3テンプレート。次: C#プラグインでテンプレート参照 |
 | 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み。次: Phase 3 AI画像生成 |
 | 素材 | AI生成イラスト | 低 | SP-033 Phase 3 | Gemini画像生成統合 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
@@ -116,6 +117,7 @@ SP-031 (テンプレート) → SP-033 Phase 3 (AI画像) → E2E品質改善
 - 2026-03-16: SP-033 Phase 2b エラーハンドリング強化: _request_with_retry (指数バックオフ/429/5xx/接続エラー)、validate_api_keys()、Orchestrator進捗ログ改善
 - 2026-03-17: SP-033 Phase 2c 完了: Gemini分類+キーワード抽出+日英翻訳+Orchestrator統合。テスト228件PASS
 - 2026-03-16: SP-034 パイプラインステップ再開機能: PipelineState永続化+CLI --resume+UI再開セクション+テスト16件PASS
+- 2026-03-17: SP-031 Phase 1 完了: ExportValidator+StyleTemplateManager+3テンプレート(default/cinematic/minimal)+CLI validate/templates。テスト280件PASS
 
 ---
 

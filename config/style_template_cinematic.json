@@ -1,0 +1,48 @@
+{
+  "$schema": "./style_template_schema.json",
+  "version": "1.0.0",
+  "metadata": {
+    "name": "cinematic",
+    "description": "シネマティック: 大きめフォント、暖色系、ゆっくりアニメーション"
+  },
+
+  "subtitle": {
+    "font_size": 56,
+    "y_position_ratio": 0.30,
+    "base_point": "CenterBottom",
+    "max_width_ratio": 0.85,
+    "word_wrap": "Character",
+    "bold": true,
+    "style": "Border",
+    "style_color": "#1A1A1A"
+  },
+
+  "speaker_colors": [
+    "#FFEEDD",
+    "#FFD700",
+    "#87CEEB",
+    "#98FB98",
+    "#FFA07A",
+    "#DDA0DD"
+  ],
+
+  "animation": {
+    "ken_burns_zoom_ratio": 1.08,
+    "zoom_in_ratio": 1.20,
+    "zoom_out_ratio": 1.20,
+    "pan_zoom_ratio": 1.15,
+    "pan_distance_ratio": 0.04
+  },
+
+  "timing": {
+    "crossfade_seconds": 0.8,
+    "padding_seconds": 0.5,
+    "default_duration_seconds": 4.0
+  },
+
+  "validation": {
+    "max_total_duration_seconds": 7200,
+    "warn_gap_threshold_seconds": 1.5,
+    "warn_overlap_threshold_seconds": -0.1
+  }
+}
