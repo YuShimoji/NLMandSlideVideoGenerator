@@ -149,7 +149,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
+                        CsvImportDialog.ApplyAnimationDirect(image, csvItem.AnimationType ?? "ken_burns", fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -183,7 +183,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
+                        CsvImportDialog.ApplyAnimationDirect(image, csvItem.AnimationType ?? "ken_burns", fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;

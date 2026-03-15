@@ -504,10 +504,11 @@ namespace NLMSlidePlugin.TimelinePlugin
                         FadeOut = crossfadeSeconds,
                     };
 
-                    // Zoom: 直接APIでKen Burnsアニメーション設定
+                    // アニメーション種別に応じた効果を適用
                     double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
-                    WriteRuntimeLog($"  ImageItem: {Path.GetFileName(item.ImageFilePath)}, zoom={fitZoom:F1}→{fitZoom * 1.05:F1}, fade={crossfadeSeconds}s");
+                    string animType = item.AnimationType ?? "ken_burns";
+                    ApplyAnimationDirect(imageItem, animType, fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                    WriteRuntimeLog($"  ImageItem: {Path.GetFileName(item.ImageFilePath)}, anim={animType}, zoom={fitZoom:F1}, fade={crossfadeSeconds}s");
 
                     var dispatcher = Application.Current?.Dispatcher;
                     if (dispatcher != null)
@@ -1094,7 +1095,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         {
                             var imageItem = new ImageItem(item.ImageFilePath) { Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
                             double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                            ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
+                            ApplyAnimationDirect(imageItem, item.AnimationType ?? "ken_burns", fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
                             else
@@ -1195,7 +1196,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0,
                         };
                         double fitZoom = CalculateFitZoom(csvItem.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                        ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
+                        ApplyAnimationDirect(image, csvItem.AnimationType ?? "ken_burns", fitZoom, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -1554,6 +1555,44 @@ namespace NLMSlidePlugin.TimelinePlugin
         // in-place 変更で実装すること。
 
         /// <summary>
+        /// アニメーション種別に応じた効果を ImageItem に適用。
+        /// 全て Values in-place 方式で実装。Animation.From/To は使用禁止。
+        /// </summary>
+        internal static void ApplyAnimationDirect(ImageItem imageItem, string animationType, double fitZoom, int videoWidth, int videoHeight)
+        {
+            switch (animationType)
+            {
+                case "zoom_in":
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.15);
+                    break;
+                case "zoom_out":
+                    ApplyZoomDirect(imageItem, fitZoom * 1.15, fitZoom);
+                    break;
+                case "pan_left":
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom); // Zoom固定
+                    ApplyPositionDirect(imageItem.X, videoWidth * 0.05, 0);
+                    break;
+                case "pan_right":
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom);
+                    ApplyPositionDirect(imageItem.X, -(videoWidth * 0.05), 0);
+                    break;
+                case "pan_up":
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom);
+                    ApplyPositionDirect(imageItem.Y, videoHeight * 0.05, 0);
+                    break;
+                case "static":
+                    // ズームなし — Zoom を fitZoom 固定、アニメーションなし
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom);
+                    break;
+                case "ken_burns":
+                default:
+                    ApplyZoomDirect(imageItem, fitZoom, fitZoom * 1.05);
+                    break;
+            }
+            WriteRuntimeLog($"ApplyAnimationDirect: {animationType}, zoom={fitZoom:F1}");
+        }
+
+        /// <summary>
         /// ImageItem の Zoom を直接 Values 代入で設定。
         /// Animation.From/To は deprecated かつ副作用でレンダリングを破壊するため使用しない。
         /// ImmutableList&lt;AnimationValue&gt; を新規作成して Values setter に代入する。
@@ -1585,6 +1624,36 @@ namespace NLMSlidePlugin.TimelinePlugin
             catch (Exception ex)
             {
                 WriteRuntimeLog($"ApplyZoomDirect failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// X/Y 位置の Values を in-place で設定（パンアニメーション用）。
+        /// </summary>
+        private static void ApplyPositionDirect(Animation animation, double startValue, double endValue)
+        {
+            try
+            {
+                var values = animation.Values;
+                if (values.Count > 0)
+                {
+                    values[0].Value = startValue;
+                }
+
+                if (Math.Abs(startValue - endValue) > 0.01)
+                {
+                    var val1 = new AnimationValue { Value = endValue };
+                    var newValues = values.Add(val1);
+                    var valuesProp = animation.GetType().GetProperty("Values");
+                    valuesProp?.SetValue(animation, newValues);
+                    animation.AnimationType = YukkuriMovieMaker.Commons.AnimationType.加減速移動;
+                }
+
+                WriteRuntimeLog($"ApplyPositionDirect: {startValue:F1} → {endValue:F1}");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyPositionDirect failed: {ex.Message}");
             }
         }
 
