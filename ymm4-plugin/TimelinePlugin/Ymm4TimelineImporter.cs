@@ -138,20 +138,18 @@ namespace NLMSlidePlugin.TimelinePlugin
                     }
 
                     // ImageItem: VoiceItemモードではbaseLayer+1
-                    // SP-033: アニメーション種別に応じた効果を適用
+                    // SP-033: Values in-place方式でZoomアニメーション適用
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
-                        var image = new ImageItem
+                        var image = new ImageItem(csvItem.ImageFilePath)
                         {
-                            FilePath = csvItem.ImageFilePath,
                             Frame = startFrame,
                             Layer = baseLayer + 1,
                             Length = lengthFrames,
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        // EnsureOpacity100 不要: YMM4 デフォルト Opacity=100%
+                        CsvImportDialog.ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -174,20 +172,18 @@ namespace NLMSlidePlugin.TimelinePlugin
                         hasItemInRow = true;
                     }
 
-                    // SP-033: アニメーション種別に応じた効果を適用
+                    // SP-033: Values in-place方式でZoomアニメーション適用
                     if (!string.IsNullOrWhiteSpace(csvItem.ImageFilePath) && File.Exists(csvItem.ImageFilePath))
                     {
-                        var image = new ImageItem
+                        var image = new ImageItem(csvItem.ImageFilePath)
                         {
-                            FilePath = csvItem.ImageFilePath,
                             Frame = startFrame,
                             Layer = baseLayer + 1,
                             Length = lengthFrames,
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CsvImportDialog.CalculateFitZoom(csvItem.ImageFilePath, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        CsvImportDialog.ApplyAnimationByType(image, csvItem.AnimationType, fitZoom, timeline.VideoInfo.Width, timeline.VideoInfo.Height);
-                        // EnsureOpacity100 不要: YMM4 デフォルト Opacity=100%
+                        CsvImportDialog.ApplyZoomDirect(image, fitZoom, fitZoom * 1.05);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;

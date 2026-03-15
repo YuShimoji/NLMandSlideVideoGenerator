@@ -33,7 +33,7 @@
     "pct": 85,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem配置+全画面フィット+Zoomアニメーション実装済み。残: Pan実装、画像自動取得"
+    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem+クロスフェード+Zoomアニメーション実装済み。残: Pan実装、画像自動取得"
   },
   {
     "id": "SP-005",
@@ -263,11 +263,11 @@
   {
     "id": "SP-030",
     "title": "Transition & Subtitle Template",
-    "status": "planned",
-    "pct": 0,
+    "status": "partial",
+    "pct": 50,
     "cat": "plugin",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "Phase 3: FadeIn/Outトランジション + TextItem字幕テンプレート（位置・フォント・話者色分け）"
+    "summary": "FadeIn/Outクロスフェード実装済み+実機確認済み(2026-03-16)。残: TextItem字幕テンプレート（話者色分け等）"
   },
   {
     "id": "SP-031",
