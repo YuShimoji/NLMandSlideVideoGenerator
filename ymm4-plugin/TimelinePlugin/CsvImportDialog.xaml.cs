@@ -27,6 +27,8 @@ namespace NLMSlidePlugin.TimelinePlugin
         private List<CsvTimelineItem> previewItems = new();
         private static bool _voiceMethodsDumped;
         private double progressValue;
+        private string bgmPath = string.Empty;
+        private double bgmVolume = 30.0;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -65,6 +67,18 @@ namespace NLMSlidePlugin.TimelinePlugin
                 addSubtitles = value;
                 OnPropertyChanged();
             }
+        }
+
+        public string BgmPath
+        {
+            get => bgmPath;
+            set { bgmPath = value; OnPropertyChanged(); }
+        }
+
+        public double BgmVolume
+        {
+            get => bgmVolume;
+            set { bgmVolume = value; OnPropertyChanged(); }
         }
 
         public List<CsvTimelineItem> PreviewItems
@@ -110,6 +124,21 @@ namespace NLMSlidePlugin.TimelinePlugin
             CsvPath = dialog.FileName;
             StatusMessage = "CSV selected.";
             AppendLog($"CSV selected: {CsvPath}");
+        }
+
+        private void BrowseBgmButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "Audio files (*.wav;*.mp3;*.m4a)|*.wav;*.mp3;*.m4a|All files (*.*)|*.*",
+                Title = "BGMファイルを選択",
+                CheckFileExists = true
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            BgmPath = dialog.FileName;
+            AppendLog($"BGM selected: {BgmPath}");
         }
 
         private async void PreviewButton_Click(object sender, RoutedEventArgs e)
@@ -493,6 +522,50 @@ namespace NLMSlidePlugin.TimelinePlugin
                 else skippedRows++;
             }
 
+            // BGM配置
+            bool bgmAdded = false;
+            if (!string.IsNullOrEmpty(BgmPath) && File.Exists(BgmPath) && nextFrame > 0)
+            {
+                try
+                {
+                    int bgmLength = nextFrame; // タイムライン全体をカバー
+                    int fadeFrames = Math.Min(fps * 2, bgmLength / 4); // 2秒フェード（最大長の1/4）
+
+                    var bgmItem = new AudioItem(BgmPath)
+                    {
+                        Frame = 0,
+                        Layer = 0, // 最下層
+                        Length = bgmLength,
+                        PlaybackRate = 1.0
+                    };
+
+                    // 音量設定 (リフレクションで Volume プロパティを探す)
+                    double volumeRatio = BgmVolume / 100.0;
+                    ApplyBgmVolume(bgmItem, volumeRatio);
+                    ApplyBgmFade(bgmItem, fadeFrames);
+
+                    var dispatcher = Application.Current?.Dispatcher;
+                    dispatcher?.Invoke(() =>
+                    {
+                        var itemsProp = activeTimeline.GetType().GetProperty("Items");
+                        bool hasSetter = itemsProp?.SetMethod != null;
+                        if (hasSetter)
+                            itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(bgmItem));
+                        else
+                            activeTimeline.Items.Add(bgmItem);
+                    });
+
+                    bgmAdded = true;
+                    AppendLog($"BGM added: {Path.GetFileName(BgmPath)}, volume={BgmVolume:F0}%, length={bgmLength} frames");
+                    WriteRuntimeLog($"BGM: path={BgmPath}, volume={volumeRatio:F2}, length={bgmLength}, fadeFrames={fadeFrames}");
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"BGM add failed: {ex.Message}");
+                    WriteRuntimeLog($"BGM ERROR: {ex}");
+                }
+            }
+
             // RefreshTimelineLengthAndMaxLayer on UI thread
             Application.Current?.Dispatcher?.Invoke(() =>
             {
@@ -500,13 +573,14 @@ namespace NLMSlidePlugin.TimelinePlugin
             });
 
             ProgressValue = 100;
-            StatusMessage = $"Imported {importedRows} items (Voice: {voiceItemsCount}, Image: {imageItemsCount}).";
-            AppendLog($"Import success: Rows={importedRows}, Voice={voiceItemsCount}, Image={imageItemsCount}, Skipped={skippedRows}");
-            WriteRuntimeLog($"ImportWithVoiceItemNative done: voice={voiceItemsCount}, image={imageItemsCount}, skipped={skippedRows}");
+            string bgmStatus = bgmAdded ? ", BGM: 1件" : "";
+            StatusMessage = $"Imported {importedRows} items (Voice: {voiceItemsCount}, Image: {imageItemsCount}{bgmStatus}).";
+            AppendLog($"Import success: Rows={importedRows}, Voice={voiceItemsCount}, Image={imageItemsCount}, BGM={bgmAdded}, Skipped={skippedRows}");
+            WriteRuntimeLog($"ImportWithVoiceItemNative done: voice={voiceItemsCount}, image={imageItemsCount}, bgm={bgmAdded}, skipped={skippedRows}");
 
             MessageBox.Show(
                 $"インポート完了{Environment.NewLine}{Environment.NewLine}" +
-                $"VoiceItem: {voiceItemsCount}件, ImageItem: {imageItemsCount}件{Environment.NewLine}" +
+                $"VoiceItem: {voiceItemsCount}件, ImageItem: {imageItemsCount}件{bgmStatus}{Environment.NewLine}" +
                 $"スキップ: {skippedRows}件",
                 "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -1652,6 +1726,87 @@ namespace NLMSlidePlugin.TimelinePlugin
             catch (Exception ex)
             {
                 WriteRuntimeLog($"ApplyImageFade failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// BGMの音量をリフレクションで設定
+        /// </summary>
+        private static void ApplyBgmVolume(AudioItem bgmItem, double volumeRatio)
+        {
+            try
+            {
+                // AudioItem の Volume プロパティを探す
+                var volumeProp = bgmItem.GetType().GetProperty("Volume",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (volumeProp?.CanWrite == true)
+                {
+                    // YMM4の Volume は 0-100 のint/double が一般的
+                    var propType = volumeProp.PropertyType;
+                    if (propType == typeof(int))
+                        volumeProp.SetValue(bgmItem, (int)(volumeRatio * 100));
+                    else if (propType == typeof(double))
+                        volumeProp.SetValue(bgmItem, volumeRatio * 100.0);
+                    else
+                        volumeProp.SetValue(bgmItem, Convert.ChangeType(volumeRatio * 100.0, propType));
+
+                    WriteRuntimeLog($"BGM Volume set to {volumeRatio * 100:F0}%");
+                    return;
+                }
+
+                WriteRuntimeLog("BGM Volume property not found, using default volume");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyBgmVolume failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// BGMにフェードイン/フェードアウトを適用
+        /// </summary>
+        private static void ApplyBgmFade(AudioItem bgmItem, int fadeFrames)
+        {
+            if (fadeFrames <= 0) return;
+
+            try
+            {
+                // AudioItem の VideoEffects/AfterVideoEffects で音量エンベロープを制御
+                // YMM4 の AudioItem は VideoEffects を持たないため、
+                // FadeIn/FadeOut 用のプロパティをリフレクションで探す
+                foreach (var propName in new[] { "FadeIn", "FadeInFrame", "FadeInFrames" })
+                {
+                    var prop = bgmItem.GetType().GetProperty(propName,
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (prop?.CanWrite == true)
+                    {
+                        if (prop.PropertyType == typeof(int))
+                            prop.SetValue(bgmItem, fadeFrames);
+                        else if (prop.PropertyType == typeof(double))
+                            prop.SetValue(bgmItem, (double)fadeFrames);
+                        WriteRuntimeLog($"BGM {propName} set to {fadeFrames}");
+                        break;
+                    }
+                }
+
+                foreach (var propName in new[] { "FadeOut", "FadeOutFrame", "FadeOutFrames" })
+                {
+                    var prop = bgmItem.GetType().GetProperty(propName,
+                        BindingFlags.Public | BindingFlags.Instance);
+                    if (prop?.CanWrite == true)
+                    {
+                        if (prop.PropertyType == typeof(int))
+                            prop.SetValue(bgmItem, fadeFrames);
+                        else if (prop.PropertyType == typeof(double))
+                            prop.SetValue(bgmItem, (double)fadeFrames);
+                        WriteRuntimeLog($"BGM {propName} set to {fadeFrames}");
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyBgmFade failed: {ex.Message}");
             }
         }
 
