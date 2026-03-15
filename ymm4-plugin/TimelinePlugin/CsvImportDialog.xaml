@@ -33,10 +33,10 @@
         <!-- オプション -->
         <GroupBox Grid.Row="1" Header="インポートオプション" Margin="0,0,0,10">
             <StackPanel Margin="5">
-                <CheckBox x:Name="GenerateVoiceCheckBox" Content="音声を自動生成（ゆっくりボイス）"
-                          IsChecked="{Binding GenerateVoice, Mode=TwoWay}" Margin="0,0,0,5"/>
-                <CheckBox x:Name="AddSubtitlesCheckBox" Content="字幕を追加"
-                          IsChecked="{Binding AddSubtitles, Mode=TwoWay}"/>
+                <CheckBox x:Name="AddSubtitlesCheckBox" Content="字幕を追加（AudioItem使用時）"
+                          IsChecked="{Binding AddSubtitles, Mode=TwoWay}" Margin="0,0,0,5"/>
+                <TextBlock Text="音声はYMM4の台本インポートを使用してください。&#x0a;下の「台本CSV出力」で変換できます。"
+                           FontSize="11" Foreground="Gray" TextWrapping="Wrap"/>
             </StackPanel>
         </GroupBox>
 
@@ -76,11 +76,18 @@
 
         <!-- ボタン -->
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button x:Name="PreviewButton" Content="プレビュー" Padding="20,5" 
+            <Button x:Name="PreviewButton" Content="プレビュー" Padding="20,5"
                     Margin="0,0,10,0" Click="PreviewButton_Click"/>
-            <Button x:Name="ImportButton" Content="インポート" Padding="20,5" 
-                    IsDefault="True" Click="ImportButton_Click"/>
-            <Button x:Name="CancelButton" Content="キャンセル" Padding="20,5" 
+            <Button x:Name="ExportDaihonButton" Content="台本CSV出力" Padding="20,5"
+                    Margin="0,0,10,0" Click="ExportDaihonButton_Click"
+                    ToolTip="YMM4の台本形式（キャラ名,セリフ）に変換して保存"/>
+            <Button x:Name="VoiceImportButton" Content="VoiceItem一括" Padding="20,5"
+                    Margin="0,0,10,0" Click="VoiceImportButton_Click"
+                    ToolTip="YMM4のキャラクター設定で音声合成し、VoiceItem+ImageItemを一括配置"/>
+            <Button x:Name="ImportButton" Content="画像のみ" Padding="20,5"
+                    Click="ImportButton_Click"
+                    ToolTip="AudioItem+ImageItem+TextItemを配置（既存WAVがある場合）"/>
+            <Button x:Name="CancelButton" Content="キャンセル" Padding="20,5"
                     Margin="10,0,0,0" IsCancel="True"/>
         </StackPanel>
     </Grid>

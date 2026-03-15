@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using NLMSlidePlugin.Core;
-using NLMSlidePlugin.VoicePlugin;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,7 +10,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using YukkuriMovieMaker.Plugin.Voice;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
 
@@ -26,8 +24,8 @@ namespace NLMSlidePlugin.TimelinePlugin
         private string csvPath = string.Empty;
         private string statusMessage = "Select a CSV file.";
         private bool addSubtitles = true;
-        private bool generateVoice = true;
         private List<CsvTimelineItem> previewItems = new();
+        private static bool _voiceMethodsDumped;
         private double progressValue;
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -65,16 +63,6 @@ namespace NLMSlidePlugin.TimelinePlugin
             set
             {
                 addSubtitles = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public bool GenerateVoice
-        {
-            get => generateVoice;
-            set
-            {
-                generateVoice = value;
                 OnPropertyChanged();
             }
         }
@@ -177,11 +165,123 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
+        private void ExportDaihonButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (PreviewItems.Count == 0)
+            {
+                StatusMessage = "先にプレビューを実行してください。";
+                return;
+            }
+
+            try
+            {
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "台本CSVとして保存",
+                    Filter = "CSV files (*.csv)|*.csv",
+                    DefaultExt = ".csv",
+                    FileName = Path.GetFileNameWithoutExtension(CsvPath) + "_daihon.csv"
+                };
+
+                if (saveDialog.ShowDialog() != true)
+                    return;
+
+                ExportAsDaihonCsv(saveDialog.FileName);
+
+                StatusMessage = $"台本CSV出力完了: {Path.GetFileName(saveDialog.FileName)}";
+                AppendLog($"Exported daihon CSV: {saveDialog.FileName}");
+                WriteRuntimeLog($"Daihon CSV exported to: {saveDialog.FileName}");
+
+                MessageBox.Show(
+                    $"台本CSVを出力しました。{Environment.NewLine}{Environment.NewLine}" +
+                    $"{saveDialog.FileName}{Environment.NewLine}{Environment.NewLine}" +
+                    $"YMM4のメニュー → 台本 → 台本ファイルを開く で読み込んでください。",
+                    "台本CSV出力完了", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"台本CSV出力エラー: {ex.Message}";
+                AppendLog($"[ERROR] Daihon export: {ex}");
+                WriteRuntimeLog($"Daihon export failed: {ex}");
+                MessageBox.Show($"台本CSV出力に失敗しました:{Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportAsDaihonCsv(string outputPath)
+        {
+            using var writer = new StreamWriter(outputPath, false, System.Text.Encoding.UTF8);
+
+            foreach (var item in PreviewItems)
+            {
+                if (string.IsNullOrWhiteSpace(item.Text))
+                    continue;
+
+                string speaker = item.Speaker ?? string.Empty;
+                string serif = item.Text;
+
+                // CSV escaping: if serif contains comma, quote, or newline, wrap in quotes
+                if (serif.Contains(',') || serif.Contains('"') || serif.Contains('\n') || serif.Contains('\r'))
+                {
+                    serif = "\"" + serif.Replace("\"", "\"\"") + "\"";
+                }
+                if (speaker.Contains(',') || speaker.Contains('"'))
+                {
+                    speaker = "\"" + speaker.Replace("\"", "\"\"") + "\"";
+                }
+
+                writer.WriteLine($"{speaker},{serif}");
+            }
+
+            AppendLog($"Wrote {PreviewItems.Count(i => !string.IsNullOrWhiteSpace(i.Text))} lines to daihon CSV.");
+        }
+
+        private bool _voiceImporting;
+
+        private async void VoiceImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_voiceImporting) return; // 二重実行防止
+
+            if (PreviewItems.Count == 0)
+            {
+                StatusMessage = "先にプレビューを実行してください。";
+                return;
+            }
+
+            try
+            {
+                _voiceImporting = true;
+                VoiceImportButton.IsEnabled = false;
+                SetBusy(true);
+                StatusMessage = "VoiceItem一括インポート中...";
+                ProgressValue = 0;
+                AppendLog("Starting VoiceItem native import...");
+                WriteRuntimeLog($"VoiceItem native import: {PreviewItems.Count} items.");
+
+                await ImportWithVoiceItemNativeAsync();
+
+                try { DialogResult = true; } catch { }
+                Close();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Import failed: {ex.Message}";
+                AppendLog($"[FATAL] {ex}");
+                WriteRuntimeLog($"VoiceItem import failed: {ex}");
+                MessageBox.Show($"VoiceItemインポートに失敗しました:{Environment.NewLine}{ex.Message}", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _voiceImporting = false;
+                VoiceImportButton.IsEnabled = true;
+                SetBusy(false);
+            }
+        }
+
         private async void ImportButton_Click(object sender, RoutedEventArgs e)
         {
             if (PreviewItems.Count == 0)
             {
-                StatusMessage = "Please run Preview first.";
+                StatusMessage = "先にプレビューを実行してください。";
                 return;
             }
 
@@ -190,17 +290,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                 SetBusy(true);
                 StatusMessage = "Importing to timeline...";
                 ProgressValue = 0;
-                AppendLog("Starting timeline import...");
-                WriteRuntimeLog($"Importing {PreviewItems.Count} items. GenerateVoice={GenerateVoice}");
+                AppendLog("Starting timeline import (AudioItem + ImageItem)...");
+                WriteRuntimeLog($"Importing {PreviewItems.Count} items.");
 
-                if (GenerateVoice)
-                {
-                    await ImportWithVoiceGenerationAsync();
-                }
-                else
-                {
-                    await ImportWithoutVoiceAsync();
-                }
+                await ImportWithoutVoiceAsync();
 
                 DialogResult = true;
                 Close();
@@ -218,80 +311,614 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
-        private async Task ImportWithVoiceGenerationAsync()
+        /// <summary>
+        /// VoiceItem + ImageItem インポート
+        /// CharacterSettings からキャラクターを解決し、CreateVoiceItemAsync で
+        /// YMM4ネイティブの音声合成パイプラインを通してVoiceItemを作成する。
+        /// </summary>
+        private async Task ImportWithVoiceItemNativeAsync()
         {
-            // VoiceSpeaker 探索
-            AppendLog("Discovering voice speakers...");
-            WriteRuntimeLog("VoiceSpeakerDiscovery: starting");
-
-            var speakers = VoiceSpeakerDiscovery.GetAvailableSpeakers(out var discoveryErrors);
-            foreach (var err in discoveryErrors)
-            {
-                AppendLog($"[WARN] {err}");
-                WriteRuntimeLog($"VoiceSpeakerDiscovery: {err}");
-            }
-
-            if (speakers.Count == 0)
-            {
-                AppendLog("[WARN] No voice speakers found. Falling back to import without voice.");
-                WriteRuntimeLog("VoiceSpeakerDiscovery: no speakers found, falling back");
-                await ImportWithoutVoiceAsync();
-                return;
-            }
-
-            AppendLog($"Found {speakers.Count} voice speaker(s).");
-            WriteRuntimeLog($"VoiceSpeakerDiscovery: found {speakers.Count} speakers");
-
-            // Voice出力先ディレクトリ
-            var csvDir = Path.GetDirectoryName(CsvPath) ?? string.Empty;
-            var voiceOutputDir = Path.Combine(csvDir, "voice_output");
-
-            // Timeline解決
             if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
             {
                 throw new InvalidOperationException($"Timeline not found: {resolveError}");
             }
 
-            // Voice生成 + タイムライン追加
-            var voiceProgress = new Progress<VoiceGenerationProgress>(p =>
+            // Step 1: CharacterSettings からキャラクター一覧を取得
+            var characters = ResolveCharactersFromSettings();
+            if (characters.Count == 0)
             {
-                ProgressValue = p.PercentComplete;
-                StatusMessage = $"Generating voice: {p.Current}/{p.Total} ({p.GeneratedCount} generated, {p.SkippedCount} skipped)";
-            });
+                throw new InvalidOperationException(
+                    "YMM4にキャラクターが設定されていません。\n" +
+                    "YMM4のキャラクター設定で、使用するキャラクターを追加してください。");
+            }
 
-            var importer = new Ymm4TimelineImporter();
-            var capturedItems = PreviewItems;
-            var capturedAddSubs = AddSubtitles;
-
-            // Voice生成はバックグラウンドスレッドで実行
-            AppendLog("Starting voice generation...");
-            var voiceResult = await Task.Run(async () =>
+            AppendLog($"Found {characters.Count} characters in YMM4 settings:");
+            foreach (var kv in characters)
             {
-                var resolver = new CsvVoiceResolver();
-                return await resolver.GenerateVoicesForTimelineAsync(
-                    capturedItems, speakers, voiceOutputDir, voiceProgress);
-            });
+                AppendLog($"  - {kv.Key}");
+                WriteRuntimeLog($"  Character: '{kv.Key}'");
+            }
 
-            AppendLog($"Voice generation done: {voiceResult.GeneratedCount} generated, {voiceResult.SkippedCount} skipped, {voiceResult.FailedCount} failed");
-            foreach (var err in voiceResult.Errors) AppendLog($"[WARN] {err}");
+            WriteRuntimeLog($"ImportWithVoiceItemNative: {characters.Count} characters, {PreviewItems.Count} items");
 
-            // タイムライン追加はUIスレッドで実行
-            var dispatcher = Application.Current?.Dispatcher
-                ?? throw new InvalidOperationException("Application dispatcher is not available.");
-            var result = dispatcher.Invoke(() =>
+            var capturedItems = PreviewItems.ToList();
+            int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
+            int baseLayer = GetImportBaseLayer(activeTimeline);
+
+            int importedRows = 0;
+            int voiceItemsCount = 0;
+            int imageItemsCount = 0;
+            int skippedRows = 0;
+
+            int nextFrame = 0; // 音声長ベースで次のアイテム開始位置を累積
+
+            for (int i = 0; i < capturedItems.Count; i++)
             {
-                return importer.AddToTimeline(capturedItems, activeTimeline, capturedAddSubs);
+                var item = capturedItems[i];
+                ProgressValue = (int)(i * 100.0 / capturedItems.Count);
+                StatusMessage = $"Processing {i + 1}/{capturedItems.Count}: {item.Speaker}...";
+
+                int frame = nextFrame;
+                int currentItemLength = Math.Max(1, (int)Math.Round((item.Duration ?? 3.0) * fps)); // デフォルト長
+                bool hasItemInRow = false;
+
+                // VoiceItem: テキストがある行にVoiceItemを作成
+                if (!string.IsNullOrWhiteSpace(item.Text))
+                {
+                    string speakerName = item.Speaker ?? string.Empty;
+                    object? character = null;
+
+                    // キャラクター名でマッチ（完全一致 → 部分一致 → 読み仮名 → フォールバック）
+                    if (!string.IsNullOrEmpty(speakerName))
+                    {
+                        if (characters.ContainsKey(speakerName))
+                        {
+                            character = characters[speakerName];
+                        }
+                        else
+                        {
+                            // 部分一致: CSVの話者名がキャラクター名に含まれるか、またはその逆
+                            var match = characters.FirstOrDefault(kv =>
+                                kv.Key.Contains(speakerName, StringComparison.OrdinalIgnoreCase) ||
+                                speakerName.Contains(kv.Key, StringComparison.OrdinalIgnoreCase));
+                            if (match.Value != null)
+                            {
+                                character = match.Value;
+                                AppendLog($"  Partial match: '{speakerName}' → '{match.Key}'");
+                            }
+                            else
+                            {
+                                // 読み仮名マッチング: キャラクターオブジェクトの Kana/Reading プロパティを探す
+                                character = TryMatchByReading(speakerName, characters);
+                                if (character != null)
+                                    AppendLog($"  Reading match: '{speakerName}'");
+                            }
+                        }
+                    }
+
+                    if (character == null && characters.Count > 0)
+                    {
+                        // フォールバック: 最初のキャラクターを使用
+                        character = characters.Values.First();
+                        AppendLog($"  Warning: Character '{speakerName}' not found, using '{characters.Keys.First()}'");
+                    }
+
+                    if (character != null)
+                    {
+                        try
+                        {
+                            var voiceItem = await CreateVoiceItemViaReflectionAsync(character, item.Text, fps);
+                            if (voiceItem != null)
+                            {
+                                voiceItem.Frame = frame;
+                                voiceItem.Layer = baseLayer;
+
+                                // VoiceLength から Length を確定
+                                if (voiceItem.Length > 0)
+                                {
+                                    currentItemLength = voiceItem.Length;
+                                }
+                                else
+                                {
+                                    voiceItem.Length = currentItemLength;
+                                }
+
+                                // UIスレッドでタイムラインに追加
+                                var dispatcher = Application.Current?.Dispatcher;
+                                if (dispatcher != null)
+                                {
+                                    dispatcher.Invoke(() =>
+                                    {
+                                        var itemsProp = activeTimeline.GetType().GetProperty("Items");
+                                        bool hasSetter = itemsProp?.SetMethod != null;
+                                        if (hasSetter)
+                                            itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(voiceItem));
+                                        else
+                                            activeTimeline.Items.Add(voiceItem);
+                                    });
+                                }
+
+                                voiceItemsCount++;
+                                hasItemInRow = true;
+                                WriteRuntimeLog($"  VoiceItem: speaker={speakerName}, length={voiceItem.Length}, frame={frame}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendLog($"  Error creating VoiceItem for '{speakerName}': {ex.Message}");
+                            WriteRuntimeLog($"  VoiceItem ERROR: {ex}");
+                        }
+                    }
+                }
+
+                // ImageItem（VoiceItemの長さに合わせる）
+                if (!string.IsNullOrEmpty(item.ImageFilePath) && File.Exists(item.ImageFilePath))
+                {
+                    int length = currentItemLength;
+                    var imageItem = new ImageItem
+                    {
+                        FilePath = item.ImageFilePath,
+                        Frame = frame,
+                        Layer = baseLayer + 1,
+                        Length = length,
+                        PlaybackRate = 100.0
+                    };
+                    double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
+                    ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
+                    ApplyImageFade(imageItem);
+
+                    var dispatcher = Application.Current?.Dispatcher;
+                    if (dispatcher != null)
+                    {
+                        dispatcher.Invoke(() =>
+                        {
+                            var itemsProp = activeTimeline.GetType().GetProperty("Items");
+                            bool hasSetter = itemsProp?.SetMethod != null;
+                            if (hasSetter)
+                                itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
+                            else
+                                activeTimeline.Items.Add(imageItem);
+                        });
+                    }
+
+                    imageItemsCount++;
+                    hasItemInRow = true;
+                }
+
+                // 次のアイテムの開始位置を音声長に基づいて設定
+                nextFrame = frame + currentItemLength;
+
+                if (hasItemInRow) importedRows++;
+                else skippedRows++;
+            }
+
+            // RefreshTimelineLengthAndMaxLayer on UI thread
+            Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                activeTimeline.RefreshTimelineLengthAndMaxLayer();
             });
 
             ProgressValue = 100;
-            StatusMessage = $"Imported {result.ImportedRows} items with voice.";
-            AppendLog($"Import success: Rows={result.ImportedRows}, Audio={result.AudioItems}, Text={result.TextItems}, Image={result.ImageItems}, TotalTimeline={result.TotalTimelineItems}");
+            StatusMessage = $"Imported {importedRows} items (Voice: {voiceItemsCount}, Image: {imageItemsCount}).";
+            AppendLog($"Import success: Rows={importedRows}, Voice={voiceItemsCount}, Image={imageItemsCount}, Skipped={skippedRows}");
+            WriteRuntimeLog($"ImportWithVoiceItemNative done: voice={voiceItemsCount}, image={imageItemsCount}, skipped={skippedRows}");
 
             MessageBox.Show(
-                $"Import Complete!{Environment.NewLine}{Environment.NewLine}" +
-                $"Imported {result.ImportedRows} items (Image: {result.ImageItems}).{Environment.NewLine}" +
-                $"Voice: {voiceResult.GeneratedCount} generated, {voiceResult.SkippedCount} skipped, {voiceResult.FailedCount} failed.",
+                $"インポート完了{Environment.NewLine}{Environment.NewLine}" +
+                $"VoiceItem: {voiceItemsCount}件, ImageItem: {imageItemsCount}件{Environment.NewLine}" +
+                $"スキップ: {skippedRows}件",
                 "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>
+        /// CharacterSettings からキャラクター名 → Character オブジェクトの辞書を取得
+        /// </summary>
+        private Dictionary<string, object> ResolveCharactersFromSettings()
+        {
+            var result = new Dictionary<string, object>();
+
+            try
+            {
+                // YukkuriMovieMaker.Settings.CharacterSettings を探す
+                Type? settingsType = null;
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        settingsType = assembly.GetType("YukkuriMovieMaker.Settings.CharacterSettings");
+                        if (settingsType != null) break;
+                    }
+                    catch { }
+                }
+
+                if (settingsType == null)
+                {
+                    WriteRuntimeLog("CharacterSettings type not found");
+                    return result;
+                }
+
+                // シングルトン or static プロパティを探す
+                object? settingsInstance = null;
+
+                // パターン1: Default / Instance static property
+                foreach (var propName in new[] { "Default", "Instance", "Current", "Settings" })
+                {
+                    var prop = settingsType.GetProperty(propName, BindingFlags.Public | BindingFlags.Static);
+                    if (prop != null)
+                    {
+                        settingsInstance = prop.GetValue(null);
+                        if (settingsInstance != null)
+                        {
+                            WriteRuntimeLog($"CharacterSettings found via {propName}");
+                            break;
+                        }
+                    }
+                }
+
+                // パターン2: SettingsBase パターン
+                if (settingsInstance == null)
+                {
+                    // Settings型を探す (ApplicationSettingsBase パターン)
+                    var allProps = settingsType.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+                    foreach (var prop in allProps)
+                    {
+                        if (settingsType.IsAssignableFrom(prop.PropertyType))
+                        {
+                            settingsInstance = prop.GetValue(null);
+                            if (settingsInstance != null)
+                            {
+                                WriteRuntimeLog($"CharacterSettings found via static prop {prop.Name}");
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (settingsInstance == null)
+                {
+                    WriteRuntimeLog("CharacterSettings instance not found. Dumping static props:");
+                    var allProps = settingsType.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+                    foreach (var p in allProps)
+                        WriteRuntimeLog($"  {p.Name}: {p.PropertyType.Name}");
+                    return result;
+                }
+
+                // Characters プロパティを取得
+                var charactersProp = settingsInstance.GetType().GetProperty("Characters",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (charactersProp == null)
+                {
+                    WriteRuntimeLog("Characters property not found on CharacterSettings");
+                    return result;
+                }
+
+                var characters = charactersProp.GetValue(settingsInstance);
+                if (characters is System.Collections.IEnumerable enumerable)
+                {
+                    foreach (var character in enumerable)
+                    {
+                        var nameProp = character.GetType().GetProperty("Name");
+                        if (nameProp != null)
+                        {
+                            var name = nameProp.GetValue(character) as string;
+                            if (!string.IsNullOrEmpty(name) && !result.ContainsKey(name))
+                            {
+                                result[name] = character;
+                            }
+                        }
+                    }
+                }
+
+                WriteRuntimeLog($"Resolved {result.Count} characters from settings");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ResolveCharactersFromSettings error: {ex}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// リフレクションで VoiceItem.CreateVoiceItemAsync(Character, string, ...) を呼び出す
+        /// </summary>
+        private async Task<VoiceItem?> CreateVoiceItemViaReflectionAsync(object character, string serif, int fps = 30)
+        {
+            // VoiceItem の静的メソッド CreateVoiceItemAsync を探す
+            var voiceItemType = typeof(VoiceItem);
+
+            var createMethod = voiceItemType.GetMethod("CreateVoiceItemAsync",
+                BindingFlags.Public | BindingFlags.Static);
+
+            if (createMethod == null)
+            {
+                // インスタンスメソッドの可能性も探す
+                createMethod = voiceItemType.GetMethod("CreateVoiceItemAsync",
+                    BindingFlags.Public | BindingFlags.Instance);
+            }
+
+            if (createMethod != null)
+            {
+                WriteRuntimeLog($"CreateVoiceItemAsync found: {createMethod.ReturnType.Name}, params={string.Join(", ", createMethod.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))}");
+
+                var parameters = createMethod.GetParameters();
+                var args = new object?[parameters.Length];
+
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    var param = parameters[i];
+                    if (param.ParameterType.Name.Contains("Character") || param.Name == "character")
+                        args[i] = character;
+                    else if (param.ParameterType == typeof(string) && (param.Name == "serif" || param.Name == "text"))
+                        args[i] = serif;
+                    else if (param.ParameterType == typeof(string) && param.Name == "hatsuon")
+                        args[i] = string.Empty; // 自動生成させる
+                    else if (param.HasDefaultValue)
+                        args[i] = param.DefaultValue;
+                    else
+                        args[i] = null;
+                }
+
+                try
+                {
+                    object? resultObj;
+                    if (createMethod.IsStatic)
+                        resultObj = createMethod.Invoke(null, args);
+                    else
+                        resultObj = createMethod.Invoke(Activator.CreateInstance(voiceItemType), args);
+
+                    // Task<VoiceItem> を await
+                    if (resultObj is Task task)
+                    {
+                        await task;
+                        // Task<T>.Result を取得
+                        var resultProp = task.GetType().GetProperty("Result");
+                        var voiceItem = resultProp?.GetValue(task) as VoiceItem;
+
+                        if (voiceItem != null)
+                        {
+                            // CreateVoiceItemAsync 後に音声合成パイプラインを実行
+                            await RunVoiceSynthesisPipelineAsync(voiceItem, fps);
+
+                            // キャラクター固有の字幕・ボイスパラメータを適用
+                            TryInvokeSyncMethod(voiceItem, "ResetVoiceParameter");
+                            TryInvokeSyncMethod(voiceItem, "ResetJimakuParameter");
+                        }
+
+                        return voiceItem;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WriteRuntimeLog($"CreateVoiceItemAsync invocation failed: {ex}");
+                    // フォールバック: 手動でVoiceItem作成
+                    AppendLog($"  Falling back to manual VoiceItem creation: {ex.Message}");
+                }
+            }
+            else
+            {
+                WriteRuntimeLog("CreateVoiceItemAsync method not found on VoiceItem");
+            }
+
+            // フォールバック: 手動でVoiceItem作成してSerifToHatsuonAsyncを呼ぶ
+            return await CreateVoiceItemManualAsync(character, serif, fps);
+        }
+
+        /// <summary>
+        /// VoiceItem に対して音声合成パイプラインを実行
+        /// SerifToHatsuonAsync → CreateVoiceCacheAsync → LoadVoiceLength
+        /// </summary>
+        private async Task RunVoiceSynthesisPipelineAsync(VoiceItem voiceItem, int fps = 30)
+        {
+            var voiceItemType = typeof(VoiceItem);
+
+            // VoiceItem の全メソッドを一度ダンプ（初回のみ: static flag で制御）
+            if (!_voiceMethodsDumped)
+            {
+                _voiceMethodsDumped = true;
+                var allMethods = voiceItemType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                WriteRuntimeLog($"  VoiceItem has {allMethods.Length} public methods. Voice-related:");
+                foreach (var m in allMethods)
+                {
+                    if (m.Name.Contains("Voice") || m.Name.Contains("Hatsuon") || m.Name.Contains("Serif")
+                        || m.Name.Contains("Cache") || m.Name.Contains("Length") || m.Name.Contains("LipSync")
+                        || m.Name.Contains("Pronounce") || m.Name.Contains("Create"))
+                    {
+                        WriteRuntimeLog($"    {m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))}) -> {m.ReturnType.Name}");
+                    }
+                }
+            }
+
+            // 1. SerifToHatsuonAsync — テキストから発音データを生成
+            await TryInvokeAsyncMethod(voiceItem, "SerifToHatsuonAsync");
+            WriteRuntimeLog($"  Hatsuon after: {voiceItem.Hatsuon?.Substring(0, Math.Min(40, voiceItem.Hatsuon?.Length ?? 0))}");
+
+            // 2. 音声キャッシュ生成 — 名前のバリエーションを試す
+            bool cacheCreated = false;
+            foreach (var methodName in new[] { "CreateVoiceCacheAsync", "CreateVoiceAsync", "UpdateVoiceAsync", "CreateVoiceFileAsync" })
+            {
+                if (await TryInvokeAsyncMethod(voiceItem, methodName))
+                {
+                    cacheCreated = true;
+                    break;
+                }
+            }
+            if (!cacheCreated)
+                WriteRuntimeLog("  WARNING: No voice cache/file creation method succeeded");
+
+            // 3. VoiceLengthプロパティから音声長をフレーム数に変換してLengthに設定
+            try
+            {
+                var voiceLengthProp = voiceItemType.GetProperty("VoiceLength",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (voiceLengthProp != null)
+                {
+                    var voiceLength = voiceLengthProp.GetValue(voiceItem);
+                    if (voiceLength is TimeSpan ts && ts.TotalSeconds > 0)
+                    {
+                        int newLength = Math.Max(1, (int)Math.Round(ts.TotalSeconds * fps));
+                        voiceItem.Length = newLength;
+                        WriteRuntimeLog($"  VoiceLength={ts.TotalSeconds:F3}s → Length={newLength} frames (fps={fps})");
+                    }
+                    else
+                    {
+                        WriteRuntimeLog($"  VoiceLength={voiceLength} (not valid TimeSpan or zero)");
+                    }
+                }
+                else
+                {
+                    WriteRuntimeLog("  VoiceLength property NOT FOUND");
+                }
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"  VoiceLength access failed: {ex.Message}");
+            }
+
+            // 4. リップシンク（オプション）
+            await TryInvokeAsyncMethod(voiceItem, "LoadLipSyncAsync");
+
+            // 診断ログ
+            WriteRuntimeLog($"  Pipeline complete: Serif={voiceItem.Serif?.Substring(0, Math.Min(20, voiceItem.Serif?.Length ?? 0))}, " +
+                           $"CharacterName={voiceItem.CharacterName}, Length={voiceItem.Length}");
+        }
+
+        private async Task<bool> TryInvokeAsyncMethod(object target, string methodName)
+        {
+            var method = target.GetType().GetMethod(methodName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (method == null)
+            {
+                WriteRuntimeLog($"  {methodName}: NOT FOUND");
+                return false;
+            }
+
+            try
+            {
+                var parameters = method.GetParameters();
+                var args = new object?[parameters.Length];
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (parameters[i].HasDefaultValue)
+                        args[i] = parameters[i].DefaultValue;
+                    else
+                        args[i] = null;
+                }
+
+                var result = method.Invoke(target, args.Length > 0 ? args : null);
+                if (result is Task task)
+                    await task;
+
+                WriteRuntimeLog($"  {methodName}: OK");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"  {methodName}: FAILED - {ex.InnerException?.Message ?? ex.Message}");
+                return false;
+            }
+        }
+
+        private bool TryInvokeSyncMethod(object target, string methodName)
+        {
+            var method = target.GetType().GetMethod(methodName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (method == null)
+            {
+                WriteRuntimeLog($"  {methodName}: NOT FOUND");
+                return false;
+            }
+
+            try
+            {
+                method.Invoke(target, null);
+                WriteRuntimeLog($"  {methodName}: OK");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"  {methodName}: FAILED - {ex.InnerException?.Message ?? ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// フォールバック: VoiceItemを手動構築し、SerifToHatsuonAsync で発音生成
+        /// </summary>
+        private async Task<VoiceItem?> CreateVoiceItemManualAsync(object character, string serif, int fps = 30)
+        {
+            try
+            {
+                var voiceItem = new VoiceItem();
+                voiceItem.Serif = serif;
+
+                // Character プロパティをセット
+                var charProp = typeof(VoiceItem).GetProperty("Character");
+                if (charProp?.CanWrite == true)
+                {
+                    charProp.SetValue(voiceItem, character);
+                }
+                else
+                {
+                    // backing field にセット
+                    var backingField = typeof(VoiceItem).GetField("<Character>k__BackingField",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (backingField != null)
+                        backingField.SetValue(voiceItem, character);
+                }
+
+                // CharacterName をセット
+                var nameProp = character.GetType().GetProperty("Name");
+                if (nameProp != null)
+                {
+                    voiceItem.CharacterName = nameProp.GetValue(character) as string ?? string.Empty;
+                }
+
+                // ResetVoiceParameter() — キャラクターのボイス設定をVoiceItemに反映
+                var resetVoice = typeof(VoiceItem).GetMethod("ResetVoiceParameter",
+                    BindingFlags.Public | BindingFlags.Instance);
+                resetVoice?.Invoke(voiceItem, null);
+
+                // ResetJimakuParameter() — 字幕設定を反映
+                var resetJimaku = typeof(VoiceItem).GetMethod("ResetJimakuParameter",
+                    BindingFlags.Public | BindingFlags.Instance);
+                resetJimaku?.Invoke(voiceItem, null);
+
+                // SerifToHatsuonAsync() — 発音生成
+                var serifToHatsuon = typeof(VoiceItem).GetMethod("SerifToHatsuonAsync",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (serifToHatsuon != null)
+                {
+                    var task = serifToHatsuon.Invoke(voiceItem, null);
+                    if (task is Task t)
+                        await t;
+                    WriteRuntimeLog($"  SerifToHatsuonAsync completed for: {serif.Substring(0, Math.Min(20, serif.Length))}");
+                }
+
+                // CreateVoiceCacheAsync() — 音声キャッシュ生成
+                var createCache = typeof(VoiceItem).GetMethod("CreateVoiceCacheAsync",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (createCache != null)
+                {
+                    var task = createCache.Invoke(voiceItem, null);
+                    if (task is Task t)
+                        await t;
+                    WriteRuntimeLog($"  CreateVoiceCacheAsync completed");
+                }
+
+                // LoadVoiceLength() — 音声長を設定
+                var loadLength = typeof(VoiceItem).GetMethod("LoadVoiceLength",
+                    BindingFlags.Public | BindingFlags.Instance);
+                loadLength?.Invoke(voiceItem, null);
+
+                return voiceItem;
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"CreateVoiceItemManual failed: {ex}");
+                AppendLog($"  Manual VoiceItem creation failed: {ex.Message}");
+                return null;
+            }
         }
 
         private async Task ImportWithoutVoiceAsync()
@@ -338,6 +965,13 @@ namespace NLMSlidePlugin.TimelinePlugin
                     int imageCount = 0;
                     int itemsBefore = activeTimeline.Items.Count;
 
+                    // SP-031: Pre-import quality validation
+                    var validationWarnings = ValidateImportItems(items);
+                    foreach (var w in validationWarnings)
+                    {
+                        WriteRuntimeLog($"[QA] {w}");
+                    }
+
                     // Items is ImmutableList in v4.50+ — must reassign after each Add
                     var itemsProp = activeTimeline.GetType().GetProperty("Items");
                     bool itemsHasSetter = itemsProp?.SetMethod != null;
@@ -347,6 +981,16 @@ namespace NLMSlidePlugin.TimelinePlugin
                         var item = items[i];
                         int frame = (int)Math.Round(item.StartTime * fps);
                         int length = (int)Math.Round((item.Duration ?? 1.0) * fps);
+
+                        // SP-028: Use actual WAV duration when available
+                        if (!string.IsNullOrEmpty(item.AudioFilePath) && File.Exists(item.AudioFilePath))
+                        {
+                            double? wavDuration = GetWavDurationSeconds(item.AudioFilePath);
+                            if (wavDuration.HasValue && wavDuration.Value > 0)
+                            {
+                                length = Math.Max(1, (int)Math.Round(wavDuration.Value * fps));
+                            }
+                        }
 
                         if (!string.IsNullOrEmpty(item.AudioFilePath) && File.Exists(item.AudioFilePath))
                         {
@@ -362,7 +1006,8 @@ namespace NLMSlidePlugin.TimelinePlugin
                         {
                             var imageItem = new ImageItem { FilePath = item.ImageFilePath, Frame = frame, Layer = baseLayer + 1, Length = length, PlaybackRate = 100.0 };
                             double fitZoom = CalculateFitZoom(item.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                            SetImageZoom(imageItem, fitZoom);
+                            ApplyKenBurnsZoom(imageItem, fitZoom, fitZoom * 1.05);
+                            ApplyImageFade(imageItem);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(imageItem));
                             else
@@ -373,6 +1018,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                         if (addSubtitles && !string.IsNullOrEmpty(item.Text))
                         {
                             var textItem = new TextItem { Text = item.Text, Frame = frame, Layer = baseLayer + 2, Length = length };
+                            ApplySubtitleStyle(textItem, activeTimeline.VideoInfo.Height);
                             if (itemsHasSetter)
                                 itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
                             else
@@ -388,7 +1034,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     WriteRuntimeLog($"Import done: added={audioCount + textCount + imageCount}, itemsBefore={itemsBefore}, itemsAfter={itemsAfter}");
 
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
-                    return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, activeTimeline.Items.Count);
+                    return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, 0, activeTimeline.Items.Count);
                 });
             });
         }
@@ -402,6 +1048,13 @@ namespace NLMSlidePlugin.TimelinePlugin
                 if (!TryEnsureTimeline(out var activeTimeline, out var resolveError))
                 {
                     throw new InvalidOperationException($"Timeline context is not available. {resolveError}");
+                }
+
+                // SP-031: Pre-import quality validation
+                var validationWarnings = ValidateImportItems(items);
+                foreach (var w in validationWarnings)
+                {
+                    WriteRuntimeLog($"[QA] {w}");
                 }
 
                 int fps = Math.Max(1, activeTimeline.VideoInfo.FPS);
@@ -419,6 +1072,16 @@ namespace NLMSlidePlugin.TimelinePlugin
                 {
                     int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
                     int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
+
+                    // SP-028: Use actual WAV duration when available
+                    if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
+                    {
+                        double? wavDuration = GetWavDurationSeconds(csvItem.AudioFilePath);
+                        if (wavDuration.HasValue && wavDuration.Value > 0)
+                        {
+                            lengthFrames = Math.Max(1, (int)Math.Round(wavDuration.Value * fps));
+                        }
+                    }
 
                     bool hasItemInRow = false;
                     if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
@@ -446,7 +1109,8 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 100.0
                         };
                         double fitZoom = CalculateFitZoom(csvItem.ImageFilePath, activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height);
-                        SetImageZoom(image, fitZoom);
+                        ApplyKenBurnsZoom(image, fitZoom, fitZoom * 1.05);
+                        ApplyImageFade(image);
                         allTimelineItems.Add(image);
                         imageItemsCount++;
                         hasItemInRow = true;
@@ -462,6 +1126,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                             PlaybackRate = 1.0,
                             Text = csvItem.Text
                         };
+                        ApplySubtitleStyle(text, activeTimeline.VideoInfo.Height);
                         allTimelineItems.Add(text);
                         textItemsCount++;
                         hasItemInRow = true;
@@ -493,7 +1158,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
                 }
 
-                return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, skippedRows, activeTimeline.Items.Count);
+                return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, 0, skippedRows, activeTimeline.Items.Count);
             });
         }
 
@@ -616,6 +1281,70 @@ namespace NLMSlidePlugin.TimelinePlugin
         }
 
         /// <summary>
+        /// キャラクターオブジェクトの読み仮名プロパティや名前正規化でマッチングを試みる
+        /// </summary>
+        private static object? TryMatchByReading(string speakerName, Dictionary<string, object> characters)
+        {
+            string speakerNorm = NormalizeCharacterName(speakerName);
+
+            foreach (var kv in characters)
+            {
+                // YMM4キャラクター名を正規化して比較（"ゆっくり霊夢"→"霊夢"、"ゆっくり魔理沙"→"魔理沙"）
+                string charNorm = NormalizeCharacterName(kv.Key);
+                if (string.Equals(speakerNorm, charNorm, StringComparison.OrdinalIgnoreCase))
+                {
+                    WriteRuntimeLog($"  Normalized match: '{speakerName}'→'{speakerNorm}' == '{kv.Key}'→'{charNorm}'");
+                    return kv.Value;
+                }
+
+                // キャラクターオブジェクトの Kana / NameKana / Reading プロパティを探す
+                try
+                {
+                    foreach (var propName in new[] { "Kana", "NameKana", "Reading", "Yomigana" })
+                    {
+                        var prop = kv.Value.GetType().GetProperty(propName,
+                            BindingFlags.Public | BindingFlags.Instance);
+                        if (prop != null)
+                        {
+                            var reading = prop.GetValue(kv.Value) as string;
+                            if (!string.IsNullOrEmpty(reading))
+                            {
+                                string readingNorm = NormalizeCharacterName(reading);
+                                if (reading.Contains(speakerName, StringComparison.OrdinalIgnoreCase) ||
+                                    speakerName.Contains(reading, StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(speakerNorm, readingNorm, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    WriteRuntimeLog($"  Reading property match: '{speakerName}' via {propName}='{reading}' on '{kv.Key}'");
+                                    return kv.Value;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// キャラクター名を正規化: よくある接頭辞を除去
+        /// </summary>
+        private static string NormalizeCharacterName(string name)
+        {
+            // よくある接頭辞を除去
+            foreach (var prefix in new[] { "ゆっくり", "softalk_", "voicevox_", "coeiroink_", "VOICEVOX_" })
+            {
+                if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    name = name.Substring(prefix.Length);
+                    break;
+                }
+            }
+            return name.Trim();
+        }
+
+        /// <summary>
         /// Calculate zoom percentage to fit image to video dimensions (contain mode).
         /// Returns 100.0 if image size cannot be determined.
         /// </summary>
@@ -678,6 +1407,387 @@ namespace NLMSlidePlugin.TimelinePlugin
             }
         }
 
+        /// <summary>
+        /// Apply Ken Burns animation to an ImageItem (SP-029).
+        /// Sets Zoom to animate from startZoom to endZoom over the item's duration.
+        /// </summary>
+        internal static void ApplyKenBurnsZoom(ImageItem imageItem, double startZoom, double endZoom)
+        {
+            try
+            {
+                var zoomProp = imageItem.GetType().GetProperty("Zoom");
+                if (zoomProp is null) return;
+                var zoomObj = zoomProp.GetValue(imageItem);
+                if (zoomObj is null) return;
+
+                // Set AnimationType to "直線" (linear)
+                var animTypeProp = zoomObj.GetType().GetProperty("AnimationType");
+                if (animTypeProp is not null)
+                {
+                    var animType = animTypeProp.PropertyType;
+                    // AnimationType is an enum — find "直線" value
+                    if (animType.IsEnum)
+                    {
+                        foreach (var val in Enum.GetValues(animType))
+                        {
+                            if (val.ToString() == "直線")
+                            {
+                                animTypeProp.SetValue(zoomObj, val);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Set Values to [startZoom, endZoom]
+                var valuesProp = zoomObj.GetType().GetProperty("Values");
+                if (valuesProp is null) return;
+                var values = valuesProp.GetValue(zoomObj);
+                if (values is null) return;
+
+                var indexer = values.GetType().GetProperty("Item");
+                if (indexer is null) return;
+
+                // Set first value (start)
+                var firstValue = indexer.GetValue(values, new object[] { 0 });
+                if (firstValue is not null)
+                {
+                    var valueProp = firstValue.GetType().GetProperty("Value");
+                    valueProp?.SetValue(firstValue, startZoom);
+                }
+
+                // Add second value (end) — need to create a new AnimationValue entry
+                var countProp = values.GetType().GetProperty("Count");
+                int count = countProp is not null ? (int)countProp.GetValue(values)! : 0;
+
+                if (count < 2)
+                {
+                    // Try to add a new value using Add method
+                    var addMethod = values.GetType().GetMethod("Add");
+                    if (addMethod is not null && firstValue is not null)
+                    {
+                        // Create a copy of the first value type
+                        var newValue = Activator.CreateInstance(firstValue.GetType());
+                        if (newValue is not null)
+                        {
+                            var valueProp2 = newValue.GetType().GetProperty("Value");
+                            valueProp2?.SetValue(newValue, endZoom);
+                            addMethod.Invoke(values, new object[] { newValue });
+                        }
+                    }
+                }
+                else
+                {
+                    // Second value already exists, just update it
+                    var secondValue = indexer.GetValue(values, new object[] { 1 });
+                    if (secondValue is not null)
+                    {
+                        var valueProp2 = secondValue.GetType().GetProperty("Value");
+                        valueProp2?.SetValue(secondValue, endZoom);
+                    }
+                }
+
+                WriteRuntimeLog($"ApplyKenBurnsZoom: {startZoom}% → {endZoom}%");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyKenBurnsZoom failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Apply subtitle styling to a TextItem via Reflection (SP-030).
+        /// Sets Y position to bottom area, font size, and text color.
+        /// </summary>
+        internal static void ApplySubtitleStyle(TextItem textItem, int videoHeight, int fontSize = 48)
+        {
+            try
+            {
+                bool ySet = false;
+                bool fontSet = false;
+
+                // Position subtitle at bottom area of screen
+                // Y is an AnimationValue — use the same pattern as Zoom/Opacity
+                var yProp = textItem.GetType().GetProperty("Y");
+                if (yProp != null)
+                {
+                    var yObj = yProp.GetValue(textItem);
+                    if (yObj != null)
+                    {
+                        var valuesProp = yObj.GetType().GetProperty("Values");
+                        if (valuesProp != null)
+                        {
+                            var values = valuesProp.GetValue(yObj);
+                            if (values != null)
+                            {
+                                var indexer = values.GetType().GetProperty("Item");
+                                if (indexer != null)
+                                {
+                                    var firstValue = indexer.GetValue(values, new object[] { 0 });
+                                    var valueProp = firstValue?.GetType().GetProperty("Value");
+                                    if (valueProp != null && valueProp.CanWrite)
+                                    {
+                                        double yPos = videoHeight * 0.35;
+                                        valueProp.SetValue(firstValue, yPos);
+                                        ySet = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // FontSize — try multiple approaches since it may be read-only
+                var fontSizeProp = textItem.GetType().GetProperty("FontSize");
+                if (fontSizeProp != null)
+                {
+                    if (fontSizeProp.CanWrite)
+                    {
+                        // Direct setter available
+                        fontSizeProp.SetValue(textItem, fontSize);
+                        fontSet = true;
+                    }
+                    else
+                    {
+                        // FontSize is read-only — try setting via backing field
+                        var backingField = textItem.GetType().GetField("<FontSize>k__BackingField",
+                            BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (backingField != null)
+                        {
+                            backingField.SetValue(textItem, fontSize);
+                            fontSet = true;
+                        }
+                        else
+                        {
+                            // Try common field naming patterns
+                            foreach (var fieldName in new[] { "_fontSize", "fontSize", "m_fontSize" })
+                            {
+                                var field = textItem.GetType().GetField(fieldName,
+                                    BindingFlags.NonPublic | BindingFlags.Instance);
+                                if (field != null)
+                                {
+                                    field.SetValue(textItem, fontSize);
+                                    fontSet = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                WriteRuntimeLog($"ApplySubtitleStyle: Y={ySet}, fontSize={fontSet} (videoHeight={videoHeight})");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplySubtitleStyle failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Apply fade-in effect to an ImageItem via Reflection (SP-030).
+        /// Sets Opacity animation from 0% to 100% over fadeFrames.
+        /// </summary>
+        internal static void ApplyImageFade(ImageItem imageItem, int fadeFrames = 10)
+        {
+            try
+            {
+                var opacityProp = imageItem.GetType().GetProperty("Opacity");
+                if (opacityProp is null) return;
+                var opacityObj = opacityProp.GetValue(imageItem);
+                if (opacityObj is null) return;
+
+                // Set AnimationType to "直線" (linear)
+                var animTypeProp = opacityObj.GetType().GetProperty("AnimationType");
+                if (animTypeProp != null)
+                {
+                    var enumType = animTypeProp.PropertyType;
+                    var enumValues = Enum.GetValues(enumType);
+                    foreach (var ev in enumValues)
+                    {
+                        if (ev.ToString() == "直線")
+                        {
+                            animTypeProp.SetValue(opacityObj, ev);
+                            break;
+                        }
+                    }
+                }
+
+                // Set Values[0] = 0 (start transparent), Values[1] = 100 (end opaque)
+                var valuesProp = opacityObj.GetType().GetProperty("Values");
+                if (valuesProp is null) return;
+                var values = valuesProp.GetValue(opacityObj);
+                if (values is null) return;
+
+                var indexer = values.GetType().GetProperty("Item");
+                if (indexer is null) return;
+                var firstValue = indexer.GetValue(values, new object[] { 0 });
+                var valueProp = firstValue?.GetType().GetProperty("Value");
+                valueProp?.SetValue(firstValue, 0.0); // start at 0% opacity
+
+                // Add second keyframe at 100%
+                var countProp = values.GetType().GetProperty("Count");
+                int count = (int)(countProp?.GetValue(values) ?? 0);
+                if (count < 2)
+                {
+                    var firstValueType = firstValue?.GetType();
+                    if (firstValueType != null)
+                    {
+                        var newValue = Activator.CreateInstance(firstValueType);
+                        var newValueProp = firstValueType.GetProperty("Value");
+                        newValueProp?.SetValue(newValue, 100.0);
+                        var addMethod = values.GetType().GetMethod("Add");
+                        addMethod?.Invoke(values, new[] { newValue });
+                    }
+                }
+                else
+                {
+                    var secondValue = indexer.GetValue(values, new object[] { 1 });
+                    var secondValueProp = secondValue?.GetType().GetProperty("Value");
+                    secondValueProp?.SetValue(secondValue, 100.0);
+                }
+
+                WriteRuntimeLog($"ApplyImageFade: 0% → 100% over {fadeFrames} frames");
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"ApplyImageFade failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get WAV file duration in seconds (SP-028: Post-Voice Timeline Resync).
+        /// Returns null if the file cannot be read.
+        /// </summary>
+        internal static double? GetWavDurationSeconds(string audioFilePath)
+        {
+            try
+            {
+                using var fs = new FileStream(audioFilePath, FileMode.Open, FileAccess.Read);
+                using var reader = new BinaryReader(fs);
+                // RIFF header
+                if (new string(reader.ReadChars(4)) != "RIFF") return null;
+                reader.ReadInt32(); // file size
+                if (new string(reader.ReadChars(4)) != "WAVE") return null;
+
+                int sampleRate = 0;
+                int byteRate = 0;
+                int dataSize = 0;
+                bool foundFmt = false;
+                bool foundData = false;
+
+                while (fs.Position < fs.Length - 8)
+                {
+                    string chunkId = new string(reader.ReadChars(4));
+                    int chunkSize = reader.ReadInt32();
+                    if (chunkId == "fmt ")
+                    {
+                        reader.ReadInt16(); // audio format
+                        reader.ReadInt16(); // num channels
+                        sampleRate = reader.ReadInt32();
+                        byteRate = reader.ReadInt32();
+                        // skip rest of fmt chunk
+                        int remaining = chunkSize - 12;
+                        if (remaining > 0) reader.ReadBytes(remaining);
+                        foundFmt = true;
+                    }
+                    else if (chunkId == "data")
+                    {
+                        dataSize = chunkSize;
+                        foundData = true;
+                        break;
+                    }
+                    else
+                    {
+                        // skip unknown chunk
+                        if (chunkSize > 0) reader.ReadBytes(chunkSize);
+                    }
+                }
+
+                if (foundFmt && foundData && byteRate > 0)
+                {
+                    return (double)dataSize / byteRate;
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                WriteRuntimeLog($"GetWavDurationSeconds failed for {audioFilePath}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Pre-import quality validation (SP-031).
+        /// Checks CSV items for common issues before importing to timeline.
+        /// Returns a list of warning messages (empty = all clear).
+        /// </summary>
+        internal static List<string> ValidateImportItems(IEnumerable<CsvTimelineItem> items)
+        {
+            var warnings = new List<string>();
+            CsvTimelineItem? prev = null;
+            int rowIndex = 0;
+            CsvTimelineItem? lastItem = null;
+
+            foreach (var item in items)
+            {
+                rowIndex++;
+
+                // Check for missing audio files
+                if (!string.IsNullOrWhiteSpace(item.AudioFilePath) && !File.Exists(item.AudioFilePath))
+                {
+                    warnings.Add($"Row {rowIndex}: Audio file not found: {item.AudioFilePath}");
+                }
+
+                // Check for missing image files
+                if (!string.IsNullOrWhiteSpace(item.ImageFilePath) && !File.Exists(item.ImageFilePath))
+                {
+                    warnings.Add($"Row {rowIndex}: Image file not found: {item.ImageFilePath}");
+                }
+
+                // Check for zero or negative duration
+                if (item.Duration.HasValue && item.Duration.Value <= 0)
+                {
+                    warnings.Add($"Row {rowIndex}: Invalid duration: {item.Duration.Value}");
+                }
+
+                // Check for empty text when no audio
+                if (string.IsNullOrWhiteSpace(item.Text) && string.IsNullOrWhiteSpace(item.AudioFilePath))
+                {
+                    warnings.Add($"Row {rowIndex}: No text and no audio — row may be empty");
+                }
+
+                // Check for gaps between items (> 1 second gap)
+                if (prev != null)
+                {
+                    double prevEnd = prev.StartTime + (prev.Duration ?? 3.0);
+                    double gap = item.StartTime - prevEnd;
+                    if (gap > 1.0)
+                    {
+                        warnings.Add($"Row {rowIndex}: Gap of {gap:F1}s detected after previous item");
+                    }
+                    if (gap < -0.1)
+                    {
+                        warnings.Add($"Row {rowIndex}: Overlap of {-gap:F1}s with previous item");
+                    }
+                }
+
+                prev = item;
+                lastItem = item;
+            }
+
+            // Total duration check
+            if (lastItem != null)
+            {
+                double totalDuration = lastItem.StartTime + (lastItem.Duration ?? 3.0);
+                if (totalDuration > 3600)
+                {
+                    warnings.Add($"Total duration exceeds 1 hour: {totalDuration / 60:F1} minutes");
+                }
+            }
+
+            return warnings;
+        }
+
         private static int GetImportBaseLayer(Timeline timeline)
         {
             var selectedLayers = timeline.LayerSelection.GetSelectedLayers().ToArray();
@@ -699,6 +1809,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int AudioItems,
             int TextItems,
             int ImageItems,
+            int VoiceItems,
             int SkippedRows,
             int TimelineItemsAfterImport);
     }

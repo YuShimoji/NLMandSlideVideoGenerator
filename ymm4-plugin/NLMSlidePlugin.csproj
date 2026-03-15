@@ -19,6 +19,7 @@
 		<Compile Remove="tests_backup/**" />
 		<Compile Remove="Core/**" />
 		<Compile Remove="TextCompletionPlugin/**" />
+		<Compile Remove="tools/**" />
 	</ItemGroup>
 
 	<ItemGroup>
