@@ -104,7 +104,7 @@ class TextSlideGenerator:
             from config.settings import settings
             theme_name = settings.PLACEHOLDER_THEME
             themes = settings.PLACEHOLDER_THEMES
-            return themes.get(theme_name, themes.get("dark", {}))
+            return themes.get(theme_name, themes.get("dark", {}))  # type: ignore[no-any-return]
         except ImportError:
             # settings不在時のフォールバック
             return {

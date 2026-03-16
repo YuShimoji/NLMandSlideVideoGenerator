@@ -76,7 +76,7 @@ class BasicTimelinePlanner(ITimelinePlanner):
 
     def _normalize_segment(self, segment: Any, index: int, fallback_duration: float) -> Dict[str, Any]:
         if is_dataclass(segment):
-            data = asdict(segment)
+            data = asdict(segment)  # type: ignore[arg-type]
         elif hasattr(segment, "__dict__") and not isinstance(segment, dict):
             data = dict(segment.__dict__)
         else:

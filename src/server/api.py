@@ -94,7 +94,7 @@ def _convert(obj: Any) -> Any:
     if isinstance(obj, tuple):
         return list(obj)
     if is_dataclass(obj):
-        return asdict(obj)
+        return asdict(obj)  # type: ignore[arg-type]
     return obj
 
 
@@ -109,7 +109,7 @@ def _to_dict(obj: Any) -> Any:
     # 2nd attempt: dataclass conversion
     if is_dataclass(obj):
         try:
-            return json.loads(json.dumps(asdict(obj), default=_convert))
+            return json.loads(json.dumps(asdict(obj), default=_convert))  # type: ignore[arg-type]
         except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
             pass
 
