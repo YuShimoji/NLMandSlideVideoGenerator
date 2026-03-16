@@ -1,54 +1,57 @@
 # HANDOVER
 
-Timestamp: 2026-03-14
+Timestamp: 2026-03-17
 Actor: Claude Code (Driver)
-Type: Session 7 Handover
+Type: Session Handover (全SP完了後)
 
 ## Current Status
 
-- **DONE**: SP-024 Voice自動生成UI実装
-- **DONE**: SP-026 ImageItem自動配置 (CSV 3列目方式)
-- **DONE**: 仕様整理・レガシー掃除 (backlog.md刷新、MoviePy参照確認、backup削除)
-- **IN_PROGRESS**: `TASK_023` E2E実証 — ImageItem実機テストが次のブロッカー
+全仕様書(SP-001〜SP-033)完了。中期ロードマップフェーズへ移行。
 
-## Session 7 Summary (2026-03-14)
-
-### Completed Work
-1. **ImageItem API調査**: YMM4 DLLバイナリ解析 + .ymmpファイル逆引きでImageItemの構造を完全特定
-2. **SP-026 ImageItem自動配置実装**: CsvTimelineReader, Ymm4TimelineImporter, CsvImportDialog の3ファイル変更
-3. **ビルド確認**: NLMSlidePlugin.dll + Core.dll: 0 error, Python 69/1
-4. **仕様ドキュメント同期**: ymm4_export_spec.md, ymm4_final_workflow.md, spec-index.json, CLAUDE.md, backlog.md
-5. **レガシー掃除**: CsvImportMenuPlugin.cs.backup削除, backlog.md刷新, system_architecture.puml MoviePy修正, project_completion_report.md→archive移動
-
-### Key Discovery
-- YMM4 ImageItem: `$type=YukkuriMovieMaker.Project.Items.ImageItem`, FilePath プロパティで画像パス指定
-- PlaybackRate: ImageItemは100.0 (AudioItem/TextItemの1.0とは異なる、パーセント表記)
-- Layer配置: Audio=N, Text=N+1, Image=N+2
-
-## Quality Gate
-
-| Area | Result |
-|---|---|
-| Python tests | 69 passed, 1 deselected |
-| .NET build | 0 errors, 0 warnings |
-| .NET tests | hostfxr.dll問題で実行不可 (環境依存、コード問題なし) |
+| 領域 | 状態 | 備考 |
+|------|------|------|
+| SP-033 Phase 3 | DONE | AIImageProvider (Gemini Imagen 3.0) + Orchestrator 3層フォールバック |
+| SP-031 BGM | DONE | style_template.json v1.1 + Python/C#双方対応 |
+| SP-034 再開機能 | DONE | PipelineState永続化 + CLI --resume |
+| テスト | 330 passed | Python全テストPASS |
+| ドキュメント | 同期済み | spec-index.json, backlog.md, 各仕様書を実装に同期 |
 
 ## Production Path
 
-- **Path A (only)**: CSV(話者,テキスト,画像パス) → YMM4 (NLMSlidePlugin: AudioItem+TextItem+ImageItem) → voice gen (台本機能) → render → mp4
+```
+CSV(話者,テキスト,画像パス,アニメ) → YMM4 (NLMSlidePlugin CSVインポート) → 音声生成(台本機能) → 動画出力 → mp4
+```
 
-## Horizon
+## Git State
 
-| 尺度 | タスク | 状態 |
-|---|---|---|
-| 短期 | ImageItem実機テスト (YMM4でCSVインポート→画像表示確認) | NEXT |
-| 短期 | 画像の位置・サイズ調整 (全画面フィット) | TODO |
-| 中期 | アニメーション (パン・ズーム等) | TODO |
-| 中期 | slides_payload.jsonとの統合 | TODO |
-| 長期 | 品質成熟 | TODO |
+- Branch: `master`
+- HEAD: `3a9460d` (docs: SP-004 ymm4_export_spec ステータス行を簡素化)
+- Remote: `origin/master` と同期済み
+- Working tree: clean
+
+## Next Actions (中期ロードマップ)
+
+| 優先度 | タスク | 備考 |
+|--------|--------|------|
+| HIGH | YMM4実機テスト | BGMテンプレート + ストック画像CSV + 字幕テンプレート全統合確認 |
+| HIGH | Geminiクォータリセット後の実コンテンツ確認 | 無料枠20req/day制限下での品質評価 |
+| MID | ドキュメント整備 | SP-006 (90%), SP-007 (85%) の残り |
+| MID | Gemini有料プラン検討 | 本番運用時の費用対効果 |
+| LOW | Docker化 / CI-CD強化 | 長期 |
+
+## Key Architecture
+
+- **Python層**: CSV生成 + 素材パイプライン (collect→script→align→review→CsvAssembler)
+- **C#層**: NLMSlidePlugin (YMM4プラグイン: CSVインポート→タイムライン生成)
+- **素材取得**: 3層フォールバック (Pexels/Pixabay → Gemini Imagen → TextSlide)
+- **スタイル**: style_template.json v1.1 (video/subtitle/animation/bgm/crossfade/timing/validation)
+- **Geminiモデル**: フォールバックチェーン (2.5-flash → 2.0-flash → モック)
 
 ## Primary References
 
-- `docs/ymm4_export_spec.md` — セクション11: ImageItem実装仕様
-- `docs/backlog.md` — 刷新済みバックログ
-- `samples/ymmp/bgtest.ymmp` — ImageItem構造の参照サンプル
+- `docs/spec-index.json` — 全33仕様の状態一覧
+- `docs/backlog.md` — バックログ + ロードマップ
+- `docs/ymm4_export_spec.md` — YMM4エクスポート仕様
+- `docs/visual_resource_pipeline_spec.md` — 素材パイプライン仕様
+- `docs/video_quality_pipeline_spec.md` — 品質パイプライン仕様
+- `CLAUDE.md` — プロジェクトコンテキスト + DECISION LOG

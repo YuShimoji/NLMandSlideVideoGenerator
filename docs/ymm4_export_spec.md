@@ -18,16 +18,22 @@
 
 | 機能 | 状態 | 備考 |
 |------|------|------|
-| YMM4 プロジェクトディレクトリ生成 | ✅ 実装済み | |
-| timeline_plan.json 出力 | ✅ 実装済み | |
-| slides_payload.json 出力 | ✅ 実装済み | CSV タイムライン連携 |
-| テンプレート .y4mmp 複製 | ✅ 実装済み | |
-| 音声アセットコピー | ✅ 実装済み | |
-| AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
 | YMM4 NLMSlidePlugin (CSV Import) | ✅ 実装済み | CsvImportDialog + Ymm4TimelineImporter |
-| YMM4 Voice自動生成 UI接続 | ✅ 実装済み | VoiceSpeakerDiscovery + CsvImportDialog拡張 (SP-024) |
-| YMM4 ImageItem自動配置 | ✅ 実装済み | CSV 3列目に画像パス指定 → ImageItemとしてタイムライン配置 (SP-026) |
-| 動画出力 | ❌ 削除済み | MoviePy backend 削除済み (2026-03-08) |
+| YMM4 Voice自動生成 UI接続 | ✅ 実装済み | VoiceSpeakerDiscovery (SP-024) |
+| ImageItem自動配置 | ✅ 実装済み | CSV 3列目画像パス → ImageItem (SP-026) |
+| WAV実尺タイムライン同期 | ✅ 実装済み | WavDurationReader (SP-028) |
+| 7種アニメーション | ✅ 実装済み | ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static (SP-033) |
+| クロスフェードトランジション | ✅ 実装済み | FadeIn/FadeOut 0.5秒、交互レイヤー (SP-030) |
+| 字幕テンプレート | ✅ 実装済み | ApplySubtitleStyle: 話者色6色+Border+CenterBottom (SP-030) |
+| スタイルテンプレート | ✅ 実装済み | style_template.json Python/C#共有 (SP-031) |
+| Pre-Export Validation | ✅ 実装済み | ValidateImportItems: 連続同一画像検出+統計 (SP-031) |
+| BGMテンプレート自動配置 | ✅ 実装済み | style_template.json bgmセクション (SP-031) |
+| ビジュアルリソースパイプライン | ✅ 実装済み | StockImage + AIImage + TextSlide + Orchestrator (SP-033) |
+| YMM4 プロジェクトディレクトリ生成 | ✅ 実装済み | Python側 YMM4EditingBackend |
+| timeline_plan.json / slides_payload.json | ✅ 実装済み | CSV タイムライン連携 |
+| テンプレート .y4mmp 複製 | ✅ 実装済み | |
+| AutoHotkey スクリプト生成 | ⚠️ PoC | プレースホルダー操作のみ |
+| 動画出力 (MoviePy) | ❌ 削除済み | 2026-03-08 削除 |
 
 ---
 
@@ -64,42 +70,49 @@
 ### 2.2 現状の実装ワークフロー（Path A 一本化後）
 
 ```
-┌─────────────────┐
-│ timeline_plan   │
-│ audio           │──▶ YMM4EditingBackend
-│ slides          │
-│ transcript      │
-└─────────────────┘
+[Research CLI / Web UI]
          │
          ▼
-┌─────────────────────────────────────────┐
-│ 1. プロジェクトディレクトリ作成         │
-│ 2. テンプレート .y4mmp 複製             │
-│ 3. timeline_plan.json 出力              │
-│ 4. slides_payload.json 出力             │
-│ 5. CSV ソースコピー                      │
-│ 6. AutoHotkey スクリプト生成 (PoC)      │
-│ 7. render_metadata.json 出力            │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ Stage 1: 素材収集                        │
+│ collect → script → align → review        │
+│ → ScriptBundle                           │
+└──────────────────────────────────────────┘
          │
          ▼
-┌─────────────────┐
-│ YMM4 Project    │ ← ユーザーがYMM4で開き、音声生成+レンダリング
-│ export_outputs  │
-└─────────────────┘
+┌──────────────────────────────────────────┐
+│ Stage 2: ビジュアル+CSV生成              │
+│ SegmentClassifier → StockImageClient     │
+│ → AIImageProvider → Orchestrator         │
+│ → CsvAssembler → Pre-Export Validator    │
+│ → 4列CSV (speaker,text,image,animation) │
+└──────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────────┐
+│ Stage 3: YMM4 NLMSlidePlugin             │
+│ CsvImportDialog でCSVインポート          │
+│ → AudioItem + TextItem + ImageItem 自動配置│
+│ → StyleTemplate適用 (字幕/アニメ/BGM)    │
+│ → VoiceSpeakerDiscovery で音声生成       │
+│ → YMM4 レンダリング → mp4               │
+└──────────────────────────────────────────┘
 ```
 
-### 2.3 設計と実装のギャップ（2026-03-10 更新）
+> Python側 YMM4EditingBackend による timeline_plan.json / slides_payload.json 出力も利用可能だが、
+> 主要ワークフローは上記の Research CLI → 4列CSV → NLMSlidePlugin CSVインポート。
+
+### 2.3 設計と実装のギャップ（2026-03-17 更新）
 
 | 設計項目 | 設計意図 | 現状 | ギャップ |
 |----------|----------|------|----------|
 | YMM4 API 連携 | API 経由でタイムライン挿入 | .NET Plugin で実装済み | なし |
-| 書き出し方式 | YMM4 で音声生成+レンダリング | YMM4 手動実行 | 自動化は今後の課題 |
+| 書き出し方式 | YMM4 で音声生成+レンダリング | YMM4 手動実行 | 書き出し自動化は未着手 |
 | AutoHotkey | GUI 操作で書き出し | PoC（プレースホルダー） | 中 |
-| テンプレート差分 | 差分適用でカスタマイズ | プロトタイプのみ | 中 |
-| アセット管理 | timeline_plan/slides_payload 出力 | 実装済み | なし |
-
-**注**: MoviePy フォールバックは 2026-03-08 に削除されました。
+| スタイルテンプレート | Python/C#統一スタイル管理 | style_template.json共有 | なし |
+| ビジュアルリソース | 画像素材自動取得 | StockImage+AIImage+TextSlide | なし |
+| アニメーション | 7種自動割当 | AnimationAssigner+ApplyAnimationDirect | pan_down未実装 |
+| Pre-Export検証 | インポート前品質チェック | ValidateImportItems拡張済み | なし |
 
 ---
 
@@ -219,35 +232,38 @@ artifacts.editing_outputs = {
 
 ## 4. 使用方法
 
-### 4.1 CLI 経由
+### 4.1 Research CLI（推奨ワークフロー）
 
 ```bash
-# CSV タイムラインモードで YMM4 エクスポート
+# 一気通貫パイプライン: トピック → 4列CSV
+source venv/Scripts/activate
+python scripts/research_cli.py pipeline "テスト動画" --auto-images --duration 10
+
+# 個別ステップ実行
+python scripts/research_cli.py collect "テスト動画"
+python scripts/research_cli.py script "テスト動画"
+python scripts/research_cli.py align "テスト動画"
+python scripts/research_cli.py review "テスト動画"
+
+# 途中再開 (SP-034)
+python scripts/research_cli.py pipeline "テスト動画" --resume
+```
+
+### 4.2 Web UI 経由
+
+```bash
 streamlit run src/web/web_app.py
-# ブラウザで「CSV Pipeline」ページを選択し、CSV/音声素材を入力して実行
-
-# 通常モードで YMM4 バックエンド使用
-# (config/settings.py で EDITING_BACKEND=ymm4 を設定)
-python run_modular_demo.py --topic "テスト動画"
+# ブラウザで「素材パイプライン」ページから実行
 ```
 
-### 4.2 API 経由
+### 4.3 YMM4 CSVインポート（Stage 3）
 
-```bash
-curl -X POST http://localhost:8000/api/v1/pipeline/csv \
-  -H "Content-Type: application/json" \
-  -d '{
-    "csv_path": "data/timeline.csv",
-    "export_ymm4": true
-  }'
-```
-
-### 4.3 手動 YMM4 編集
-
-1. 出力された `project.y4mmp` を YMM4 で開く
-2. NLMSlidePlugin で `text/timeline.csv` をインポートしてタイムラインを構築
-3. YMM4 内蔵の音声エンジンでボイスを生成
-4. YMM4 で書き出し
+1. YMM4 を起動し、NLMSlidePlugin がロードされていることを確認
+2. プラグインの「CSVインポート」ボタンから生成された 4列CSV を選択
+3. BGMファイルを選択（オプション）
+4. 「音声を自動生成」チェックボックスがONであることを確認
+5. 「インポート」を実行 → AudioItem + TextItem + ImageItem が自動配置
+6. YMM4 で書き出し → mp4
 
 ---
 
@@ -437,22 +453,30 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ## 9. 今後のロードマップ
 
-### 9.1 短期（安定化）✅ 完了
+### 9.1 完了済み
 
-- [x] AutoHotkey 連携の実用化 (C3-4)
-- [x] フォールバック戦略の完成 (C3-3)
-- [x] テンプレート差分適用の整理 (C3-5)
+- [x] AutoHotkey 連携実用化 (C3-4)
+- [x] フォールバック戦略 (C3-3)
+- [x] CSV 4列目アニメーション指定 (SP-033 Phase 1)
+- [x] ストック画像自動取得 (SP-033 Phase 2)
+- [x] AI画像生成 Gemini Imagen (SP-033 Phase 3)
+- [x] テキストスライド自動生成 (SP-033 Phase 3b)
+- [x] スタイルテンプレート統一 (SP-031)
+- [x] BGMテンプレート自動配置 (SP-031)
+- [x] Pre-Export Validation (SP-031)
+- [x] パイプラインステップ再開 (SP-034)
 
-### 9.2 中期（API連携）
+### 9.2 短期（品質向上）
 
-- [ ] YMM4 API / プラグインAPI (https://ymm-api-docs.vercel.app/) 調査
-- [ ] API/プラグイン クライアント実装
-- [ ] タイムライン挿入機能
+- [ ] pan_down アニメーション追加（C# 3行 + Python validation 1行）
+- [ ] 実コンテンツでの品質確認（Geminiクォータリセット後）
+- [ ] BGMテンプレート + ストック画像CSV + 字幕テンプレートの YMM4 実機テスト
 
-### 9.3 長期（完全自動化）
+### 9.3 中長期
 
-- [ ] API 経由での書き出し
-- [ ] RSS連携による自動記事選定
+- [ ] YMM4 書き出し自動化（API or AutoHotkey改善）
+- [ ] Docker化 / CI-CD強化
+- [ ] バッチ処理 / 多言語対応
 
 ---
 
@@ -462,18 +486,20 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 - `docs/system_specification.md`: システム仕様書
 - `docs/system_architecture.md`: システムアーキテクチャ
 - `docs/ymm4_integration_arch.md`: YMM4 連携アーキテクチャ設計（全体フローと責務分担）
+- `docs/visual_resource_pipeline_spec.md`: ビジュアルリソースパイプライン仕様
+- `docs/video_quality_pipeline_spec.md`: 動画品質パイプライン仕様
 
 ---
 
-## 10. YMM4 Voice自動生成（Plan承認済）
+## 11. YMM4 Voice自動生成（実装完了）
 
-### 10.1 概要
+### 11.1 概要
 
 CSVインポート時にYMM4内蔵の音声エンジンで自動的にボイスを生成する機能。
 
 **Plan**: 本セクション (旧plan file: `.claude/plans/unified-imagining-feather.md` は削除済み)
 
-### 10.2 アーキテクチャ
+### 11.2 アーキテクチャ
 
 ```
 CsvImportDialog (WPF)
@@ -492,7 +518,7 @@ CsvImportDialog (WPF)
       └─ AddToTimelineWithVoiceAsync(items, timeline, speakers, voiceOutputDir)
 ```
 
-### 10.3 実装状況
+### 11.3 実装状況
 
 | コンポーネント | 状態 | 備考 |
 |---|---|---|
@@ -502,7 +528,7 @@ CsvImportDialog (WPF)
 | CsvImportDialog UI拡張 | ✅ 実装済み (2026-03-11) | 「音声を自動生成」チェックボックス（デフォルトON） |
 | ImportWithVoiceGenerationAsync | ✅ 実装済み (2026-03-11) | Dialog内の統合イベントハンドラ |
 
-### 10.4 YMM4「台本」機能との関係
+### 11.4 YMM4「台本」機能との関係
 
 YMM4自体に台本読み込み+音声生成機能が内蔵されている。
 NLMSlidePluginのVoice自動生成は、CSVインポートと音声生成を一括で行う利便性を提供するが、
@@ -515,7 +541,7 @@ YMM4の台本機能で同等のことが手動で実現可能。
 
 現時点ではどちらの手段でもE2E達成可能。プラグインの価値は一括処理の効率化にある。
 
-### 10.5 旧ブロッカー（解決済み）
+### 11.5 旧ブロッカー（解決済み）
 
 YMM4 SDK に IVoiceSpeaker 一覧を取得する公式 API が存在しない。
 
@@ -523,9 +549,9 @@ YMM4 SDK に IVoiceSpeaker 一覧を取得する公式 API が存在しない。
 
 ---
 
-## 11. スライド画像配置（SP-026: 基本実装完了）
+## 12. スライド画像配置（SP-026: 基本実装完了）
 
-### 11.1 実装状況
+### 12.1 実装状況
 
 CSV 3列目に画像ファイルパス（絶対パス）を指定すると、YMM4 ImageItemとしてタイムラインに自動配置される。
 
@@ -706,7 +732,7 @@ var item = new ImageItem { FilePath = filePath };
 
 ---
 
-## 12. 変更履歴
+## 13. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
