@@ -57,7 +57,7 @@ def _resolve_initial_page() -> str:
     """クエリまたは環境変数から初期ページを解決する。"""
     page_key = os.getenv("NLM_WEB_DEFAULT_PAGE", "").strip().lower()
     try:
-        page_key = st.query_params.get("page", page_key).strip().lower()
+        page_key = st.query_params.get("page", page_key).strip().lower()  # type: ignore[attr-defined]
     except Exception:
         pass
 
