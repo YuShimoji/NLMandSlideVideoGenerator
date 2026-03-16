@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from core.utils.logger import logger
 
-from .animation_assigner import AnimationAssigner
 from .models import (
     AnimationType,
     SegmentType,

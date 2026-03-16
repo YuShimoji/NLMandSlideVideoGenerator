@@ -8,9 +8,8 @@ PLACEHOLDER_THEMES (config/settings.py) のカラースキームを使用。
 from __future__ import annotations
 
 import hashlib
-import textwrap
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 

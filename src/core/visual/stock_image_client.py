@@ -7,14 +7,12 @@ Pexels / Pixabay の無料APIからキーワード検索で画像を取得し、
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote_plus
 
 import requests
 from requests.exceptions import ConnectionError, HTTPError, Timeout
@@ -97,7 +95,7 @@ class StockImageClient:
                 resp = self.session.get(
                     f"{self.PEXELS_BASE}/search",
                     headers={"Authorization": self.pexels_api_key},
-                    params={"query": "test", "per_page": 1},
+                    params={"query": "test", "per_page": "1"},
                     timeout=10,
                 )
                 if resp.status_code == 200:
@@ -375,9 +373,9 @@ class StockImageClient:
     def _build_query_from_segment(self, segment: Dict[str, Any]) -> str:
         """台本セグメントから検索クエリを生成。"""
         # key_points がある場合は最も具体的なキーワードを使用
-        key_points = segment.get("key_points", [])
-        section = segment.get("section", "")
-        content = segment.get("content", "") or segment.get("text", "")
+        key_points: List[str] = segment.get("key_points", [])
+        section: str = segment.get("section", "") or ""
+        content: str = (segment.get("content", "") or segment.get("text", "")) or ""
 
         if key_points:
             # key_points の先頭2つを結合（クエリ長制限: 80文字）
@@ -428,7 +426,8 @@ class StockImageClient:
                 model="gemini-2.0-flash",
                 contents=prompt,
             )
-            text = response.text.strip()
+            raw_text = response.text or ""
+            text = raw_text.strip()
 
             result = list(queries)
             lines = [line.strip() for line in text.split("\n") if line.strip()]

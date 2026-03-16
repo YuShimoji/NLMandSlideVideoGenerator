@@ -40,7 +40,7 @@ class GeminiIntegration:
 
     def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
-        self.model_name = model_name or os.environ.get("GEMINI_MODEL", self.DEFAULT_MODELS[0])
+        self.model_name: str = model_name or os.environ.get("GEMINI_MODEL") or self.DEFAULT_MODELS[0]
         self.fallback_models = [m for m in self.DEFAULT_MODELS if m != self.model_name]
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.request_count = 0
@@ -171,7 +171,8 @@ URL: {source.get('url', 'URL不明')}
         content_str = getattr(resp, "text", None)
         if not content_str:
             try:
-                content_str = json.dumps(resp.to_dict(), ensure_ascii=False)
+                to_dict = getattr(resp, "to_dict", None)
+                content_str = json.dumps(to_dict(), ensure_ascii=False) if to_dict else str(resp)
             except Exception:
                 content_str = json.dumps({
                     "title": "生成結果", "segments": [],

@@ -6,9 +6,8 @@ Gemini Imagen API を使用して、台本セグメントに基づく
 from __future__ import annotations
 
 import hashlib
-import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -213,8 +212,8 @@ class AIImageProvider:
             config=types.GenerateImagesConfig(
                 number_of_images=1,
                 aspect_ratio=self.aspect_ratio,
-                language="en",
-                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
+                language="en",  # type: ignore[arg-type]
+                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",  # type: ignore[arg-type]
                 output_mime_type="image/png",
             ),
         )
@@ -222,25 +221,29 @@ class AIImageProvider:
         if not response.images:
             return GeneratedImage(prompt=prompt, error="no_images_returned")
 
-        image = response.images[0]
+        img = response.images[0]
+        if img is None:
+            return GeneratedImage(prompt=prompt, error="null_image_entry")
 
         # RAIフィルタチェック
-        if image.rai_filtered_reason:
-            logger.warning(f"RAIフィルタ: {image.rai_filtered_reason}")
+        rai_reason = getattr(img, "rai_filtered_reason", None)
+        if rai_reason:
+            logger.warning(f"RAIフィルタ: {rai_reason}")
             return GeneratedImage(
                 prompt=prompt,
-                error=f"rai_filtered: {image.rai_filtered_reason}",
+                error=f"rai_filtered: {rai_reason}",
             )
 
-        if not image.image or not image.image.image_bytes:
+        img_data = getattr(img, "image", None)
+        if not img_data or not getattr(img_data, "image_bytes", None):
             return GeneratedImage(prompt=prompt, error="empty_image_data")
 
         # ファイル保存
         cache_key = hashlib.md5(prompt.encode()).hexdigest()[:12]
         file_path = self.cache_dir / f"ai_{cache_key}.png"
-        file_path.write_bytes(image.image.image_bytes)
+        file_path.write_bytes(img_data.image_bytes)
 
-        enhanced = image.enhanced_prompt or ""
+        enhanced = getattr(img, "enhanced_prompt", "") or ""
 
         logger.debug(f"AI画像生成成功: {file_path}")
         return GeneratedImage(

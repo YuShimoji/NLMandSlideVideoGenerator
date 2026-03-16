@@ -8,7 +8,6 @@
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -272,7 +271,8 @@ class SegmentClassifier:
                 model="gemini-2.0-flash",
                 contents=prompt,
             )
-            text = response.text.strip()
+            raw_text = response.text or ""
+            text = raw_text.strip()
 
             types: List[SegmentType] = []
             for line in text.split("\n"):
@@ -329,7 +329,8 @@ class SegmentClassifier:
                 model="gemini-2.0-flash",
                 contents=prompt,
             )
-            text = response.text.strip()
+            raw_text = response.text or ""
+            text = raw_text.strip()
 
             keywords: List[str] = []
             for line in text.split("\n"):

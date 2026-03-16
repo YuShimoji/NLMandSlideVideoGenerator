@@ -251,8 +251,8 @@ async def run_connection_tests():
     try:
         if settings.OPENAI_API_KEY:
             from openai import OpenAI
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            _ = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "ping"}], max_tokens=5)
+            openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            _ = openai_client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "ping"}], max_tokens=5)
             results["openai"] = {"success": True, "message": "ok"}
         else:
             results["openai"] = {"success": False, "message": "no key"}

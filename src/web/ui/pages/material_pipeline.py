@@ -177,9 +177,9 @@ def show_material_pipeline_page():
                 if loop and loop.is_running():
                     import concurrent.futures
                     with concurrent.futures.ThreadPoolExecutor() as pool:
-                        csv_path = pool.submit(asyncio.run, _execute()).result()
+                        csv_path: Path = pool.submit(asyncio.run, _execute()).result()  # type: ignore[assignment]
                 else:
-                    csv_path = asyncio.run(_execute())
+                    csv_path = asyncio.run(_execute())  # type: ignore[assignment]
 
             st.session_state.mp_result = {
                 "success": True,
@@ -216,12 +216,12 @@ def show_material_pipeline_page():
             with col_r2:
                 if csv_path.exists():
                     csv_content = csv_path.read_text(encoding="utf-8")
-                    lines = [l for l in csv_content.strip().split("\n") if l]
+                    lines = [line for line in csv_content.strip().split("\n") if line]
                     st.metric("CSV行数", len(lines))
 
             # Pre-Export 検証
             if csv_path.exists():
-                from core.export_validator import ExportValidator, Severity
+                from core.export_validator import ExportValidator
                 _validator = ExportValidator(check_image_exists=True)
                 _vresult = _validator.validate_csv(csv_path)
                 if _vresult.passed:

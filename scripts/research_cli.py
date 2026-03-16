@@ -81,7 +81,7 @@ async def run_alignment(package_path: Path, script_path: Path, output_dir: Path 
         f"missing={report.summary.get('missing', 0)}, "
         f"conflict={report.summary.get('conflict', 0)}"
     )
-    return report_path
+    return Path(report_path)
 
 
 async def run_review(
