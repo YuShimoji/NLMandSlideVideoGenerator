@@ -33,7 +33,7 @@
     "pct": 95,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。AudioItem+TextItem+ImageItem+クロスフェード+7種アニメーション+StyleTemplate統一読み込み実装済み。残: pan_down追加"
+    "summary": "CSV→YMM4エクスポート仕様。全主要機能実装済み: 4列CSV→AudioItem+TextItem+ImageItem自動配置、7種アニメーション、字幕テンプレート(話者色6色)、StyleTemplate統一、BGMテンプレート、Pre-Export検証、ビジュアルリソースパイプライン。残: pan_down追加"
   },
   {
     "id": "SP-005",
