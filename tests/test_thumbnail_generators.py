@@ -6,10 +6,13 @@ OpenSpec IThumbnailGeneratorの実装を検証
 
 import pytest
 import asyncio
+import json
 from unittest.mock import Mock
 from pathlib import Path
 import sys
 import tempfile
+
+from PIL import Image, ImageDraw, ImageFont
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
@@ -215,6 +218,201 @@ class TestTemplateThumbnailGenerator:
         assert 'classic' in generator.templates
         assert 'gaming' in generator.templates
         assert 'educational' in generator.templates
+
+class TestTemplateThumbnailGeneratorExtended:
+    """TemplateThumbnailGenerator の未カバーパスのテスト"""
+
+    @pytest.fixture
+    def mock_video_info(self):
+        return VideoInfo(
+            file_path=Path("test_video.mp4"),
+            duration=120.0,
+            resolution=(1920, 1080),
+            fps=30,
+            file_size=10000000,
+            has_subtitles=True,
+            has_effects=True,
+            created_at=datetime.now()
+        )
+
+    @pytest.fixture
+    def mock_script(self):
+        return {
+            "title": "テンプレートテスト",
+            "content": "テンプレートベースのサムネイル生成テスト",
+            "segments": [
+                {"text": "テストコンテンツ", "duration": 20, "segment_id": "seg_1"}
+            ]
+        }
+
+    @pytest.fixture
+    def mock_slides(self):
+        return SlidesPackage(
+            presentation_id="test_presentation",
+            slides=[Mock(title="テストスライド", content="テスト内容")],
+            total_slides=1
+        )
+
+    def test_load_json_templates_valid(self, tmp_path):
+        """有効なJSONテンプレートの読み込み"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        (tmpl_dir / "custom_style.json").write_text(
+            json.dumps({"width": 1920, "height": 1080, "background_color": "#ff0000", "text_elements": []}),
+            encoding="utf-8"
+        )
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        assert "custom_style" in gen.json_templates
+        assert gen.json_templates["custom_style"]["width"] == 1920
+
+    def test_load_json_templates_corrupt(self, tmp_path):
+        """破損JSONテンプレートはスキップされる"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        (tmpl_dir / "broken.json").write_text("{invalid json", encoding="utf-8")
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        assert "broken" not in gen.json_templates
+
+    def test_load_json_templates_empty_dir(self, tmp_path):
+        """空ディレクトリではテンプレートなし"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        assert gen.json_templates == {}
+
+    def test_load_json_templates_multiple(self, tmp_path):
+        """複数JSONテンプレートの読み込み"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        for name in ["style_a", "style_b", "style_c"]:
+            (tmpl_dir / f"{name}.json").write_text(
+                json.dumps({"width": 1280, "text_elements": []}),
+                encoding="utf-8"
+            )
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        assert len(gen.json_templates) == 3
+
+    @pytest.mark.asyncio
+    async def test_generate_unknown_style_fallback(self, mock_video_info, mock_script, mock_slides):
+        """不明なスタイルはmodernにフォールバック"""
+        gen = TemplateThumbnailGenerator()
+        result = await gen.generate(
+            video=mock_video_info,
+            script=mock_script,
+            slides=mock_slides,
+            style="nonexistent_style"
+        )
+        # modern テンプレートで生成される
+        assert result.file_path.exists()
+        assert result.resolution == (1280, 720)
+
+    @pytest.mark.asyncio
+    async def test_generate_json_template_has_resolve_bug(self, tmp_path, mock_video_info, mock_script, mock_slides):
+        """JSONテンプレートのtext_elementsは_resolve_text_placeholder未定義でAttributeError"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        (tmpl_dir / "json_style.json").write_text(
+            json.dumps({
+                "width": 1280, "height": 720,
+                "background_color": "#000000",
+                "text_elements": [{"text": "{title}", "position": [50, 50], "font_size": 36, "color": "#ffffff"}],
+                "image_elements": []
+            }),
+            encoding="utf-8"
+        )
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        with pytest.raises(AttributeError, match="_resolve_text_placeholder"):
+            await gen.generate(
+                video=mock_video_info,
+                script=mock_script,
+                slides=mock_slides,
+                style="json_style"
+            )
+
+    @pytest.mark.asyncio
+    async def test_generate_json_template_no_text_elements(self, tmp_path, mock_video_info, mock_script, mock_slides):
+        """text_elementsが空のJSONテンプレートは正常に生成される"""
+        tmpl_dir = tmp_path / "thumbnails"
+        tmpl_dir.mkdir()
+        (tmpl_dir / "minimal.json").write_text(
+            json.dumps({
+                "width": 800, "height": 600,
+                "background_color": "#336699",
+                "text_elements": [],
+                "image_elements": []
+            }),
+            encoding="utf-8"
+        )
+        gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
+        result = await gen.generate(
+            video=mock_video_info,
+            script=mock_script,
+            slides=mock_slides,
+            style="minimal"
+        )
+        assert result.file_path.exists()
+        assert result.resolution == (800, 600)
+        assert result.style == "minimal"
+        assert result.has_text_effects is True
+
+    def test_apply_gradient_two_colors(self):
+        """2色グラデーション"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (10, 10), (0, 0, 0))
+        result = gen._apply_gradient(img, [(0, 0, 0), (255, 255, 255)])
+        assert result.size == (10, 10)
+        # 上端は暗い、下端は明るい
+        top_pixel = result.getpixel((0, 0))
+        bottom_pixel = result.getpixel((0, 9))
+        assert top_pixel[0] < bottom_pixel[0]
+
+    def test_apply_gradient_single_color(self):
+        """1色（フォールバック）グラデーション"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (10, 10), (0, 0, 0))
+        result = gen._apply_gradient(img, [(128, 64, 32)])
+        # 全ピクセルが同じ色
+        assert result.getpixel((0, 0)) == (128, 64, 32)
+        assert result.getpixel((5, 5)) == (128, 64, 32)
+
+    def test_draw_centered_text(self):
+        """中央揃えテキスト描画が例外なく動作"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (1280, 720), (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        # 例外なく完了すること
+        gen._draw_centered_text(draw, "テスト", font, (255, 255, 255), 100)
+
+    def test_draw_glowing_text(self):
+        """光るテキスト描画が例外なく動作"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (1280, 720), (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+        gen._draw_glowing_text(draw, "Glow", font, 100)
+
+    def test_decoration_methods(self):
+        """各装飾メソッドが例外なく動作"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (1280, 720), (0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        gen._add_modern_decorations(draw, 1280, 720)
+        gen._add_classic_decorations(draw, 1280, 720)
+        gen._add_gaming_decorations(draw, 1280, 720)
+        gen._add_educational_decorations(draw, 1280, 720)
+
+    @pytest.mark.asyncio
+    async def test_save_thumbnail(self):
+        """サムネイル保存"""
+        gen = TemplateThumbnailGenerator()
+        img = Image.new('RGB', (100, 100), (255, 0, 0))
+        path = await gen._save_thumbnail(img, "test_style")
+        assert path.exists()
+        assert path.suffix == ".png"
+        assert path.stat().st_size > 0
+        path.unlink()  # cleanup
+
 
 class TestThumbnailIntegration:
     """サムネイル生成の統合テスト"""

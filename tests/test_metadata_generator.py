@@ -408,3 +408,229 @@ class TestGenerateChapters:
         transcript = _make_transcript(segments=segments)
         chapters = gen._generate_chapters(transcript)
         assert any("00:00" in ch for ch in chapters)
+
+
+class TestGenerateTitle:
+    def test_with_keywords(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_title_length = 100
+        segments = [_make_segment(key_points=["AI", "ML"])]
+        transcript = _make_transcript(title="AI解説", segments=segments)
+        title = gen._generate_title(transcript)
+        assert "AI" in title
+        assert len(title) <= 100
+
+    def test_no_keywords_uses_title(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_title_length = 100
+        transcript = _make_transcript(title="素晴らしいタイトル", segments=[])
+        title = gen._generate_title(transcript)
+        assert "素晴らしいタイトル" in title
+
+    def test_long_title_truncated(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_title_length = 20
+        transcript = _make_transcript(title="あ" * 50, segments=[])
+        title = gen._generate_title(transcript)
+        assert len(title) <= 20
+        assert title.endswith("...")
+
+
+class TestGenerateDescription:
+    def test_basic_structure(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_description_length = 5000
+        segments = [
+            _make_segment(id=1, start_time=0, end_time=60, speaker="A", key_points=["AI"]),
+        ]
+        transcript = _make_transcript(title="テスト", segments=segments)
+        desc = gen._generate_description(transcript)
+        assert "【動画概要】" in desc
+        assert "チャンネル登録" in desc
+
+    def test_includes_chapters(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_description_length = 5000
+        segments = [
+            _make_segment(id=1, start_time=0, end_time=60, speaker="A", key_points=["AI"]),
+            _make_segment(id=2, start_time=60, end_time=120, speaker="B", key_points=["ML"]),
+        ]
+        transcript = _make_transcript(segments=segments)
+        desc = gen._generate_description(transcript)
+        assert "【目次】" in desc
+
+    def test_short_limit_creates_shortened(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_description_length = 50
+        segments = [
+            _make_segment(id=1, start_time=0, end_time=60, speaker="A", key_points=["AI"]),
+        ]
+        transcript = _make_transcript(segments=segments)
+        desc = gen._generate_description(transcript)
+        assert isinstance(desc, str)
+
+
+class TestGenerateTags:
+    def test_includes_general_tags(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_tags_length = 500
+        segments = [_make_segment(key_points=["AI"])]
+        transcript = _make_transcript(segments=segments)
+        tags = gen._generate_tags(transcript)
+        assert "解説動画" in tags
+        assert "AI" in tags
+
+    def test_max_tags_limit(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_tags_length = 500
+        segments = [_make_segment(key_points=[f"kw{i}" for i in range(20)])]
+        transcript = _make_transcript(segments=segments)
+        tags = gen._generate_tags(transcript)
+        assert len(tags) <= 15
+
+    def test_tags_length_limit(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_tags_length = 30
+        segments = [_make_segment(key_points=["AI", "ML", "DL", "NLP"])]
+        transcript = _make_transcript(segments=segments)
+        tags = gen._generate_tags(transcript)
+        total = sum(len(t) for t in tags) + len(tags) - 1
+        assert total <= 30
+
+
+class TestCreateShortenedDescription:
+    def test_basic_structure(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        segments = [_make_segment(key_points=["AI"])]
+        transcript = _make_transcript(segments=segments)
+        desc = gen._create_shortened_description(transcript, "要約文", ["00:00 イントロ"])
+        assert "要約文" in desc
+        assert "00:00 イントロ" in desc
+
+
+class TestTemplateManagement:
+    def test_create_template(self, tmp_path):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.template_dir = tmp_path
+        gen.templates = {"default": {}}
+        gen.youtube_settings = {"category_id": "22", "default_language": "ja"}
+        metadata = {"title": "テンプレタイトル", "tags": ["tag1"]}
+        gen.create_template_from_metadata(metadata, "custom")
+        assert "custom" in gen.templates
+        assert (tmp_path / "custom.json").exists()
+
+    def test_edit_template(self, tmp_path):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.template_dir = tmp_path
+        gen.templates = {"default": {"title_template": "old"}}
+        gen.youtube_settings = {"category_id": "22", "default_language": "ja"}
+        (tmp_path / "default.json").write_text("{}", encoding="utf-8")
+        gen.edit_template("default", {"title_template": "new"})
+        assert gen.templates["default"]["title_template"] == "new"
+
+    def test_edit_nonexistent_raises(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.templates = {}
+        with pytest.raises(ValueError, match="見つかりません"):
+            gen.edit_template("nope", {})
+
+    def test_list_templates(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.templates = {"a": {}, "b": {}}
+        result = gen.list_templates()
+        assert "a" in result
+        assert "b" in result
+        assert result is not gen.templates
+
+
+class TestGenerateMetadataAsync:
+    @pytest.mark.asyncio
+    async def test_basic_generate(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_title_length = 100
+        gen.max_description_length = 5000
+        gen.max_tags_length = 500
+        gen.youtube_settings = {
+            "category_id": "22",
+            "default_language": "ja",
+            "privacy_status": "private",
+        }
+        gen.templates = {
+            "default": {
+                "title_template": "{topic} - {key_points}",
+                "description_template": "{topic}の解説。{toc}",
+                "tags_template": ["{topic}", "解説"],
+            }
+        }
+        segments = [_make_segment(key_points=["AI"])]
+        transcript = _make_transcript(title="テスト", segments=segments)
+        metadata = await gen.generate_metadata(transcript)
+        assert "title" in metadata
+        assert "description" in metadata
+        assert "tags" in metadata
+        assert metadata["category_id"] == "22"
+
+    @pytest.mark.asyncio
+    async def test_unknown_template_fallback(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.max_title_length = 100
+        gen.max_description_length = 5000
+        gen.max_tags_length = 500
+        gen.youtube_settings = {
+            "category_id": "22",
+            "default_language": "ja",
+            "privacy_status": "private",
+        }
+        gen.templates = {
+            "default": {
+                "title_template": "{topic}",
+                "description_template": "{topic}",
+                "tags_template": ["{topic}"],
+            }
+        }
+        transcript = _make_transcript(segments=[])
+        metadata = await gen.generate_metadata(transcript, template_name="nonexistent")
+        assert "title" in metadata
+
+
+class TestLoadTemplates:
+    def test_loads_json_files(self, tmp_path):
+        import json
+        template_data = {"title_template": "custom {topic}"}
+        (tmp_path / "custom.json").write_text(
+            json.dumps(template_data), encoding="utf-8"
+        )
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.template_dir = tmp_path
+        gen.youtube_settings = {"category_id": "22", "default_language": "ja"}
+        templates = gen._load_templates()
+        assert "custom" in templates
+        assert "default" in templates
+
+    def test_skips_invalid_json(self, tmp_path):
+        (tmp_path / "bad.json").write_text("not json", encoding="utf-8")
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.template_dir = tmp_path
+        gen.youtube_settings = {"category_id": "22", "default_language": "ja"}
+        templates = gen._load_templates()
+        assert "bad" not in templates
+        assert "default" in templates
+
+    def test_nonexistent_dir(self, tmp_path):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        gen.template_dir = tmp_path / "no_such_dir"
+        gen.youtube_settings = {"category_id": "22", "default_language": "ja"}
+        templates = gen._load_templates()
+        assert "default" in templates
+
+
+class TestGenerateTocString:
+    def test_basic(self):
+        gen = MetadataGenerator.__new__(MetadataGenerator)
+        segments = [
+            _make_segment(id=1, start_time=0, end_time=60, speaker="A", key_points=["AI"]),
+            _make_segment(id=2, start_time=60, end_time=120, speaker="B", key_points=["ML"]),
+        ]
+        transcript = _make_transcript(segments=segments)
+        toc = gen._generate_toc_string(transcript)
+        assert isinstance(toc, str)

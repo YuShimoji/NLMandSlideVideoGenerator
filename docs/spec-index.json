@@ -295,5 +295,14 @@
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
     "summary": "Phase1完了: 7種アニメーション実機テストPASS。Phase2完了: StockImageClient+Orchestrator+CLI/UI統合+エラーハンドリング+日本語クエリ翻訳。Phase3完了: AIImageProvider (Gemini Imagen) + stock→AI→slideフォールバック連鎖 + CLI/UI統合"
+  },
+  {
+    "id": "SP-034",
+    "title": "Pipeline Resume (PipelineState)",
+    "status": "done",
+    "pct": 100,
+    "cat": "pipeline",
+    "file": "docs/system_architecture.md",
+    "summary": "PipelineState永続化+CLI --resumeによるステージ単位の復旧。失敗ステップから再開可能。system_architecture.md/system_specification.mdに記載"
   }
 ]

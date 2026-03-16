@@ -292,3 +292,151 @@ class TestFixSegmentConsistency:
         transcript = _make_transcript(segments=[])
         result = proc._fix_segment_consistency(transcript)
         assert result.segments == []
+
+
+class TestStructureTranscript:
+    @pytest.mark.asyncio
+    async def test_basic_structuring(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        raw = "[00:00] A: AI技術の解説\n[00:15] B: 機械学習について"
+        audio_info = MagicMock()
+        audio_info.duration = 60.0
+        audio_info.file_path = "/tmp/test.wav"
+        result = await proc._structure_transcript(raw, audio_info)
+        assert isinstance(result, TranscriptInfo)
+        assert len(result.segments) == 2
+        assert result.total_duration <= 60.0
+
+    @pytest.mark.asyncio
+    async def test_empty_segments(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        audio_info = MagicMock()
+        audio_info.duration = 30.0
+        audio_info.file_path = "/tmp/test.wav"
+        result = await proc._structure_transcript("no timestamps here", audio_info)
+        assert result.segments == []
+        assert result.total_duration == 30.0
+
+    @pytest.mark.asyncio
+    async def test_no_audio_duration(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        raw = "[00:00] A: test\n[00:30] B: test2"
+        audio_info = MagicMock()
+        audio_info.duration = None
+        audio_info.file_path = "/tmp/test.wav"
+        result = await proc._structure_transcript(raw, audio_info)
+        assert result.total_duration == 45  # last segment: start=30, default end=30+15
+
+
+class TestVerifyAndCorrectTranscript:
+    @pytest.mark.asyncio
+    async def test_high_accuracy_no_correction(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.accuracy_threshold = 0.8
+        segments = [
+            _make_segment(start_time=0, end_time=15, confidence_score=0.95),
+            _make_segment(start_time=15, end_time=30, confidence_score=0.95),
+        ]
+        transcript = _make_transcript(segments=segments)
+        result = await proc._verify_and_correct_transcript(transcript)
+        assert result.accuracy_score >= 0.8
+
+    @pytest.mark.asyncio
+    async def test_low_accuracy_triggers_correction(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.accuracy_threshold = 0.9
+        segments = [
+            _make_segment(start_time=0, end_time=15, confidence_score=0.5),
+            _make_segment(start_time=20, end_time=30, confidence_score=0.5),  # gap
+        ]
+        transcript = _make_transcript(segments=segments, accuracy=0.5)
+        result = await proc._verify_and_correct_transcript(transcript)
+        assert result.accuracy_score >= transcript.accuracy_score
+
+
+class TestCorrectLowAccuracyTranscript:
+    @pytest.mark.asyncio
+    async def test_improves_confidence(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.accuracy_threshold = 0.9
+        segments = [
+            _make_segment(start_time=0, end_time=15, confidence_score=0.5),
+            _make_segment(start_time=15, end_time=30, confidence_score=0.6),
+        ]
+        transcript = _make_transcript(segments=segments, accuracy=0.5)
+        result = await proc._correct_low_accuracy_transcript(transcript)
+        for seg in result.segments:
+            assert seg.confidence_score >= 0.5
+
+    @pytest.mark.asyncio
+    async def test_strips_text(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.accuracy_threshold = 0.9
+        segments = [
+            _make_segment(confidence_score=0.5, text="  テスト  "),
+        ]
+        transcript = _make_transcript(segments=segments, accuracy=0.3)
+        result = await proc._correct_low_accuracy_transcript(transcript)
+        assert result.segments[0].text == "テスト"
+
+
+class TestSaveAndLoadTranscript:
+    @pytest.mark.asyncio
+    async def test_save_creates_files(self, tmp_path):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.output_dir = tmp_path
+        segments = [
+            _make_segment(start_time=0, end_time=15, text="テスト1"),
+            _make_segment(start_time=15, end_time=30, text="テスト2"),
+        ]
+        transcript = _make_transcript(segments=segments)
+        await proc._save_transcript(transcript)
+        json_files = list(tmp_path.glob("*.json"))
+        srt_files = list(tmp_path.glob("*.srt"))
+        assert len(json_files) == 1
+        assert len(srt_files) == 1
+
+    @pytest.mark.asyncio
+    async def test_save_as_srt_format(self, tmp_path):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        segments = [
+            _make_segment(id=1, start_time=0, end_time=15, text="Line 1"),
+            _make_segment(id=2, start_time=15, end_time=30, text="Line 2"),
+        ]
+        transcript = _make_transcript(segments=segments)
+        srt_path = tmp_path / "test.srt"
+        await proc._save_as_srt(transcript, srt_path)
+        content = srt_path.read_text(encoding="utf-8")
+        assert "1\n" in content
+        assert "00:00:00,000 --> 00:00:15,000" in content
+        assert "Line 1" in content
+
+    @pytest.mark.asyncio
+    async def test_load_transcript(self, tmp_path):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.output_dir = tmp_path
+        segments = [
+            _make_segment(start_time=0, end_time=15, text="Test"),
+        ]
+        transcript = _make_transcript(segments=segments)
+        await proc._save_transcript(transcript)
+        json_files = list(tmp_path.glob("*.json"))
+        loaded = await proc.load_transcript(json_files[0])
+        assert loaded.title == "テスト台本"
+        assert len(loaded.segments) == 1
+        assert loaded.segments[0].text == "Test"
+
+
+class TestProcessTranscriptAlias:
+    @pytest.mark.asyncio
+    async def test_delegates_to_process_audio(self):
+        proc = TranscriptProcessor.__new__(TranscriptProcessor)
+        proc.output_dir = MagicMock()
+        proc.accuracy_threshold = 0.8
+        audio_info = MagicMock()
+        audio_info.file_path = MagicMock()
+        audio_info.file_path.name = "test.wav"
+        audio_info.duration = 30.0
+        with patch.object(proc, "process_audio", return_value=_make_transcript()) as mock:
+            result = await proc.process_transcript(audio_info)
+            mock.assert_called_once_with(audio_info)
