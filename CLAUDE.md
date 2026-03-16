@@ -7,7 +7,13 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: プロトタイプ後期
-直近の状態: SP-033全Phase完了 + SP-034 + SP-031全完了 (BGMテンプレート含む)。E2Eパイプライン全6ステップ完走確認 (Pexels実API+speaker_mapping+クレジット生成)。Geminiモデルフォールバックチェーン (2.5-flash→2.0-flash→モック)。AIImageProvider+TextSlideGenerator統合済み。Python 330/0。残: Geminiクォータリセット後の実コンテンツ確認、YMM4実機テスト(ストック画像CSV+BGMテンプレート+アニメ+字幕)。
+直近の状態 (2026-03-16):
+  - テストカバレッジ 61%→71% (821 tests, 0 failed)
+  - Gemini mock不備修正 (conftest.py: google.genai stub注入)
+  - _resolve_text_placeholder バグ修正 (template_generator.py)
+  - 5モジュール大幅カバレッジ改善: slide_generator(96%), source_collector(98%), gemini_integration(97%), stock_image_client(99%), audio_generator(95%)
+  - origin/master より 8 commit 先行 (未push)
+  - 残: カバレッジ80%目標 (server/main/uploader等が0-24%), Geminiクォータリセット後の実コンテンツ確認, YMM4実機テスト
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
