@@ -158,7 +158,7 @@ def show_material_pipeline_page():
             return await run_pipeline(
                 topic=topic,
                 urls=urls,
-                max_sources=int(max_sources),
+                max_sources=max_sources,
                 auto_review=auto_review,
                 slides_dir=slides_dir,
                 speaker_mapping=speaker_mapping,
@@ -281,7 +281,7 @@ def show_material_pipeline_page():
                             image_files[row_start : row_start + cols_per_row]
                         ):
                             with cols[col_idx]:
-                                st.image(  # type: ignore[call-arg]
+                                st.image(
                                     str(img_path),
                                     caption=img_path.stem[:30],
                                     use_container_width=True,
