@@ -348,6 +348,56 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
 
         return await self._create_thumbnail_info(image, "educational", title, subtitle)
 
+    def _resolve_text_placeholder(
+        self,
+        text: str,
+        video: VideoInfo,
+        script: Dict[str, Any],
+        slides: SlidesPackage,
+    ) -> str:
+        """JSON テンプレート内のプレースホルダーを実際の値に置換する。
+
+        Supported placeholders:
+            {title}    - スクリプトタイトル or スライドタイトル
+            {subtitle} - スクリプトの最初のセグメントテキスト (切り詰め)
+            {topic}    - スクリプトの topic フィールド
+            {duration} - 動画の長さ (mm:ss)
+            {date}     - 生成日 (YYYY-MM-DD)
+            {slides}   - スライド総数
+        """
+        if '{' not in text:
+            return text
+
+        title = (
+            script.get("title", "")
+            or getattr(slides, "title", "")
+            or ""
+        )
+
+        # subtitle: 最初のセグメントのテキストを短縮
+        segments = script.get("segments", [])
+        first_text = ""
+        if segments:
+            first_text = segments[0].get("text", "")[:60]
+
+        duration_sec = video.duration if video.duration else 0
+        minutes = int(duration_sec // 60)
+        seconds = int(duration_sec % 60)
+
+        replacements = {
+            "{title}": title,
+            "{subtitle}": first_text,
+            "{topic}": script.get("topic", ""),
+            "{duration}": f"{minutes}:{seconds:02d}",
+            "{date}": datetime.now().strftime("%Y-%m-%d"),
+            "{slides}": str(slides.total_slides),
+        }
+
+        result = text
+        for placeholder, value in replacements.items():
+            result = result.replace(placeholder, value)
+        return result
+
     def _apply_gradient(self, image: Image.Image, colors: list) -> Image.Image:
         """グラデーション適用"""
         width, height = image.size

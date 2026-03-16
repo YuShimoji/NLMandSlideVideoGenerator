@@ -307,8 +307,8 @@ class TestTemplateThumbnailGeneratorExtended:
         assert result.resolution == (1280, 720)
 
     @pytest.mark.asyncio
-    async def test_generate_json_template_has_resolve_bug(self, tmp_path, mock_video_info, mock_script, mock_slides):
-        """JSONテンプレートのtext_elementsは_resolve_text_placeholder未定義でAttributeError"""
+    async def test_generate_json_template_with_text_placeholders(self, tmp_path, mock_video_info, mock_script, mock_slides):
+        """JSONテンプレートのtext_elements内プレースホルダーが正しく解決される"""
         tmpl_dir = tmp_path / "thumbnails"
         tmpl_dir.mkdir()
         (tmpl_dir / "json_style.json").write_text(
@@ -321,13 +321,14 @@ class TestTemplateThumbnailGeneratorExtended:
             encoding="utf-8"
         )
         gen = TemplateThumbnailGenerator(template_dir=tmpl_dir)
-        with pytest.raises(AttributeError, match="_resolve_text_placeholder"):
-            await gen.generate(
-                video=mock_video_info,
-                script=mock_script,
-                slides=mock_slides,
-                style="json_style"
-            )
+        result = await gen.generate(
+            video=mock_video_info,
+            script=mock_script,
+            slides=mock_slides,
+            style="json_style"
+        )
+        assert result.file_path.exists()
+        assert result.style == "json_style"
 
     @pytest.mark.asyncio
     async def test_generate_json_template_no_text_elements(self, tmp_path, mock_video_info, mock_script, mock_slides):
