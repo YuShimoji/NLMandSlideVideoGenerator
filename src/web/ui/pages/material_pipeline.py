@@ -158,7 +158,7 @@ def show_material_pipeline_page():
             return await run_pipeline(
                 topic=topic,
                 urls=urls,
-                max_sources=int(max_sources),
+                max_sources=max_sources,
                 auto_review=auto_review,
                 slides_dir=slides_dir,
                 speaker_mapping=speaker_mapping,
@@ -284,7 +284,7 @@ def show_material_pipeline_page():
                                 st.image(
                                     str(img_path),
                                     caption=img_path.stem[:30],
-                                    use_container_width=True,  # type: ignore[call-arg]
+                                    use_container_width=True,
                                 )
 
             # --- クレジット表示 ---
