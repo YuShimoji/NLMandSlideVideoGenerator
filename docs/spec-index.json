@@ -48,19 +48,19 @@
     "id": "SP-006",
     "title": "System Architecture",
     "status": "done",
-    "pct": 90,
+    "pct": 100,
     "cat": "system",
     "file": "docs/system_architecture.md",
-    "summary": "4ステージ構成図+ドメインモデル+フロー詳細+フォールバック連鎖+Gemini統合4用途+テスト体系。実装全反映 (2026-03-17更新)"
+    "summary": "4ステージ構成図+ドメインモデル+フロー詳細+5段フォールバック連鎖+Gemini統合5用途+支援サブシステム全記載+完全ディレクトリ構成 (2026-03-16更新)"
   },
   {
     "id": "SP-007",
     "title": "System Specification",
     "status": "done",
-    "pct": 85,
+    "pct": 100,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "システム仕様書。4ステージ機能要件+非機能要件+技術仕様+ディレクトリ構成。重複セクション削除・実装全反映 (2026-03-17更新)"
+    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+500テスト (2026-03-16更新)"
   },
   {
     "id": "SP-008",

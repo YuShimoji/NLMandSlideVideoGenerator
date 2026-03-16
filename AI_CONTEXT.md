@@ -81,7 +81,7 @@ Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 | **短期** | TEST-COVERAGE | テストカバレッジ拡充 328→500 | **完了** | 高 |
 | **短期** | YMM4-REAL | YMM4実機テスト (BGM+画像+字幕統合) | 待機 | 高 |
 | **短期** | GEMINI-QUAL | Geminiクォータリセット後の品質確認 | 待機 | 高 |
-| **中期** | DOC-FINISH | SP-006 (90%), SP-007 (85%) 仕上げ | 構想 | 中 |
+| **中期** | DOC-FINISH | SP-006/SP-007 仕上げ (90%/85%→100%/100%) | **完了** | 中 |
 | **中期** | GEMINI-PAID | Gemini有料プラン検討 | 構想 | 中 |
 | **長期** | DOCKER-CI | Docker化 / CI-CD強化 | BACKLOG | 低 |
 | **長期** | MULTI-LANG | 多言語台本自動照合強化 | 構想 | 低 |
