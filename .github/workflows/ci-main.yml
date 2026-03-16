@@ -79,10 +79,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Cache pip packages
         uses: actions/cache@v4
@@ -97,40 +98,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run mypy on core modules
+      - name: Run mypy on src/
         run: |
-          python -m mypy src/core/exceptions.py src/core/interfaces.py src/core/models.py --config-file mypy.ini
+          python -m mypy src/ --config-file mypy.ini --ignore-missing-imports
 
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8
-
-      - name: Run flake8
-        run: |
-          flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 src/ --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
-
-      - name: Check docs command references
-        run: |
-          python scripts/check_doc_command_references.py
-
-  ruff:
-    name: Ruff Linter
+    name: Lint & Quality
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -150,13 +123,17 @@ jobs:
 
       - name: Run Ruff linter
         run: |
-          ruff check src/ --output-format=github --exit-zero
+          ruff check src/ --output-format=github
+
+      - name: Check docs command references
+        run: |
+          python scripts/check_doc_command_references.py
 
   notify-failure:
     name: Failure Notification
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [test, type-check, lint, ruff]
+    needs: [test, type-check, lint]
     if: failure()
     permissions:
       issues: write
