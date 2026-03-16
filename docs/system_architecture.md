@@ -1,199 +1,266 @@
 # NLMandSlideVideoGenerator システムアーキテクチャ
 
+最終更新: 2026-03-17
+
 ## 概要
 
-NLMandSlideVideoGeneratorは、台本生成から動画投稿までを段階的に自動化しつつ、工程単位で手動・半自動・全自動を切り替えられるモジュラー型ワークフロー基盤です。NotebookLM/Gemini、手動アップロード、MCP ブラウザ操作、YukkuriMovieMaker4 (YMM4) API など複数の実装モードを同一パイプラインで統合します。
+NLMandSlideVideoGeneratorは、Web調査から動画投稿までを段階的に自動化するモジュラー型ワークフロー基盤です。Python (CLI/Web UI) で台本生成・ビジュアルリソース取得・CSV生成を行い、YukkuriMovieMaker4 (YMM4) + NLMSlidePlugin で音声合成・タイムライン構築・最終レンダリングを行います。
 
 ## システム構成図
 
 ```mermaid
 flowchart LR
     subgraph S1[Stage 1: 素材用意]
-        A1[Input Orchestrator] --> A2[Script Provider]
+        A1[Research CLI] --> A2[Gemini Script Provider]
         A2 --> A3[Content Adapter]
-        A3 --> A4[Voice Pipeline]
-        A4 --> A5[Asset Registry]
+        A3 --> A4[ScriptBundle]
     end
 
-    subgraph S2[Stage 2: 編集生成]
-        B1[Timeline Planner]
-        B2[Slide/Image Provider]
-        B3[Subtitle Styler]
-        B4[Effect Engine]
-        B5[Renderer]
-        B1 --> B5
-        B2 --> B5
-        B3 --> B5
+    subgraph S2[Stage 2: ビジュアル+CSV生成]
+        B1[SegmentClassifier]
+        B2[StockImageClient<br/>Pexels/Pixabay]
+        B3[AIImageProvider<br/>Gemini Imagen]
+        B4[VisualResourceOrchestrator]
+        B5[AnimationAssigner]
+        B6[CsvAssembler]
+        B7[Pre-Export Validator]
+        B1 --> B4
+        B2 --> B4
+        B3 --> B4
         B4 --> B5
-        B5 --> B6[YMM4 Project Builder]
+        B5 --> B6
+        B6 --> B7
     end
 
-    subgraph S3[Stage 3: 投稿配信]
-        C1[Metadata Generator]
-        C2[Scheduler]
-        C3[Platform Adapter]
-        C3 --> C4[YouTube]
-        C3 --> C5[TikTok]
+    subgraph S3[Stage 3: YMM4レンダリング]
+        C1[CsvImportDialog]
+        C2[StyleTemplateLoader]
+        C3[VoiceSpeakerDiscovery]
+        C4[タイムライン構築]
+        C5[YMM4レンダリング → mp4]
+        C1 --> C4
+        C2 --> C4
+        C3 --> C4
+        C4 --> C5
     end
 
-    S1 -->|Artifacts| S2 -->|Video & Metadata| S3
+    subgraph S4[Stage 4: 投稿配信]
+        D1[Metadata Generator]
+        D2[Thumbnail Generator]
+        D3[YouTube Uploader]
+    end
 
-    classDef auto fill:#e8f5e9
-    classDef manual fill:#fff3e0
-    classDef hybrid fill:#ede7f6
-
-    class A2,B6,C3 hybrid
-    class A4,B1,B5,C1 auto
-    class A1,A3,B2,B3,B4,C2 manual
+    S1 -->|ScriptBundle| S2 -->|4列CSV| S3 -->|mp4| S4
 ```
 
-### Stage 1: 素材用意レイヤー
-- **Input Orchestrator**: NotebookLM/外部MCP/手動アップロードなど複数入力経路を抽象化。
-- **Script Provider**: NotebookLM/Gemini、自前プロンプト実行、CSV/PDF手動投入を `IScriptProvider` で差し替え。
-- **Content Adapter**: NotebookLM固有フォーマット（DeepDive等）を一般化し、台本セクション・メタ情報・引用元を抽出して内部スキーマへ変換。
-- **Voice Pipeline**: YMM4内蔵ゆっくりボイスによる音声生成を前提とする。Python側は音声生成を行わず、YMM4プラグイン(`CsvTimelineVoicePlugin`)が担当。外部TTS連携コードは2026-03-04に全削除済み。
-- **Asset Registry**: `data/` 配下への素材登録、再利用用メタデータ管理、差分検知を実装予定。
+### Stage 1: 素材用意レイヤー (Python)
+- **Research CLI** (`scripts/research_cli.py`): collect→script→align→review→pipeline の一気通貫CLI。`--auto-images` `--duration` オプション対応。
+- **Gemini Script Provider**: Gemini API (google-genai SDK) による台本自動生成。`IScriptProvider` インターフェースで差し替え可能。
+- **Content Adapter**: NotebookLM固有フォーマット（DeepDive等）を `ScriptBundle` に正規化。
+- **音声**: YMM4内蔵ゆっくりボイスを使用。Python側は音声生成を行わない。外部TTS連携コードは2026-03-04に全削除済み。
 
-### Stage 2: 編集生成レイヤー
-- **Timeline Planner**: 台本セグメントとユーザー編集方針をマッピングし、所要時間やスライド割当を決定。`src/core/timeline/basic_planner.py` の `BasicTimelinePlanner` がデフォルト実装として提供され、音声長と台本セグメントをもとにタイムラインを算出する。
-- **Slide/Image Provider**: NotebookLMスライド、手動画像、Google Slides API生成、YMM4テンプレート差し替えを統合。
-- **Subtitle Styler**: `SubtitleGenerator` を拡張し、装飾テーマをプロフィール化（影・縁取り・アニメーション設定）。
-- **Effect Engine**: `EffectProcessor` をベースに、パン/ズーム、モーションプリセット、YMM4専用エフェクトタグを付与。
-- **Renderer**:
-  - **YMM4 Project Builder**: YMM4 API (https://ymm-api-docs.vercel.app/) を利用し、テンプレート`.exo`や`.y4mmp`を複製。タイムライン、立ち絵、字幕パーツをAPI経由で挿入。
-  - **YMM4 Project Builder**: `src/core/editing/ymm4_backend.py` が `.y4mmp` テンプレート複製を行い、`PIPELINE_COMPONENTS.editing_backend=ymm4` で注入される。YMM4がfinal rendererとして動画書き出しを担当する。
-  - **MoviePy Composer (削除済み)**: MoviePyバックエンドは2026-03-07にYMM4一本化により完全削除。`src/video_editor/*`（video_composer.py, subtitle_generator.py, effect_processor.py）は削除済み。データ型（VideoInfo, ThumbnailInfo）は`src/video_editor/models.py`に移動。
-  - **運用メモ**: 現状のYMM4 APIでは書き出し機能が未提供の可能性があるため、AutoHotkey等によるGUI自動操作を併用するフォールバック手段を用意する。テンプレート/スクリプトの指定は `config/settings.py` の `YMM4_SETTINGS` で管理する。
+### Stage 2: ビジュアルリソース+CSV生成レイヤー (Python)
+- **SegmentClassifier** (`src/core/visual/segment_classifier.py`): 台本セグメントをvisual/textualに分類。ヒューリスティック + Gemini分類の2モード。
+- **StockImageClient** (`src/core/visual/stock_image_client.py`): Pexels/Pixabay APIで写真検索・ダウンロード。日本語→英語クエリ翻訳 (Gemini)、指数バックオフリトライ。
+- **AIImageProvider** (`src/core/visual/ai_image_provider.py`): Gemini Imagen 3.0 でカスタムイラスト生成。stock画像取得失敗時のフォールバック。
+- **VisualResourceOrchestrator** (`src/core/visual/resource_orchestrator.py`): 全ビジュアルリソースを統合。stock→AI→slideのフォールバック連鎖、連続source多様性強制、アニメーション自動割当。
+- **AnimationAssigner** (`src/core/visual/animation_assigner.py`): ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static の7種を自動サイクル割当。
+- **CsvAssembler** (`src/core/csv_assembler.py`): 台本 + VisualResourcePackage → 4列CSV (speaker, text, image_path, animation_type)。
+- **Pre-Export Validator** (`src/core/editing/pre_export_validator.py`): CSVバリデーション (画像存在、アニメーション種別、行数チェック)。
+- **StyleTemplateManager** (`src/core/style_template.py`): `config/style_template.json` の読み込み・検証・複数テンプレート管理。
+- **PipelineState** (`src/core/pipeline_state.py`): パイプラインステップの永続化と再開 (SP-034)。
 
-### Stage 3: 投稿配信レイヤー
-- **Metadata Generator**: `MetadataGenerator` を再構築し、台本・トピック・引用元から概要欄/タグ/広告挿入ポイントを生成。テンプレートはユーザー編集を反映可能なJSON化。
-- **Scheduler**: 予約投稿、公開設定、広告位置、ショート/ロングフォーマットの自動判定を担う抽象化。
-- **Platform Adapter**: `YouTubeUploader` を中心に、将来的な TikTok/Shorts API、外部クリエイターツールと接続するプラガブル設計。
+### Stage 3: YMM4レンダリングレイヤー (C# NLMSlidePlugin)
+- **CsvImportDialog**: CSVインポートUI。AudioItem (音声) + TextItem (字幕) + ImageItem (背景画像) を自動配置。
+- **StyleTemplateLoader** (`ymm4-plugin/Core/StyleTemplateLoader.cs`): `style_template.json` をPythonと共有読み込み。字幕スタイル/アニメーション設定/クロスフェード/タイミングを統一。
+- **VoiceSpeakerDiscovery**: YMM4内蔵ボイスの自動検出・話者割当。
+- **WavDurationReader**: WAV実尺読み取り → VoiceItem.VoiceLength でタイムライン同期。
+- **ValidateImportItems**: インポート前の品質チェック (連続同一画像検出、統計サマリー)。
+
+### Stage 4: 投稿配信レイヤー (Python)
+- **Metadata Generator**: 台本・トピック・引用元から概要欄/タグ/チャプターを生成。
+- **Thumbnail Generator**: テンプレートベースのサムネイル自動生成。
+- **YouTube Uploader**: YouTube Data API による投稿。手動投稿へのフォールバックも可能。
 
 ## ドメインモデル概要
 
 ```mermaid
 classDiagram
-    class ModularVideoPipeline {
-        +sources: List~SourceInfo~
-        +script_provider: IScriptProvider
-        +voice_pipeline: IVoicePipeline
-        +editor: IEditingBackend
-        +publisher: IPublisher
-        +run(options) PipelineResult
-    }
-
     class ScriptBundle {
         +topic: str
-        +segments: List~ScriptSegment~
+        +segments: List~Dict~
         +bibliography: List~Citation~
-        +style_profile: str
     }
 
-    class ScriptSegment {
-        +id: str
-        +role: str
-        +content: str
-        +duration_hint: float
-        +visual_tags: List~str~
+    class VisualResourcePackage {
+        +resources: List~VisualResource~
+        +source_provider: str
     }
 
-    class TimelinePlan {
-        +segments: List~TimelineSlot~
-        +instruction_set: Dict
-    }
-
-    class TimelineSlot {
-        +segment_id: str
-        +start: float
-        +end: float
-        +assets: List~AssetRef~
-        +effects: List~EffectPreset~
-    }
-
-    class PublishingPackage {
-        +video: VideoInfo
-        +thumbnails: List~Path~
+    class VisualResource {
+        +image_path: Optional~Path~
+        +animation_type: AnimationType
+        +source: str
         +metadata: Dict
-        +schedule: datetime
-        +platform_targets: List~str~
     }
 
-    ScriptBundle --> ScriptSegment
-    TimelinePlan --> TimelineSlot
-    PublishingPackage --> VideoInfo
-    TimelineSlot --> AssetRef
-```
+    class StockImage {
+        +id: str
+        +url: str
+        +download_url: str
+        +photographer: str
+        +source: str
+        +local_path: Optional~Path~
+    }
 
-### 主要インターフェイス
-- `IScriptProvider`: NotebookLM、Gemini、手動CSVなどから `ScriptBundle` を生成。
-- `IVoicePipeline`: TTS/収録音源を共通 `AudioInfo` 形式へ正規化。
-- `IEditingBackend`: YMM4 レンダリング基盤を提供（MoviePy バックエンドは 2026-03-07 に削除済み）。
-- `IPublisher`: YouTube/TikTok/ローカル出力等をモジュラー接続。
+    class GeneratedImage {
+        +prompt: str
+        +image_path: Optional~Path~
+        +enhanced_prompt: str
+        +source: str
+        +error: Optional~str~
+    }
+
+    class StyleTemplate {
+        +name: str
+        +subtitle: Dict
+        +speaker_colors: List~str~
+        +animation: Dict
+        +crossfade: Dict
+        +timing: Dict
+        +validation: Dict
+    }
+
+    class ValidationResult {
+        +valid: bool
+        +errors: List~str~
+        +warnings: List~str~
+    }
+
+    VisualResourcePackage --> VisualResource
+    VisualResource ..> StockImage : source=stock
+    VisualResource ..> GeneratedImage : source=ai
+```
 
 ## フロー詳細
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Orchestrator as Orchestrator
-    participant Script as ScriptProvider
-    participant Voice as VoicePipeline
-    participant Editor
-    participant Publisher
+    participant CLI as Research CLI
+    participant Gemini as Gemini API
+    participant Classifier as SegmentClassifier
+    participant Stock as StockImageClient
+    participant AI as AIImageProvider
+    participant Orch as Orchestrator
+    participant Asm as CsvAssembler
+    participant Val as Pre-Export Validator
+    participant YMM4 as YMM4 + NLMSlidePlugin
 
-    User->>Orchestrator: run_pipeline(mode=auto/manual)
-    Orchestrator->>Script: create_script(context, assets)
-    Script-->>Orchestrator: ScriptBundle
-    Orchestrator->>Voice: synthesize_voice(ScriptBundle)
-    Voice-->>Orchestrator: AudioInfo
-    Orchestrator->>Editor: build_video(AudioInfo, ScriptBundle, user_layout)
-    Editor-->>Orchestrator: VideoInfo, TimelinePlan
-    Orchestrator->>Publisher: publish(VideoInfo, metadata)
-    Publisher-->>Orchestrator: PublishResult
-    Orchestrator-->>User: completion + artifacts
+    User->>CLI: pipeline "topic" --auto-images
+    CLI->>Gemini: 台本生成
+    Gemini-->>CLI: ScriptBundle
+    CLI->>Classifier: classify_with_keywords(segments)
+    Classifier->>Gemini: 分類+キーワード抽出
+    Gemini-->>Classifier: visual/textual + English keywords
+    CLI->>Orch: orchestrate(segments, slides)
+    Orch->>Stock: search_for_segments(visual_segments)
+    Stock-->>Orch: StockImage[]
+    Orch->>AI: generate_for_segments(failed_segments)
+    AI-->>Orch: GeneratedImage[]
+    Orch-->>CLI: VisualResourcePackage
+    CLI->>Asm: assemble_from_package()
+    Asm-->>CLI: 4列CSV
+    CLI->>Val: validate_timeline_csv()
+    Val-->>CLI: ValidationResult
+    User->>YMM4: CSVインポート
+    YMM4-->>User: mp4
 ```
 
-### フォールバックと拡張ポイント
-- **台本工程**: NotebookLMが利用不可の場合、Gemini + Web MCP、またはユーザーがNotebookLMから抽出したJSON/Markdownをアップロード。
-- **音声**: YMM4内蔵ゆっくりボイスを使用。外部TTS連携コードは2026-03-04に全削除済み。
-- **編集**: YMM4テンプレートベースのレンダリング。MoviePyバックエンドは2026-03-07に削除済み（YMM4一本化により不要）。
-- **投稿**: YouTubeへの自動投稿、またはメタデータ/サムネイルのみ作成して手動投稿に切替可能。
+### フォールバック連鎖
+1. **ビジュアルリソース**: Pexels → Pixabay → Gemini Imagen → スライド → 空欄
+2. **台本生成**: Gemini API → NotebookLMエクスポート → 手動CSV
+3. **分類**: Gemini分類 → ヒューリスティック分類
+4. **投稿**: YouTube自動投稿 → メタデータのみ生成 → 手動投稿
 
 ## アーキテクチャの特徴
 
-### 1. **段階的自動化とモード切替**
-- 各Stageで `mode=manual|assist|auto` を設定可能。ユーザー操作とAI自動化を共存させ、段階別に最適化。
+### 1. Python/C# 二層構成
+- Python: 前工程 (調査→台本→ビジュアル→CSV) + 品質検証
+- C# (NLMSlidePlugin): YMM4内でCSV→タイムライン→音声→レンダリング
+- 両者は `config/style_template.json` を共有し、スタイル設定を統一
 
-### 2. **疎結合モジュール**
-- Protocol/Interfaceベースで結合度を下げ、API差し替えや機能追加を容易化。
-- `src/core/pipeline.py` の `ModularVideoPipeline` を拡張し、各Stageのインターフェイスを注入。
+### 2. ビジュアルリソースの多段フォールバック
+- SegmentClassifier がセグメントの性質を判定 (visual vs textual)
+- visual: StockImageClient (Pexels→Pixabay) → AIImageProvider (Gemini Imagen) → スライド
+- textual: スライド (STATIC アニメーション)
+- 連続source多様性制御 (MAX_CONSECUTIVE_STOCK=3)
 
-### 3. **YMM4連携の拡張点**
-- テンプレート `.y4mmp` をベースに、シーン・オブジェクト・字幕をAPIで追加。
-- 生成後にYMM4を起動すれば、ユーザーはGUIで微調整可能。
-- MoviePyバックエンドは2026-03-07に削除済み。YMM4がサポートされていない環境では動画生成は利用不可。
+### 3. 統一スタイルテンプレート
+- `config/style_template.json` が字幕/アニメーション/クロスフェード/タイミング/話者色を定義
+- Python `StyleTemplateManager` と C# `StyleTemplateLoader` の両方が同一JSONを読み込み
+- C#側の全ハードコード値をテンプレート参照に置換済み
 
-### 4. **マルチプラットフォーム投稿**
-- YouTube以外にTikTok/Shortsを視野に入れ、動画縦横比や長さ、広告挿入ポイントを自動計算して出力。
-- 投稿前にヒューマンレビューを挟む「承認キュー」設計を想定。
+### 4. CLI一気通貫 + 段階実行
+- `research_cli.py pipeline` で collect→script→align→review→CSV一括実行
+- 各ステップは独立実行可能 (段階デバッグ)
+- PipelineState による途中再開 (SP-034)
 
-### 5. **監査性と再現性**
-- `Asset Registry` が素材出典とライセンス情報を保持。
-- 台本 -> 映像 -> 投稿までのトレーサビリティをJSONログで記録。
+### 5. Gemini統合 (4用途)
+- 台本生成 (Gemini Flash)
+- セグメント分類 + 英語キーワード抽出 (Gemini Flash)
+- 日本語→英語クエリ翻訳 (Gemini Flash)
+- AI画像生成 (Imagen 3.0)
 
-## 実装ロードマップ概要
-- Stage 1: Script Provider抽象化、NotebookLMフォーマットの正規化、手動アップロードUI/CLIの整備。**実装済み**: `GeminiScriptProvider` を `build_default_pipeline()` から設定で切替可能。
-- Stage 2: YMM4 APIクライアント実装、テンプレート同期ツール、字幕装飾プリセット。**進捗**: `BasicTimelinePlanner` / `YMM4EditingBackend` をモジュラー構成に追加。MoviePyEditingBackendは2026-03-07削除済み。
-- Stage 3: メタデータテンプレート化、予約投稿/広告挿入API連携、サムネイル自動生成。
+## 設定と環境
 
-これらのモジュールを順次拡張することで、ユーザーがAI自動編集と手動細部調整を柔軟に切り替えられるYouTube/TikTok向け動画制作基盤を実現します。
+### 環境変数
 
-## モジュラーパイプライン設定とテスト手順
+```bash
+GEMINI_API_KEY=...      # 台本生成/分類/翻訳/AI画像生成
+PEXELS_API_KEY=...      # ストック画像検索
+PIXABAY_API_KEY=...     # ストック画像検索 (フォールバック)
+```
 
-- **設定ファイル**: `config/settings.py` の `PIPELINE_COMPONENTS` により、`script_provider` / `voice_pipeline` / `editing_backend` / `platform_adapter` を切り替えられる。`build_default_pipeline()` (`src/core/pipeline.py`) が設定値を読み取り、該当するモジュールを注入する。
-- **Stage1デフォルト**: `SCRIPT_PROVIDER=gemini` かつ `GEMINI_API_KEY` が設定されている場合、`GeminiScriptProvider` が `IScriptProvider` として利用される。
-- **Stage2デフォルト**: `EDITING_BACKEND=ymm4` で `BasicTimelinePlanner` と `YMM4EditingBackend` が有効化される。MoviePyバックエンドは2026-03-07削除済み。
-- **テスト**:
-  - 単体テストは `python -m pytest tests\test_timeline_planner.py` で実行でき、`BasicTimelinePlanner` のタイムライン整合性を検証する。
-  - 追加の統合スモークテストとして `run_modular_demo.py` を利用し、`PIPELINE_COMPONENTS` で指定した構成が `ModularVideoPipeline` (`src/core/pipeline.py`) に反映されることを確認する。
+### 設定ファイル
+
+| ファイル | 用途 |
+|---|---|
+| `config/settings.py` | パイプライン設定、APIキー、パス管理 |
+| `config/style_template.json` | スタイルテンプレート (Python/C#共有) |
+| `config/style_template_cinematic.json` | シネマティックテンプレート (バリアント) |
+| `config/style_template_minimal.json` | ミニマルテンプレート (バリアント) |
+
+### 主要ライブラリ
+
+```python
+# AI/API
+google-genai             # Gemini SDK (台本生成/分類/翻訳/画像生成)
+requests                 # Pexels/Pixabay API
+
+# 画像・音声
+Pillow                   # サムネイル生成
+pydub                    # 音声処理
+
+# Web UI
+streamlit                # Web UI
+
+# テスト
+pytest                   # 301テストPASS (2026-03-17時点)
+```
+
+### テスト
+
+```bash
+# 全テスト実行
+source venv/Scripts/activate && python -m pytest tests/ -q
+
+# 主要テストモジュール
+tests/test_csv_assembler.py          # CsvAssembler
+tests/test_segment_classifier.py     # SegmentClassifier
+tests/test_stock_image_client.py     # StockImageClient
+tests/test_ai_image_provider.py      # AIImageProvider
+tests/test_resource_orchestrator.py  # VisualResourceOrchestrator
+tests/test_style_template.py         # StyleTemplateManager
+tests/test_pre_export_validator.py   # Pre-Export Validator
+```

@@ -1,7 +1,7 @@
 # ビジュアルリソースパイプライン仕様 (SP-033)
 
 **最終更新**: 2026-03-17
-**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c 完了 (Gemini分類+キーワード抽出+Orchestrator統合)。Phase 3 完了 (AI画像生成+Orchestrator統合)
+**ステータス**: Phase 1 完了。Phase 2b 完了 (パイプライン統合 + 30分動画E2Eテスト)。Phase 2c 完了 (Gemini分類+キーワード抽出+Orchestrator統合)。Phase 3 完了 (AI画像生成+Orchestrator統合)。Phase 3b 完了 (テキストスライド自動生成: source=none解消)
 
 ---
 
@@ -158,7 +158,7 @@ class AnimationType(Enum):
 class VisualResource:
     image_path: Path
     animation_type: AnimationType
-    source: str  # "slide", "stock", "ai", "manual"
+    source: str  # "slide", "stock", "ai", "generated", "manual", "none"
     metadata: Dict[str, Any]
 
 @dataclass
@@ -485,3 +485,4 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 | 2026-03-17 | Phase 2c統合完了: Orchestrator→classify_with_keywords→search_for_segments(queries=)パイプライン接続。テスト228件PASS |
 | 2026-03-17 | SP-031 Phase 1: ExportValidator+StyleTemplateManager+3テンプレート+CLI validate/templates。テスト280件PASS |
 | 2026-03-17 | Phase 3完了: AIImageProvider (Gemini Imagen) + Orchestrator AI統合 (stock失敗→AI→slide フォールバック連鎖) + source分離 (ai_mapping)。テスト301件PASS |
+| 2026-03-17 | Phase 3b: TextSlideGenerator — スライドPNG未提供時にセグメント内容からテキストスライド自動生成。source=none→generated変換。PLACEHOLDER_THEMESカラースキーム使用。キャッシュ付き。Orchestrator/CLI統合。テスト38件PASS |

@@ -55,7 +55,7 @@ class VisualResource:
 
     image_path: Optional[Path] = None
     animation_type: AnimationType = AnimationType.KEN_BURNS
-    source: str = "slide"  # "slide", "stock", "ai", "manual"
+    source: str = "slide"  # "slide", "stock", "ai", "generated", "manual", "none"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
