@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from core.utils.logger import logger
@@ -88,14 +88,18 @@ class GeminiIntegration:
         topic: str,
         target_duration: float = 300.0,
         language: str = "ja",
-        style: str = "default"
+        style: str = "default",
+        speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> ScriptInfo:
         """ソースからスクリプトを生成"""
         try:
             logger.info(f"Gemini APIでスクリプト生成開始: {topic} (style={style})")
 
             # プロンプト構築
-            prompt = self._build_script_prompt(sources, topic, target_duration, language, style=style)
+            prompt = self._build_script_prompt(
+                sources, topic, target_duration, language,
+                style=style, speaker_mapping=speaker_mapping,
+            )
 
             # Gemini API呼び出し
             response = await self._call_gemini_api(prompt)
@@ -121,7 +125,8 @@ class GeminiIntegration:
         topic: str,
         target_duration: float,
         language: str,
-        style: str = "default"
+        style: str = "default",
+        speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> str:
         """スクリプト生成用プロンプトを構築 (SP-036: プリセット駆動)"""
 
@@ -189,8 +194,20 @@ URL: {source.get('url', 'URL不明')}
         all_reqs = requirements + common_reqs
         reqs_text = "\n".join(f"{i+1}. {r}" for i, r in enumerate(all_reqs))
 
-        # 話者指定
-        speaker_json = speaker_names[0] if len(speaker_names) == 1 else f'{speaker_names[0]}」または「{speaker_names[1]}'
+        # speaker_mapping 適用: プリセットの話者名を実際の名前に変換
+        if speaker_mapping:
+            speaker_names = [speaker_mapping.get(n, n) for n in speaker_names]
+
+        # 話者情報の構築
+        if len(speaker_names) == 1:
+            speaker_instruction = f"話者は「{speaker_names[0]}」の1名です。"
+            speaker_example = speaker_names[0]
+        else:
+            speaker_list = "、".join(f"「{n}」" for n in speaker_names)
+            speaker_instruction = f"話者は{speaker_list}の{len(speaker_names)}名です。"
+            if speaker_style:
+                speaker_instruction += f" {speaker_style}で進行してください。"
+            speaker_example = speaker_names[0]
 
         # プロンプト構築
         prompt = f"""
@@ -209,6 +226,15 @@ URL: {source.get('url', 'URL不明')}
 【構成パターン】
 {structure_text}
 
+【話者】
+{speaker_instruction}
+
+【重要な制約】
+- 1つのセグメントには必ず1人の話者のみを含めてください。複数人の発話を1セグメントに混在させないでください。
+- 対談形式の場合、話者が交互に入れ替わる形で複数セグメントに分割してください。
+- 各セグメントの "speaker" フィールドには、上記の話者名をそのまま使用してください。
+- セグメントの "content" フィールドには、そのspeakerの発話のみを含めてください。他の話者の名前や発話を本文中に含めないでください。
+
 【要件】
 {reqs_text}
 
@@ -220,10 +246,10 @@ URL: {source.get('url', 'URL不明')}
   "segments": [
     {{
       "section": "セクション名",
-      "content": "話す内容",
+      "content": "この話者が話す内容のみ（他の話者の発話は含めない）",
       "duration_estimate": {avg_segment_sec}.0,
       "key_points": ["重要ポイント1", "重要ポイント2"],
-      "speaker": "{speaker_names[0]}"
+      "speaker": "{speaker_example}"
     }}
   ],
   "total_duration_estimate": {target_duration},

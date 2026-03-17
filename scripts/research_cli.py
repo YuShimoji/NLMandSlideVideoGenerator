@@ -295,7 +295,10 @@ async def run_pipeline(
         try:
             from core.providers.script.gemini_provider import GeminiScriptProvider
 
-            provider = GeminiScriptProvider(target_duration=target_duration, style=style)
+            provider = GeminiScriptProvider(
+                target_duration=target_duration, style=style,
+                speaker_mapping=speaker_mapping,
+            )
             script_bundle = await provider.generate_script(topic, sources)
             segments = script_bundle.get("segments", [])
             print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
