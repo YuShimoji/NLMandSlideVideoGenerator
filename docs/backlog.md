@@ -69,7 +69,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 ### 短期: 全SP完了
 
 - SP-031: 全完了 (style_template.json v1.1 + BGMテンプレート + C#統合 + ValidateImportItems拡張)
-- SP-033: 全Phase完了 (7種アニメ + StockImage + AIImage + TextSlide + Orchestrator統合)
+- SP-033: 全Phase完了 (8種アニメ + StockImage + AIImage + TextSlide + Orchestrator統合)
 
 ### 中期 (1-2ヶ月): 実運用品質 + ドキュメント
 

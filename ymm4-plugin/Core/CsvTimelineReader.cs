@@ -19,7 +19,7 @@ namespace NLMSlidePlugin.Core
         public string? ImageFilePath { get; set; }
         /// <summary>
         /// アニメーション種別 (SP-033)。CSV 4列目から読み取る。
-        /// 有効値: ken_burns, zoom_in, zoom_out, pan_left, pan_right, pan_up, static
+        /// 有効値: ken_burns, zoom_in, zoom_out, pan_left, pan_right, pan_up, pan_down, static
         /// 省略時は ken_burns (既定動作)。
         /// </summary>
         public string AnimationType { get; set; } = "ken_burns";
@@ -334,7 +334,7 @@ namespace NLMSlidePlugin.Core
             return value switch
             {
                 "ken_burns" or "zoom_in" or "zoom_out"
-                    or "pan_left" or "pan_right" or "pan_up"
+                    or "pan_left" or "pan_right" or "pan_up" or "pan_down"
                     or "static" => true,
                 _ => false,
             };

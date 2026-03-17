@@ -82,7 +82,7 @@ def validate_timeline_csv(
                 result.warnings.append(f"Row {i}: image not found: {image_path}")
 
         # アニメーション種別チェック
-        valid_animations = {"ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "static", ""}
+        valid_animations = {"ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down", "static", ""}
         if animation and animation not in valid_animations:
             result.warnings.append(f"Row {i}: unknown animation type: {animation}")
 

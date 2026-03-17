@@ -129,9 +129,9 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 
 | メソッド | 対象プロパティ | 状態 | 備考 |
 |----------|----------------|------|------|
-| `ApplyAnimationDirect` | (ディスパッチャ) | 実装済み | CSV 4列目animationType文字列で全7種をswitch分岐 |
+| `ApplyAnimationDirect` | (ディスパッチャ) | 実装済み | CSV 4列目animationType文字列で全8種をswitch分岐 |
 | `ApplyZoomDirect` | Zoom | 実装済み | Values in-place方式。ken_burns (100→105%), zoom_in, zoom_out に対応 |
-| `ApplyPositionDirect` | X / Y | 実装済み | Values in-place方式。pan_left, pan_right, pan_up に対応 |
+| `ApplyPositionDirect` | X / Y | 実装済み | Values in-place方式。pan_left, pan_right, pan_up, pan_down に対応 |
 | (FadeIn/FadeOut) | Opacity | 実装済み | ImageItem.FadeIn/FadeOut プロパティ (秒指定) で制御 |
 
 **注意**: `Animation.From` / `Animation.To` は deprecated であり、実機テストでレンダリング破壊が確認されたため**使用禁止**。全アニメーションは `Values` (ImmutableList<AnimationValue>) の in-place 変更で実装すること。
@@ -206,7 +206,7 @@ public string AnimationType { get; set; } = "ken_burns";
 
 - Python側 (AnimationAssigner, CsvAssembler 4列出力): **完了・テスト済み**
 - C# CsvTimelineReader (4列パース + 相対パス解決): **完了・テスト済み**
-- YMM4プラグイン: **Phase 1完了。ApplyAnimationDirect (全7種ディスパッチ) + ApplyZoomDirect + ApplyPositionDirect 実装+実機テストPASS**
+- YMM4プラグイン: **Phase 1完了。ApplyAnimationDirect (全8種ディスパッチ) + ApplyZoomDirect + ApplyPositionDirect 実装+実機テストPASS**
 
 ### 6.2 Values in-place 方式 (実機テスト確定: 2026-03-16)
 
@@ -310,7 +310,7 @@ imageItem.Zoom.AnimationType = AnimationType.直線移動;
 |---|--------|------|------|
 | 1 | YMM4実機テスト (Zoom + FadeIn/FadeOut) | done | Values in-place方式でZoom + FadeIn/FadeOut 正常動作確認 |
 | 2 | パンアニメーション (X/Y) 実装 | done | ApplyPositionDirect: Values in-place方式でX/Y実装済み |
-| 3 | アニメーション種別ディスパッチ接続 | done | ApplyAnimationDirect: CSV 4列目→全7種switch分岐+全3インポートパスに接続 |
+| 3 | アニメーション種別ディスパッチ接続 | done | ApplyAnimationDirect: CSV 4列目→全8種switch分岐+全3インポートパスに接続 |
 | 4 | 説明スライド判定ロジック | done | SegmentClassifierとして実装。visual/textual分類でアニメーション自動選択 |
 | 5 | コミット | done | Direct API移行+リフレクション全廃+テスト修正 (dcfcba9) |
 | 6 | コード品質改善 | done | 重複例外ハンドラ統合、デッドコード除去、CLAUDE.md文字化け修正 |
@@ -458,7 +458,7 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 4. DLLデプロイ (`dotnet build --no-incremental`)
 5. ランタイムログクリア
 6. YMM4起動 → `e2e_baseline_test.csv` インポート
-7. 検証: 全7種アニメーション + 字幕レイヤー + ストック画像表示
+7. 検証: 全8種アニメーション + 字幕レイヤー + ストック画像表示
 8. ランタイムログで自動検証 (ApplyAnimationDirect/ApplyZoomDirect/ApplyPositionDirect)
 
 ### 包括テストCSV
@@ -478,7 +478,7 @@ Python内部ロジックのみの変更はE2Eテスト不要。
 | 2026-03-16 | 実機テスト結果反映: From/To→Values in-place方式に全面修正。クロスフェード/ズーム運用ガイドライン追加 |
 | 2026-03-17 | ステータス更新: Phase 1 Zoom+FadeIn/FadeOut実機テストPASS。SP-027 Baseline E2E完了 |
 | 2026-03-16 | Phase 2a実装: SegmentClassifier + VisualResourceOrchestrator + StockImageClient + CsvAssembler拡張。テスト78件PASS |
-| 2026-03-17 | パンズーム隙間修正 (fitZoom*1.12) + VoiceItem/TextItemレイヤー前面化 (baseLayer+10)。全7種アニメ再テストPASS |
+| 2026-03-17 | パンズーム隙間修正 (fitZoom*1.12) + VoiceItem/TextItemレイヤー前面化 (baseLayer+10)。全8種アニメ再テストPASS |
 | 2026-03-17 | テスト戦略セクション追加: Dev/Test フェーズ分離、E2Eバッチ化方針 |
 | 2026-03-16 | Phase 2b完了: パイプライン統合(CLI+UI)、Pexels実API検証、クエリ重複バグ修正(48%→74%)、30分動画E2Eテスト |
 | 2026-03-17 | Phase 2c実装: Geminiベースセグメント分類+キーワード抽出、日本語→英語クエリ翻訳、APIキーis-not-Noneバグ修正。テスト225件PASS |

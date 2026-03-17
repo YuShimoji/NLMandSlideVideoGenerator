@@ -184,11 +184,11 @@ namespace NLMSlidePlugin.Tests
         [Fact]
         public void ReadTimeline_AllAnimationTypesValid()
         {
-            var types = new[] { "ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "static" };
+            var types = new[] { "ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down", "static" };
             var lines = string.Join("\n", types.Select((t, i) => $"S{i},T{i},,{t}"));
             var reader = new CsvTimelineReader(CreateTempCsv(lines));
             var result = reader.ReadTimeline();
-            Assert.Equal(7, result.Count);
+            Assert.Equal(8, result.Count);
             for (int i = 0; i < types.Length; i++)
             {
                 Assert.Equal(types[i], result[i].AnimationType);

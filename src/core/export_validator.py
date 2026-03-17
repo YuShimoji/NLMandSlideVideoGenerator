@@ -371,7 +371,7 @@ class ExportValidator:
         # アニメーション設定との整合性
         anim_config = template.get("animation", {})
         if anim_config:
-            pan_types = {"pan_left", "pan_right", "pan_up"}
+            pan_types = {"pan_left", "pan_right", "pan_up", "pan_down"}
             has_pan = any(a in pan_types for a in animations)
             if has_pan and "pan_zoom_ratio" not in anim_config:
                 result.issues.append(ValidationIssue(

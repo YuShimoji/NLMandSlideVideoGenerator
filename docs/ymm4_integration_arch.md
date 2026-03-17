@@ -50,7 +50,7 @@
 | StockImageClient | `src/core/visual/stock_image_client.py` | Pexels/Pixabay画像検索+ダウンロード |
 | AIImageProvider | `src/core/visual/ai_image_provider.py` | Gemini Imagen 3.0によるAI画像生成 |
 | VisualResourceOrchestrator | `src/core/visual/resource_orchestrator.py` | 全ビジュアルリソース統合 (stock→AI→slideフォールバック) |
-| AnimationAssigner | `src/core/visual/animation_assigner.py` | 7種アニメーション自動割当 |
+| AnimationAssigner | `src/core/visual/animation_assigner.py` | 8種アニメーション自動割当 |
 | StyleTemplateManager | `src/core/style_template.py` | style_template.json読み込み・検証・管理 |
 | Pre-Export Validator | `src/core/editing/pre_export_validator.py` | CSVバリデーション (画像存在・種別・行数) |
 | PipelineState | `src/core/pipeline_state.py` | パイプラインステップ再開 (SP-034) |

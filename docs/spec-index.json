@@ -29,11 +29,11 @@
   {
     "id": "SP-004",
     "title": "YMM4 Export Specification",
-    "status": "partial",
-    "pct": 95,
+    "status": "done",
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_export_spec.md",
-    "summary": "CSV→YMM4エクスポート仕様。全主要機能実装済み: 4列CSV→AudioItem+TextItem+ImageItem自動配置、7種アニメーション、字幕テンプレート(話者色6色)、StyleTemplate統一、BGMテンプレート、Pre-Export検証、ビジュアルリソースパイプライン。残: pan_down追加"
+    "summary": "CSV→YMM4エクスポート仕様。全主要機能実装済み: 4列CSV→AudioItem+TextItem+ImageItem自動配置、8種アニメーション(pan_down追加)、字幕テンプレート(話者色6色)、StyleTemplate統一、BGMテンプレート、Pre-Export検証、ビジュアルリソースパイプライン"
   },
   {
     "id": "SP-005",
@@ -294,7 +294,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1完了: 7種アニメーション実機テストPASS。Phase2完了: StockImageClient+Orchestrator+CLI/UI統合+エラーハンドリング+日本語クエリ翻訳。Phase3完了: AIImageProvider (Gemini Imagen) + stock→AI→slideフォールバック連鎖 + CLI/UI統合"
+    "summary": "Phase1完了: 8種アニメーション(pan_down追加)実機テストPASS。Phase2完了: StockImageClient+Orchestrator+CLI/UI統合+エラーハンドリング+日本語クエリ翻訳。Phase3完了: AIImageProvider (Gemini Imagen) + stock→AI→slideフォールバック連鎖 + CLI/UI統合"
   },
   {
     "id": "SP-034",

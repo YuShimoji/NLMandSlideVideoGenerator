@@ -22,7 +22,7 @@
 | YMM4 Voice自動生成 UI接続 | ✅ 実装済み | VoiceSpeakerDiscovery (SP-024) |
 | ImageItem自動配置 | ✅ 実装済み | CSV 3列目画像パス → ImageItem (SP-026) |
 | WAV実尺タイムライン同期 | ✅ 実装済み | WavDurationReader (SP-028) |
-| 7種アニメーション | ✅ 実装済み | ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static (SP-033) |
+| 8種アニメーション | ✅ 実装済み | ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/pan_down/static (SP-033) |
 | クロスフェードトランジション | ✅ 実装済み | FadeIn/FadeOut 0.5秒、交互レイヤー (SP-030) |
 | 字幕テンプレート | ✅ 実装済み | ApplySubtitleStyle: 話者色6色+Border+CenterBottom (SP-030) |
 | スタイルテンプレート | ✅ 実装済み | style_template.json Python/C#共有 (SP-031) |
@@ -111,7 +111,7 @@
 | AutoHotkey | GUI 操作で書き出し | PoC（プレースホルダー） | 中 |
 | スタイルテンプレート | Python/C#統一スタイル管理 | style_template.json共有 | なし |
 | ビジュアルリソース | 画像素材自動取得 | StockImage+AIImage+TextSlide | なし |
-| アニメーション | 7種自動割当 | AnimationAssigner+ApplyAnimationDirect | pan_down未実装 |
+| アニメーション | 8種自動割当 | AnimationAssigner+ApplyAnimationDirect | なし |
 | Pre-Export検証 | インポート前品質チェック | ValidateImportItems拡張済み | なし |
 
 ---
@@ -468,7 +468,6 @@ python -m pytest tests/test_csv_pipeline_mode.py -v
 
 ### 9.2 短期（品質向上）
 
-- [ ] pan_down アニメーション追加（C# 3行 + Python validation 1行）
 - [ ] 実コンテンツでの品質確認（Geminiクォータリセット後）
 - [ ] BGMテンプレート + ストック画像CSV + 字幕テンプレートの YMM4 実機テスト
 
@@ -601,7 +600,7 @@ PlaybackRateはImageItemでは100.0（AudioItem/TextItemの1.0とは異なる）
 - Zoom値をReflection経由でAnimationValue.Values[0].Valueに設定
 - 画像読み込み失敗時はZoom=100.0（デフォルト）にフォールバック
 
-### 12.5 7種アニメーション（実装済み・実機確認済み 2026-03-16）
+### 12.5 8種アニメーション（実装済み・実機確認済み 2026-03-16、pan_down追加 2026-03-17）
 
 CSV 4列目で指定されたアニメーション種別を `ApplyAnimationDirect()` で ImageItem に適用。
 
@@ -612,7 +611,8 @@ CSV 4列目で指定されたアニメーション種別を `ApplyAnimationDirec
 | `zoom_out` | ズームアウト (fitZoom * ratio → fitZoom) | `animation.zoom_out_ratio` |
 | `pan_left` | 左パン (X: +offset → -offset) | `animation.pan_zoom_ratio`, `pan_offset_ratio` |
 | `pan_right` | 右パン (X: -offset → +offset) | 同上 |
-| `pan_up` | 上パン (Y: +offset → -offset) | 同上 |
+| `pan_up` | 上パン (Y: +offset → 0) | 同上 |
+| `pan_down` | 下パン (Y: -offset → 0) | 同上 |
 | `static` | 静止画 (Zoomのみ、キーフレーム1つ) | — |
 
 **実装方式**:
@@ -625,7 +625,7 @@ CSV 4列目で指定されたアニメーション種別を `ApplyAnimationDirec
 
 **注意**: `Animation.From` / `Animation.To` は deprecated (CS0618) かつレンダリングを破壊するため使用禁止。
 
-**未実装**: `pan_down` (C# 3行 + Python validation 1行で追加可能)
+全8種アニメーションが実装済み。
 
 ### 12.6 WAV実尺同期（実装済み）
 
@@ -742,7 +742,6 @@ var item = new ImageItem { FilePath = filePath };
 
 ### 12.13 未実装（後続スライス）
 
-- `pan_down` アニメーション（C# 3行 + Python 1行で追加可能）
 - slides_payload.jsonとの統合（現在はCSV 3列目方式のみ）
 - YMM4 書き出し自動化（AutoHotkey改善 or API）
 

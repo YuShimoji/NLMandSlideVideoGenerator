@@ -1632,6 +1632,10 @@ namespace NLMSlidePlugin.TimelinePlugin
                     ApplyZoomDirect(imageItem, fitZoom * anim.PanZoomRatio, fitZoom * anim.PanZoomRatio);
                     ApplyPositionDirect(imageItem.Y, videoHeight * anim.PanDistanceRatio, 0);
                     break;
+                case "pan_down":
+                    ApplyZoomDirect(imageItem, fitZoom * anim.PanZoomRatio, fitZoom * anim.PanZoomRatio);
+                    ApplyPositionDirect(imageItem.Y, -(videoHeight * anim.PanDistanceRatio), 0);
+                    break;
                 case "static":
                     // ズームなし — Zoom を fitZoom 固定、アニメーションなし
                     ApplyZoomDirect(imageItem, fitZoom, fitZoom);

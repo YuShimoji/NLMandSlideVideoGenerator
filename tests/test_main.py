@@ -10,6 +10,13 @@ import pytest
 from src.main import VideoGenerationPipeline, main
 
 
+def _close_and_raise(coro):
+    """Close unawaited coroutine to suppress RuntimeWarning, then raise."""
+    if hasattr(coro, "close"):
+        coro.close()
+    raise RuntimeError("非推奨")
+
+
 # ---------------------------------------------------------------------------
 # VideoGenerationPipeline
 # ---------------------------------------------------------------------------
@@ -53,7 +60,7 @@ class TestMain:
         with patch.object(sys, "argv", test_args), \
              patch("src.main.create_directories"), \
              patch("src.main.asyncio") as mock_asyncio:
-            mock_asyncio.run.side_effect = RuntimeError("非推奨")
+            mock_asyncio.run.side_effect = _close_and_raise
             # Should print error but not crash in non-debug mode
             # In debug mode it re-raises, so let's test non-debug
             test_args_nodebug = ["main.py", "--topic", "AI basics"]
@@ -66,7 +73,7 @@ class TestMain:
         with patch.object(sys, "argv", test_args), \
              patch("src.main.create_directories"), \
              patch("src.main.asyncio") as mock_asyncio:
-            mock_asyncio.run.side_effect = RuntimeError("非推奨")
+            mock_asyncio.run.side_effect = _close_and_raise
             main()  # Should not raise
 
     def test_main_with_urls(self):
@@ -75,7 +82,7 @@ class TestMain:
         with patch.object(sys, "argv", test_args), \
              patch("src.main.create_directories"), \
              patch("src.main.asyncio") as mock_asyncio:
-            mock_asyncio.run.side_effect = RuntimeError("非推奨")
+            mock_asyncio.run.side_effect = _close_and_raise
             main()
 
     def test_main_debug_reraises(self):
@@ -84,6 +91,6 @@ class TestMain:
         with patch.object(sys, "argv", test_args), \
              patch("src.main.create_directories"), \
              patch("src.main.asyncio") as mock_asyncio:
-            mock_asyncio.run.side_effect = RuntimeError("非推奨")
+            mock_asyncio.run.side_effect = _close_and_raise
             with pytest.raises(RuntimeError):
                 main()

@@ -26,6 +26,7 @@ class AnimationType(Enum):
     PAN_LEFT = "pan_left"
     PAN_RIGHT = "pan_right"
     PAN_UP = "pan_up"
+    PAN_DOWN = "pan_down"
     STATIC = "static"
 
     @classmethod
@@ -46,6 +47,7 @@ class AnimationType(Enum):
             cls.PAN_RIGHT,
             cls.ZOOM_OUT,
             cls.PAN_UP,
+            cls.PAN_DOWN,
         ]
 
 

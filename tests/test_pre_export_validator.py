@@ -123,7 +123,7 @@ class TestValidateTimelineCsv:
         assert any("unknown animation" in w.lower() for w in result.warnings)
 
     def test_valid_animation_types(self, tmp_path: Path):
-        valid_types = ["ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "static", ""]
+        valid_types = ["ken_burns", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down", "static", ""]
         rows = [[f"s{i}", f"text{i}", "", t] for i, t in enumerate(valid_types)]
         csv_path = _write_csv(tmp_path / "all_anims.csv", rows)
         result = validate_timeline_csv(csv_path)

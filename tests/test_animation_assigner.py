@@ -11,6 +11,7 @@ class TestAnimationType:
         assert AnimationType.from_str("ken_burns") == AnimationType.KEN_BURNS
         assert AnimationType.from_str("zoom_in") == AnimationType.ZOOM_IN
         assert AnimationType.from_str("pan_left") == AnimationType.PAN_LEFT
+        assert AnimationType.from_str("pan_down") == AnimationType.PAN_DOWN
         assert AnimationType.from_str("static") == AnimationType.STATIC
 
     def test_from_str_case_insensitive(self):
@@ -27,7 +28,7 @@ class TestAnimationType:
     def test_cycle_types_excludes_static(self):
         cycle = AnimationType.cycle_types()
         assert AnimationType.STATIC not in cycle
-        assert len(cycle) == 6
+        assert len(cycle) == 7
 
 
 class TestAnimationAssigner:

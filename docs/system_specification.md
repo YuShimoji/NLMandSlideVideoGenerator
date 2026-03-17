@@ -30,7 +30,7 @@ NLMandSlideVideoGenerator
 
 - **Stage 1**: Research CLI一気通貫 (collect→script→align→review→pipeline) 実装済み
 - **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。500テストPASS
-- **Stage 3**: NLMSlidePlugin CSVインポート + style_template.json統一テンプレート + 7種アニメーション実機テストPASS
+- **Stage 3**: NLMSlidePlugin CSVインポート + style_template.json統一テンプレート + 8種アニメーション実機テストPASS
 - **Stage 4**: メタデータ・サムネイル・字幕 (SRT/ASS/VTT) 生成実装済み
 
 ## 2. 機能要件
@@ -56,7 +56,7 @@ NLMandSlideVideoGenerator
   - AIImageProvider: Gemini Imagen 3.0でAI画像生成 (stock失敗時フォールバック)
   - TextSlideGenerator: テキスト主体セグメント用スライドPNG自動生成 (Pillow描画、テーマ切替、キャッシュ)
   - VisualResourceOrchestrator: 全リソース統合+連続多様性制御
-  - AnimationAssigner: 7種アニメーション自動割当
+  - AnimationAssigner: 8種アニメーション自動割当
   - CsvAssembler: 4列CSV生成 (speaker, text, image_path, animation_type)
   - Pre-Export Validator: 品質検証
 - **出力**: 4列CSV + ダウンロード済み画像群
