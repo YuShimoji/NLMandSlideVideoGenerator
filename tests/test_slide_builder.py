@@ -3,9 +3,13 @@ from types import SimpleNamespace
 
 import pytest
 
+from unittest.mock import patch, MagicMock
+from pathlib import Path
+
 from core.slide_builder import (
     allocate_subslide_durations,
     build_slide_dict,
+    build_slides_payload,
     expand_segment_into_slides,
     find_split_index,
     split_text_for_subslides,
@@ -189,3 +193,70 @@ class TestExpandSegmentIntoSlides:
         slides = expand_segment_into_slides(seg, start_slide_id=0)
         total = sum(s["duration"] for s in slides)
         assert total == pytest.approx(10.0, abs=0.5)
+
+
+# ---------------------------------------------------------------------------
+# split_text_for_subslides — edge cases
+# ---------------------------------------------------------------------------
+
+class TestSplitTextEdgeCases:
+    def test_no_good_split_point(self):
+        """区切り文字がないテキストでもフォールバックで分割される。"""
+        text = "a" * 100  # 区切り文字なし
+        chunks = split_text_for_subslides(text, 30, 5)
+        assert len(chunks) >= 2
+        assert all(len(c) > 0 for c in chunks)
+
+
+# ---------------------------------------------------------------------------
+# allocate_subslide_durations — deficit branches
+# ---------------------------------------------------------------------------
+
+class TestAllocateSubslideDurationsDeficit:
+    def test_many_chunks_minimum_duration(self):
+        """多くのチャンクで最小duration制約がかかるケース。"""
+        chunks = ["a" * 10] * 10
+        durations = allocate_subslide_durations(5.0, chunks, 0.5)
+        assert len(durations) == 10
+        assert all(d >= 0.5 for d in durations)
+
+    def test_short_total_with_minimum(self):
+        """total_duration が chunks * min_duration より短いケース。"""
+        chunks = ["abc", "def", "ghi"]
+        durations = allocate_subslide_durations(1.0, chunks, 0.5)
+        assert len(durations) == 3
+        # 各チャンクは少なくとも min_duration を持つ
+        assert all(d >= 0.5 for d in durations)
+
+
+# ---------------------------------------------------------------------------
+# build_slides_payload
+# ---------------------------------------------------------------------------
+
+class TestBuildSlidesPayload:
+    def test_basic_payload(self, tmp_path: Path):
+        seg = SimpleNamespace(id=1, speaker="Host1", start_time=0.0, end_time=5.0, text="テスト")
+        payloads = [
+            {
+                "segment": seg,
+                "slides": [{"slide_id": 0, "text": "テスト", "title": "T", "duration": 5.0}],
+                "audio_file": tmp_path / "audio.wav",
+            }
+        ]
+        result = build_slides_payload(payloads, tmp_path / "test.csv")
+        assert "meta" in result
+        assert "segments" in result
+        assert result["meta"]["total_segments"] == 1
+        assert result["segments"][0]["speaker"] == "Host1"
+        assert len(result["segments"][0]["subslides"]) == 1
+
+    def test_empty_segment_skipped(self, tmp_path: Path):
+        payloads = [{"segment": None, "slides": []}]
+        result = build_slides_payload(payloads, tmp_path / "test.csv")
+        assert result["meta"]["total_segments"] == 0
+
+    def test_no_audio_file(self, tmp_path: Path):
+        seg = SimpleNamespace(id=2, speaker="A", start_time=0, end_time=3, text="T")
+        payloads = [{"segment": seg, "slides": [{"slide_id": 0, "text": "T"}]}]
+        result = build_slides_payload(payloads, tmp_path / "test.csv")
+        assert result["segments"][0]["audio_file"] is None

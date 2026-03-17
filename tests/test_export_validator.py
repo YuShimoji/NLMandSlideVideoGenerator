@@ -187,3 +187,84 @@ class TestStats:
         summary = result.summary()
         assert "[PASS]" in summary
         assert "reimu" in summary
+
+
+# ---------------------------------------------------------------------------
+# CSV read error & row validation branches
+# ---------------------------------------------------------------------------
+
+class TestCsvReadError:
+    def test_unreadable_csv(self, tmp_path: Path) -> None:
+        """バイナリファイルをCSVとして読むとエラー。"""
+        bad_file = tmp_path / "bad.csv"
+        bad_file.write_bytes(b"\x80\x81\x82\x83" * 100)
+        v = ExportValidator(check_image_exists=False)
+        result = v.validate_csv(bad_file)
+        # エラーまたは空CSVとして扱われる
+        assert not result.passed or any(i.code in ("CSV_READ_ERROR", "EMPTY_CSV") for i in result.issues)
+
+
+class TestRowValidationBranches:
+    def test_insufficient_columns(self, tmp_path: Path) -> None:
+        """1列だけの行はINSUFFICIENT_COLUMNS。"""
+        rows = [["only_one_column"]]
+        csv_path = _write_csv(tmp_path / "bad_cols.csv", rows)
+        v = ExportValidator(check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "INSUFFICIENT_COLUMNS" for i in result.issues)
+
+    def test_empty_speaker_warning(self, tmp_path: Path) -> None:
+        """speaker が空の行は警告。"""
+        rows = [["", "テキスト"]]
+        csv_path = _write_csv(tmp_path / "no_speaker.csv", rows)
+        v = ExportValidator(check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "EMPTY_SPEAKER" for i in result.issues)
+
+    def test_empty_text_warning(self, tmp_path: Path) -> None:
+        """text が空の行は警告。"""
+        rows = [["Speaker", ""]]
+        csv_path = _write_csv(tmp_path / "no_text.csv", rows)
+        v = ExportValidator(check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "EMPTY_TEXT" for i in result.issues)
+
+    def test_image_not_found_warning(self, tmp_path: Path) -> None:
+        """存在しない画像パスは警告。"""
+        rows = [["Speaker", "Text", "/nonexistent/img.jpg"]]
+        csv_path = _write_csv(tmp_path / "bad_img.csv", rows)
+        v = ExportValidator(check_image_exists=True)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "IMAGE_NOT_FOUND" for i in result.issues)
+
+    def test_invalid_animation_warning(self, tmp_path: Path) -> None:
+        """不正なアニメーション種別は警告。"""
+        rows = [["Speaker", "Text", "", "flying_rainbow"]]
+        csv_path = _write_csv(tmp_path / "bad_anim.csv", rows)
+        v = ExportValidator(check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "INVALID_ANIMATION" for i in result.issues)
+
+
+class TestTemplateConsistencyBranches:
+    def test_pan_without_zoom_ratio(self, tmp_path: Path) -> None:
+        """pan_left 使用時に pan_zoom_ratio がテンプレートに未定義だと警告。"""
+        template = {
+            "speaker_colors": ["#FFF"],
+            "animation": {"ken_burns_zoom_ratio": 1.05},  # pan_zoom_ratio なし
+            "timing": {},
+            "subtitle": {},
+        }
+        rows = [["s", "t", "", "pan_left"]]
+        csv_path = _write_csv(tmp_path / "pan.csv", rows)
+        v = ExportValidator(template=template, check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert any(i.code == "TEMPLATE_MISSING_PAN_CONFIG" for i in result.issues)
+
+    def test_no_template_skips_consistency(self, tmp_path: Path) -> None:
+        """テンプレートがなければtemplate consistency チェックをスキップ。"""
+        rows = [["s", "t", "", "pan_left"]]
+        csv_path = _write_csv(tmp_path / "no_tmpl.csv", rows)
+        v = ExportValidator(template=None, check_image_exists=False)
+        result = v.validate_csv(csv_path)
+        assert not any(i.code == "TEMPLATE_MISSING_PAN_CONFIG" for i in result.issues)
