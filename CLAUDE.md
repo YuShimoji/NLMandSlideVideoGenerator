@@ -11,8 +11,9 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
   - 全34仕様 (SP-001〜SP-034) 完了。33/34 done + 1 legacy
   - SP-004: pan_down追加で8種アニメーション完成、spec 100%化
   - SP-019: Troubleshooting Guide v2.0 (Gemini/ストック素材/パイプライン再開追加)
-  - テスト: 920 passed, 0 warnings, Ruff 0, Mypy 0, カバレッジ82%
-  - テスト警告4件修正 (async mock RuntimeWarning解消)
+  - テスト: 980 passed, 0 warnings, Ruff 0, Mypy 0
+  - カバレッジ: 全体84% (6108行) / コア92% (外部API+レガシー5件除外時5413行)
+  - 外部API (ymm4_backend/google_slides/uploader/google_auth) は実API/SDK依存のためカバレッジ対象外
   - 残: YMM4実機テスト(integration_test_checklist A-G), Geminiクォータリセット後の品質確認, Codecov統合
 
 ## DECISION LOG
