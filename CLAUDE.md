@@ -7,16 +7,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-17 session 3 nightshift):
-  - 全40仕様 (SP-001〜SP-040)。34 done + 3 partial (SP-035/SP-039/SP-040) + 2 draft (SP-037/SP-038) + 1 archived
-  - SP-036 Script Style Presets → done (100%): 42テスト追加で全機能検証完了
-  - SP-040 Batch Production Queue (60%→80%): 11テスト追加。Phase 1+2完了。Web UIバッチ残
-  - SP-039 MP4 Quality Verification (80%): FFprobeチェッカー + CLI verify + 17テスト
-  - ruff/mypy リグレッション5件修正 (全0)
-  - ドキュメント全面同期: backlog.md 陳腐化更新、テスト数7ファイル同期
-  - テスト: 1050 passed, 0 warnings, Ruff 0, Mypy 0
-  - Brave Search API 移行完了 (Google Custom Search JSON API は新規利用不可・2027/1終了)
-  - 残: BRAVE_SEARCH_API_KEY設定, SP-035 YMM4実機テスト, SP-040 Web UI, SP-037/038 (draft)
+直近の状態 (2026-03-18):
+  - 全40仕様。34 done + 4 partial (SP-035/037/039/040) + 1 draft (SP-038) + 1 archived
+  - E2Eフィードバックループ確立: Brave実ソース + Gemini台本 + Pexels画像 + サムネイル自動生成
+  - SP-037 Thumbnail (60%): Phase 1完了。CJKフォント対応済み
+  - Brave Search API 移行完了。Custom Search JSON API廃止対応
+  - Gemini 2.5-flash一本化。Imagen 4有料プラン必須(stock+TextSlideで代替)
+  - 台本品質: 1seg=1speaker + speaker_mapping反映
+  - テスト: 1051 passed, Ruff 0, Mypy 0
+  - 残: SP-035 YMM4実機テスト, SP-037 Phase2, SP-038(draft), SP-040 Web UI
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
