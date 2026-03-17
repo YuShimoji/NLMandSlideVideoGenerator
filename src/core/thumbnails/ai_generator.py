@@ -16,13 +16,26 @@ from video_editor.models import ThumbnailInfo, VideoInfo
 from slides.slide_generator import SlidesPackage
 from config.settings import settings
 
+# 日本語対応フォントの検索候補 (優先順)
+_CJK_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/NotoSansJP-VF.ttf",
+    "C:/Windows/Fonts/YuGothM.ttc",
+    "C:/Windows/Fonts/meiryo.ttc",
+    "C:/Windows/Fonts/msgothic.ttc",
+    "C:/Windows/Fonts/BIZ-UDGothicR.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "arial.ttf",  # 最終フォールバック
+]
+
 
 class AIThumbnailGenerator(IThumbnailGenerator):
     """AIを活用したサムネイル自動生成"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.output_dir = settings.THUMBNAILS_DIR
         self.output_dir.mkdir(exist_ok=True)
+        self._cached_font_path: str | None = None
 
         # サムネイルスタイル設定
         self.styles = {
@@ -59,6 +72,17 @@ class AIThumbnailGenerator(IThumbnailGenerator):
                 'gradient': False
             }
         }
+
+    def _find_cjk_font(self) -> str:
+        """CJK (日本語) 対応フォントを検索する。"""
+        if self._cached_font_path:
+            return self._cached_font_path
+        for candidate in _CJK_FONT_CANDIDATES:
+            if Path(candidate).exists():
+                self._cached_font_path = candidate
+                return candidate
+        self._cached_font_path = "arial.ttf"
+        return "arial.ttf"
 
     async def generate(
         self,
@@ -158,11 +182,12 @@ class AIThumbnailGenerator(IThumbnailGenerator):
 
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        title_size = int(style_config["font_size_title"])  # type: ignore[call-overload]
+        subtitle_size = int(style_config["font_size_subtitle"])  # type: ignore[call-overload]
+        font_path = self._find_cjk_font()
         try:
-            title_size = int(style_config["font_size_title"])  # type: ignore[call-overload]
-            subtitle_size = int(style_config["font_size_subtitle"])  # type: ignore[call-overload]
-            title_font = ImageFont.truetype("arial.ttf", title_size)
-            subtitle_font = ImageFont.truetype("arial.ttf", subtitle_size)
+            title_font = ImageFont.truetype(font_path, title_size)
+            subtitle_font = ImageFont.truetype(font_path, subtitle_size)
         except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
