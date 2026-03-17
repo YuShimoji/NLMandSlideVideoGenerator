@@ -68,7 +68,7 @@ flowchart LR
 - **AIImageProvider** (`src/core/visual/ai_image_provider.py`): Gemini Imagen 3.0 でカスタムイラスト生成。stock画像取得失敗時のフォールバック。
 - **TextSlideGenerator** (`src/core/visual/text_slide_generator.py`): テキスト主体セグメント用のスライドPNG自動生成。Pillow描画、テーマ切替、日本語フォント自動検出、ハッシュベースキャッシュ。
 - **VisualResourceOrchestrator** (`src/core/visual/resource_orchestrator.py`): 全ビジュアルリソースを統合。stock→AI→slideのフォールバック連鎖、連続source多様性強制、アニメーション自動割当。
-- **AnimationAssigner** (`src/core/visual/animation_assigner.py`): ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static の7種を自動サイクル割当。
+- **AnimationAssigner** (`src/core/visual/animation_assigner.py`): ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/pan_down/static の8種を自動サイクル割当。
 - **CsvAssembler** (`src/core/csv_assembler.py`): 台本 + VisualResourcePackage → 4列CSV (speaker, text, image_path, animation_type)。
 - **Pre-Export Validator** (`src/core/editing/pre_export_validator.py`): CSVバリデーション (画像存在、アニメーション種別、行数チェック)。
 - **StyleTemplateManager** (`src/core/style_template.py`): `config/style_template.json` の読み込み・検証・複数テンプレート管理。
@@ -319,7 +319,7 @@ streamlit                # Web UI
 fastapi + uvicorn        # 運用API (オプション)
 
 # テスト
-pytest                   # 500テストPASS (2026-03-16時点)
+pytest                   # 980テストPASS (2026-03-17時点)
 ```
 
 ### ディレクトリ構成

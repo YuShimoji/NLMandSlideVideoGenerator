@@ -22,7 +22,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | NLMSlidePlugin CSVインポート | 完成 | CsvImportDialog + Ymm4TimelineImporter |
 | Voice自動生成 UI接続 (SP-024) | 完成 | VoiceSpeakerDiscovery + CsvImportDialog |
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
-| アニメーション7種 (SP-033 Phase 1) | 完成 | Values in-place方式、YMM4実機テストPASS (2026-03-16) |
+| アニメーション8種 (SP-033 Phase 1 + SP-004 pan_down) | 完成 | Values in-place方式、YMM4実機テストPASS (2026-03-16、pan_down追加 2026-03-17) |
 | Baseline E2E (SP-027) | 完成 | CSV→YMM4→mp4 全工程完走確認 (2026-03-16) |
 | Post-Voice Timeline Resync (SP-028) | 完成 | WavDurationReader+VoiceLength同期実装済み |
 | トランジション+字幕テンプレート (SP-030) | 完成 | FadeIn/FadeOut 0.5秒+Border/Bold/CenterBottom/話者色分け6色 |

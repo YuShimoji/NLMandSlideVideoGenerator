@@ -112,7 +112,7 @@ speaker,text,image_path,animation_type
 | speaker | 話者名 | Yes |
 | text | セリフ | Yes |
 | image_path | 背景画像パス | No (空欄可) |
-| animation_type | ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/static | No (空欄→ken_burns) |
+| animation_type | ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/pan_down/static | No (空欄→ken_burns) |
 
 ---
 

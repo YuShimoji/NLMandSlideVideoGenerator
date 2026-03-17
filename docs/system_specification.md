@@ -29,7 +29,7 @@ NLMandSlideVideoGenerator
 ### 1.5 現行実装状態 (2026-03-16)
 
 - **Stage 1**: Research CLI一気通貫 (collect→script→align→review→pipeline) 実装済み
-- **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。500テストPASS
+- **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。980テストPASS
 - **Stage 3**: NLMSlidePlugin CSVインポート + style_template.json統一テンプレート + 8種アニメーション実機テストPASS
 - **Stage 4**: メタデータ・サムネイル・字幕 (SRT/ASS/VTT) 生成実装済み
 
@@ -146,7 +146,7 @@ NLMandSlideVideoGenerator
 ### 3.4 保守性要件
 
 - Python/C# 二層構成。共有設定は `style_template.json` で一元管理
-- Python 500テスト (pytest)、C# 34テスト (dotnet test) によるコンパイル検証
+- Python 980テスト (pytest, カバレッジ84%/コア92%)、C# 34テスト (dotnet test) によるコンパイル検証
 - Ruff 0 errors、Mypy 0 errors (CI 5段階全緑)
 - ドキュメントは `docs/` に集約、`docs/spec-index.json` でインデックス管理
 - ドメイン固有例外階層 (`src/core/exceptions.py`) で統一エラーハンドリング
@@ -203,7 +203,7 @@ streamlit                # Web UI
 fastapi + uvicorn        # 運用API (オプション)
 
 # テスト・品質
-pytest                   # 500テストPASS
+pytest                   # 980テストPASS
 ruff                     # Linter (0 errors)
 mypy                     # 型チェック (0 errors)
 ```
@@ -275,7 +275,7 @@ config/
 
 - Docker化 / CI-CD強化 (GitHub Actions有効化)
 - バッチ処理 / 多言語対応
-- テストカバレッジ 80%+ (残12モジュールは外部API/Web UI依存)
+- ~~テストカバレッジ 80%+~~ **達成済み**: 84% (全体) / 92% (コア)。残は外部API/Web UI依存
 
 ### 7.3 長期
 
