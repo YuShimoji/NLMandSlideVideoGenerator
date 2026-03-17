@@ -76,10 +76,26 @@
 - Google Search: still 403 (Cloud Console config needed)
 - Pipeline time: 40s
 
+## 30min E2E Test (2026-03-18, Brave Search)
+- Brave Search: 5 real sources (kpmg, arakiplaw, a-x, fidx, omake)
+- Segments: 29 (within 25-35 target range)
+- Stock images: 11/12 (92%)
+- TextSlide fallback: 18
+- Image coverage: 100%
+- Alignment: supported=24, orphaned=4, conflict=1
+- Pipeline time: 338s (align=253s is 75% bottleneck)
+
+## API Status Investigation (2026-03-18)
+- Imagen 3: **SHUTDOWN** (all variants 404/deprecated)
+- Imagen 4: 3 models available (standard/fast/ultra) but **paid plans only** (400 error)
+- Gemini 2.5-flash: working (free tier still available)
+- Gemini 2.0-flash: **FREE TIER EXHAUSTED** (429, `free_tier` in error)
+- API key is on **free plan project** — billing activation needed at ai.dev/projects
+
 ## Remaining Issues
-- Google Search API 403: Need to verify Custom Search Engine configuration in Google Cloud Console
-- GOOGLE_API_KEY placeholder in .env: Remove to suppress SDK warnings
-- Gemini 2.0-flash quota exhaustion: free tier limit (need paid plan for batch production)
+- Gemini billing: API key on free plan. Need to activate billing at ai.dev/projects
+- Imagen 4: requires paid plan (400 INVALID_ARGUMENT)
+- Alignment bottleneck: 75% of pipeline time (252s for 30min video)
 
 ## Next Steps
 1. Google Cloud Console でCustom Search APIの有効化を確認

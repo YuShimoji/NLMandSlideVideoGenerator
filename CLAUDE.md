@@ -52,6 +52,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-17 | カバレッジ基準: 全体84%/コア92%で十分 | 85%全体目標追求/コア基準採用 | 外部API 4件+レガシースタブ1件は実API/SDK依存でテスト不能。コアモジュール92%が実質的な品質指標 |
 | 2026-03-17 | SP-039 MP4品質検証はPhase 1(FFprobe+CLI)先行 | Phase 1のみ/Phase 1+2同時 | Phase 2 (SP-038 YouTube連携) は本番OAuth未整備のため後送り |
 | 2026-03-18 | Google Custom Search → Brave Search API 移行 | Brave/Serper/Tavily/Vertex AI/現状維持 | Custom Search JSON APIが新規利用不可(2027/1完全終了)。Brave Search APIは独自インデックス+$5/月無料枠で十分 |
+| 2026-03-18 | Imagen 3→4 移行 | imagen-4.0-generate-001 | Imagen 3は廃止済み。Imagen 4 (standard/fast/ultra) が現行。ただしGemini無料プランでは利用不可(400 paid plans only) |
 
 ## Key Paths
 

@@ -18,8 +18,8 @@ from ..utils.logger import logger
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 2.0
 
-# Imagen モデル
-_DEFAULT_MODEL = os.environ.get("IMAGEN_MODEL", "imagen-3.0-generate-001")
+# Imagen モデル (Imagen 3 は廃止済み、Imagen 4 が現行)
+_DEFAULT_MODEL = os.environ.get("IMAGEN_MODEL", "imagen-4.0-generate-001")
 
 
 @dataclass
