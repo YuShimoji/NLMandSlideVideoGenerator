@@ -97,6 +97,18 @@ def show_material_pipeline_page():
             help="字幕・アニメーション・タイミングのプリセット",
         )
 
+        # 台本スタイルプリセット (SP-036)
+        from notebook_lm.gemini_integration import GeminiIntegration
+        _gi = GeminiIntegration.__new__(GeminiIntegration)
+        _script_presets = _gi.list_presets()
+        _preset_names = [p["name"] for p in _script_presets] if _script_presets else ["default"]
+        selected_script_style = st.selectbox(
+            "台本スタイル",
+            _preset_names,
+            index=0,
+            help="Geminiプロンプトのスタイルプリセット (ニュース/解説/まとめ等)",
+        )
+
     # --- 再開機能 ---
     with st.expander("途中再開 (Resume)"):
         resume_dir_str = st.text_input(
@@ -165,6 +177,7 @@ def show_material_pipeline_page():
                 auto_images=auto_images,
                 target_duration=target_duration * 60.0,
                 resume_dir=resume_dir,
+                style=selected_script_style,
             )
 
         try:

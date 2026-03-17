@@ -8,13 +8,13 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
 直近の状態 (2026-03-17):
-  - 全34仕様 (SP-001〜SP-034) 完了。33/34 done + 1 legacy
-  - SP-004: pan_down追加で8種アニメーション完成、spec 100%化
-  - SP-019: Troubleshooting Guide v2.0 (Gemini/ストック素材/パイプライン再開追加)
-  - テスト: 980 passed, 0 warnings, Ruff 0, Mypy 0
-  - カバレッジ: 全体84% (6108行) / コア92% (外部API+レガシー5件除外時5413行)
-  - 外部API (ymm4_backend/google_slides/uploader/google_auth) は実API/SDK依存のためカバレッジ対象外
-  - 残: YMM4実機テスト(integration_test_checklist A-G), Geminiクォータリセット後の品質確認, Codecov統合
+  - 全40仕様 (SP-001〜SP-040)。33 done + 3 partial (SP-035/SP-036/SP-040) + 3 draft (SP-037/SP-038/SP-039) + 1 archived
+  - SP-036 Script Style Presets: CLI --style + Web UIドロップダウン + config/script_presets/ 4プリセット
+  - SP-040 Batch Production Queue: CLI batch + サンプルtopics.json
+  - Quality Definition 4軸: 制作スピード + 情報密度 + 視覚完成度 + 一貫性
+  - ターゲット: YouTube公開の長尺解説動画 (20-30分+)、一晩3本ペース
+  - テスト: 980 passed, 0 warnings, Ruff 0, Mypy 0, カバレッジ84% (全体) / 92% (コア)
+  - 残: SP-035 YMM4実機テスト, SP-037〜SP-039 (draft), Gemini品質確認
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |

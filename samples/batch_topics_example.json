@@ -1,0 +1,24 @@
+{
+  "batch_name": "example_batch",
+  "defaults": {
+    "style": "news",
+    "duration": 1800,
+    "auto_images": true,
+    "auto_review": true,
+    "speaker_map": {"Host1": "れいむ", "Host2": "まりさ"}
+  },
+  "topics": [
+    {
+      "topic": "量子コンピュータの最新動向",
+      "seed_urls": ["https://example.com/quantum"]
+    },
+    {
+      "topic": "AI規制法案の動向",
+      "duration": 2400,
+      "style": "educational"
+    },
+    {
+      "topic": "宇宙開発2026年の展望"
+    }
+  ]
+}
