@@ -320,25 +320,23 @@ class TestCallGeminiApi:
         assert g.request_count == 1
 
     @pytest.mark.asyncio
-    async def test_quota_error_triggers_fallback_to_next_model(self):
-        """プライマリモデルが 429 クォータエラー → フォールバックモデルを試行 (L209-217)。"""
+    async def test_quota_error_single_model_falls_to_mock(self):
+        """単一モデル構成で 429 クォータエラー → モックにフォールバック。"""
         g = GeminiIntegration(api_key="real-key", model_name="gemini-2.5-flash")
 
-        call_count = 0
-
         async def side_effect_fn(model, prompt):
-            nonlocal call_count
-            call_count += 1
-            if model == "gemini-2.5-flash":
-                raise Exception("429 Resource has been exhausted")
-            # フォールバックモデルは成功
-            return _make_valid_gemini_response()
+            raise Exception("429 Resource has been exhausted")
 
         with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          side_effect=side_effect_fn):
-            result = await g._call_gemini_api("test prompt")
+                          side_effect=side_effect_fn), \
+             patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await g._call_gemini_api(
+                "前文\n【トピック】\nクォータテスト\n後文"
+            )
 
-        assert call_count == 2  # primary + 1 fallback
+        # 全モデル失敗 → モックフォールバック
+        parsed = json.loads(result.content)
+        assert len(parsed["segments"]) == 5
         assert isinstance(result, GeminiResponse)
 
     @pytest.mark.asyncio

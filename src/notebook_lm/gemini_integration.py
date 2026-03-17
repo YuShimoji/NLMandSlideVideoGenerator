@@ -36,8 +36,8 @@ class ScriptInfo:
 class GeminiIntegration:
     """Gemini API連携クラス"""
 
-    # モデルフォールバックチェーン: 高品質→高クォータ
-    DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    # モデルフォールバックチェーン (gemini-2.5-flash を全用途で使用)
+    DEFAULT_MODELS = ["gemini-2.5-flash"]
 
     # プリセットディレクトリのデフォルトパス
     PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "script_presets"

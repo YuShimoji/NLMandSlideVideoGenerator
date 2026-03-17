@@ -51,7 +51,6 @@ class TestGeminiIntegrationInit:
     def test_custom_model(self):
         g = GeminiIntegration(api_key="key", model_name="gemini-2.0-flash")
         assert g.model_name == "gemini-2.0-flash"
-        assert "gemini-2.5-flash" in g.fallback_models
 
     @patch.dict("os.environ", {"GEMINI_MODEL": "custom-model"})
     def test_model_from_env(self):
@@ -61,7 +60,8 @@ class TestGeminiIntegrationInit:
     def test_fallback_models_exclude_primary(self):
         g = GeminiIntegration(api_key="key", model_name="gemini-2.5-flash")
         assert "gemini-2.5-flash" not in g.fallback_models
-        assert "gemini-2.0-flash" in g.fallback_models
+        # gemini-2.5-flash 単一モデル構成ではフォールバックは空
+        assert g.fallback_models == []
 
 
 class TestBuildScriptPrompt:
