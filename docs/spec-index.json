@@ -354,9 +354,9 @@
     "id": "SP-040",
     "title": "Batch Production Queue",
     "status": "partial",
-    "pct": 60,
+    "pct": 80,
     "cat": "pipeline",
     "file": "docs/specs/batch_production_queue.md",
-    "summary": "複数トピックをキューに積み順次パイプライン実行。一晩3本ペースの制作を自動化。トピックリストJSON/CSV入力→順次collect→script→csv→YMM4プロジェクト生成"
+    "summary": "Phase 1+2完了: CLI batch + topics.json + 順次実行 + エラー続行 + batch_result.json。11テストPASS。残: Web UIバッチ実行画面"
   }
 ]
