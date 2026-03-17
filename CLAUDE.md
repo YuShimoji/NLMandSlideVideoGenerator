@@ -7,14 +7,19 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-17):
-  - 全40仕様 (SP-001〜SP-040)。33 done + 3 partial (SP-035/SP-036/SP-040) + 3 draft (SP-037/SP-038/SP-039) + 1 archived
-  - SP-036 Script Style Presets: CLI --style + Web UIドロップダウン + config/script_presets/ 4プリセット
-  - SP-040 Batch Production Queue: CLI batch + サンプルtopics.json
+直近の状態 (2026-03-17 session 2):
+  - 全40仕様 (SP-001〜SP-040)。33 done + 4 partial (SP-035/SP-036/SP-039/SP-040) + 2 draft (SP-037/SP-038) + 1 archived
+  - SP-036 Script Style Presets (70%): CLI --style + 4プリセットJSON + gemini_integration.pyプリセット駆動化
+  - SP-040 Batch Production Queue (60%): CLI batch + topics.json + 順次実行 + batch_result.json
+  - SP-039 MP4 Quality Verification (80%): FFprobeチェッカー + CLI verify + 17テスト
+  - E2Eフロー完走確認済み: topic→pipeline→CSV生成まで成功 (Gemini API + Pexels stock 3枚取得)
+  - バグ修正: csv_assembler.py _strip_speaker_prefix (Host1:/Host2:プレフィックス除去)
+  - PIPELINE_DEFAULTS.target_duration 300→1800秒 (長尺方針反映)
   - Quality Definition 4軸: 制作スピード + 情報密度 + 視覚完成度 + 一貫性
   - ターゲット: YouTube公開の長尺解説動画 (20-30分+)、一晩3本ペース
-  - テスト: 980 passed, 0 warnings, Ruff 0, Mypy 0, カバレッジ84% (全体) / 92% (コア)
-  - 残: SP-035 YMM4実機テスト, SP-037〜SP-039 (draft), Gemini品質確認
+  - API設定: Gemini=SET, Pexels=SET, Pixabay=SET, Google CSE=要修正(403)
+  - テスト: 982 passed, 0 warnings, Ruff 0, Mypy 0
+  - 残: Google CSE API修正, SP-035 YMM4実機テスト, SP-036/040 Web UI統合, SP-037/038 (draft)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
