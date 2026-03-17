@@ -6,11 +6,14 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: プロトタイプ後期
+現フェーズ: 実運用品質仕上げ
 直近の状態 (2026-03-17):
-  - テストカバレッジ 82% (920 tests passed, mypy 0, ruff 0)
-  - カバレッジ目標80%達成: api.py(77%), api_server.py(75%), stage_runners.py(69%), pipeline.py(85%), main.py(84%), tiktok_adapter.py(94%)
-  - 残: Geminiクォータリセット後の実コンテンツ確認, YMM4実機テスト, Codecov統合
+  - 全34仕様 (SP-001〜SP-034) 完了。33/34 done + 1 legacy
+  - SP-004: pan_down追加で8種アニメーション完成、spec 100%化
+  - SP-019: Troubleshooting Guide v2.0 (Gemini/ストック素材/パイプライン再開追加)
+  - テスト: 920 passed, 0 warnings, Ruff 0, Mypy 0, カバレッジ82%
+  - テスト警告4件修正 (async mock RuntimeWarning解消)
+  - 残: YMM4実機テスト(integration_test_checklist A-G), Geminiクォータリセット後の品質確認, Codecov統合
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
