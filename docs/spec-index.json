@@ -313,5 +313,50 @@
     "cat": "infra",
     "file": "docs/integration_test_checklist.md",
     "summary": "全SP完了後の統合実機テスト項目 (A-G)。チェックリスト整備済み、実施未完了。字幕/BGM/ストック画像/AI画像/Resync/Pre-Export/全統合E2Eの7セクション"
+  },
+  {
+    "id": "SP-036",
+    "title": "Script Style Presets",
+    "status": "partial",
+    "pct": 70,
+    "cat": "pipeline",
+    "file": "docs/specs/script_style_presets.md",
+    "summary": "動画種別(ニュース/解説/まとめ等)ごとのGeminiプロンプトテンプレート。トーン・構成・話者バランス・セグメント密度を事前定義し、台本品質の一貫性を構造化"
+  },
+  {
+    "id": "SP-037",
+    "title": "Thumbnail Pipeline Integration",
+    "status": "draft",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/specs/thumbnail_pipeline.md",
+    "summary": "既存src/core/thumbnails/をresearch_cli.py pipelineに接続。台本キーワードからサムネイル自動生成→output_csv/に同梱出力"
+  },
+  {
+    "id": "SP-038",
+    "title": "YouTube Publish Pipeline",
+    "status": "draft",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/specs/youtube_publish_pipeline.md",
+    "summary": "MetadataGenerator+YouTubeUploaderをパイプラインに統合。ScriptBundle→メタデータ自動生成→MP4アップロード→説明欄クレジット自動挿入の一気通貫。YouTubeUploader本番API実装"
+  },
+  {
+    "id": "SP-039",
+    "title": "MP4 Output Quality Verification",
+    "status": "draft",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/specs/mp4_quality_verification.md",
+    "summary": "FFprobeベースの出力MP4自動品質チェック。codec/duration/resolution/audio streams/ファイルサイズの検証。異常検出時アラート。品質の一貫性を構造的に担保"
+  },
+  {
+    "id": "SP-040",
+    "title": "Batch Production Queue",
+    "status": "partial",
+    "pct": 60,
+    "cat": "pipeline",
+    "file": "docs/specs/batch_production_queue.md",
+    "summary": "複数トピックをキューに積み順次パイプライン実行。一晩3本ペースの制作を自動化。トピックリストJSON/CSV入力→順次collect→script→csv→YMM4プロジェクト生成"
   }
 ]

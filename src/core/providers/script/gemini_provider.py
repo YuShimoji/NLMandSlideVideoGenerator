@@ -21,10 +21,12 @@ class GeminiScriptProvider(IScriptProvider):
         api_key: Optional[str] = None,
         target_duration: float = 300.0,
         language: Optional[str] = None,
+        style: str = "default",
     ) -> None:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.target_duration = target_duration
         self.language = language or settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+        self.style = style
 
         # APIキーがない環境でもインターフェースチェック用にインスタンス化だけは許可し、
         # 実際の generate_script 呼び出し時にエラーとする（テスト互換のための設計）。
@@ -61,6 +63,7 @@ class GeminiScriptProvider(IScriptProvider):
             topic=topic,
             target_duration=self.target_duration,
             language=self.language,
+            style=self.style,
         )
 
         try:

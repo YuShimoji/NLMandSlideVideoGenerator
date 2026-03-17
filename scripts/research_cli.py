@@ -189,6 +189,7 @@ async def run_pipeline(
     auto_images: bool = False,
     target_duration: float = 300.0,
     resume_dir: Optional[Path] = None,
+    style: str = "default",
 ) -> Path:
     """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
 
@@ -294,7 +295,7 @@ async def run_pipeline(
         try:
             from core.providers.script.gemini_provider import GeminiScriptProvider
 
-            provider = GeminiScriptProvider(target_duration=target_duration)
+            provider = GeminiScriptProvider(target_duration=target_duration, style=style)
             script_bundle = await provider.generate_script(topic, sources)
             segments = script_bundle.get("segments", [])
             print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
@@ -682,9 +683,133 @@ def run_list_templates() -> None:
     print()
 
 
+def run_list_styles() -> None:
+    """利用可能な台本スタイルプリセット一覧を表示する (SP-036)。"""
+    from notebook_lm.gemini_integration import GeminiIntegration
+
+    presets = GeminiIntegration.list_presets.__func__(GeminiIntegration)  # type: ignore[attr-defined]
+    # 代わりにクラスメソッド的にアクセス
+    presets_dir = GeminiIntegration.PRESETS_DIR
+    if not presets_dir.exists():
+        print("No script presets found.")
+        return
+
+    print("\nAvailable script style presets (SP-036):\n")
+    for p in sorted(presets_dir.glob("*.json")):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            name = p.stem
+            display = data.get("display_name", name)
+            tone = data.get("tone", "")
+            speakers = data.get("speakers", {})
+            speaker_style = speakers.get("style", "")
+            print(f"  {name:15s} {display:20s} tone={tone[:30]:30s} speakers={speaker_style}")
+        except (json.JSONDecodeError, OSError):
+            pass
+    print()
+
+
+async def run_batch(
+    topics_path: Path,
+    output_dir: Optional[Path] = None,
+    interval: int = 30,
+) -> None:
+    """複数トピックをバッチ実行する (SP-040)。
+
+    topics.json を読み込み、各トピックに対して run_pipeline() を順次実行する。
+    1トピック失敗時でも次トピックへ続行する。
+    """
+    import time
+
+    if not topics_path.exists():
+        print(f"ERROR: topics file not found: {topics_path}")
+        return
+
+    with open(topics_path, "r", encoding="utf-8") as f:
+        batch_config = json.load(f)
+
+    batch_name = batch_config.get("batch_name", topics_path.stem)
+    defaults = batch_config.get("defaults", {})
+    topics = batch_config.get("topics", [])
+
+    if not topics:
+        print("ERROR: no topics in batch file")
+        return
+
+    base_output = output_dir or Path("output_batch") / batch_name
+    base_output.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n{'='*60}")
+    print(f"Batch Production: {batch_name}")
+    print(f"Topics: {len(topics)}")
+    print(f"Output: {base_output}")
+    print(f"{'='*60}\n")
+
+    results: list[dict[str, Any]] = []
+
+    for i, topic_config in enumerate(topics):
+        topic_text = topic_config.get("topic", "")
+        if not topic_text:
+            print(f"[{i+1}/{len(topics)}] SKIP: topic is empty")
+            results.append({"topic": "", "status": "skipped", "reason": "empty topic"})
+            continue
+
+        # defaults とマージ (個別設定が優先)
+        merged = {**defaults, **topic_config}
+        topic_output = base_output / f"topic_{i+1:02d}"
+        topic_output.mkdir(parents=True, exist_ok=True)
+
+        print(f"\n{'='*60}")
+        print(f"[{i+1}/{len(topics)}] {topic_text}")
+        print(f"  style={merged.get('style', 'default')}, duration={merged.get('duration', 300)}s")
+        print(f"{'='*60}")
+
+        try:
+            speaker_map = merged.get("speaker_map") or defaults.get("speaker_map")
+            if isinstance(speaker_map, str):
+                speaker_map = json.loads(speaker_map)
+
+            csv_path = await run_pipeline(
+                topic=topic_text,
+                urls=merged.get("seed_urls"),
+                max_sources=merged.get("max_sources", 5),
+                auto_review=merged.get("auto_review", True),
+                slides_dir=Path(merged["slides_dir"]) if merged.get("slides_dir") else None,
+                output_dir=topic_output,
+                speaker_mapping=speaker_map,
+                auto_images=merged.get("auto_images", True),
+                target_duration=merged.get("duration", 300.0),
+                style=merged.get("style", "default"),
+            )
+            results.append({"topic": topic_text, "status": "success", "csv": str(csv_path)})
+            print(f"\n[{i+1}/{len(topics)}] SUCCESS: {csv_path}")
+
+        except Exception as e:
+            results.append({"topic": topic_text, "status": "failed", "error": str(e)})
+            print(f"\n[{i+1}/{len(topics)}] FAILED: {e}")
+
+        # APIクォータ管理: トピック間にインターバル
+        if i < len(topics) - 1 and interval > 0:
+            print(f"\nWaiting {interval}s for API quota...")
+            time.sleep(interval)
+
+    # バッチ結果レポート
+    result_path = base_output / "batch_result.json"
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump({"batch_name": batch_name, "results": results}, f, ensure_ascii=False, indent=2)
+
+    success = sum(1 for r in results if r["status"] == "success")
+    failed = sum(1 for r in results if r["status"] == "failed")
+    print(f"\n{'='*60}")
+    print(f"Batch Complete: {success} success, {failed} failed, {len(topics)} total")
+    print(f"Results: {result_path}")
+    print(f"{'='*60}")
+
+
 def main() -> None:
     raw_args = sys.argv[1:]
-    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates"}
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch"}
     if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
@@ -719,7 +844,17 @@ def main() -> None:
     pipe_parser.add_argument("--auto-images", action="store_true", default=defaults.get("auto_images", True), help="Auto stock image collection (default: ON)")
     pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="Disable stock images")
     pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="Target duration in seconds (default: %(default)s)")
+    pipe_parser.add_argument("--style", default="default", help="Script style preset: default/news/educational/summary (SP-036)")
     pipe_parser.add_argument("--resume", help="Resume from existing work_dir")
+
+    # batch サブコマンド (SP-040)
+    batch_parser = subparsers.add_parser("batch", help="Batch production: process multiple topics from a JSON file")
+    batch_parser.add_argument("--topics", required=True, help="Path to topics.json file")
+    batch_parser.add_argument("--output-dir", help="Output base directory for all batch artifacts")
+    batch_parser.add_argument("--interval", type=int, default=30, help="Seconds to wait between topics for API quota (default: 30)")
+
+    # styles サブコマンド (SP-036)
+    styles_parser = subparsers.add_parser("styles", help="List available script style presets")
 
     # validate サブコマンド (SP-031)
     validate_parser = subparsers.add_parser("validate", help="Pre-export CSV validation")
@@ -738,6 +873,20 @@ def main() -> None:
 
     if args.command == "templates":
         run_list_templates()
+        return
+
+    if args.command == "styles":
+        run_list_styles()
+        return
+
+    if args.command == "batch":
+        asyncio.run(
+            run_batch(
+                topics_path=Path(args.topics),
+                output_dir=Path(args.output_dir) if args.output_dir else None,
+                interval=args.interval,
+            )
+        )
         return
 
     if args.command == "collect":
@@ -773,6 +922,7 @@ def main() -> None:
                 auto_images=bool(args.auto_images),
                 target_duration=args.duration,
                 resume_dir=resume_dir,
+                style=args.style,
             )
         )
         return

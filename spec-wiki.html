@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spec Wiki</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+  :root {
+    --bg: #090d12; --surface: #10151c; --surface2: #171e28;
+    --border: #1e2936; --border2: #2c3a4c;
+    --accent: #7eb8da; --green: #6ec87a; --purple: #b09ae0;
+    --orange: #d4a054; --red: #d46a6a; --teal: #5ec4b6;
+    --text: #d0dae5; --muted: #5a7088; --dim: #8a9eb5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* topbar */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.4rem; height: 48px; display: flex; align-items: center; gap: 1.2rem; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-size: .82rem; font-weight: 600; color: var(--accent); letter-spacing: .04em; white-space: nowrap; }
+  .logo span { color: var(--muted); font-weight: 300; }
+  .search-w { flex: 1; max-width: 380px; position: relative; }
+  .search-w input { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: .35rem .7rem .35rem 1.8rem; font-size: .78rem; color: var(--text); font-family: 'IBM Plex Mono', monospace; outline: none; transition: border-color .12s; }
+  .search-w input:focus { border-color: var(--accent); }
+  .search-w::before { content: '⌕'; position: absolute; left: .55rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .85rem; pointer-events: none; }
+  .topbar-r { display: flex; gap: .4rem; margin-left: auto; align-items: center; }
+  .fbtn { background: none; border: 1px solid var(--border2); border-radius: 4px; padding: .25rem .6rem; font-size: .66rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); cursor: pointer; transition: .12s; white-space: nowrap; }
+  .fbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .fbtn.on { background: var(--accent); color: #090d12; border-color: var(--accent); }
+  .abtn { background: var(--green); border: none; border-radius: 4px; padding: .25rem .8rem; font-size: .72rem; font-family: 'IBM Plex Mono', monospace; color: #090d12; font-weight: 600; cursor: pointer; transition: opacity .12s; }
+  .abtn:hover { opacity: .85; }
+  .io-btn { background: none; border: 1px solid var(--border2); border-radius: 4px; padding: .25rem .6rem; font-size: .66rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); cursor: pointer; transition: .12s; }
+  .io-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* layout */
+  .layout { display: flex; flex: 1; }
+
+  /* sidebar */
+  .sidebar { width: 200px; min-width: 200px; background: var(--surface); border-right: 1px solid var(--border); padding: .8rem 0; overflow-y: auto; position: sticky; top: 48px; height: calc(100vh - 48px); }
+  .sb-label { font-size: .6rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; padding: 0 .9rem .3rem; }
+  .sb-section { margin-bottom: 1.2rem; }
+  .sb-item { display: flex; align-items: center; gap: .4rem; padding: .3rem .9rem; font-size: .76rem; color: var(--dim); cursor: pointer; transition: .1s; border-left: 2px solid transparent; }
+  .sb-item:hover { color: var(--text); background: var(--surface2); }
+  .sb-item.on { color: var(--accent); border-left-color: var(--accent); background: var(--surface2); }
+  .sb-cnt { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: .6rem; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: .02rem .35rem; color: var(--muted); min-width: 18px; text-align: center; }
+
+  /* main */
+  .main { flex: 1; padding: 1.2rem 1.4rem; overflow-y: auto; max-width: 840px; }
+
+  /* stats */
+  .stats { display: flex; gap: 1.2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: .6rem 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat .sv { font-size: 1.2rem; font-family: 'IBM Plex Mono', monospace; font-weight: 600; line-height: 1; }
+  .stat .sl { font-size: .58rem; color: var(--muted); margin-top: .1rem; font-family: 'IBM Plex Mono', monospace; }
+  .sv-done { color: var(--green); } .sv-partial { color: var(--orange); } .sv-todo { color: var(--muted); } .sv-legacy { color: var(--red); } .sv-total { color: var(--accent); }
+
+  .sec-hdr { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; padding-bottom: .6rem; border-bottom: 1px solid var(--border); }
+  .sec-title { font-size: .95rem; font-weight: 700; }
+  .sec-meta { font-size: .68rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); }
+
+  /* spec card */
+  .slist { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1.5rem; }
+  .scard { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; transition: border-color .12s; }
+  .scard:hover { border-color: var(--border2); }
+  .shead { display: flex; align-items: center; gap: .6rem; padding: .55rem .9rem; cursor: pointer; user-select: none; }
+  .sdot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; }
+  .sd-done { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .sd-partial { background: var(--orange); box-shadow: 0 0 5px var(--orange); }
+  .sd-todo { background: var(--muted); }
+  .sd-legacy { background: var(--red); box-shadow: 0 0 5px var(--red); }
+  .sid { font-family: 'IBM Plex Mono', monospace; font-size: .62rem; color: var(--muted); min-width: 52px; }
+  .stitle { flex: 1; font-size: .82rem; font-weight: 500; }
+  .stags { display: flex; gap: .25rem; flex-wrap: wrap; }
+  .stag { font-size: .6rem; font-family: 'IBM Plex Mono', monospace; padding: .08rem .35rem; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+  .stag-core { color: var(--accent); border-color: #1a3a55; background: #0d1f33; }
+  .stag-ui { color: var(--purple); border-color: #3d1a55; background: #1e0d33; }
+  .stag-sys { color: var(--teal); border-color: #1a4040; background: #0d2525; }
+  .stag-data { color: var(--orange); border-color: #553a1a; background: #331f0d; }
+  .stag-infra { color: #80cbc4; border-color: #1a4040; background: #0d2020; }
+  .stag-legacy { color: var(--red); border-color: #551a1a; background: #330d0d; }
+  .stag-wip { color: var(--orange); border-color: #553a1a; background: #1a1208; }
+  .schev { color: var(--muted); font-size: .7rem; transition: transform .15s; flex-shrink: 0; }
+  .scard.open .schev { transform: rotate(90deg); }
+  .sbody { display: none; padding: .65rem .9rem .8rem; border-top: 1px solid var(--border); background: var(--surface2); }
+  .scard.open .sbody { display: block; }
+  .sgrid { display: grid; grid-template-columns: 120px 1fr; gap: .35rem .6rem; font-size: .76rem; margin-bottom: .6rem; }
+  .sgrid .gk { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: .68rem; padding-top: .05rem; }
+  .sgrid .gv { color: var(--dim); line-height: 1.6; }
+  .sgrid .gv code { font-family: 'IBM Plex Mono', monospace; font-size: .72rem; background: #090d12; border: 1px solid var(--border); border-radius: 3px; padding: .03rem .3rem; color: var(--orange); }
+  .ibar-w { margin: .4rem 0 .2rem; }
+  .ibar-l { font-size: .64rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-bottom: .2rem; display: flex; justify-content: space-between; }
+  .ibar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .ibar-f { height: 100%; border-radius: 2px; transition: width .3s; }
+  .sbtns { display: flex; gap: .4rem; margin-top: .6rem; }
+  .sbtn { background: none; border: 1px solid var(--border2); border-radius: 3px; padding: .2rem .6rem; font-size: .66rem; color: var(--muted); cursor: pointer; font-family: 'IBM Plex Mono', monospace; transition: .1s; }
+  .sbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .sbtn-del { color: var(--red); border-color: #3a1a1a; }
+  .sbtn-del:hover { border-color: var(--red); }
+
+  /* modal */
+  .mbg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+  .mbg.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 1.3rem; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: .88rem; font-family: 'IBM Plex Mono', monospace; color: var(--accent); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+  .modal h2 button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; }
+  .frow { margin-bottom: .75rem; }
+  .frow label { display: block; font-size: .66rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-bottom: .25rem; }
+  .frow input, .frow select, .frow textarea { width: 100%; background: var(--bg); border: 1px solid var(--border2); border-radius: 4px; padding: .4rem .6rem; font-size: .78rem; color: var(--text); font-family: 'Noto Sans JP', sans-serif; outline: none; transition: border-color .12s; resize: vertical; }
+  .frow input:focus, .frow select:focus, .frow textarea:focus { border-color: var(--accent); }
+  .frow select option { background: var(--surface2); }
+  .factions { display: flex; justify-content: flex-end; gap: .4rem; margin-top: 1rem; }
+  .btn-c { background: none; border: 1px solid var(--border2); border-radius: 4px; padding: .35rem .9rem; font-size: .74rem; color: var(--muted); cursor: pointer; }
+  .btn-s { background: var(--green); border: none; border-radius: 4px; padding: .35rem .9rem; font-size: .74rem; font-weight: 600; color: #090d12; cursor: pointer; }
+
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: .82rem; }
+  .empty .eico { font-size: 1.8rem; margin-bottom: .6rem; }
+
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .topbar { gap: .6rem; padding: 0 .8rem; }
+    .main { padding: .8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Spec<span>/</span>Wiki</div>
+  <div class="search-w">
+    <input type="text" id="searchInput" placeholder="検索... (タイトル・タグ・メモ)" oninput="render()">
+  </div>
+  <div class="topbar-r">
+    <button class="fbtn on" data-f="all" onclick="setFilter('all',this)">ALL</button>
+    <button class="fbtn" data-f="done" onclick="setFilter('done',this)">✅</button>
+    <button class="fbtn" data-f="partial" onclick="setFilter('partial',this)">🔶</button>
+    <button class="fbtn" data-f="todo" onclick="setFilter('todo',this)">⬜</button>
+    <button class="fbtn" data-f="legacy" onclick="setFilter('legacy',this)">🔴</button>
+    <button class="io-btn" onclick="exportJSON()" title="JSON書き出し">↓ Export</button>
+    <button class="io-btn" onclick="document.getElementById('importFile').click()" title="JSON読み込み">↑ Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    <button class="abtn" onclick="openModal()">+ 追加</button>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">カテゴリ</div>
+      <div class="sb-item on" onclick="setCat('all',this)">📋 すべて <span class="sb-cnt" id="c-all">0</span></div>
+      <div class="sb-item" onclick="setCat('core',this)">⚙️ Core <span class="sb-cnt" id="c-core">0</span></div>
+      <div class="sb-item" onclick="setCat('ui',this)">🎨 UI/UX <span class="sb-cnt" id="c-ui">0</span></div>
+      <div class="sb-item" onclick="setCat('system',this)">🔩 System <span class="sb-cnt" id="c-system">0</span></div>
+      <div class="sb-item" onclick="setCat('data',this)">🗄 Data <span class="sb-cnt" id="c-data">0</span></div>
+      <div class="sb-item" onclick="setCat('infra',this)">🔧 Infra <span class="sb-cnt" id="c-infra">0</span></div>
+      <div class="sb-item" onclick="setCat('legacy',this)">🗂 Legacy <span class="sb-cnt" id="c-legacy">0</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">ステータス</div>
+      <div class="sb-item" onclick="setFilter('done',document.querySelector('[data-f=done]'))">✅ 実装済 <span class="sb-cnt" id="s-done">0</span></div>
+      <div class="sb-item" onclick="setFilter('partial',document.querySelector('[data-f=partial]'))">🔶 一部 <span class="sb-cnt" id="s-partial">0</span></div>
+      <div class="sb-item" onclick="setFilter('todo',document.querySelector('[data-f=todo]'))">⬜ 未実装 <span class="sb-cnt" id="s-todo">0</span></div>
+      <div class="sb-item" onclick="setFilter('legacy',document.querySelector('[data-f=legacy]'))">🔴 Legacy <span class="sb-cnt" id="s-legacy">0</span></div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="stats" id="statsBar">
+      <div class="stat"><div class="sv sv-total" id="st-total">0</div><div class="sl">TOTAL</div></div>
+      <div class="stat"><div class="sv sv-done" id="st-done">0</div><div class="sl">DONE</div></div>
+      <div class="stat"><div class="sv sv-partial" id="st-partial">0</div><div class="sl">PARTIAL</div></div>
+      <div class="stat"><div class="sv sv-todo" id="st-todo">0</div><div class="sl">TODO</div></div>
+      <div class="stat"><div class="sv sv-legacy" id="st-legacy">0</div><div class="sl">LEGACY</div></div>
+    </div>
+    <div class="sec-hdr">
+      <div class="sec-title" id="secTitle">全仕様</div>
+      <div class="sec-meta" id="secMeta"></div>
+    </div>
+    <div class="slist" id="specList"></div>
+  </main>
+</div>
+
+<div class="mbg" id="modalBg">
+  <div class="modal">
+    <h2><span id="modalTitle">+ 仕様を追加</span><button onclick="closeModal()">✕</button></h2>
+    <div class="frow"><label>タイトル *</label><input type="text" id="f-title" placeholder="機能・仕様の名前"></div>
+    <div class="frow"><label>カテゴリ</label>
+      <select id="f-cat">
+        <option value="core">⚙️ Core（コアフロー・ゲームループ）</option>
+        <option value="ui">🎨 UI/UX（画面・演出・操作感）</option>
+        <option value="system">🔩 System（内部システム・ロジック）</option>
+        <option value="data">🗄 Data（保存・通信・外部連携）</option>
+        <option value="infra">🔧 Infra（ビルド・CI・ツール）</option>
+        <option value="legacy">🗂 Legacy（廃止・整理候補）</option>
+      </select>
+    </div>
+    <div class="frow"><label>ステータス</label>
+      <select id="f-status">
+        <option value="todo">⬜ 未実装</option>
+        <option value="partial">🔶 一部実装</option>
+        <option value="done">✅ 実装済</option>
+        <option value="legacy">🔴 Legacy / 廃止予定</option>
+      </select>
+    </div>
+    <div class="frow"><label>実装率 (0〜100)</label><input type="number" id="f-pct" min="0" max="100" value="0"></div>
+    <div class="frow"><label>仕様概要 *</label><textarea id="f-summary" rows="3" placeholder="何をどう動かすか。一問一答で確認した仕様を記録。"></textarea></div>
+    <div class="frow"><label>対象ファイル / モジュール</label><input type="text" id="f-files" placeholder="例: Assets/Scripts/GameManager.cs, src/api/auth.ts"></div>
+    <div class="frow"><label>未決・保留メモ</label><textarea id="f-notes" rows="2" placeholder="未確認の仕様・レガシー判定理由・IDEA POOLからの採用メモなど"></textarea></div>
+    <div class="factions">
+      <button class="btn-c" onclick="closeModal()">キャンセル</button>
+      <button class="btn-s" onclick="saveSpec()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+let specs = JSON.parse(localStorage.getItem('specwiki_v2') || 'null') || [];
+let curFilter = 'all';
+let curCat = 'all';
+
+function save() { localStorage.setItem('specwiki_v2', JSON.stringify(specs)); }
+
+// ── EXPORT / IMPORT ──
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(specs, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'spec-wiki-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) { alert('配列形式のJSONが必要です'); return; }
+      if (specs.length > 0 && !confirm('既存データを上書きしますか？「キャンセル」で既存にマージします。')) {
+        // merge
+        const existIds = new Set(specs.map(s => s.id));
+        data.forEach(d => { if (!existIds.has(d.id)) specs.push(d); });
+      } else {
+        specs = data;
+      }
+      save(); render();
+    } catch(err) { alert('JSONの読み込みに失敗: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── RENDER ──
+const CATS = { core:'Core', ui:'UI/UX', system:'System', data:'Data', infra:'Infra', legacy:'Legacy' };
+const CAT_TAGS = { core:'stag-core', ui:'stag-ui', system:'stag-sys', data:'stag-data', infra:'stag-infra', legacy:'stag-legacy' };
+const STATUS_DOT = { done:'sd-done', partial:'sd-partial', todo:'sd-todo', legacy:'sd-legacy' };
+const STATUS_LABEL = { done:'✅ 実装済', partial:'🔶 一部実装', todo:'⬜ 未実装', legacy:'🔴 Legacy' };
+const BAR_COLOR = { done:'#6ec87a', partial:'#d4a054', todo:'#5a7088', legacy:'#d46a6a' };
+
+function render() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const visible = specs.filter(s => {
+    if (curFilter !== 'all' && s.status !== curFilter) return false;
+    if (curCat !== 'all' && s.cat !== curCat) return false;
+    if (q) {
+      const hay = (s.title + s.summary + s.notes + s.files + s.cat + s.status).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const cnt = st => specs.filter(s => s.status === st).length;
+  document.getElementById('st-total').textContent = specs.length;
+  document.getElementById('st-done').textContent = cnt('done');
+  document.getElementById('st-partial').textContent = cnt('partial');
+  document.getElementById('st-todo').textContent = cnt('todo');
+  document.getElementById('st-legacy').textContent = cnt('legacy');
+
+  document.getElementById('c-all').textContent = specs.length;
+  Object.keys(CATS).forEach(c => {
+    const el = document.getElementById('c-' + c);
+    if (el) el.textContent = specs.filter(s => s.cat === c).length;
+  });
+  document.getElementById('s-done').textContent = cnt('done');
+  document.getElementById('s-partial').textContent = cnt('partial');
+  document.getElementById('s-todo').textContent = cnt('todo');
+  document.getElementById('s-legacy').textContent = cnt('legacy');
+
+  document.getElementById('secMeta').textContent = visible.length + ' / ' + specs.length + ' 件';
+
+  const list = document.getElementById('specList');
+  list.innerHTML = '';
+  if (!visible.length) {
+    list.innerHTML = '<div class="empty"><div class="eico">' + (specs.length ? '🔍' : '📝') + '</div>' + (specs.length ? '該当する仕様がありません' : '仕様がまだありません。「+ 追加」で最初の仕様を登録してください。') + '</div>';
+    return;
+  }
+
+  visible.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'scard';
+    card.innerHTML = `
+      <div class="shead" onclick="this.parentElement.classList.toggle('open')">
+        <span class="sdot ${STATUS_DOT[s.status]||'sd-todo'}"></span>
+        <span class="sid">${s.id}</span>
+        <span class="stitle">${esc(s.title)}</span>
+        <span class="stags">
+          <span class="stag ${CAT_TAGS[s.cat]||'stag-core'}">${CATS[s.cat]||s.cat}</span>
+          ${s.pct > 0 && s.pct < 100 ? '<span class="stag stag-wip">WIP</span>' : ''}
+        </span>
+        <span class="schev">▶</span>
+      </div>
+      <div class="sbody">
+        <div class="sgrid">
+          <span class="gk">ステータス</span><span class="gv">${STATUS_LABEL[s.status]||'—'}</span>
+          <span class="gk">カテゴリ</span><span class="gv">${CATS[s.cat]||s.cat}</span>
+          <span class="gk">仕様概要</span><span class="gv">${esc(s.summary)}</span>
+          ${s.files ? `<span class="gk">対象ファイル</span><span class="gv">${s.files.split(',').map(f=>'<code>'+esc(f.trim())+'</code>').join(' ')}</span>` : ''}
+          ${s.notes ? `<span class="gk">メモ</span><span class="gv">${esc(s.notes)}</span>` : ''}
+        </div>
+        <div class="ibar-w"><div class="ibar-l"><span>実装率</span><span>${s.pct}%</span></div><div class="ibar"><div class="ibar-f" style="width:${s.pct}%;background:${BAR_COLOR[s.status]}"></div></div></div>
+        <div class="sbtns">
+          <button class="sbtn" onclick="editSpec('${s.id}')">編集</button>
+          <button class="sbtn sbtn-del" onclick="deleteSpec('${s.id}')">削除</button>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── FILTERS ──
+function setFilter(val, btn) {
+  curFilter = val;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  render();
+}
+function setCat(val, el) {
+  curCat = val;
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'));
+  el.classList.add('on');
+  const labels = { all:'全仕様', core:'Core', ui:'UI / UX', system:'System', data:'Data', infra:'Infra', legacy:'Legacy整理候補' };
+  document.getElementById('secTitle').textContent = labels[val] || val;
+  render();
+}
+
+// ── MODAL ──
+let editingId = null;
+function openModal(id) {
+  editingId = id || null;
+  if (id) {
+    const s = specs.find(x => x.id === id);
+    document.getElementById('f-title').value = s.title;
+    document.getElementById('f-cat').value = s.cat;
+    document.getElementById('f-status').value = s.status;
+    document.getElementById('f-pct').value = s.pct;
+    document.getElementById('f-summary').value = s.summary;
+    document.getElementById('f-files').value = s.files;
+    document.getElementById('f-notes').value = s.notes;
+    document.getElementById('modalTitle').textContent = '✏️ 仕様を編集';
+  } else {
+    ['f-title','f-summary','f-files','f-notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-cat').value = 'core';
+    document.getElementById('f-status').value = 'todo';
+    document.getElementById('f-pct').value = 0;
+    document.getElementById('modalTitle').textContent = '+ 仕様を追加';
+  }
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+function editSpec(id) { openModal(id); }
+function deleteSpec(id) {
+  if (!confirm('削除しますか？')) return;
+  specs = specs.filter(s => s.id !== id); save(); render();
+}
+function saveSpec() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+  const data = {
+    title,
+    cat: document.getElementById('f-cat').value,
+    status: document.getElementById('f-status').value,
+    pct: parseInt(document.getElementById('f-pct').value) || 0,
+    summary: document.getElementById('f-summary').value.trim(),
+    files: document.getElementById('f-files').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  if (editingId) {
+    const idx = specs.findIndex(s => s.id === editingId);
+    specs[idx] = { ...specs[idx], ...data };
+  } else {
+    const maxN = specs.reduce((m, s) => Math.max(m, parseInt(s.id.replace('SP-','')) || 0), 0);
+    data.id = 'SP-' + String(maxN + 1).padStart(3, '0');
+    specs.push(data);
+  }
+  save(); closeModal(); render();
+}
+
+document.getElementById('modalBg').addEventListener('click', e => { if (e.target === document.getElementById('modalBg')) closeModal(); });
+render();
+</script>
+</body>
+</html>

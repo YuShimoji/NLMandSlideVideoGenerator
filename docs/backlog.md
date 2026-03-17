@@ -60,7 +60,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み |
 | 素材 | AI生成イラスト | 完了 | SP-033 Phase 3 | AIImageProvider (Gemini Imagen) + Orchestrator統合 + CLI/UI自動有効 |
 | 背景動画 | ループ背景動画レイヤー (Recommended) | 低 | なし | PROJECT_ALIGNMENT_SSOTで「必要時のみ加える」。YMM4側でVideoItemレイヤーを手動追加可能。自動化は実需が発生してから仕様化 |
-| OP/ED | 冒頭タイトルカード + 締めテンプレート | 中 | なし | 動画の「完成品」感に直結。style_template.jsonに intro/outro セクション追加が候補 |
+| OP/ED | 冒頭タイトルカード + 締めテンプレート | 却下 | なし | 2026-03-17: 不要と判断。動画本編のみで十分、制作コストに見合わない |
 | サムネイル統合 | パイプライン出力にサムネイル自動生成を接続 | 中 | なし | src/core/thumbnails/ が存在するがパイプライン未統合 |
 | YouTube公開 | メタデータ生成→アップロードの一気通貫接続 | 中 | なし | MetadataGenerator, YouTubeUploader個別実装済み。パイプライン統合なし |
 | クレジット自動挿入 | ストック画像のPexels/PixabayクレジットをYouTube説明欄に自動追記 | 低 | なし | StockImageClientでcredit情報は取得済み。ライセンス準拠 |

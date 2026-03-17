@@ -51,6 +51,33 @@ Audience: All Agents
 | Path B MoviePy | スタブ化後もコード・参照が残存 | 完全削除+レガシー一掃 | 6ファイル削除、データ型をmodels.pyに抽出、video_composerパラメータ除去、34件のレガシー参照修正 (2026-03-08) |
 | Path B 経路自体 | YMM4一本化後もPath Bコード・API・UI残存 | 完全削除 | csv_pipeline_runner, run_csv_pipeline, ExportFallbackManager, CSV Timeline API/UI 全削除。Path A一本化 (2026-03-08) |
 
+## Target Audience & Content Strategy (2026-03-17)
+
+| 項目 | 定義 |
+|---|---|
+| ターゲット視聴者 | 一般視聴者 (YouTube公開) |
+| 主な動画種別 | ニュース/時事解説、解説/教育系、ただし種別は限定しない汎用ツール |
+| 想定尺 | 長尺 (20-30分+) |
+| 制作ペース | 週1本以上。一晩に3本程度の制作能力を想定 |
+| OP/ED | 不要。動画本編のみで十分 |
+
+## Quality Definition (2026-03-17)
+
+品質を「偶然」ではなく「構造」で安定させる。以下の4軸すべてを重視する。
+
+| 品質軸 | 定義 | 測定方法 |
+|---|---|---|
+| 制作スピード | トピック→MP4が一晩3本ペースで完了すること | パイプライン実行時間 + YMM4操作時間 |
+| 情報密度/正確性 | 台本の内容が正確で、視聴者が学べること | ソース照合 (Gate A) + Geminiプロンプト品質 |
+| 視覚的完成度 | アニメーション・字幕・画像の質が安定していること | style_template.json + Pre-Export検証 (SP-031) |
+| 一貫性/再現性 | 毎回同じ品質で出力できること | テンプレート駆動 + バリデーション自動化 |
+
+### 情報密度に関する補足
+
+- 情報の質はNotebookLM/SourceCollectorからのソース品質に大きく依存する
+- ソース取得後のGeminiによる台本調整にはプロンプト整備が必要
+- 台本品質はパイプラインの自動化範囲外の側面もあるが、プロンプトテンプレート化で底上げ可能
+
 ## Final Output Definition
 
 ### Must
@@ -62,28 +89,36 @@ Audience: All Agents
 | 画面構成 | スライド / 資料画像ベースで制作できること |
 | 制作入力 | CSV から生成できること（YMM4 が音声+動画を一貫処理） |
 | 主要経路 | `CSV -> YMM4 -> 動画` が安定していること |
+| 長尺対応 | 20-30分+の動画を安定して生成できること |
+| 制作スループット | 一晩3本ペースの制作が可能であること |
 
 ### Recommended
 
 | 項目 | 定義 |
 |---|---|
 | 背景動画 | 必要時のみ加える |
-| 軽い演出 | zoom / pan / 字幕調整など最低限 |
-| 手動WAV + Python pipeline | 廃止済み（2026-03-08）。現行は Web UI の CSV Pipeline でYMM4エクスポート生成 |
+| 8種アニメーション | ken_burns / zoom_in / zoom_out / pan_left / pan_right / pan_up / pan_down / static (実装済み) |
+| ストック画像/AI画像 | 台本連動で自動取得 (実装済み: SP-033) |
+| 字幕装飾 | 話者色分け+Border+CenterBottom (実装済み: SP-030) |
+| BGMテンプレート | style_template.jsonから自動配置 (実装済み: SP-031) |
 
 ### Optional
 
 | 項目 | 定義 |
 |---|---|
 | キャラクター表示 | 立ち絵、アバター、アイコン |
+| YouTube自動アップロード | MetadataGenerator + YouTubeUploader (モック実装あり、本番API未接続) |
+| サムネイル自動生成 | src/core/thumbnails/ (パイプライン未統合) |
 
 ### Non-Goals
 
 | 項目 | 理由 |
 |---|---|
-| Shorts / portrait | 現行ターゲット外 |
+| Shorts / portrait | 長尺解説がメイン。短尺は旨味がない |
 | キャラクター表示の義務化 | 方針外 |
 | Linux 対応の深掘り | Windows 実制作に非必須 |
+| OP/ED テンプレート | 不要と判断 (2026-03-17) |
+| 量産 (1時間で数十本) | エンコード制約上不可能。品質優先 |
 
 ## Final Workflow
 

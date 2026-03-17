@@ -6,8 +6,9 @@ NotebookLMの代替としてGoogle AI Studio (Gemini API)を使用
 import asyncio
 import json
 import os
+from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from core.utils.logger import logger
@@ -38,6 +39,9 @@ class GeminiIntegration:
     # モデルフォールバックチェーン: 高品質→高クォータ
     DEFAULT_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"]
 
+    # プリセットディレクトリのデフォルトパス
+    PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "script_presets"
+
     def __init__(self, api_key: str, model_name: str | None = None):
         self.api_key = api_key
         self.model_name: str = model_name or os.environ.get("GEMINI_MODEL") or self.DEFAULT_MODELS[0]
@@ -45,20 +49,53 @@ class GeminiIntegration:
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"
         self.request_count = 0
         self.max_requests_per_minute = 60
+        self._presets_cache: Dict[str, Dict[str, Any]] = {}
+
+    def load_preset(self, style: str = "default") -> Dict[str, Any]:
+        """スクリプトスタイルプリセットを読み込む (SP-036)"""
+        if style in self._presets_cache:
+            return self._presets_cache[style]
+
+        preset_path = self.PRESETS_DIR / f"{style}.json"
+        if not preset_path.exists():
+            available = [p.stem for p in self.PRESETS_DIR.glob("*.json")] if self.PRESETS_DIR.exists() else []
+            raise ValueError(f"Unknown style preset '{style}'. Available: {available}")
+
+        with open(preset_path, "r", encoding="utf-8") as f:
+            preset = json.load(f)
+
+        self._presets_cache[style] = preset
+        logger.info(f"Script preset loaded: {preset.get('display_name', style)}")
+        return preset
+
+    def list_presets(self) -> List[Dict[str, str]]:
+        """利用可能なプリセット一覧を返す"""
+        if not self.PRESETS_DIR.exists():
+            return []
+        result = []
+        for p in sorted(self.PRESETS_DIR.glob("*.json")):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                result.append({"name": p.stem, "display_name": data.get("display_name", p.stem)})
+            except (json.JSONDecodeError, OSError):
+                pass
+        return result
 
     async def generate_script_from_sources(
         self,
         sources: List[Dict[str, Any]],
         topic: str,
         target_duration: float = 300.0,
-        language: str = "ja"
+        language: str = "ja",
+        style: str = "default"
     ) -> ScriptInfo:
         """ソースからスクリプトを生成"""
         try:
-            logger.info(f"Gemini APIでスクリプト生成開始: {topic}")
+            logger.info(f"Gemini APIでスクリプト生成開始: {topic} (style={style})")
 
             # プロンプト構築
-            prompt = self._build_script_prompt(sources, topic, target_duration, language)
+            prompt = self._build_script_prompt(sources, topic, target_duration, language, style=style)
 
             # Gemini API呼び出し
             response = await self._call_gemini_api(prompt)
@@ -83,9 +120,17 @@ class GeminiIntegration:
         sources: List[Dict[str, Any]],
         topic: str,
         target_duration: float,
-        language: str
+        language: str,
+        style: str = "default"
     ) -> str:
-        """スクリプト生成用プロンプトを構築"""
+        """スクリプト生成用プロンプトを構築 (SP-036: プリセット駆動)"""
+
+        # プリセット読み込み (失敗時はデフォルトにフォールバック)
+        try:
+            preset = self.load_preset(style)
+        except (ValueError, OSError):
+            logger.warning(f"Preset '{style}' not found, falling back to built-in default")
+            preset = {}
 
         # ソース情報をまとめる
         sources_text = ""
@@ -102,25 +147,58 @@ URL: {source.get('url', 'URL不明')}
         # 言語設定
         lang_instruction = "日本語" if language == "ja" else "英語"
 
-        # 動画尺に応じたセグメント数目安を計算
-        # 1セグメントあたり平均30-60秒 → 長尺ではセグメントを増やす
-        if target_duration <= 300:
-            segment_count_hint = "5-7"
-            avg_segment_sec = 45
-        elif target_duration <= 900:
-            segment_count_hint = "10-15"
-            avg_segment_sec = 50
-        elif target_duration <= 1800:
-            segment_count_hint = "20-30"
-            avg_segment_sec = 55
+        # プリセットからセグメント密度を取得
+        segment_density = preset.get("segment_density", {})
+        avg_seconds = preset.get("avg_segment_seconds", {})
+
+        # duration の閾値キーを文字列で検索 (プリセットのキーは文字列)
+        duration_key = str(300)
+        for threshold in ["300", "900", "1800", "3600"]:
+            if target_duration <= int(threshold):
+                duration_key = threshold
+                break
         else:
-            segment_count_hint = "30-45"
-            avg_segment_sec = 60
+            duration_key = "3600"
+
+        segment_count_hint = segment_density.get(duration_key, "20-30")
+        avg_segment_sec = avg_seconds.get(duration_key, 55)
+
+        # プリセットから各フィールドを取得
+        role = preset.get("role", "あなたはYouTube解説動画のスクリプト作成の専門家です。")
+        tone = preset.get("tone", "分かりやすい話し言葉")
+        structure = preset.get("structure", ["導入", "本論", "まとめ"])
+        requirements = preset.get("requirements", [
+            "視聴者が理解しやすい構成にしてください",
+            "話し言葉で自然な文体にしてください",
+            "重要なポイントは強調してください",
+        ])
+        speakers = preset.get("speakers", {})
+        speaker_names = speakers.get("default_names", ["Host"])
+        speaker_style = speakers.get("style", "")
+
+        # 構成パターンの文字列化
+        structure_text = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(structure))
+
+        # 要件の文字列化 (プリセット要件 + 共通要件)
+        common_reqs = [
+            f"目安時間: {target_duration/60:.1f}分（約{int(target_duration)}秒）",
+            f"セグメント数目安: {segment_count_hint}個（各セグメント{avg_segment_sec}秒前後）",
+            "各セグメントの content は200-400文字程度の充実した内容にしてください",
+            "key_points はスライド画像検索に使える具体的なキーワードを含めてください",
+        ]
+        all_reqs = requirements + common_reqs
+        reqs_text = "\n".join(f"{i+1}. {r}" for i, r in enumerate(all_reqs))
+
+        # 話者指定
+        speaker_json = speaker_names[0] if len(speaker_names) == 1 else f'{speaker_names[0]}」または「{speaker_names[1]}'
 
         # プロンプト構築
         prompt = f"""
-あなたはYouTube解説動画のスクリプト作成の専門家です。
-以下の情報を基に、{target_duration/60:.1f}分程度の解説動画用スクリプトを{lang_instruction}で作成してください。
+{role}
+以下の情報を基に、{target_duration/60:.1f}分程度の動画用スクリプトを{lang_instruction}で作成してください。
+
+【トーン】
+{tone}
 
 【トピック】
 {topic}
@@ -128,16 +206,11 @@ URL: {source.get('url', 'URL不明')}
 【参考ソース】
 {sources_text}
 
+【構成パターン】
+{structure_text}
+
 【要件】
-1. 視聴者が理解しやすい構成にしてください
-2. 導入→本論→まとめの流れで構成してください
-3. 各セクションに適切な見出しをつけてください
-4. 話し言葉で自然な文体にしてください
-5. 重要なポイントは強調してください
-6. 目安時間: {target_duration/60:.1f}分（約{int(target_duration)}秒）
-7. セグメント数目安: {segment_count_hint}個（各セグメント{avg_segment_sec}秒前後）
-8. 各セグメントの content は200-400文字程度の充実した内容にしてください
-9. key_points はスライド画像検索に使える具体的なキーワードを含めてください
+{reqs_text}
 
 【出力形式】
 以下のJSON形式で出力してください：
@@ -150,7 +223,7 @@ URL: {source.get('url', 'URL不明')}
       "content": "話す内容",
       "duration_estimate": {avg_segment_sec}.0,
       "key_points": ["重要ポイント1", "重要ポイント2"],
-      "speaker": "Host"
+      "speaker": "{speaker_names[0]}"
     }}
   ],
   "total_duration_estimate": {target_duration},
