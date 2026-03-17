@@ -1,7 +1,7 @@
 # Troubleshooting Guide
 
-**Version**: 1.0
-**Last Updated**: 2026-03-02
+**Version**: 2.0
+**Last Updated**: 2026-03-17
 **Project**: NLMandSlideVideoGenerator
 
 ---
@@ -11,6 +11,9 @@
 - [Audio Issues](#audio-issues)
 - [YMM4 Plugin Issues](#ymm4-plugin-issues)
 - [Video Generation Issues](#video-generation-issues)
+- [Gemini API Issues](#gemini-api-issues)
+- [Stock Image / Visual Resource Issues](#stock-image--visual-resource-issues)
+- [Pipeline Resume Issues](#pipeline-resume-issues)
 - [Environment Setup Issues](#environment-setup-issues)
 - [CI/CD Issues](#cicd-issues)
 
@@ -18,7 +21,7 @@
 
 ## Audio Issues
 
-### 🔴 Problem: No audio output device detected
+### Problem: No audio output device detected
 
 **Symptoms:**
 - Audio diagnostic tool reports "No devices detected"
@@ -37,28 +40,15 @@ python scripts/test_audio_output.py
 |----------|-------|-------------|
 | **Update Audio Drivers** | 1. Open Device Manager<br>2. Expand "Sound, video and game controllers"<br>3. Right-click audio device → Update driver | Default audio device not showing |
 | **Enable Disabled Device** | 1. Right-click speaker icon in taskbar<br>2. Open Sound settings<br>3. Check if device is disabled<br>4. Enable and set as default | Device shows as disabled |
-| **Reinstall Audio Drivers** | 1. Uninstall audio driver from Device Manager<br>2. Restart computer<br>3. Windows will auto-install driver | Persistent detection issues |
 | **Check FFMPEG** | 1. Verify ffmpeg is in PATH<br>2. Run `ffmpeg -version`<br>3. Set `FFMPEG_EXE` environment variable if needed | ffmpeg not found |
-
-**Expected Output:**
-```
-Audio Environment Diagnostic Report
-====================================
-Platform: Windows
-Default Device: Realtek High Definition Audio [DEFAULT]
-ffmpeg Available: ✅ Yes
-Audio Playback Test: ✅ Passed
-```
-
----
-
----
 
 > **注**: 外部TTS連携コードは 2026-03-04 に全削除されました。音声生成は YMM4 内蔵ゆっくりボイスのみを使用してください。
 
+---
+
 ## YMM4 Plugin Issues
 
-### 🔴 Problem: YMM4 Plugin not appearing in plugin list
+### Problem: YMM4 Plugin not appearing in plugin list
 
 **Symptoms:**
 - NLMSlidePlugin not visible in YMM4 Tools menu
@@ -82,7 +72,7 @@ $ymm4Exe = "$ymm4Path\YukkuriMovieMaker.exe"
 |----------|-------|-------------|
 | **Deploy Plugin** | 1. Run `.\scripts\deploy_ymm4_plugin.ps1 -Configuration Release`<br>2. Verify deployment summary<br>3. Restart YMM4 | Plugin not deployed |
 | **Update YMM4 Version** | 1. Check YMM4 version (must be 4.33+)<br>2. Download latest from [official site](https://manjubox.net/ymm4/)<br>3. Reinstall | YMM4 version too old |
-| **Check .NET Version** | 1. Verify .NET 9 is installed<br>2. Run `dotnet --list-runtimes`<br>3. Install .NET 9 SDK if missing | .NET runtime missing |
+| **Check .NET Version** | 1. Verify .NET 10.0 is installed<br>2. Run `dotnet --list-runtimes`<br>3. Install .NET 10.0 SDK if missing | .NET runtime missing |
 | **Fix Directory.Build.props** | 1. Open `ymm4-plugin/Directory.Build.props`<br>2. Update `<YMM4DirPath>` to your YMM4 installation path<br>3. Rebuild plugin | Wrong YMM4 path |
 
 **Expected Plugin Structure:**
@@ -96,7 +86,7 @@ C:\Users\<USER>\AppData\Local\YukkuriMovieMaker4\
 
 ---
 
-### 🟡 Problem: CSV Import Dialog freezes or crashes
+### Problem: CSV Import Dialog freezes or crashes
 
 **Symptoms:**
 - Dialog becomes unresponsive during import
@@ -119,16 +109,37 @@ Get-Content $logPath -Tail 50
 | **Check Audio Files** | 1. Verify all audio files exist<br>2. Check file encoding (should be WAV)<br>3. Use "Log/Error" tab to see missing files | Missing audio warnings |
 | **Force Redeploy** | 1. Run `.\scripts\deploy_ymm4_plugin.ps1 -Force`<br>2. This will deploy even if YMM4 is running (risky) | Urgent deployment needed |
 
-**Performance Expectations:**
-- **100 rows**: ~5 seconds
-- **500 rows**: ~20 seconds
-- **1000 rows**: ~30 seconds (DoD target)
+---
+
+### Problem: Animation not applied or rendering incorrectly
+
+**Symptoms:**
+- ImageItem shows no animation (static when expecting motion)
+- Opacity is 0% (image invisible)
+- Image zoomed excessively or cropped
+
+**Diagnosis:**
+```powershell
+# Check runtime log for animation details
+$logPath = "$env:LOCALAPPDATA\NLMSlidePlugin\logs\csv_import_runtime.log"
+Select-String "ApplyAnimationDirect" $logPath | Select-Object -Last 10
+```
+
+**Solutions:**
+
+| Solution | Steps | When to Use |
+|----------|-------|-------------|
+| **style_template.json の確認** | 1. `config/style_template.json` の `animation` セクションを確認<br>2. `pan_zoom_ratio`, `ken_burns_zoom_ratio` 等の値が妥当か確認 | テンプレート値が不正 |
+| **CSV 4列目の確認** | 有効値: `ken_burns`, `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `pan_up`, `pan_down`, `static`<br>省略時は `ken_burns` | 不正なアニメーション種別 |
+| **画像サイズの確認** | fitZoom の計算にソース画像サイズが必要。極端に小さい/大きい画像は回避する | fitZoom が極端な値 |
+
+> **注**: `Animation.From` / `Animation.To` は YMM4 の非推奨API。Values in-place 方式 (`ApplyAnimationDirect`) のみ使用すること。
 
 ---
 
 ## Video Generation Issues
 
-### 🔴 Problem: Video generation - MoviePy removed / CSV pipeline deleted
+### Problem: MoviePy removed / CSV pipeline deleted
 
 **Note:** MoviePy バックエンド と run_csv_pipeline.py は 2026-03-08 に完全削除されました。
 
@@ -146,12 +157,126 @@ Get-Content $logPath -Tail 50
 **関連ドキュメント:**
 - `docs/user_guide_manual_workflow.md` - YMM4 ワークフロー詳細
 - `docs/ymm4_export_spec.md` - YMM4 エクスポート仕様
+- `docs/integration_test_checklist.md` - 統合検証チェックリスト
+
+---
+
+## Gemini API Issues
+
+### Problem: Gemini API quota exceeded
+
+**Symptoms:**
+- `429 Too Many Requests` エラー
+- スクリプト生成が途中で停止
+- `ResourceExhausted` 例外
+
+**Diagnosis:**
+```bash
+# 環境変数確認
+echo $GEMINI_API_KEY  # 設定されているか
+echo $GEMINI_MODEL    # モデル指定 (任意)
+```
+
+**Solutions:**
+
+| Solution | Steps | When to Use |
+|----------|-------|-------------|
+| **フォールバックチェーン確認** | `gemini-2.5-flash` → `gemini-2.0-flash` → モックの順に自動フォールバック | 自動 (設定不要) |
+| **モデル指定切替** | `GEMINI_MODEL=gemini-2.0-flash` に設定 (高クォータモデル) | 2.5-flash のクォータ消費が激しいとき |
+| **翌日リセットを待つ** | 無料枠は20 req/day。翌日リセット後に再実行 | 急ぎでない場合 |
+| **モック実行** | `--mock` オプションでGemini呼び出しをスキップ | テスト・検証目的 |
+
+**フォールバックチェーン:**
+```
+gemini-2.5-flash (高品質)
+  ↓ 失敗時
+gemini-2.0-flash (高クォータ)
+  ↓ 失敗時
+モック (固定テンプレート出力)
+```
+
+---
+
+### Problem: Gemini 分類・キーワード抽出が不正確
+
+**Symptoms:**
+- セグメント分類が `visual` / `textual` で不適切
+- 英語キーワードが的外れ
+- 日本語クエリの翻訳品質が低い
+
+**Solutions:**
+
+| Solution | Steps | When to Use |
+|----------|-------|-------------|
+| **手動CSV修正** | 生成されたCSVの4列目を手動で修正 | 個別セグメントの修正 |
+| **`--no-classify` オプション** | research_cli.py に `--no-classify` で分類をスキップ | 全セグメントにストック画像を適用したい場合 |
+| **プロンプト確認** | `src/core/visual/resource_orchestrator.py` 内の分類プロンプトを確認 | 体系的に分類品質を改善したい場合 |
+
+---
+
+## Stock Image / Visual Resource Issues
+
+### Problem: ストック画像が取得できない
+
+**Symptoms:**
+- `source=none` が大量に出る
+- Pexels/Pixabay からの画像ヒット率が低い
+- `ConnectionError` や `Timeout`
+
+**Diagnosis:**
+```bash
+# API キー確認
+echo $PEXELS_API_KEY
+echo $PIXABAY_API_KEY
+
+# パイプライン実行ログ確認
+# research_cli.py の出力に「Stock image hit rate」が表示される
+```
+
+**Solutions:**
+
+| Solution | Steps | When to Use |
+|----------|-------|-------------|
+| **API キー設定** | `.env` に `PEXELS_API_KEY=xxx` を追加 | キー未設定 |
+| **フォールバック確認** | Pexels → Pixabay → Gemini Imagen → TextSlideGenerator の順で自動フォールバック | 自動 (設定不要) |
+| **レート制限回避** | Pexels: 200 req/hour, Pixabay: 5000 req/hour。大量実行時は間隔を空ける | 429エラー頻発 |
+| **テキストスライド許容** | `source=none` のセグメントは TextSlideGenerator で自動生成される | 画像不要の場合 |
+
+**4層フォールバック:**
+```
+Pexels/Pixabay ストック画像
+  ↓ 失敗時
+Gemini Imagen (AI生成画像)
+  ↓ 失敗時
+TextSlideGenerator (テキストスライドPNG)
+  ↓ 設定なし
+source=none (画像なし)
+```
+
+---
+
+## Pipeline Resume Issues
+
+### Problem: パイプラインが途中で失敗し、最初からやり直したくない
+
+**Symptoms:**
+- `research_cli.py pipeline` が途中で中断
+- Gemini クォータ切れで停止
+- ネットワークエラーで一部ステージ失敗
+
+**Solutions:**
+
+| Solution | Steps | When to Use |
+|----------|-------|-------------|
+| **`--resume` で再開** | `research_cli.py pipeline --topic "..." --resume` で前回の続きから | ステージ単位で再開したい場合 |
+| **PipelineState確認** | `output_csv/<topic>/pipeline_state.json` で完了済みステップを確認 | どこまで進んだか確認 |
+| **ステート削除** | `pipeline_state.json` を削除して最初からやり直す | 完全リセットしたい場合 |
 
 ---
 
 ## Environment Setup Issues
 
-### 🔴 Problem: Python venv activation fails
+### Problem: Python venv activation fails
 
 **Symptoms:**
 - `venv\Scripts\activate` doesn't work
@@ -181,199 +306,135 @@ Test-Path .\venv
 
 **Expected Environment:**
 ```
-Python 3.11.0
-pillow>=9.0.0
-pandas>=1.5.0
-streamlit>=1.28.0
-google-generativeai (if using Gemini)
+Python 3.11.x
+google-genai (Gemini SDK — 旧 google-generativeai から移行済み)
+fastapi, uvicorn (API server)
+streamlit (Web UI)
+pillow, numpy (画像処理)
 ```
-
-**注**: MoviePy は 2026-03-07 に削除されました。動画生成は YMM4 を使用します。
 
 ---
 
-### 🟡 Problem: Git merge conflicts
+### Problem: Git merge conflicts
 
 **Symptoms:**
 - `git pull` fails with conflicts
 - Merge conflict markers in files
-- Build artifacts causing conflicts
-
-**Diagnosis:**
-```bash
-# Check conflict status
-git status
-
-# See conflicting files
-git diff --name-only --diff-filter=U
-```
 
 **Solutions:**
 
 | Solution | Steps | When to Use |
 |----------|-------|-------------|
 | **Resolve Conflicts** | 1. Edit conflicting files<br>2. Remove `<<<<`, `====`, `>>>>` markers<br>3. `git add <file>`<br>4. `git commit` | Code conflicts |
-| **Accept Remote Changes** | 1. `git checkout --theirs <file>`<br>2. `git add <file>`<br>3. `git commit` | Always use remote version |
-| **Accept Local Changes** | 1. `git checkout --ours <file>`<br>2. `git add <file>`<br>3. `git commit` | Always use local version |
-| **Ignore Build Artifacts** | 1. Add to `.gitignore`<br>2. `git rm --cached <file>`<br>3. `git commit` | Build files conflicting |
-
-**Common Conflict Files:**
-```
-ymm4-plugin/obj/Debug/...
-ymm4-plugin/bin/Release/...
-logs/
-*.log
-```
+| **Accept Remote Changes** | `git checkout --theirs <file>` → `git add` → `git commit` | Always use remote version |
+| **Accept Local Changes** | `git checkout --ours <file>` → `git add` → `git commit` | Always use local version |
 
 ---
 
 ## CI/CD Issues
 
-### 🔴 Problem: CI pipeline fails with orchestrator-audit warnings
+### Problem: CI pipeline fails
 
 **Symptoms:**
-- `orchestrator-audit.js` reports errors
 - GitHub Actions workflow fails
-- Report integrity issues
+- ローカルCIは通るがリモートで失敗
+- mypy / ruff でエラー
 
 **Diagnosis:**
 ```bash
-# Run task report consistency check
-node scripts/check_task_reports.js
-
-# Run full CI pipeline
+# Run full CI pipeline locally
 .\scripts\ci.ps1
+
+# Individual stages
+.\venv\Scripts\python.exe -m pytest tests/ -q -m "not slow and not integration" --tb=short
+.\venv\Scripts\python.exe -m mypy src/ --ignore-missing-imports
+.\venv\Scripts\python.exe -m ruff check src/
 ```
 
 **Solutions:**
 
 | Solution | Steps | When to Use |
 |----------|-------|-------------|
-| **Fix Report Links** | 1. Ensure all task files reference existing reports<br>2. Update `Report:` field in task markdown<br>3. Create missing report files | Report link errors |
-| **Update Task Status** | 1. Change `Status:` field in task markdown<br>2. Ensure status is valid (OPEN/IN_PROGRESS/DONE/CLOSED)<br>3. Run audit again | Status validation errors |
-| **Check File Encoding** | 1. Verify all markdown files are UTF-8<br>2. Use UTF-8 BOM for Windows compatibility<br>3. Re-save files with correct encoding | Encoding errors |
+| **ローカルCI実行** | `.\scripts\ci.ps1` で5ステージ全実行 | push前確認 |
+| **mypy エラー** | `mypy src/ --ignore-missing-imports` で個別確認。`mypy.ini` で除外設定可能 | 型エラー |
+| **ruff エラー** | `ruff check src/ --fix` で自動修正可能 | lint エラー |
+| **テスト失敗** | `pytest -v --tb=long` で詳細出力。`-m "not slow"` でマーカー絞り込み | テスト失敗 |
 
-**Expected Audit Output:**
+**CI 5ステージ構成:**
 ```
-[check-task-reports] VALIDATION_OK
+Stage 1: Python Unit Tests (920 tests, markers: not slow and not integration)
+Stage 2: Type Check (mypy src/)
+Stage 3: Lint Check (ruff check src/)
+Stage 4: Task Report Consistency (node scripts/check_task_reports.js)
+Stage 5: YMM4 Plugin Consistency (optional, skips if YMM4 not installed)
 ```
 
 ---
 
-### 🟡 Problem: pytest tests fail
+### Problem: CI Rollback workflow
 
-**Symptoms:**
-- `pytest` reports test failures
-- Tests pass locally but fail in CI
-- Import errors in tests
-
-**Diagnosis:**
-```bash
-# Run tests with verbose output
-.\venv\Scripts\python.exe -m pytest -v
-
-# Run specific test
-.\venv\Scripts\python.exe -m pytest tests/test_video_composer.py::test_create_clip -v
-
-# Check test coverage
-.\venv\Scripts\python.exe -m pytest --cov=src --cov-report=html
-```
-
-**Solutions:**
-
-| Solution | Steps | When to Use |
-|----------|-------|-------------|
-| **Update Test Data** | 1. Check if test fixtures exist<br>2. Regenerate test data if needed<br>3. Update test expectations | Test data outdated |
-| **Fix Import Paths** | 1. Ensure `src` is in PYTHONPATH<br>2. Use relative imports in tests<br>3. Add `__init__.py` to test directories | Import errors |
-| **Skip Slow Tests** | 1. Mark tests with `@pytest.mark.slow`<br>2. Run `pytest -m "not slow"`<br>3. Run slow tests separately | CI timeout |
-| **Mock External Dependencies** | 1. Use `unittest.mock` for external calls<br>2. Mock ffmpeg, YMM4, etc.<br>3. Ensure tests are isolated | Integration tests failing |
-
-**Test Markers:**
-```python
-@pytest.mark.slow  # Skip in CI
-@pytest.mark.integration  # Requires external tools
-@pytest.mark.unit  # Fast unit tests
-```
+**Note:** ci-rollback.yml は通知専用モード (auto-revert 無効化済み、2026-03-17)。CI失敗時は手動で修正すること。
 
 ---
 
 ## General Debugging Tips
 
-### 📊 Enable Verbose Logging
+### Enable Verbose Logging
 
 ```python
 # In Python scripts
 import logging
 logging.basicConfig(level=logging.DEBUG)
-
-# In PowerShell scripts
-$VerbosePreference = "Continue"
 ```
 
-### 🔍 Check System Requirements
+### Check System Requirements
 
 | Component | Requirement | Check Command |
 |-----------|------------|---------------|
 | Python | 3.11+ | `python --version` |
-| .NET | 9.0 | `dotnet --list-runtimes` |
+| .NET | 10.0 | `dotnet --list-runtimes` |
 | ffmpeg | Latest | `ffmpeg -version` |
 | YMM4 | 4.33+ | Check app version |
 | Git | 2.30+ | `git --version` |
 
-### 📞 Getting Help
+### Log Locations
 
-1. **Check Logs:**
-   - Python: `logs/`
-   - YMM4 Plugin: `%LOCALAPPDATA%\NLMSlidePlugin\logs\`
-   - CI: `.github/workflows/` output
-
-2. **Search Issues:**
-   - Check [GitHub Issues](https://github.com/anthropics/claude-code/issues)
-   - Search project documentation
-
-3. **Ask Questions:**
-   - Provide error message
-   - Include system info (OS, Python version, etc.)
-   - Share relevant log excerpts
+- Python: `logs/`
+- YMM4 Plugin: `%LOCALAPPDATA%\NLMSlidePlugin\logs\`
+- CI: `.github/workflows/` output
+- Pipeline state: `output_csv/<topic>/pipeline_state.json`
 
 ---
 
 ## Manual Testing Checklist
 
-When you need to perform manual verification, use this checklist:
+基本E2E は `docs/e2e_verification_guide.md` を、統合検証は `docs/integration_test_checklist.md` を参照。
 
-| Test | Steps | Expected Result | Status |
-|------|-------|-----------------|--------|
-| **Audio Diagnostics** | Run `python scripts/test_audio_output.py` | ✅ All checks pass, no warnings | ⬜ |
-| **YMM4 Plugin Load** | 1. Deploy plugin<br>2. Open YMM4<br>3. Check Tools menu | Plugin appears in menu | ⬜ |
-| **CSV Import** | 1. Open CSV Import Dialog<br>2. Select test CSV<br>3. Click Preview<br>4. Click Import | Items appear on timeline | ⬜ |
-| **Video Generation** | 1. Import CSV in YMM4<br>2. Generate voice<br>3. Render video | Video generated successfully | ⬜ |
-| **Subtitle Display** | Play generated video | Subtitles visible and synchronized | ⬜ |
-| **CI Pipeline** | Run `.\scripts\ci.ps1` | All checks pass | ⬜ |
-
-**How to Use This Checklist:**
-1. Copy checklist to a new file
-2. Mark ✅ for passed tests
-3. Mark ❌ for failed tests
-4. Document failures in issue tracker
+| Test | Steps | Expected Result |
+|------|-------|-----------------|
+| **YMM4 Plugin Load** | Deploy plugin → Open YMM4 → Check Tools menu | Plugin appears in menu |
+| **CSV Import** | Open CSV Import Dialog → Select test CSV → Preview → Import | Items appear on timeline |
+| **8種アニメーション** | CSV 4列目に各種別を指定してインポート | 各アニメーションが視覚的に確認可能 |
+| **字幕テンプレート** | 複数話者CSVをインポート → レンダリング | 話者ごとに色分け表示 |
+| **BGMテンプレート** | style_template.json にBGM設定 → インポート | BGM AudioItem が配置される |
+| **CI Pipeline** | `.\scripts\ci.ps1` | All 5 stages pass |
 
 ---
 
-## Appendix: Useful Commands
+## Appendix: Quick Diagnostics
 
-### Quick Diagnostics
 ```bash
 # Full system check
 .\scripts\ci.ps1
 
-# Audio only
-python scripts/test_audio_output.py -json
-
-# YMM4 plugin check
-.\scripts\test_task007_scenariob.ps1 -SkipBuild
-
 # Python environment
 .\venv\Scripts\python.exe -m pip check
+
+# Test with coverage
+.\venv\Scripts\python.exe -m pytest --cov=src --cov-report=html
+
+# YMM4 plugin build
+dotnet build ymm4-plugin/TimelinePlugin/NLMSlidePlugin.csproj -c Release
 ```
 
 ### Emergency Recovery
@@ -393,18 +454,7 @@ git stash pop
 Remove-Item -Recurse -Force ymm4-plugin\bin, ymm4-plugin\obj
 ```
 
-### Performance Profiling
-```python
-# Profile Python scripts (example with web app)
-python -m cProfile -o output.prof src/web/web_app.py
-python -m pstats output.prof
-
-# Memory profiling
-python -m memory_profiler src/main.py
-```
-
 ---
 
-**Document Status**: ✅ Complete
+**Document Status**: Complete (v2.0)
 **Next Review**: When new issues are identified
-**Feedback**: Report issues or improvements to this guide via GitHub Issues

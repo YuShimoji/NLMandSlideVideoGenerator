@@ -164,11 +164,11 @@
   {
     "id": "SP-019",
     "title": "Troubleshooting Guide",
-    "status": "partial",
-    "pct": 70,
+    "status": "done",
+    "pct": 100,
     "cat": "infra",
     "file": "docs/TROUBLESHOOTING.md",
-    "summary": "音声/YMM4/CI障害の診断手順。MoviePyセクション削除済(2026-03-08)"
+    "summary": "v2.0: 音声/YMM4/Gemini API/ストック素材/パイプライン再開/CI障害の診断手順。8種アニメ・フォールバックチェーン・.NET 10.0対応 (2026-03-17)"
   },
   {
     "id": "SP-020",
