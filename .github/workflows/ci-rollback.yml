@@ -1,5 +1,9 @@
 name: CI Failure Rollback
 
+# Notification-only mode: creates an issue on CI failure but does NOT
+# auto-revert. Auto-revert was too aggressive for trunk-based development,
+# causing revert loops when CI env differs from local (e.g. mypy stubs).
+
 on:
   workflow_run:
     workflows: ["CI"]
@@ -7,24 +11,17 @@ on:
     branches: [master, main]
 
 jobs:
-  rollback:
-    name: Auto-rollback on CI failure
+  notify:
+    name: Notify on CI failure
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: >-
       github.event.workflow_run.conclusion == 'failure' &&
       github.event.workflow_run.event == 'push'
     permissions:
-      contents: write
       issues: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 5
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Get failed commit info
         id: info
         run: |
@@ -33,113 +30,32 @@ jobs:
           echo "failed_sha_short=${FAILED_SHA:0:7}" >> $GITHUB_OUTPUT
           echo "branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
 
-      - name: Check if commit contains code changes
-        id: check
-        run: |
-          FAILED_SHA="${{ steps.info.outputs.failed_sha }}"
-
-          # Get changed files in the failed commit
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "${FAILED_SHA}" 2>/dev/null || echo "")
-
-          # Check if any changed file is source code (not docs/config only)
-          HAS_CODE_CHANGES=false
-          for file in $CHANGED_FILES; do
-            case "$file" in
-              src/*|tests/*|scripts/*.py|requirements*.txt)
-                HAS_CODE_CHANGES=true
-                break
-                ;;
-            esac
-          done
-
-          echo "has_code_changes=${HAS_CODE_CHANGES}" >> $GITHUB_OUTPUT
-          echo "Changed files: ${CHANGED_FILES}"
-          echo "Has code changes: ${HAS_CODE_CHANGES}"
-
-          if [ "${HAS_CODE_CHANGES}" = "false" ]; then
-            echo "Commit only contains docs/config changes. Skipping revert."
-          fi
-
-      - name: Attempt revert
-        id: revert
-        if: steps.check.outputs.has_code_changes == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          FAILED_SHA="${{ steps.info.outputs.failed_sha }}"
-
-          # Only revert if HEAD matches the failed commit
-          if [ "$(git rev-parse HEAD)" != "${FAILED_SHA}" ]; then
-            echo "HEAD has moved since failure. Skipping auto-revert."
-            echo "skipped=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Attempt revert (non-destructive: creates a new commit)
-          if git revert --no-edit "${FAILED_SHA}"; then
-            echo "reverted=true" >> $GITHUB_OUTPUT
-          else
-            git revert --abort 2>/dev/null || true
-            echo "reverted=false" >> $GITHUB_OUTPUT
-            echo "Revert failed (merge conflict). Manual intervention required."
-          fi
-
-      - name: Push revert commit
-        if: steps.revert.outputs.reverted == 'true'
-        run: |
-          git push origin ${{ steps.info.outputs.branch }}
-
-      - name: Create rollback issue
-        if: steps.check.outputs.has_code_changes == 'true' && steps.revert.outputs.skipped != 'true'
+      - name: Create failure notification issue
         uses: actions/github-script@v7
         with:
           script: |
             const failedSha = '${{ steps.info.outputs.failed_sha_short }}';
             const branch = '${{ steps.info.outputs.branch }}';
-            const reverted = '${{ steps.revert.outputs.reverted }}' === 'true';
             const runUrl = '${{ github.event.workflow_run.html_url }}';
 
-            const status = reverted
-              ? `Auto-reverted commit \`${failedSha}\` on \`${branch}\`.`
-              : `Auto-revert FAILED for commit \`${failedSha}\` on \`${branch}\`. Manual rollback required.`;
-
-            const title = reverted
-              ? `Rollback: auto-reverted ${failedSha} on ${branch}`
-              : `Rollback FAILED: manual action needed for ${failedSha} on ${branch}`;
-
             const body = [
-              `## CI Rollback Report`,
+              `## CI Failure Report`,
               ``,
               `| Item | Value |`,
               `|------|-------|`,
               `| **Failed Commit** | \`${failedSha}\` |`,
               `| **Branch** | \`${branch}\` |`,
-              `| **Auto-Revert** | ${reverted ? 'Success' : 'Failed (conflict)'} |`,
               `| **CI Run** | [View](${runUrl}) |`,
               ``,
-              status,
+              `CI failed for commit \`${failedSha}\` on \`${branch}\`. Please investigate and fix.`,
+              ``,
+              `> Auto-revert is disabled. If a rollback is needed, revert manually.`,
             ].join('\n');
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: title,
+              title: `CI Failure: ${failedSha} on ${branch}`,
               body: body,
-              labels: ['ci-failure', reverted ? 'auto-rollback' : 'needs-manual-rollback'],
-            });
-
-      - name: Create notification for docs-only failure
-        if: steps.check.outputs.has_code_changes == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const failedSha = '${{ steps.info.outputs.failed_sha_short }}';
-            const runUrl = '${{ github.event.workflow_run.html_url }}';
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `CI Failure (docs-only, no rollback): ${failedSha}`,
-              body: `CI failed for commit \`${failedSha}\` but the commit only contains docs/config changes. No auto-rollback was performed.\n\n[View CI Run](${runUrl})`,
               labels: ['ci-failure'],
             });
