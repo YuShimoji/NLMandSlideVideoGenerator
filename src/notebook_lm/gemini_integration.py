@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass
 
 from core.utils.logger import logger
@@ -62,7 +62,7 @@ class GeminiIntegration:
             raise ValueError(f"Unknown style preset '{style}'. Available: {available}")
 
         with open(preset_path, "r", encoding="utf-8") as f:
-            preset = json.load(f)
+            preset: Dict[str, Any] = json.load(f)
 
         self._presets_cache[style] = preset
         logger.info(f"Script preset loaded: {preset.get('display_name', style)}")

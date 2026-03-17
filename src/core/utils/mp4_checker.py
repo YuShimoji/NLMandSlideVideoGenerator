@@ -97,7 +97,8 @@ def _run_ffprobe(file_path: Path) -> Dict[str, Any]:
     if result.returncode != 0:
         raise RuntimeError(f"FFprobe failed: {result.stderr}")
 
-    return json.loads(result.stdout)
+    data: Dict[str, Any] = json.loads(result.stdout)
+    return data
 
 
 def check_mp4(

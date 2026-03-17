@@ -177,7 +177,7 @@ def show_material_pipeline_page():
                 auto_images=auto_images,
                 target_duration=target_duration * 60.0,
                 resume_dir=resume_dir,
-                style=selected_script_style,
+                style=str(selected_script_style) if selected_script_style else "default",
             )
 
         try:
