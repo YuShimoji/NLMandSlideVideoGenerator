@@ -232,3 +232,147 @@ class TestReduceToMaxSlides:
         ]
         result = splitter._reduce_to_max_slides(contents, 3)
         assert len(result) == 3
+
+
+def _splitter_with_chars(max_chars: int) -> ContentSplitter:
+    """max_chars_per_slide を指定してContentSplitterを生成する。"""
+    s = ContentSplitter()
+    s.max_chars_per_slide = max_chars
+    return s
+
+
+class TestSplitGroupFurther:
+    """_split_group_further のテスト。"""
+
+    def test_single_segment(self):
+        splitter = _splitter_with_chars(max_chars=100)
+        group = [_make_segment(text="短いテキスト")]
+        result = splitter._split_group_further(group, start_slide_id=0)
+        assert len(result) == 1
+
+    def test_multiple_segments_within_limit(self):
+        splitter = _splitter_with_chars(max_chars=200)
+        group = [
+            _make_segment(text="テスト1"),
+            _make_segment(text="テスト2"),
+        ]
+        result = splitter._split_group_further(group, start_slide_id=0)
+        assert len(result) == 1
+
+    def test_segments_exceed_limit(self):
+        splitter = _splitter_with_chars(max_chars=20)
+        group = [
+            _make_segment(text="A" * 15),
+            _make_segment(text="B" * 15),
+            _make_segment(text="C" * 15),
+        ]
+        result = splitter._split_group_further(group, start_slide_id=0)
+        assert len(result) >= 2
+
+
+class TestSplitByCharacterLimitWithFurther:
+    """_split_by_character_limit で _split_group_further が呼ばれるケース。"""
+
+    def test_large_group_gets_split(self):
+        splitter = _splitter_with_chars(max_chars=30)
+        segments = [
+            _make_segment(id=0, text="A" * 20, start_time=0, end_time=5),
+            _make_segment(id=1, text="B" * 20, start_time=5, end_time=10),
+        ]
+        # グルーピングの時点で1グループになる場合
+        groups = [segments]
+        result = splitter._split_by_character_limit(groups)
+        assert len(result) >= 2
+
+
+class TestReduceToMaxSlidesWithOverflow:
+    """_reduce_to_max_slides で実際にmax_slidesを超える入力を削減するケース。"""
+
+    def test_reduces_many_to_few(self):
+        splitter = ContentSplitter()
+        contents = [
+            SplitContent(
+                slide_id=i, title=f"T{i}", text="t" * (50 + i * 10),
+                key_points=["kp"] * (i % 3), duration=10.0 + i,
+                source_segments=[i], image_suggestions=[], speakers=["A"],
+            )
+            for i in range(8)
+        ]
+        result = splitter._reduce_to_max_slides(contents, 4)
+        assert len(result) == 4
+
+
+class TestContentImportanceLongText:
+    """_calculate_content_importance のテキスト長分岐テスト。"""
+
+    def test_long_text_score(self):
+        splitter = ContentSplitter()
+        content = SplitContent(
+            slide_id=0, title="T", text="x" * 200,
+            key_points=[], duration=15.0,
+            source_segments=[0], image_suggestions=[], speakers=["A"],
+        )
+        score = splitter._calculate_content_importance(content)
+        # text > 150 → +0.2, duration 10-30 → +0.3
+        assert score >= 0.5
+
+
+class TestExtractKeyPointsOnly:
+    """extract_key_points_only のテスト。"""
+
+    def test_with_key_points(self):
+        splitter = ContentSplitter()
+        contents = [
+            SplitContent(
+                slide_id=0, title="T0", text="元のテキスト",
+                key_points=["ポイント1", "ポイント2"],
+                duration=25.0, source_segments=[0],
+                image_suggestions=[], speakers=["A"],
+            ),
+        ]
+        result = splitter.extract_key_points_only(contents)
+        assert len(result) == 1
+        assert "ポイント1" in result[0].text
+        assert result[0].duration <= 20.0
+
+    def test_without_key_points_short_text(self):
+        splitter = ContentSplitter()
+        contents = [
+            SplitContent(
+                slide_id=0, title="T0", text="短い",
+                key_points=[],
+                duration=5.0, source_segments=[0],
+                image_suggestions=[], speakers=["A"],
+            ),
+        ]
+        result = splitter.extract_key_points_only(contents)
+        assert result[0].text == "短い"
+
+    def test_without_key_points_long_text(self):
+        splitter = ContentSplitter()
+        long_text = "X" * 200
+        contents = [
+            SplitContent(
+                slide_id=0, title="T0", text=long_text,
+                key_points=[],
+                duration=5.0, source_segments=[0],
+                image_suggestions=[], speakers=["A"],
+            ),
+        ]
+        result = splitter.extract_key_points_only(contents)
+        assert len(result[0].text) <= 104  # 100 + "..."
+        assert result[0].text.endswith("...")
+
+    def test_multiple_contents(self):
+        splitter = ContentSplitter()
+        contents = [
+            SplitContent(
+                slide_id=i, title=f"T{i}", text=f"テキスト{i}",
+                key_points=["KP"] if i % 2 == 0 else [],
+                duration=10.0, source_segments=[i],
+                image_suggestions=[], speakers=["A"],
+            )
+            for i in range(4)
+        ]
+        result = splitter.extract_key_points_only(contents)
+        assert len(result) == 4
