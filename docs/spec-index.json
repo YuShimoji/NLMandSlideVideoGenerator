@@ -326,11 +326,11 @@
   {
     "id": "SP-037",
     "title": "Thumbnail Pipeline Integration",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 60,
     "cat": "pipeline",
     "file": "docs/specs/thumbnail_pipeline.md",
-    "summary": "既存src/core/thumbnails/をresearch_cli.py pipelineに接続。台本キーワードからサムネイル自動生成→output_csv/に同梱出力"
+    "summary": "Phase 1完了: generate_from_script() + run_pipeline統合。ストック画像を背景にサムネイル自動生成→output/thumbnail.png。残: 日本語フォント対応、スタイルプリセット連携"
   },
   {
     "id": "SP-038",

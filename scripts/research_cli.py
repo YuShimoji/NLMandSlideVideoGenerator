@@ -607,6 +607,34 @@ async def run_pipeline(
             if len(vresult.issues) > 10:
                 print(f"  ... and {len(vresult.issues) - 10} more issues")
 
+    # --- Post-pipeline: Thumbnail Generation (SP-037) ---
+    thumbnail_path = work_dir / "thumbnail.png"
+    if not thumbnail_path.exists():
+        try:
+            from core.thumbnails import AIThumbnailGenerator
+
+            generator = AIThumbnailGenerator()
+
+            # 背景画像: 最初のストック画像があれば使用
+            bg_image = None
+            if vis_package:
+                for r in vis_package.resources:
+                    if r.source == "stock" and r.image_path and r.image_path.exists():
+                        bg_image = r.image_path
+                        break
+
+            thumb_path = await generator.generate_from_script(
+                script=script_bundle,
+                output_dir=work_dir,
+                background_image=bg_image,
+                style="modern",
+            )
+            print("\n=== Thumbnail Generated ===")
+            print(f"  {thumb_path}")
+        except Exception as e:
+            print("\n=== Thumbnail Generation Skipped ===")
+            print(f"  {e}")
+
     print("\n=== Pipeline Complete ===")
     print(f"Output: {reviewed_csv}")
     print(f"Work dir: {work_dir}")

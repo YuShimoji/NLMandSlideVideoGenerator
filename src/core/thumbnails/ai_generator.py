@@ -108,6 +108,93 @@ class AIThumbnailGenerator(IThumbnailGenerator):
 
         return thumbnail_info
 
+    async def generate_from_script(
+        self,
+        script: Dict[str, Any],
+        output_dir: Path,
+        background_image: Path | None = None,
+        style: str = "modern",
+    ) -> Path:
+        """台本から直接サムネイルを生成する (パイプライン統合用)。
+
+        Args:
+            script: Gemini生成の台本 (title, segments)。
+            output_dir: 出力先ディレクトリ。
+            background_image: 背景に使うストック画像 (任意)。
+            style: スタイル名。
+
+        Returns:
+            生成されたサムネイル画像のパス。
+        """
+        if style not in self.styles:
+            style = "modern"
+        style_config = self.styles[style]
+
+        title = script.get("title", "動画タイトル")
+        segments = script.get("segments", [])
+        if segments:
+            first_text = segments[0].get("content", segments[0].get("text", ""))
+            subtitle = first_text[:50] + ("..." if len(first_text) > 50 else "")
+        else:
+            subtitle = ""
+
+        width, height = 1280, 720
+
+        # 背景: ストック画像があればリサイズ、なければスタイル色
+        if background_image and background_image.exists():
+            bg = Image.open(background_image).convert("RGB")
+            bg = bg.resize((width, height), Image.LANCZOS)  # type: ignore[attr-defined]
+            # 暗くしてテキストを読みやすくする
+            from PIL import ImageEnhance
+            bg = ImageEnhance.Brightness(bg).enhance(0.4)
+            image = bg
+        else:
+            bg_color: tuple[int, ...] = tuple(style_config["bg_color"])  # type: ignore[arg-type]
+            image = Image.new("RGB", (width, height), bg_color)
+            if style_config.get("gradient", False):
+                image = self._apply_gradient(image, style_config)
+
+        draw = ImageDraw.Draw(image)
+
+        title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        try:
+            title_size = int(style_config["font_size_title"])  # type: ignore[call-overload]
+            subtitle_size = int(style_config["font_size_subtitle"])  # type: ignore[call-overload]
+            title_font = ImageFont.truetype("arial.ttf", title_size)
+            subtitle_font = ImageFont.truetype("arial.ttf", subtitle_size)
+        except (OSError, TypeError, ValueError):
+            title_font = ImageFont.load_default()
+            subtitle_font = ImageFont.load_default()
+
+        # タイトル (中央揃え + 影)
+        title_lines = textwrap.wrap(title, width=20)
+        y = height // 3
+        for line in title_lines:
+            bbox = draw.textbbox((0, 0), line, font=title_font)
+            x = (width - (bbox[2] - bbox[0])) // 2
+            draw.text((x + 2, y + 2), line, fill=(0, 0, 0), font=title_font)
+            draw.text((x, y), line, fill=style_config["text_color"], font=title_font)
+            y += bbox[3] - bbox[1] + 10
+
+        # サブタイトル
+        if subtitle:
+            sub_lines = textwrap.wrap(subtitle, width=30)
+            y += 20
+            for line in sub_lines:
+                bbox = draw.textbbox((0, 0), line, font=subtitle_font)
+                x = (width - (bbox[2] - bbox[0])) // 2
+                draw.text((x + 1, y + 1), line, fill=(0, 0, 0), font=subtitle_font)
+                draw.text((x, y), line, fill=style_config["accent_color"], font=subtitle_font)
+                y += bbox[3] - bbox[1] + 5
+
+        self._add_decorative_elements(draw, width, height, style_config)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        out_path = output_dir / "thumbnail.png"
+        image.save(out_path, "PNG")
+        return out_path
+
     async def _extract_content_info(
         self,
         script: Dict[str, Any],
