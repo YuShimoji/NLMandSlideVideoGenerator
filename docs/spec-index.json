@@ -317,11 +317,11 @@
   {
     "id": "SP-036",
     "title": "Script Style Presets",
-    "status": "partial",
-    "pct": 70,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/script_style_presets.md",
-    "summary": "動画種別(ニュース/解説/まとめ等)ごとのGeminiプロンプトテンプレート。トーン・構成・話者バランス・セグメント密度を事前定義し、台本品質の一貫性を構造化"
+    "summary": "動画種別(ニュース/解説/まとめ等)ごとのGeminiプロンプトテンプレート。4プリセットJSON + CLI --style + Web UIドロップダウン + プリセット駆動プロンプト構築。42テストPASS"
   },
   {
     "id": "SP-037",
