@@ -66,6 +66,7 @@ class VisualResourceOrchestrator:
         self,
         segments: List[Dict[str, Any]],
         slide_image_paths: Optional[List[Path]] = None,
+        speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> VisualResourcePackage:
         """セグメント群に対してビジュアルリソースを統合割当する。
 
@@ -114,7 +115,9 @@ class VisualResourceOrchestrator:
         )
 
         # Step 5: source="none" → テキストスライド自動生成
-        resources = self._fill_none_with_text_slides(segments, resources)
+        resources = self._fill_none_with_text_slides(
+            segments, resources, speaker_mapping=speaker_mapping,
+        )
 
         # Step 6: 連続同一ソース回避
         resources = self._enforce_variety(resources, slide_image_paths)
@@ -313,10 +316,12 @@ class VisualResourceOrchestrator:
         self,
         segments: List[Dict[str, Any]],
         resources: List[VisualResource],
+        speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> List[VisualResource]:
         """source="none" のリソースをテキストスライド自動生成で埋める。
 
         work_dir が設定されている場合のみ動作する。
+        speaker_mapping が指定された場合、スライド内の話者名を変換する。
         """
         none_indices = [
             i for i, r in enumerate(resources) if r.source == "none"
@@ -330,6 +335,14 @@ class VisualResourceOrchestrator:
         generator = TextSlideGenerator(output_dir=gen_dir)
 
         target_segments = [segments[i] for i in none_indices]
+
+        # speaker_mapping を適用してスライド内の話者名を変換
+        if speaker_mapping:
+            target_segments = [
+                {**seg, "speaker": speaker_mapping.get(seg.get("speaker", ""), seg.get("speaker", ""))}
+                for seg in target_segments
+            ]
+
         paths = generator.generate_batch(target_segments, none_indices)
 
         filled = 0

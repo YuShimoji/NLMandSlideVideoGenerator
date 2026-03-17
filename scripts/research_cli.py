@@ -392,7 +392,9 @@ async def run_pipeline(
                     topic=topic,
                     work_dir=work_dir,
                 )
-                vis_package = orchestrator.orchestrate(segments, slide_paths)
+                vis_package = orchestrator.orchestrate(
+                    segments, slide_paths, speaker_mapping=speaker_mapping,
+                )
 
                 stock_count = sum(1 for r in vis_package.resources if r.source == "stock")
                 slide_count = sum(1 for r in vis_package.resources if r.source == "slide")
@@ -418,7 +420,7 @@ async def run_pipeline(
 
         # Step 6: CsvAssembler (Orchestrator出力から)
         if not (state.is_step_done("assemble") and timeline_csv_path.exists()):
-            print(f"\n=== Step 6: CsvAssembler (Orchestrated) ===")
+            print("\n=== Step 6: CsvAssembler (Orchestrated) ===")
             state.mark_running("assemble")
             state.save(work_dir)
             try:
@@ -450,7 +452,9 @@ async def run_pipeline(
                         topic=topic,
                         work_dir=work_dir,
                     )
-                    vis_package = orchestrator.orchestrate(segments, slide_paths)
+                    vis_package = orchestrator.orchestrate(
+                    segments, slide_paths, speaker_mapping=speaker_mapping,
+                )
 
                 assembler = CsvAssembler()
                 assembled_segments: list[dict[str, str]] = []
@@ -530,7 +534,10 @@ async def run_pipeline(
                     topic=topic,
                     work_dir=work_dir,
                 )
-                vis_package = orchestrator.orchestrate(segments, slide_image_paths=[])
+                vis_package = orchestrator.orchestrate(
+                    segments, slide_image_paths=[],
+                    speaker_mapping=speaker_mapping,
+                )
 
                 gen_count = sum(1 for r in vis_package.resources if r.source == "generated")
                 none_count = sum(1 for r in vis_package.resources if r.source == "none")
@@ -545,7 +552,7 @@ async def run_pipeline(
 
             # CsvAssembler
             if vis_package and not (state.is_step_done("assemble") and timeline_csv_path.exists()):
-                print(f"\n=== Step 6: CsvAssembler (Generated slides) ===")
+                print("\n=== Step 6: CsvAssembler (Generated slides) ===")
                 state.mark_running("assemble")
                 state.save(work_dir)
                 try:
@@ -587,7 +594,7 @@ async def run_pipeline(
         from core.export_validator import ExportValidator
         validator = ExportValidator(check_image_exists=True)
         vresult = validator.validate_csv(reviewed_csv)
-        print(f"\n=== Pre-Export Validation ===")
+        print("\n=== Pre-Export Validation ===")
         print(vresult.summary())
         if vresult.issues:
             for issue in vresult.issues[:10]:
@@ -597,7 +604,7 @@ async def run_pipeline(
             if len(vresult.issues) > 10:
                 print(f"  ... and {len(vresult.issues) - 10} more issues")
 
-    print(f"\n=== Pipeline Complete ===")
+    print("\n=== Pipeline Complete ===")
     print(f"Output: {reviewed_csv}")
     print(f"Work dir: {work_dir}")
     print(state.summary())
@@ -623,7 +630,7 @@ def _prompt_missing() -> str:
 
 def run_validate(csv_path: Path, template_name: str | None, check_images: bool) -> None:
     """CSV Pre-Export 検証を実行する。"""
-    from core.export_validator import ExportValidator, Severity
+    from core.export_validator import ExportValidator
     from core.style_template import StyleTemplateManager
 
     template_data = None
