@@ -55,39 +55,40 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
-| 字幕 | TextItem字幕テンプレート (話者色分け) | 完了 | SP-030 | Border/Bold/CenterBottom/MaxWidth/WordWrap/話者色6色サイクル |
-| スタイル | テンプレートJSON + Pre-Export検証 | 完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfade/bgmセクション。ValidateImportItems拡張。BGMテンプレート自動配置済み |
-| 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み |
-| 素材 | AI生成イラスト | 完了 | SP-033 Phase 3 | AIImageProvider (Gemini Imagen) + Orchestrator統合 + CLI/UI自動有効 |
-| 背景動画 | ループ背景動画レイヤー (Recommended) | 低 | なし | PROJECT_ALIGNMENT_SSOTで「必要時のみ加える」。YMM4側でVideoItemレイヤーを手動追加可能。自動化は実需が発生してから仕様化 |
-| OP/ED | 冒頭タイトルカード + 締めテンプレート | 却下 | なし | 2026-03-17: 不要と判断。動画本編のみで十分、制作コストに見合わない |
-| サムネイル統合 | パイプライン出力にサムネイル自動生成を接続 | 中 | なし | src/core/thumbnails/ が存在するがパイプライン未統合 |
-| YouTube公開 | メタデータ生成→アップロードの一気通貫接続 | 中 | なし | MetadataGenerator, YouTubeUploader個別実装済み。パイプライン統合なし |
+| 台本スタイル | Script Style Presets Web UI統合 | 中 | SP-036 (70%) | CLI --style + 4プリセットJSON完了。Web UIドロップダウン統合残 |
+| バッチ制作 | Batch Production Queue 完成 | 中 | SP-040 (60%) | CLI batch + topics.json完了。Web UI統合 + エラーリカバリ残 |
+| MP4品質検証 | FFprobe自動チェック + YouTube連携 | 中 | SP-039 (80%) | Phase 1完了 (17テスト)。Phase 2 (SP-038連携) 後送り |
+| 統合テスト | YMM4実機テスト実施 | 中 | SP-035 (50%) | チェックリスト整備済み。YMM4環境で実施待ち |
+| サムネイル統合 | パイプライン出力にサムネイル自動生成を接続 | 中 | SP-037 (draft) | src/core/thumbnails/ が存在するがパイプライン未統合 |
+| YouTube公開 | メタデータ生成→アップロードの一気通貫接続 | 中 | SP-038 (draft) | MetadataGenerator, YouTubeUploader個別実装済み。OAuth未整備 |
 | クレジット自動挿入 | ストック画像のPexels/PixabayクレジットをYouTube説明欄に自動追記 | 低 | なし | StockImageClientでcredit情報は取得済み。ライセンス準拠 |
-| MP4品質自動検証 | FFprobeで出力MP4のcodec/duration/resolution/audio streamsを自動チェック | 低 | なし | 手動目視→自動化 |
-| API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
-| 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
+| 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
+| API連携 | Google CSE API 403修正 | 低 | なし | API設定問題 |
+| 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
 
 ---
 
 ## ロードマップ
 
-### 短期: 全SP完了
+### 短期 (~1週): partial SP を done に
 
-- SP-031: 全完了 (style_template.json v1.1 + BGMテンプレート + C#統合 + ValidateImportItems拡張)
-- SP-033: 全Phase完了 (8種アニメ + StockImage + AIImage + TextSlide + Orchestrator統合)
+- SP-036 Script Style Presets (70%→100%): Web UI統合
+- SP-040 Batch Production Queue (60%→100%): Web UI統合 + エラーリカバリ
+- SP-039 MP4 Quality Verification (80%→100%): SP-038連携待ち
+- SP-035 統合実機テスト (50%→100%): YMM4環境で実施
 
-### 中期 (1-2ヶ月): 実運用品質 + ドキュメント
+### 中期 (1-2ヶ月): YouTube公開パイプライン
 
-- Geminiクォータリセット後の実コンテンツ品質確認
-- YMM4実機テスト: BGMテンプレート + ストック画像CSV + 字幕テンプレート
-- ドキュメント整備: SP-006 (90%), SP-007 (85%)
+- SP-037 Thumbnail Pipeline統合 (draft→done)
+- SP-038 YouTube Publish Pipeline (draft→done): OAuth整備 + 自動公開
 - Gemini有料プラン検討 (無料枠20req/day → 本番運用)
+- Google CSE API 403修正
 
-### 長期 (3ヶ月+): 自動化
+### 長期 (3ヶ月+): 自動化 + スケーラビリティ
 
 - Docker化 / CI-CD強化
-- バッチ処理 / 多言語対応
+- 多言語台本自動照合強化
+- Codecov統合
 
 ---
 
