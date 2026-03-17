@@ -1,6 +1,7 @@
 """Source collection utilities for research workflow."""
 
 import asyncio
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,14 +102,56 @@ class SourceCollector:
             return None
 
     async def _search_sources(self, topic: str, count: int) -> List[SourceInfo]:
-        """Search sources via Google Custom Search API, falling back to simulation."""
+        """Search sources via Brave Search API (primary) or Google Custom Search (legacy fallback)."""
+        brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
+        if brave_key:
+            return await self._brave_search(topic, count, brave_key)
+
+        # Legacy: Google Custom Search (deprecated, closed to new users since 2025)
         api_key = settings.RESEARCH_SETTINGS.get("google_search_api_key")
         cx = settings.RESEARCH_SETTINGS.get("google_search_cx")
+        if api_key and cx:
+            return await self._google_search(topic, count, api_key, cx)
 
-        if not api_key or not cx:
-            logger.warning("Google Search API not configured; falling back to simulation.")
+        logger.warning("No search API configured (set BRAVE_SEARCH_API_KEY); falling back to simulation.")
+        return await self._simulate_search_sources(topic, count)
+
+    async def _brave_search(self, topic: str, count: int, api_key: str) -> List[SourceInfo]:
+        """Brave Search API でソースを検索する。"""
+        logger.info(f"Brave Search API query: {topic} (max={count})")
+        try:
+            response = self.session.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": api_key},
+                params={
+                    "q": topic,
+                    "count": str(min(count, 20)),
+                    "search_lang": "jp",
+                    "extra_snippets": "true",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            sources: List[SourceInfo] = []
+            web_results = data.get("web", {}).get("results", [])
+            for item in web_results[:count]:
+                search_url = item.get("url")
+                if not search_url:
+                    continue
+                source = await self._process_url(search_url, topic)
+                if source:
+                    sources.append(source)
+
+            logger.info(f"Brave Search complete: {len(sources)}")
+            return sources
+        except Exception as exc:
+            logger.error(f"Brave Search API failed: {exc}")
             return await self._simulate_search_sources(topic, count)
 
+    async def _google_search(self, topic: str, count: int, api_key: str, cx: str) -> List[SourceInfo]:
+        """Google Custom Search API (legacy, deprecated)."""
         logger.info(f"Google Search API query: {topic} (max={count})")
         try:
             response = self.session.get(
@@ -117,7 +160,7 @@ class SourceCollector:
                     "key": api_key,
                     "cx": cx,
                     "q": topic,
-                    "num": min(count, 10),
+                    "num": str(min(count, 10)),
                     "lr": "lang_ja",
                 },
                 timeout=10,
