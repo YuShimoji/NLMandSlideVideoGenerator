@@ -319,7 +319,7 @@ streamlit                # Web UI
 fastapi + uvicorn        # 運用API (オプション)
 
 # テスト
-pytest                   # 997テストPASS (2026-03-17時点)
+pytest                   # 1050テストPASS (2026-03-17時点)
 ```
 
 ### ディレクトリ構成
