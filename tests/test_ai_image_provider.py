@@ -1,11 +1,27 @@
 """AIImageProvider テスト (SP-033 Phase 3)"""
 import hashlib
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.visual.ai_image_provider import AIImageProvider, GeneratedImage
+
+
+def _patch_genai(mock_client_instance: MagicMock):
+    """google.genai のローカルインポートをモックするためのヘルパー。"""
+    mock_genai = MagicMock()
+    mock_genai.Client.return_value = mock_client_instance
+    mock_types = MagicMock()
+    mock_google = MagicMock()
+    mock_google.genai = mock_genai
+    return patch.dict(sys.modules, {
+        "google": mock_google,
+        "google.genai": mock_genai,
+        "google.genai.types": mock_types,
+    })
 
 
 class TestGeneratedImage:
@@ -193,3 +209,201 @@ class TestGenerateWithRetry:
             result = provider._generate_with_retry("prompt")
 
         assert result.error is not None
+
+    @patch("time.sleep")
+    def test_429_all_retries_exhausted(self, mock_sleep, provider: AIImageProvider) -> None:
+        mock_api = MagicMock(side_effect=Exception("429 RESOURCE_EXHAUSTED"))
+        with patch.object(provider, "_call_api", mock_api):
+            result = provider._generate_with_retry("prompt")
+
+        assert result.error == "max_retries_exceeded"
+        assert mock_api.call_count == 3  # _MAX_RETRIES
+
+
+class TestCallApi:
+    """_call_api のモックテスト。"""
+
+    @pytest.fixture
+    def provider(self, tmp_path: Path) -> AIImageProvider:
+        with patch("core.visual.ai_image_provider.AIImageProvider.__init__", return_value=None):
+            p = AIImageProvider.__new__(AIImageProvider)
+            p.api_key = "test_key"
+            p.cache_dir = tmp_path
+            p.model = "test-model"
+            p.aspect_ratio = "16:9"
+            return p
+
+    def test_successful_api_call(self, provider: AIImageProvider, tmp_path: Path) -> None:
+        """正常なAPI応答で画像を保存する。"""
+        fake_img_data = SimpleNamespace(image_bytes=b"\x89PNG_fake_data")
+        fake_image = SimpleNamespace(
+            image=fake_img_data,
+            rai_filtered_reason=None,
+            enhanced_prompt="enhanced test",
+        )
+        fake_response = SimpleNamespace(images=[fake_image])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("test prompt")
+
+        assert result.image_path is not None
+        assert result.image_path.exists()
+        assert result.enhanced_prompt == "enhanced test"
+        assert result.error is None
+
+    def test_no_images_returned(self, provider: AIImageProvider) -> None:
+        """API応答に画像がない場合。"""
+        fake_response = SimpleNamespace(images=[])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("test prompt")
+
+        assert result.error == "no_images_returned"
+
+    def test_null_image_entry(self, provider: AIImageProvider) -> None:
+        """API応答の画像エントリがNoneの場合。"""
+        fake_response = SimpleNamespace(images=[None])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("test prompt")
+
+        assert result.error == "null_image_entry"
+
+    def test_rai_filtered(self, provider: AIImageProvider) -> None:
+        """RAIフィルタで弾かれた場合。"""
+        fake_image = SimpleNamespace(
+            rai_filtered_reason="VIOLENCE",
+            image=None,
+            enhanced_prompt="",
+        )
+        fake_response = SimpleNamespace(images=[fake_image])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("violent prompt")
+
+        assert result.error is not None
+        assert "rai_filtered" in result.error
+
+    def test_empty_image_data(self, provider: AIImageProvider) -> None:
+        """画像データが空の場合。"""
+        fake_image = SimpleNamespace(
+            rai_filtered_reason=None,
+            image=SimpleNamespace(image_bytes=None),
+            enhanced_prompt="",
+        )
+        fake_response = SimpleNamespace(images=[fake_image])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("test prompt")
+
+        assert result.error == "empty_image_data"
+
+    def test_no_image_attribute(self, provider: AIImageProvider) -> None:
+        """image属性がNoneの場合。"""
+        fake_image = SimpleNamespace(
+            rai_filtered_reason=None,
+            image=None,
+            enhanced_prompt="",
+        )
+        fake_response = SimpleNamespace(images=[fake_image])
+
+        mock_client = MagicMock()
+        mock_client.models.generate_images.return_value = fake_response
+
+        with _patch_genai(mock_client):
+            result = provider._call_api("test prompt")
+
+        assert result.error == "empty_image_data"
+
+
+class TestGenerateSingle:
+    """generate_single のテスト。"""
+
+    @pytest.fixture
+    def provider(self, tmp_path: Path) -> AIImageProvider:
+        with patch("core.visual.ai_image_provider.AIImageProvider.__init__", return_value=None):
+            p = AIImageProvider.__new__(AIImageProvider)
+            p.api_key = "test_key"
+            p.cache_dir = tmp_path
+            p.model = "test-model"
+            p.aspect_ratio = "16:9"
+            return p
+
+    def test_no_api_key(self, tmp_path: Path) -> None:
+        with patch("core.visual.ai_image_provider.AIImageProvider.__init__", return_value=None):
+            p = AIImageProvider.__new__(AIImageProvider)
+            p.api_key = ""
+            p.cache_dir = tmp_path
+
+        result = p.generate_single("test prompt")
+        assert result.error == "no_api_key"
+
+    def test_cache_hit(self, provider: AIImageProvider, tmp_path: Path) -> None:
+        prompt = "cached prompt"
+        cache_key = hashlib.md5(prompt.encode()).hexdigest()[:12]
+        cache_file = tmp_path / f"ai_{cache_key}.png"
+        cache_file.write_bytes(b"cached")
+
+        result = provider.generate_single(prompt)
+        assert result.image_path == cache_file
+        assert result.source == "ai_cache"
+
+    def test_api_call(self, provider: AIImageProvider, tmp_path: Path) -> None:
+        fake_path = tmp_path / "gen.png"
+        fake_path.write_bytes(b"data")
+
+        with patch.object(
+            provider, "_generate_with_retry",
+            return_value=GeneratedImage(prompt="p", image_path=fake_path),
+        ):
+            result = provider.generate_single("new prompt")
+
+        assert result.image_path == fake_path
+
+
+class TestBuildPromptEdgeCases:
+    """_build_prompt のエッジケース。"""
+
+    @pytest.fixture
+    def provider(self, tmp_path: Path) -> AIImageProvider:
+        with patch("core.visual.ai_image_provider.AIImageProvider.__init__", return_value=None):
+            p = AIImageProvider.__new__(AIImageProvider)
+            p.api_key = "test_key"
+            p.cache_dir = tmp_path
+            p.model = "test-model"
+            p.aspect_ratio = "16:9"
+            return p
+
+    def test_text_field_fallback(self, provider: AIImageProvider) -> None:
+        """content がなく text がある場合。"""
+        seg = {"text": "fallback text here"}
+        prompt = provider._build_prompt(seg, topic="", style_hint="")
+        assert "fallback text here" in prompt
+
+    def test_abstract_concept_fallback(self, provider: AIImageProvider) -> None:
+        """全てのフィールドが空の場合。"""
+        seg = {}
+        prompt = provider._build_prompt(seg, topic="", style_hint="")
+        assert "abstract concept" in prompt
+
+    def test_many_key_points_truncated(self, provider: AIImageProvider) -> None:
+        """key_points が4つ以上ある場合、最初の3つだけ使う。"""
+        seg = {"key_points": ["a", "b", "c", "d", "e"]}
+        prompt = provider._build_prompt(seg, topic="", style_hint="")
+        assert "a, b, c" in prompt
+        assert "d" not in prompt
