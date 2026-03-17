@@ -244,3 +244,48 @@ class TestHelpers:
 
             asyncio.get_event_loop().run_until_complete(server_instance.perform_cleanup(1))
             assert not old_file.exists()
+
+    def test_perform_cleanup_oserror(self, server_instance, tmp_path: Path):
+        """Cleanup handles OSError gracefully."""
+        import asyncio
+        with patch("src.server.api_server.settings") as mock_settings:
+            mock_settings.VIDEOS_DIR = MagicMock()
+            mock_settings.VIDEOS_DIR.glob.side_effect = OSError("permission denied")
+            mock_settings.AUDIO_DIR = tmp_path / "audio"
+            mock_settings.SLIDES_DIR = tmp_path / "slides"
+            mock_settings.SCRIPTS_DIR = tmp_path / "scripts"
+            # Should not raise
+            asyncio.get_event_loop().run_until_complete(server_instance.perform_cleanup(1))
+
+    def test_check_file_system_oserror(self, server_instance):
+        """File system check handles OSError."""
+        import asyncio
+        with patch("src.server.api_server.settings") as mock_settings:
+            mock_settings.DATA_DIR = MagicMock()
+            mock_settings.DATA_DIR.exists.side_effect = OSError("bad path")
+            result = asyncio.get_event_loop().run_until_complete(server_instance.check_file_system())
+            assert result["status"] == "unhealthy"
+
+    def test_check_file_system_generic_exception(self, server_instance):
+        """File system check handles generic exception."""
+        import asyncio
+        with patch("src.server.api_server.settings") as mock_settings:
+            mock_settings.DATA_DIR = MagicMock()
+            mock_settings.DATA_DIR.exists.side_effect = RuntimeError("unexpected")
+            result = asyncio.get_event_loop().run_until_complete(server_instance.check_file_system())
+            assert result["status"] == "unhealthy"
+
+    def test_check_pipeline_generic_exception(self, server_instance):
+        """Pipeline check handles generic exception."""
+        import asyncio
+        with patch("src.server.api_server.build_default_pipeline", side_effect=RuntimeError("boom")):
+            result = asyncio.get_event_loop().run_until_complete(server_instance.check_pipeline())
+            assert result["status"] == "unhealthy"
+
+    def test_metrics_prometheus_not_available(self, server_instance):
+        """Metrics endpoint when prometheus is not available."""
+        with patch("src.server.api_server.PROMETHEUS_AVAILABLE", False):
+            client = TestClient(server_instance.app)
+            resp = client.get("/metrics")
+            assert resp.status_code == 200
+            assert "Prometheus not available" in resp.text
