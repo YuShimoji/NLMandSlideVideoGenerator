@@ -18,7 +18,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
   - Quality Definition 4軸: 制作スピード + 情報密度 + 視覚完成度 + 一貫性
   - ターゲット: YouTube公開の長尺解説動画 (20-30分+)、一晩3本ペース
   - API設定: Gemini=SET, Pexels=SET, Pixabay=SET, Google CSE=要修正(403)
-  - テスト: 982 passed, 0 warnings, Ruff 0, Mypy 0
+  - テスト: 997 passed, 0 warnings, Ruff 0, Mypy 0
   - 残: Google CSE API修正, SP-035 YMM4実機テスト, SP-036/040 Web UI統合, SP-037/038 (draft)
 
 ## DECISION LOG

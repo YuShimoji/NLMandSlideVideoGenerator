@@ -14,7 +14,7 @@ Type: Session Handover (全SP完了後)
 | SP-033 Phase 3 | DONE | AIImageProvider (Gemini Imagen 3.0) + Orchestrator 3層フォールバック |
 | SP-031 BGM | DONE | style_template.json v1.1 + Python/C#双方対応 |
 | SP-034 再開機能 | DONE | PipelineState永続化 + CLI --resume |
-| テスト | 980 passed | Python全テストPASS。カバレッジ84% (全体) / 92% (コア) |
+| テスト | 997 passed | Python全テストPASS。カバレッジ84% (全体) / 92% (コア) |
 | ドキュメント | 同期済み | spec-index.json, backlog.md, 各仕様書を実装に同期 |
 
 ## Production Path
