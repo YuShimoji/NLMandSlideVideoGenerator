@@ -6,6 +6,7 @@ Gemini Imagen API を使用して、台本セグメントに基づく
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,7 +19,7 @@ _MAX_RETRIES = 3
 _BACKOFF_BASE = 2.0
 
 # Imagen モデル
-_DEFAULT_MODEL = "imagen-3.0-generate-002"
+_DEFAULT_MODEL = os.environ.get("IMAGEN_MODEL", "imagen-3.0-generate-001")
 
 
 @dataclass
