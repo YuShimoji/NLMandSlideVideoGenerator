@@ -344,11 +344,11 @@
   {
     "id": "SP-039",
     "title": "MP4 Output Quality Verification",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 80,
     "cat": "pipeline",
     "file": "docs/specs/mp4_quality_verification.md",
-    "summary": "FFprobeベースの出力MP4自動品質チェック。codec/duration/resolution/audio streams/ファイルサイズの検証。異常検出時アラート。品質の一貫性を構造的に担保"
+    "summary": "Phase 1完了: MP4QualityChecker (FFprobe, 10検証項目) + CLI verify + 17テスト。残: SP-038連携 (YouTube公開前自動チェック)"
   },
   {
     "id": "SP-040",

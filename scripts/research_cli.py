@@ -865,7 +865,25 @@ def main() -> None:
     # templates サブコマンド (SP-031)
     templates_parser = subparsers.add_parser("templates", help="List available style templates")
 
+    # verify サブコマンド (SP-039)
+    verify_parser = subparsers.add_parser("verify", help="Verify MP4 output quality with FFprobe")
+    verify_parser.add_argument("mp4", help="Path to MP4 file")
+    verify_parser.add_argument("--expected-duration", type=float, help="Expected duration in seconds")
+    verify_parser.add_argument("--resolution", default="1920x1080", help="Expected resolution (WxH)")
+
     args = parser.parse_args(raw_args)
+
+    if args.command == "verify":
+        from core.utils.mp4_checker import check_mp4
+        mp4_path = Path(args.mp4)
+        w, h = (int(x) for x in args.resolution.split("x"))
+        result = check_mp4(
+            mp4_path,
+            expected_duration=args.expected_duration,
+            expected_resolution=(w, h),
+        )
+        print(result.summary())
+        return
 
     if args.command == "validate":
         run_validate(Path(args.csv), args.template, not args.no_image_check)
