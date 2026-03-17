@@ -233,10 +233,12 @@ class ScriptAlignmentAnalyzer:
 
             sentences_payload = []
             for item in orphaned_items:
-                # LLMには元の文そのものを送る
+                # プロンプト圧縮: 全文ではなく先頭150文字 + key_points を送る
+                full_text = item.get("text", "")
+                truncated = full_text[:150] + ("..." if len(full_text) > 150 else "")
                 sentences_payload.append({
                     "id": item["segment_index"],
-                    "text": item["text"],
+                    "text": truncated,
                 })
 
             claims_payload = []

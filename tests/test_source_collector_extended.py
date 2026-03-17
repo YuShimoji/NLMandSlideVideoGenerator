@@ -160,14 +160,15 @@ async def test_search_sources_api_skips_items_without_link():
         return SourceInfo(url=url, title="T", content_preview="C",
                           relevance_score=0.8, reliability_score=0.8, source_type="article")
 
-    with patch("notebook_lm.source_collector.settings") as mock_settings:
-        mock_settings.RESEARCH_SETTINGS = {
-            "google_search_api_key": "key",
-            "google_search_cx": "cx",
-        }
-        with patch.object(collector.session, "get", return_value=api_resp):
-            with patch.object(collector, "_process_url", side_effect=mock_process):
-                sources = await collector._search_sources("topic", 5)
+    with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": ""}, clear=False):
+        with patch("notebook_lm.source_collector.settings") as mock_settings:
+            mock_settings.RESEARCH_SETTINGS = {
+                "google_search_api_key": "key",
+                "google_search_cx": "cx",
+            }
+            with patch.object(collector.session, "get", return_value=api_resp):
+                with patch.object(collector, "_process_url", side_effect=mock_process):
+                    sources = await collector._search_sources("topic", 5)
 
     assert len(sources) == 1
     assert sources[0].url == "https://example.com/valid"
