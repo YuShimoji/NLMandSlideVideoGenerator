@@ -867,22 +867,49 @@ def main() -> None:
 
     # verify サブコマンド (SP-039)
     verify_parser = subparsers.add_parser("verify", help="Verify MP4 output quality with FFprobe")
-    verify_parser.add_argument("mp4", help="Path to MP4 file")
+    verify_parser.add_argument("mp4", help="Path to MP4 file or directory (scans *.mp4 recursively)")
     verify_parser.add_argument("--expected-duration", type=float, help="Expected duration in seconds")
     verify_parser.add_argument("--resolution", default="1920x1080", help="Expected resolution (WxH)")
+    verify_parser.add_argument("--update-batch-result", action="store_true", help="Update batch_result.json with verification results")
 
     args = parser.parse_args(raw_args)
 
     if args.command == "verify":
         from core.utils.mp4_checker import check_mp4
-        mp4_path = Path(args.mp4)
+        target = Path(args.mp4)
         w, h = (int(x) for x in args.resolution.split("x"))
-        result = check_mp4(
-            mp4_path,
-            expected_duration=args.expected_duration,
-            expected_resolution=(w, h),
-        )
-        print(result.summary())
+
+        # ディレクトリの場合は再帰的にMP4を検索
+        if target.is_dir():
+            mp4_files = sorted(target.rglob("*.mp4"))
+            if not mp4_files:
+                print(f"No MP4 files found in {target}")
+                return
+            print(f"Found {len(mp4_files)} MP4 file(s) in {target}\n")
+            all_results = []
+            for mp4_file in mp4_files:
+                result = check_mp4(mp4_file, expected_duration=args.expected_duration, expected_resolution=(w, h))
+                print(result.summary())
+                print()
+                all_results.append({"file": str(mp4_file), "passed": result.passed, "checks": len(result.checks), "critical_failures": len(result.critical_failures)})
+
+            passed = sum(1 for r in all_results if r["passed"])
+            print(f"{'='*60}")
+            print(f"Verification Complete: {passed}/{len(all_results)} PASS")
+
+            # batch_result.json 更新
+            if args.update_batch_result:
+                batch_result_path = target / "batch_result.json"
+                if batch_result_path.exists():
+                    with open(batch_result_path, "r", encoding="utf-8") as f:
+                        batch_data = json.load(f)
+                    batch_data["mp4_verification"] = all_results
+                    with open(batch_result_path, "w", encoding="utf-8") as f:
+                        json.dump(batch_data, f, ensure_ascii=False, indent=2)
+                    print(f"Updated: {batch_result_path}")
+        else:
+            result = check_mp4(target, expected_duration=args.expected_duration, expected_resolution=(w, h))
+            print(result.summary())
         return
 
     if args.command == "validate":
