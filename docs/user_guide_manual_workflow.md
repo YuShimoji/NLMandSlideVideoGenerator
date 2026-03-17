@@ -63,18 +63,24 @@ Speaker1,3行目のテロップです
 
 ---
 
-## 方法3: 通常パイプライン（トピックベース）
+## 方法3: 一気通貫パイプライン（トピックベース）
 
-トピックを指定して、AI生成を含む完全自動化パイプラインを実行します。
-
-**注:** この方法は現在、一部の機能がモック実装です。
+トピックを指定して、リサーチ→台本生成→画像取得→CSV合成までを一気通貫で実行します。
 
 ```bash
-# CLI実行
-python src/main.py --topic "AI技術の最新動向" --quality 1080p
+# CLI実行（推奨）
+python scripts/research_cli.py pipeline \
+  --topic "AI技術の最新動向" \
+  --auto-review \
+  --auto-images \
+  --duration 5 \
+  --speaker-map '{"Host1":"れいむ","Host2":"まりさ"}'
 ```
 
-または Web UI の「Pipeline Execution」ページから実行。
+または Web UI の「素材パイプライン」ページから実行。
+
+出力されたCSVは方法1 (YMM4制作フロー) のStep 2へ接続する。
+詳細: `docs/material_pipeline_spec.md`, `docs/ymm4_final_workflow.md`
 
 ---
 

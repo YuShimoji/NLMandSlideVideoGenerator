@@ -59,6 +59,12 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | スタイル | テンプレートJSON + Pre-Export検証 | 完了 | SP-031 | Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。video/crossfade/bgmセクション。ValidateImportItems拡張。BGMテンプレート自動配置済み |
 | 素材 | ストック素材API + 背景充実化 | Phase 2c完了 | SP-033 Phase 2 | StockImageClient + SegmentClassifier + Orchestrator + Gemini分類/キーワード統合済み |
 | 素材 | AI生成イラスト | 完了 | SP-033 Phase 3 | AIImageProvider (Gemini Imagen) + Orchestrator統合 + CLI/UI自動有効 |
+| 背景動画 | ループ背景動画レイヤー (Recommended) | 低 | なし | PROJECT_ALIGNMENT_SSOTで「必要時のみ加える」。YMM4側でVideoItemレイヤーを手動追加可能。自動化は実需が発生してから仕様化 |
+| OP/ED | 冒頭タイトルカード + 締めテンプレート | 中 | なし | 動画の「完成品」感に直結。style_template.jsonに intro/outro セクション追加が候補 |
+| サムネイル統合 | パイプライン出力にサムネイル自動生成を接続 | 中 | なし | src/core/thumbnails/ が存在するがパイプライン未統合 |
+| YouTube公開 | メタデータ生成→アップロードの一気通貫接続 | 中 | なし | MetadataGenerator, YouTubeUploader個別実装済み。パイプライン統合なし |
+| クレジット自動挿入 | ストック画像のPexels/PixabayクレジットをYouTube説明欄に自動追記 | 低 | なし | StockImageClientでcredit情報は取得済み。ライセンス準拠 |
+| MP4品質自動検証 | FFprobeで出力MP4のcodec/duration/resolution/audio streamsを自動チェック | 低 | なし | 手動目視→自動化 |
 | API連携 | Gemini/Google Slides API | 低 | | CsvScriptCompletionPlugin |
 | 品質 | 型ヒント・Docstring整備 | 低 | | 継続 |
 

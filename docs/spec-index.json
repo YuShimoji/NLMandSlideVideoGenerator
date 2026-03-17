@@ -73,12 +73,12 @@
   },
   {
     "id": "SP-009",
-    "title": "Workflow Specification",
-    "status": "legacy",
-    "pct": 40,
+    "title": "Workflow Specification (Archived)",
+    "status": "archived",
+    "pct": 0,
     "cat": "system",
     "file": "docs/archive/workflow_specification.md",
-    "summary": "ARCHIVED: 全自動ワークフロー構想。現行SSOTはuser_guide_manual_workflow.md"
+    "summary": "ARCHIVED: 旧全自動ワークフロー構想。SP-015 (ymm4_final_workflow.md) + SP-016 (user_guide) + SP-032 (material_pipeline) に置換済み"
   },
   {
     "id": "SP-010",
@@ -129,10 +129,10 @@
     "id": "SP-015",
     "title": "YMM4 Final Workflow",
     "status": "done",
-    "pct": 90,
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_final_workflow.md",
-    "summary": "Path A (CSV→YMM4→mp4) 標準手順+リカバリ手順"
+    "summary": "Path A (CSV→YMM4→mp4) 最終ワークフロー。4列CSV+8種アニメ+ストック/AI画像+style_template+BGM+クロスフェード+パイプライン再開+エラーリカバリ (2026-03-17全面更新)"
   },
   {
     "id": "SP-016",
@@ -304,5 +304,14 @@
     "cat": "pipeline",
     "file": "docs/system_architecture.md",
     "summary": "PipelineState永続化+CLI --resumeによるステージ単位の復旧。失敗ステップから再開可能。system_architecture.md/system_specification.mdに記載"
+  },
+  {
+    "id": "SP-035",
+    "title": "Integration Test Checklist",
+    "status": "partial",
+    "pct": 50,
+    "cat": "infra",
+    "file": "docs/integration_test_checklist.md",
+    "summary": "全SP完了後の統合実機テスト項目 (A-G)。チェックリスト整備済み、実施未完了。字幕/BGM/ストック画像/AI画像/Resync/Pre-Export/全統合E2Eの7セクション"
   }
 ]
