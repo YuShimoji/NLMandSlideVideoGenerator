@@ -62,8 +62,27 @@
 - google-genai SDKが毎回警告を出力 (9回)
 - 対策: .envからGOOGLE_API_KEYのプレースホルダーを削除
 
+## Re-test #2 (after .env fix + speaker_mapping)
+- Google Search API: 403 (API key or Custom Search Engine ID issue)
+- Pexels: 3/3 (100% hit rate)
+- Segments: 7 (appropriate for 5min)
+- Speaker mixing in segment: STILL PRESENT (P5 confirmed as major issue)
+
+## Re-test #3 (after prompt fix)
+- **1-segment-1-speaker: FIXED** — prompt constraints enforced
+- **Speaker names in text: FIXED** — "れいむさん" instead of "Host1さん"
+- Pexels: 3/3 (100%)
+- Pre-Export: 0 errors
+- Google Search: still 403 (Cloud Console config needed)
+- Pipeline time: 40s
+
+## Remaining Issues
+- Google Search API 403: Need to verify Custom Search Engine configuration in Google Cloud Console
+- GOOGLE_API_KEY placeholder in .env: Remove to suppress SDK warnings
+- Gemini 2.0-flash quota exhaustion: free tier limit (need paid plan for batch production)
+
 ## Next Steps
-1. Imagen修正後に画像生成を再テスト
-2. Google Search API設定 → 実ソースでの台本品質評価
-3. YMM4でCSVインポート → Voice生成 → mp4レンダリング (手動)
-4. mp4出力のMP4QualityChecker検証
+1. Google Cloud Console でCustom Search APIの有効化を確認
+2. YMM4でCSVインポート → Voice生成 → mp4レンダリング (手動)
+3. mp4出力のMP4QualityChecker検証
+4. Gemini有料プラン検討 (バッチ制作に必要)
