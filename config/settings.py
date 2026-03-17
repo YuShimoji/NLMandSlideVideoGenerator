@@ -245,10 +245,11 @@ class Settings:
         self.PIPELINE_DEFAULTS: Dict[str, Any] = {
             "auto_review": True,
             "auto_images": True,
-            "target_duration": 300.0,  # 秒 (5分)
+            "target_duration": 1800.0,  # 秒 (30分) — 長尺がメイン方針 (2026-03-17)
             "max_sources": 5,
             "speaker_mapping": {"Host1": "れいむ", "Host2": "まりさ"},
             "visual_ratio_target": 0.4,
+            "style": "default",  # SP-036: 台本スタイルプリセット
         }
 
         # リトライ設定

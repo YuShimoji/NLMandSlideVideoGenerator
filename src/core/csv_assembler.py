@@ -6,12 +6,26 @@ CSV自動合成モジュール (SP-032 Gap 1, SP-033 拡張)
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .utils.logger import logger
 from .visual.models import AnimationType, VisualResourcePackage
 from .visual.animation_assigner import AnimationAssigner
+
+
+_SPEAKER_PREFIX_RE = re.compile(r"^(Host\d*|Speaker\d*|ナレーター)\s*[:：]\s*", re.IGNORECASE)
+
+
+def _strip_speaker_prefix(text: str) -> str:
+    """テキスト先頭の話者プレフィックス (Host1: 等) を除去する。
+
+    Gemini生成台本の content に ``Host1: 皆さん...`` のような
+    プレフィックスが含まれることがある。CSV の speaker 列で話者を識別する
+    ため、content 内の重複プレフィックスは不要。
+    """
+    return _SPEAKER_PREFIX_RE.sub("", text).strip()
 
 
 class CsvAssembler:
@@ -73,6 +87,7 @@ class CsvAssembler:
         for i, segment in enumerate(script_segments):
             speaker = segment.get("speaker", "")
             text = segment.get("content", "") or segment.get("text", "")
+            text = _strip_speaker_prefix(text)
 
             # 話者名マッピング適用
             if speaker in speaker_mapping:
@@ -152,6 +167,7 @@ class CsvAssembler:
         for i, segment in enumerate(script_segments):
             speaker = segment.get("speaker", "")
             text = segment.get("content", "") or segment.get("text", "")
+            text = _strip_speaker_prefix(text)
 
             if speaker in speaker_mapping:
                 speaker = speaker_mapping[speaker]
