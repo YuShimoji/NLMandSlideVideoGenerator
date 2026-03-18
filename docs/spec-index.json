@@ -389,10 +389,10 @@
   {
     "id": "SP-044",
     "title": "Segment Duration Control",
-    "status": "partial",
-    "pct": 95,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/segment_duration_control.md",
-    "summary": "台本セグメント粒度検証+自動調整: 推定尺計算+セグメント数範囲チェック+too_short時LLM追加生成+too_many時統合。Phase 1-2完了+LLM失敗時graceful degradationテスト追加。30テスト。残: Phase 3 手動モード(HUMAN_AUTHORITY)"
+    "summary": "Phase 1-3完了: 推定尺計算+セグメント検証+LLM自動調整(追加/統合)+CLI手動モード(--duration-mode manual|auto, continue/adjust/abort選択)。35テスト"
   }
 ]
