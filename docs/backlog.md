@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-18 (session 8)
+最終更新: 2026-03-18 (session 12 nightshift)
 
 ---
 
@@ -40,6 +40,10 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-043 Multi-LLM Provider Phase 1-3 | 完成 | ILLMProvider抽象化 + 5プロバイダー + 既存コード全移行 |
 | F-004 フォールバック可視化 | 完成 | PipelineStats fallback_events + FALLBACK WARNING |
 | F-006 クレジット自動統合 | 完成 | パイプライン→metadata.json + image_credits自動統合 |
+| SP-039 MP4品質検証 | 完成 | FFprobe 10検証項目 + SP-038連携 (upload前品質ゲート) |
+| SP-041 TextSlide品質 Phase 1-3 | 完成 | 4レイアウト + グラデーション5テーマ + プリセット連携 |
+| SP-043 Multi-LLM Phase 1-4 | 完成 | 5プロバイダー + 設定UI (Streamlit) |
+| SP-044 セグメント尺制御 Phase 1-3 | 完成 | 推定尺 + 自動調整 + 手動モード CLI |
 
 ---
 
@@ -53,11 +57,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
-| MP4品質検証 | SP-039 FFprobe自動チェック + YouTube連携 | 中 | SP-039 (80%) | Phase 1完了。Phase 2 (SP-038連携) 後送り |
 | 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (60%) | チェックリスト整備済み+pre-flight自動チェック。YMM4環境で実施待ち |
-| YouTube公開 | SP-038 メタデータ生成→アップロードの一気通貫接続 | 中 | SP-038 (65%) | Phase 1-2完了。Phase 3 (OAuth+YouTube API) 未着手 |
-| Multi-LLM | SP-043 Phase 4: 設定UI + 実APIキー統合テスト | 低 | SP-043 (85%) | Phase 1-3完了。Phase 4は実運用開始後に必要に応じて |
-| セグメント粒度 | SP-044 残: 実運用での調整精度検証 | 低 | SP-044 (90%) | Phase 1-2完了 (検証+自動調整)。実動画での精度評価が残 |
+| YouTube公開 | SP-038 本番OAuthトークン取得+実チャンネルテスト | 中 | SP-038 (90%) | Phase 1-3実装完了。残: 本番OAuth取得・実チャンネルテストアップロード |
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
 | トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
@@ -68,14 +69,14 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ### 短期 (~1週): partial SP を done に
 
-- SP-035 統合実機テスト (60%→100%): YMM4環境で実施
-- SP-039 MP4 Quality Verification (80%→100%): SP-038連携待ち
+- SP-035 統合実機テスト (60%→100%): YMM4環境で手動実施
+- SP-038 YouTube投稿 (90%→100%): 本番OAuthトークン取得 + 実チャンネルテスト
 
-### 中期 (1-2ヶ月): YouTube公開パイプライン
+### 中期 (1-2ヶ月): 実運用開始
 
-- SP-038 YouTube Publish Pipeline (65%→done): OAuth整備 + 自動公開
-- SP-043 Phase 4: 設定UI (Streamlit) + 実APIキーテスト
-- SP-044: 実運用での調整精度検証
+- 初回YouTube公開 (SP-038 + SP-039品質ゲート連携)
+- バッチ制作 (SP-040) の日常運用テスト
+- 実運用フィードバックに基づく摩擦解消
 
 ### 長期 (3ヶ月+): 自動化 + スケーラビリティ
 
@@ -121,6 +122,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-17: SP-031/033 Phase 2-3 完了、SP-028/030 done
 - 2026-03-18: SP-036/037/040/041/042 完了、Brave移行、SP-043 Phase 1-3
 - 2026-03-18: 摩擦インベントリ + F-004/F-006 + SP-044 Phase 1-2
+- 2026-03-18: SP-020→SP-031統合、SP-041 Phase 3、SP-043 Phase 4、SP-044 Phase 3
+- 2026-03-18: nightshift — 仕様書同期8件(Imagen4, pct100%), 開発ガイド全面更新, INDEX拡充
 
 ---
 

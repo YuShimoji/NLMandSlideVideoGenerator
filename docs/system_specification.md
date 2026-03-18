@@ -26,12 +26,12 @@ NLMandSlideVideoGenerator
 | Stage 3: YMM4レンダリング | CSVインポート・音声合成・動画出力 | CsvImportDialog, StyleTemplateLoader, VoiceSpeakerDiscovery |
 | Stage 4: 投稿配信 | メタデータ・サムネイル・投稿 | MetadataGenerator, ThumbnailGenerator, YouTubeUploader |
 
-### 1.5 現行実装状態 (2026-03-16)
+### 1.5 現行実装状態 (2026-03-18)
 
 - **Stage 1**: Research CLI一気通貫 (collect→script→align→review→pipeline) 実装済み
-- **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。1050テストPASS
+- **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。1182テストPASS
 - **Stage 3**: NLMSlidePlugin CSVインポート + style_template.json統一テンプレート + 8種アニメーション実機テストPASS
-- **Stage 4**: メタデータ・サムネイル・字幕 (SRT/ASS/VTT) 生成実装済み
+- **Stage 4**: メタデータ・サムネイル・YouTube投稿・字幕 (SRT/ASS/VTT) 生成実装済み
 
 ## 2. 機能要件
 
@@ -146,7 +146,7 @@ NLMandSlideVideoGenerator
 ### 3.4 保守性要件
 
 - Python/C# 二層構成。共有設定は `style_template.json` で一元管理
-- Python 1050テスト (pytest, カバレッジ84%/コア92%)、C# 34テスト (dotnet test) によるコンパイル検証
+- Python 1182テスト (pytest, カバレッジ84%/コア92%)、C# 34テスト (dotnet test) によるコンパイル検証
 - Ruff 0 errors、Mypy 0 errors (CI 5段階全緑)
 - ドキュメントは `docs/` に集約、`docs/spec-index.json` でインデックス管理
 - ドメイン固有例外階層 (`src/core/exceptions.py`) で統一エラーハンドリング
@@ -203,7 +203,7 @@ streamlit                # Web UI
 fastapi + uvicorn        # 運用API (オプション)
 
 # テスト・品質
-pytest                   # 1050テストPASS
+pytest                   # 1182テストPASS
 ruff                     # Linter (0 errors)
 mypy                     # 型チェック (0 errors)
 ```

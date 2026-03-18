@@ -7,15 +7,17 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 11):
+直近の状態 (2026-03-18 session 12 nightshift):
   - 全44仕様。43 done + 1 partial (SP-035) + 1 archived + 1 superseded
-  - session 11の成果:
-    - SP-020→SP-031統合: speaker_name_colors+background (名前優先3段フォールバック, 7テスト)
-    - SP-041 Phase 3完了: TextSlideプリセット連携 (news→Stats/blue, educational→TwoColumn/green, summary→Emphasis/warm, 9テスト)
-    - SP-043 Phase 4完了: LLM設定UI Streamlit新タブ (プロバイダー/モデル/APIキー/接続テスト)
-    - SP-044 Phase 3完了: 手動モード CLI --duration-mode manual|auto (continue/adjust/abort, 4テスト)
-    - テンプレート統合仕様書: docs/specs/template_consolidation.md
-  - テスト: ~1270+ passed
+  - session 12 (nightshift) の成果:
+    - 仕様書同期8件: Imagen 3→4移行反映、done未満pct→100%更新
+    - 開発ガイド全面書き直し (ブランチ/テスト/リンター/デプロイを実態に合わせ)
+    - API設定ガイド: ElevenLabs残存除去、Brave/Pexels/Pixabay追加
+    - 環境セットアップ/字幕ガイド: Windows専用化、YMM4手順追加
+    - INDEX.md: docs/specs/ディレクトリ10件+欠落ファイル追加
+    - backlog.md: SP-039/043/044 done反映、ロードマップ更新
+    - 数値同期: テスト数1050→1182 (system_spec/arch/SSOT/spec-index)
+  - テスト: 1182 passed, 3 skipped
   - 残 partial: SP-035 YMM4実機テスト (60%) — 手動テスト必要
   - 残 手動作業: SP-038 本番OAuth取得 + 実チャンネルテスト
 
