@@ -6,21 +6,17 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 12 nightshift + REFRESH):
-  - 全46仕様。44 done + 1 partial (SP-035) + 1 draft (SP-045) + 1 archived + 1 superseded
-  - session 12 の成果:
-    - [nightshift] 仕様書同期8件 (Imagen 4, pct→100%, ガイド全面更新, INDEX拡充)
-    - [nightshift] 数値同期 (テスト1050→1258), backlog整合, HANDOVER更新
-    - [REFRESH] Drift check: ドキュメント偏重→体験逆算に方向転換
-    - [REFRESH] SP-045 初回YouTube公開チェックリスト作成 (draft)
-    - [REFRESH] SP-035 preflight 36 PASS/0 FAIL, SP-038 upload 45テスト全緑
-    - [REFRESH] SP-043仕様同期 (Phase 4完了反映), pages.py.backup削除
-    - [REFRESH] task-scout深層探索: TikTok方針未決定/style_template仕様欠落/IPublishingQueue空実装 発見
+現フェーズ: 出力品質改善 (NotebookLM回帰)
+直近の状態 (2026-03-19 session 14 REFRESH):
+  - 出力品質診断実施: YouTube公開水準に未達 (docs/video_quality_diagnosis.md)
+  - NotebookLM→Geminiドリフト検出・回帰決定 (docs/notebooklm_drift_analysis.md)
+  - 全47仕様。44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047) + 1 archived + 1 superseded
   - テスト: 1258 passed, 0 failed
-  - 残 partial: SP-035 YMM4実機テスト (60%) — preflight済み、YMM4手動テスト待ち
-  - 残 手動作業: SP-038 本番OAuth取得 + 実チャンネルテスト
-  - 次のスライス: SP-045 初回YouTube公開 (OAuth→YMM4実機→upload→公開確認)
+  - 次のスライス: SP-047 出力品質基準 Phase 1 (NotebookLM統合調査)
+  - 主要な設計転換:
+    - 台本生成: Geminiプロンプト駆動 → NotebookLMベースに回帰
+    - スライド: PIL/Pillow独自生成 → NotebookLMスライド生成活用
+    - 画像素材: Pexelsストック → ウェブ上の著作権クリア画像優先
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -63,6 +59,11 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-18 | SP-045 初回YouTube公開チェックリスト新設 | 新規SP / SP-038に統合 / 不要 | SP-035/038の完了判定を兼ねる通しチェックリスト。Phase A/B/Cの全ステップを1枚に集約。draft状態で次回手動実施待ち |
 | 2026-03-18 | 仕様書のdone未満pct一斉修正 (8件→100%) | 個別修正 / 一斉修正 | SP-005/008/010/011/016/018/021/025の実態を調査し、不足部分を修正した上でpct 100%に更新 |
 | 2026-03-18 | REFRESH方向転換: ドキュメント偏重→体験逆算 | 継続 / 方向転換 | Drift check で3ブロック連続ドキュメント同期を検出。Capability-first原則に戻り「初回YouTube公開を閉じる」スライスに切替 |
+| 2026-03-19 | 出力品質の設計ギャップ検出: YouTube公開水準に未達 | 品質基準定義/スライド改修/台本改修/YMM4で1本作る | テキストスライド(PIL)が貧弱、セグメント粒度粗い(43-64秒/seg)、アニメーション偏り、台本テンポ遅い。1258テスト全緑だが出力品質未検証だった |
+| 2026-03-19 | NotebookLM→Gemini ドリフト検出・NotebookLM回帰決定 | Gemini維持/NotebookLM回帰/ハイブリッド | プロジェクト名 "NLM" = NotebookLM。元々NotebookLMベースの設計だったが暗黙的にGeminiプロンプト駆動に移行していた。docs/notebooklm_drift_analysis.md に詳細記録 |
+| 2026-03-19 | テキストスライドはNotebookLMスライド生成を活用、PIL生成廃止方向 | PIL改善/NotebookLM/画像生成AI/Canva API | PILでの独自スライド生成は車輪の再発明。NotebookLMのスライド生成機能を活用する |
+| 2026-03-19 | 画像素材はウェブ上の著作権クリア画像を優先 | ストック継続/ウェブ優先/AI生成優先 | Pexelsストック画像は汎用的すぎてテーマとの関連性が弱い。著作権クリアなウェブ画像を優先し、ストックはフォールバック |
+| 2026-03-19 | 台本生成はNotebookLMベースに切替 | Geminiプロンプト改修/NotebookLM切替/ハイブリッド | NotebookLMの台本品質が高い。Geminiプロンプトの台本はセグメント粒度・対話テンポ・個性がYouTube水準に未達 |
 
 ## Key Paths
 

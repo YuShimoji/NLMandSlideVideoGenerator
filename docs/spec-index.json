@@ -412,5 +412,14 @@
     "cat": "pipeline",
     "file": "docs/specs/template_consolidation.md",
     "summary": "SP-020(ymm4_template_diff)のSP-031(style_template)への統合設計。speaker_name_colors名前優先+background+audio追加。後方互換あり"
+  },
+  {
+    "id": "SP-047",
+    "title": "Video Output Quality Standard",
+    "status": "draft",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/specs/video_output_quality_standard.md",
+    "summary": "出力動画品質のYouTube公開水準達成。NotebookLMベース台本回帰、NotebookLMスライド活用、ウェブ著作権クリア画像優先、セグメント粒度細分化。docs/video_quality_diagnosis.md + docs/notebooklm_drift_analysis.md が前提"
   }
 ]

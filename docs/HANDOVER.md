@@ -1,66 +1,78 @@
 # HANDOVER
 
-Timestamp: 2026-03-18
-Actor: Claude Code (session 13 nightshift)
+Timestamp: 2026-03-19
+Actor: Claude Code (session 14 REFRESH)
 Type: Session Handover
 
 ## Current Status
 
-46仕様中44 done + 1 partial (SP-035) + 1 draft (SP-045)。テスト 1258 passed / 0 failed。
+47仕様中44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047)。テスト 1258 passed / 0 failed。
+
+**重要: 出力品質の設計ギャップが検出された。パイプラインは技術的に正しく動作するが、生成される動画がYouTube公開水準に達していない。**
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
-| テスト修正 | DONE | test_research_e2e.py LLM alignment mockを修正。conftest.py genaiスタブ条件改善 |
-| 数値同期 | DONE | テスト数1182→1258、全docs/spec-index同期済み |
-| 仕様索引 | DONE | SP-046 template_consolidation 登録。仕様数45→46 |
-| style_template | DONE | cinematic/minimal バリアント仕様をSP-031に追記 |
-| デッドコード | RECORDED | TikTokAdapter/IPublishingQueue/BasicTimelinePlannerをbacklogに記録。HUMAN_AUTHORITY待ち |
-| SP-045 チェックリスト | DRAFT | 初回YouTube公開の通しチェックリスト (Phase A/B/C全ステップ) |
-| SP-035 preflight | PASS | 36 PASS / 5 WARN / 0 FAIL。Python側準備完了 |
-| SP-038 upload テスト | PASS | 45テスト全緑 (mockモード)。OAuth未取得 |
-| テスト | 1258 passed, 0 failed | 全緑 (1 deselected) |
+| 品質診断 | DONE | docs/video_quality_diagnosis.md — P1(設計レベル)3件 + P2(台本)4件 + P3(視覚)3件 |
+| ドリフト分析 | DONE | docs/notebooklm_drift_analysis.md — NLM→Gemini移行の経緯と原因 |
+| SP-047 仕様 | DRAFT | docs/specs/video_output_quality_standard.md — 品質基準と設計変更計画 |
+| DECISION LOG | UPDATED | CLAUDE.md に6件の設計決定を追記 |
+| spec-index | UPDATED | SP-047エントリ追加 (47仕様) |
+| テスト | 1258 passed, 0 failed | 変更なし (今回はドキュメント・分析のみ) |
 
 ## Current Slice
 
-**SP-045: 初回YouTube公開**
+**SP-047: Video Output Quality Standard**
 
-ユーザー操作列:
-1. `research_cli.py pipeline` で CSV 生成 (Phase A: 自動)
-2. YMM4 で CSV インポート → Voice 生成 → レンダリング (Phase B: 手動)
-3. `research_cli.py upload --privacy private` で YouTube テスト投稿 (Phase C)
+Phase 1 (NotebookLM統合調査) が次のアクション。
 
-成功条件: YouTube Studio で動画が再生可能
+## Key Findings (session 14)
 
-ブロッカー: OAuth トークン未取得 (手動1回で解消)
+### 1. 出力品質の問題
+
+実際のパイプライン出力 (output_e2e_brave, output_e2e_30min) を検証した結果:
+
+- テキストスライド: PIL/Pillowによる箇条書き。YouTube動画の水準ではない
+- セグメント粒度: 43-64秒/セグメント。YouTube解説の標準は3-10秒ごとに視覚変化
+- アニメーション: 7セグメント中4つがstatic
+- 台本: 長文モノローグ、不自然なソース引用、テンプレート的相槌
+
+### 2. NotebookLM→Geminiドリフト
+
+プロジェクト名 "NLMandSlideVideoGenerator" はNotebookLMベースの設計を意図しているが、2025-11末のGemini代替ワークフロー導入以降、暗黙的にGeminiプロンプト駆動に完全移行。DECISION LOGに移行決定が記録されていなかった。
+
+### 3. 設計転換 (HUMAN_AUTHORITY承認済み)
+
+- 台本: NotebookLMベースに回帰
+- スライド: NotebookLMスライド生成を活用 (PIL廃止方向)
+- 画像: ウェブ上の著作権クリア画像を優先 (ストックはフォールバック)
+- トランジション: 控えめに
 
 ## Git State
 
 - Branch: `master`
-- HEAD: origin/master + 5 unpushed commits
-- Working tree: clean
+- 未コミットの変更: 新規3ファイル + 更新2ファイル (docs + CLAUDE.md + spec-index.json)
 
 ## Next Actions
 
 | 優先度 | タスク | 手動/自動 |
 |--------|--------|----------|
-| 1 | SP-045 チェックリスト実行 (初回公開を1本通す) | 手動 |
-| 1a | → Google Cloud Console で OAuth クライアント ID 作成 | 手動 |
-| 1b | → `python scripts/google_auth_setup.py` で token.json 取得 | 手動 |
-| 1c | → YMM4 実機テスト (SP-035 チェックリスト A-G) | 手動 |
-| 1d | → `research_cli.py upload --privacy private` でテスト投稿 | 手動 |
-| 2 | TikTokAdapter 廃止決定 | 設計判断 (HUMAN_AUTHORITY) |
-| 3 | IPublishingQueue / BasicTimelinePlanner の方針決定 | 設計判断 (HUMAN_AUTHORITY) |
+| 1 | SP-047 Phase 1: NotebookLM統合調査 (API/スライド生成の現在の仕様) | 調査 |
+| 2 | NotebookLMの台本生成をパイプラインに統合する設計 | 設計 |
+| 3 | 著作権クリア画像の自動収集方法の調査・実装 | 自動 |
+| 4 | SP-045: 品質基準が確定してから実行 | 手動 |
 
 ## Pending Design Decisions
 
-1. **TikTokAdapter**: 220行モック実装。仕様なし。YouTube長尺がターゲットなので廃止が妥当。backlogに記録済み
-2. **IPublishingQueue**: Protocol定義のみ。具象実装なし。スケジュール投稿不要なら削除。backlogに記録済み
-3. **BasicTimelinePlanner**: helpers.pyから参照あり、テスト済み。パイプラインでの実使用状況要確認。backlogに記録済み
+1. **NotebookLMの統合レベル**: 台本+スライド両方をNotebookLMに委譲するか、台本のみか
+2. **NotebookLM API**: 2026年3月時点で利用可能なAPI/統合方法は何か
+3. **既存コードの扱い**: gemini_integration.py (563行)、TextSlideGenerator (708行) の廃止/縮小範囲
+4. **TikTokAdapter/IPublishingQueue**: デッドコード削除 (HUMAN_AUTHORITY、session 13からの持ち越し)
 
 ## Primary References
 
-- `docs/specs/first_publish_checklist.md` — 初回公開チェックリスト (SP-045)
-- `docs/spec-index.json` — 全46仕様の状態一覧
-- `docs/backlog.md` — バックログ + ロードマップ
-- `docs/friction_inventory.md` — 摩擦インベントリ
+- `docs/video_quality_diagnosis.md` — 品質診断結果
+- `docs/notebooklm_drift_analysis.md` — NLM→Geminiドリフト分析
+- `docs/specs/video_output_quality_standard.md` — SP-047 品質基準仕様
+- `docs/spec-index.json` — 全47仕様の状態一覧
+- `docs/backlog.md` — バックログ
 - `CLAUDE.md` — プロジェクトコンテキスト + DECISION LOG
