@@ -8,15 +8,17 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
 直近の状態 (2026-03-18 session 9 nightshift):
-  - 全44仕様。40 done + 4 partial (SP-035/038/043/044) + 0 draft + 1 archived
+  - 全44仕様。41 done + 3 partial (SP-035/043/044) + 0 draft + 1 archived
   - session 9の成果:
     - SP-038 Phase 3: YouTube Data API v3 resumable upload実装 (65%→90%)
       - uploader.py全面書き換え: 実API + モックフォールバック二重構成
       - GoogleAuthHelper統合 + youtube.upload/youtube.readonlyスコープ追加
       - CLI uploadサブコマンド (research_cli.py)
-      - テスト: 19→41件 (Phase 3: auth/upload/validation/status/batch/JSON)
-  - テスト: 1152 passed, 3 skipped, 0 failed
-  - 残: SP-035 YMM4実機テスト(60%), SP-038 本番OAuth(90%), SP-043 Phase4(85%), SP-044(90%)
+    - SP-039 Phase 2: MP4品質検証→SP-038連携 (80%→done/100%)
+      - upload前自動品質ゲート (CRITICAL失敗でアップロード阻止)
+      - --no-verify CLIオプション
+  - テスト: 1161 passed, 3 skipped, 0 failed
+  - 残: SP-035 YMM4実機テスト(60%), SP-038 本番OAuth(90%), SP-043 Phase4(85%), SP-044 Phase3(95%)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
