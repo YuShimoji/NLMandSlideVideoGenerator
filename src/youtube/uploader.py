@@ -144,6 +144,7 @@ class YouTubeUploader:
         metadata: Union[UploadMetadata, Dict[str, Any]],
         thumbnail_path: Optional[Path] = None,
         progress_callback: Optional[Callable[[float], None]] = None,
+        verify_quality: bool = True,
     ) -> UploadResult:
         """動画をアップロードする。
 
@@ -152,6 +153,7 @@ class YouTubeUploader:
             metadata: アップロード用メタデータ (UploadMetadata or dict)
             thumbnail_path: サムネイル画像パス (任意)
             progress_callback: アップロード進捗コールバック (0.0~1.0)
+            verify_quality: True の場合、アップロード前に MP4 品質を検証する (SP-039)
         """
         try:
             video_path = _normalize_video_path(video)
@@ -166,6 +168,14 @@ class YouTubeUploader:
             # ファイル存在チェック
             if not video_path.exists():
                 raise FileNotFoundError(f"動画ファイルが見つかりません: {video_path}")
+
+            # MP4 品質検証 (SP-039 Phase 2)
+            if verify_quality:
+                quality_result = self._verify_mp4_quality(video_path)
+                if quality_result is not None and not quality_result.passed:
+                    failures = quality_result.critical_failures
+                    msg = "; ".join(f"{c.name}: {c.actual} (expected {c.expected})" for c in failures)
+                    raise UploadError(f"MP4品質検証失敗 (CRITICAL): {msg}")
 
             # ファイルサイズチェック（YouTube制限: 256GB）
             file_size = video_path.stat().st_size
@@ -216,6 +226,30 @@ class YouTubeUploader:
         valid_privacy = {"private", "public", "unlisted"}
         if metadata.privacy_status not in valid_privacy:
             raise ValueError(f"無効なプライバシー設定: {metadata.privacy_status}")
+
+    def _verify_mp4_quality(self, video_path: Path):
+        """MP4 品質を検証する (SP-039 Phase 2)。
+
+        FFprobe がインストールされていない場合は None を返し、検証をスキップする。
+        """
+        try:
+            from core.utils.mp4_checker import check_mp4
+            result = check_mp4(video_path)
+            if result.passed:
+                logger.info(f"MP4品質検証: PASS ({len(result.checks)} checks)")
+            else:
+                critical = result.critical_failures
+                warnings = result.warnings
+                logger.warning(
+                    f"MP4品質検証: FAIL — {len(critical)} critical, {len(warnings)} warnings"
+                )
+            return result
+        except FileNotFoundError:
+            logger.info("FFprobe が見つかりません。MP4品質検証をスキップします")
+            return None
+        except (RuntimeError, OSError, ValueError) as e:
+            logger.warning(f"MP4品質検証でエラー: {e}")
+            return None
 
     # ------------------------------------------------------------------ #
     #  実API アップロード (resumable upload)

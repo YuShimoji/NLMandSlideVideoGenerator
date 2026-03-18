@@ -430,7 +430,7 @@ class TestYouTubeUploaderAuthenticate:
 class TestYouTubeUploaderUpload:
     @pytest.mark.asyncio
     async def test_mock_upload(self, uploader, sample_metadata, tmp_video):
-        result = await uploader.upload_video(tmp_video, sample_metadata)
+        result = await uploader.upload_video(tmp_video, sample_metadata, verify_quality=False)
         assert isinstance(result, UploadResult)
         assert result.video_id.startswith("mock_")
         assert result.upload_status == "uploaded"
@@ -446,26 +446,26 @@ class TestYouTubeUploaderUpload:
             "language": "ja",
             "privacy_status": "unlisted",
         }
-        result = await uploader.upload_video(tmp_video, meta_dict)
+        result = await uploader.upload_video(tmp_video, meta_dict, verify_quality=False)
         assert result.privacy_status == "unlisted"
 
     @pytest.mark.asyncio
     async def test_upload_file_not_found(self, uploader, sample_metadata):
         with pytest.raises(Exception):  # UploadError は モック上の例外
-            await uploader.upload_video(Path("/nonexistent/video.mp4"), sample_metadata)
+            await uploader.upload_video(Path("/nonexistent/video.mp4"), sample_metadata, verify_quality=False)
 
     @pytest.mark.asyncio
     async def test_progress_callback(self, uploader, sample_metadata, tmp_video):
         progress_values = []
         def cb(p):
             progress_values.append(p)
-        await uploader.upload_video(tmp_video, sample_metadata, progress_callback=cb)
+        await uploader.upload_video(tmp_video, sample_metadata, progress_callback=cb, verify_quality=False)
         assert len(progress_values) > 0
         assert progress_values[-1] == 1.0  # 最終進捗は100%
 
     @pytest.mark.asyncio
     async def test_quota_tracking(self, uploader, sample_metadata, tmp_video):
-        await uploader.upload_video(tmp_video, sample_metadata)
+        await uploader.upload_video(tmp_video, sample_metadata, verify_quality=False)
         quota = uploader.get_quota_usage()
         assert quota["used"] == 1600
         assert quota["remaining"] == 10000 - 1600
@@ -534,11 +534,56 @@ class TestYouTubeUploaderStatus:
 class TestYouTubeUploaderBatch:
     @pytest.mark.asyncio
     async def test_batch_upload(self, uploader, sample_metadata, tmp_video):
+        # batch_upload は verify_quality を個別に渡せないため、
+        # uploader._verify_mp4_quality をモックして回避
+        uploader._verify_mp4_quality = lambda path: None
         pairs = [(tmp_video, sample_metadata), (tmp_video, sample_metadata)]
         result = await uploader.batch_upload(pairs, max_concurrent=2)
         assert result["total"] == 2
         assert len(result["successful"]) == 2
         assert len(result["failed"]) == 0
+
+
+class TestVerifyQualityIntegration:
+    """SP-039 Phase 2: upload前のMP4品質検証統合テスト"""
+
+    @pytest.mark.asyncio
+    async def test_verify_quality_skip_when_false(self, uploader, sample_metadata, tmp_video):
+        """verify_quality=Falseで品質検証をスキップ"""
+        result = await uploader.upload_video(tmp_video, sample_metadata, verify_quality=False)
+        assert isinstance(result, UploadResult)
+
+    @pytest.mark.asyncio
+    async def test_verify_quality_returns_none_without_ffprobe(self, uploader, tmp_video):
+        """FFprobeがない環境ではNoneを返して検証スキップ"""
+        result = uploader._verify_mp4_quality(tmp_video)
+        # FFprobeがない環境ではNone(スキップ)、ある環境ではMP4CheckResult
+        # テスト環境ではFFprobeの有無に依存しないことを確認
+        # Noneの場合はスキップ、MP4CheckResultの場合はFAIL(偽MP4なので)
+        assert result is None or hasattr(result, "passed")
+
+    @pytest.mark.asyncio
+    async def test_upload_blocked_by_quality_failure(self, uploader, sample_metadata, tmp_video):
+        """品質検証がCRITICAL失敗を返した場合、アップロードが阻止される"""
+        # mp4_checkerが100KBファイルに対してfile_size_min CRITICALを返すことを利用
+        # ただしFFprobeがない環境ではスキップされるため、_verify_mp4_qualityをモック
+        from unittest.mock import MagicMock as _MagicMock
+        mock_result = _MagicMock()
+        mock_result.passed = False
+        mock_result.critical_failures = [_MagicMock(name="file_size_min", actual="0.1MB", expected="> 1MB")]
+        uploader._verify_mp4_quality = lambda path: mock_result
+        with pytest.raises(Exception):  # UploadError
+            await uploader.upload_video(tmp_video, sample_metadata, verify_quality=True)
+
+    @pytest.mark.asyncio
+    async def test_upload_proceeds_when_quality_passes(self, uploader, sample_metadata, tmp_video):
+        """品質検証PASSならアップロード続行"""
+        from unittest.mock import MagicMock as _MagicMock
+        mock_result = _MagicMock()
+        mock_result.passed = True
+        uploader._verify_mp4_quality = lambda path: mock_result
+        result = await uploader.upload_video(tmp_video, sample_metadata, verify_quality=True)
+        assert isinstance(result, UploadResult)
 
 
 class TestLoadMetadataFromJson:

@@ -344,11 +344,11 @@
   {
     "id": "SP-039",
     "title": "MP4 Output Quality Verification",
-    "status": "partial",
-    "pct": 80,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/mp4_quality_verification.md",
-    "summary": "Phase 1完了: MP4QualityChecker (FFprobe, 10検証項目) + CLI verify + 17テスト。残: SP-038連携 (YouTube公開前自動チェック)"
+    "summary": "Phase 1-2完了: MP4QualityChecker(FFprobe, 10検証項目)+CLI verify+SP-038連携(upload前自動品質ゲート, CRITICAL失敗でアップロード阻止, --no-verifyでスキップ可)。21テスト(17+4統合)"
   },
   {
     "id": "SP-040",

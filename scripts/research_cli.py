@@ -1129,8 +1129,9 @@ async def run_upload(
     privacy: str = "private",
     thumbnail_path: Optional[Path] = None,
     credentials_path: Optional[Path] = None,
+    verify_quality: bool = True,
 ) -> None:
-    """Upload an MP4 to YouTube using metadata.json (SP-038 Phase 3)."""
+    """Upload an MP4 to YouTube using metadata.json (SP-038 Phase 3 + SP-039 Phase 2)."""
     from youtube.uploader import YouTubeUploader, load_metadata_from_json
 
     # メタデータ読み込み
@@ -1179,6 +1180,7 @@ async def run_upload(
         metadata=meta,
         thumbnail_path=thumbnail_path,
         progress_callback=progress_cb,
+        verify_quality=verify_quality,
     )
 
     print()
@@ -1278,6 +1280,7 @@ def main() -> None:
     upload_parser.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"], help="Privacy status (default: private)")
     upload_parser.add_argument("--thumbnail", help="Path to thumbnail image (optional)")
     upload_parser.add_argument("--credentials", help="Path to OAuth client secrets JSON (optional, uses settings default)")
+    upload_parser.add_argument("--no-verify", action="store_true", help="Skip MP4 quality verification before upload")
 
     args = parser.parse_args(raw_args)
 
@@ -1289,6 +1292,7 @@ def main() -> None:
                 privacy=args.privacy,
                 thumbnail_path=Path(args.thumbnail) if args.thumbnail else None,
                 credentials_path=Path(args.credentials) if args.credentials else None,
+                verify_quality=not args.no_verify,
             )
         )
         return
