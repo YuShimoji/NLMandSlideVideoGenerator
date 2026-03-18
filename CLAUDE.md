@@ -7,19 +7,20 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 12 nightshift):
-  - 全44仕様。43 done + 1 partial (SP-035) + 1 archived + 1 superseded
-  - session 12 (nightshift) の成果:
-    - 仕様書同期8件: Imagen 3→4移行反映、done未満pct→100%更新
-    - 開発ガイド全面書き直し (ブランチ/テスト/リンター/デプロイを実態に合わせ)
-    - API設定ガイド: ElevenLabs残存除去、Brave/Pexels/Pixabay追加
-    - 環境セットアップ/字幕ガイド: Windows専用化、YMM4手順追加
-    - INDEX.md: docs/specs/ディレクトリ10件+欠落ファイル追加
-    - backlog.md: SP-039/043/044 done反映、ロードマップ更新
-    - 数値同期: テスト数1050→1182 (system_spec/arch/SSOT/spec-index)
+直近の状態 (2026-03-18 session 12 nightshift + REFRESH):
+  - 全45仕様。43 done + 1 partial (SP-035) + 1 draft (SP-045) + 1 archived + 1 superseded
+  - session 12 の成果:
+    - [nightshift] 仕様書同期8件 (Imagen 4, pct→100%, ガイド全面更新, INDEX拡充)
+    - [nightshift] 数値同期 (テスト1050→1182), backlog整合, HANDOVER更新
+    - [REFRESH] Drift check: ドキュメント偏重→体験逆算に方向転換
+    - [REFRESH] SP-045 初回YouTube公開チェックリスト作成 (draft)
+    - [REFRESH] SP-035 preflight 36 PASS/0 FAIL, SP-038 upload 45テスト全緑
+    - [REFRESH] SP-043仕様同期 (Phase 4完了反映), pages.py.backup削除
+    - [REFRESH] task-scout深層探索: TikTok方針未決定/style_template仕様欠落/IPublishingQueue空実装 発見
   - テスト: 1182 passed, 3 skipped
-  - 残 partial: SP-035 YMM4実機テスト (60%) — 手動テスト必要
+  - 残 partial: SP-035 YMM4実機テスト (60%) — preflight済み、YMM4手動テスト待ち
   - 残 手動作業: SP-038 本番OAuth取得 + 実チャンネルテスト
+  - 次のスライス: SP-045 初回YouTube公開 (OAuth→YMM4実機→upload→公開確認)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -59,6 +60,9 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-18 | SP-020→SP-031テンプレート統合 | 統合/並行維持/SP-020削除 | speaker_name_colors(名前キー色)をstyle_templateに吸収。ymm4_template_diff.jsonは後方互換で残存。SP-020はsuperseded |
 | 2026-03-18 | SP-041 Phase 3: プリセット影響は両方(C) | A:レイアウトのみ/B:カラーのみ/C:両方 | news→Stats優先+blue, educational→TwoColumn優先+green, summary→Emphasis優先+warm。パイプラインinjection方式 |
 | 2026-03-18 | SP-044 Phase 3: 手動モードUX | CLI対話型/GUI/保留 | --duration-mode manual/auto。検証失敗時にcontinue/adjust/abort選択。autoがデフォルト |
+| 2026-03-18 | SP-045 初回YouTube公開チェックリスト新設 | 新規SP / SP-038に統合 / 不要 | SP-035/038の完了判定を兼ねる通しチェックリスト。Phase A/B/Cの全ステップを1枚に集約。draft状態で次回手動実施待ち |
+| 2026-03-18 | 仕様書のdone未満pct一斉修正 (8件→100%) | 個別修正 / 一斉修正 | SP-005/008/010/011/016/018/021/025の実態を調査し、不足部分を修正した上でpct 100%に更新 |
+| 2026-03-18 | REFRESH方向転換: ドキュメント偏重→体験逆算 | 継続 / 方向転換 | Drift check で3ブロック連続ドキュメント同期を検出。Capability-first原則に戻り「初回YouTube公開を閉じる」スライスに切替 |
 
 ## Key Paths
 
