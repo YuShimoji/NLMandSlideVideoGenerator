@@ -213,8 +213,12 @@ async def run_pipeline(
         最終出力CSVのパス。
     """
     from core.pipeline_state import PipelineState
+    from core.pipeline_stats import PipelineStats
 
     create_directories()
+
+    # --- 統計トラッキング (SP-042) ---
+    stats = PipelineStats()
 
     # --- work_dir 決定 + 状態読み込み ---
     if resume_dir and resume_dir.exists():
@@ -246,6 +250,13 @@ async def run_pipeline(
             },
         )
 
+    stats.start_pipeline(
+        pipeline_id=work_dir.name,
+        topic=topic,
+        style=style,
+        target_duration=target_duration,
+    )
+
     package_path = work_dir / "package.json"
     script_path = work_dir / "generated_script.json"
     report_path = work_dir / "alignment_report.json"
@@ -258,10 +269,12 @@ async def run_pipeline(
         with open(package_path, "r", encoding="utf-8") as handle:
             package = ResearchPackage.from_dict(json.load(handle))
         sources = package.sources
+        stats.record_sources(len(sources))
     else:
         print("\n=== Step 1: Source Collection ===")
         state.mark_running("collect")
         state.save(work_dir)
+        stats.start_step("collect")
         try:
             collector = SourceCollector()
             collector.max_sources = max_sources or settings.RESEARCH_SETTINGS["max_sources"]
@@ -277,9 +290,12 @@ async def run_pipeline(
             with open(package_path, "w", encoding="utf-8") as handle:
                 json.dump(package.to_dict(), handle, ensure_ascii=False, indent=2)
 
+            stats.stop_step("collect")
+            stats.record_sources(len(sources))
             state.mark_done("collect", "package.json")
             state.save(work_dir)
         except Exception as e:
+            stats.stop_step("collect")
             state.mark_failed("collect", str(e))
             state.save(work_dir)
             raise
@@ -290,10 +306,12 @@ async def run_pipeline(
         with open(script_path, "r", encoding="utf-8") as handle:
             script_bundle = json.load(handle)
         segments = script_bundle.get("segments", [])
+        stats.record_segments(len(segments))
     else:
         print("\n=== Step 2: Script Generation (Gemini) ===")
         state.mark_running("script")
         state.save(work_dir)
+        stats.start_step("script")
         try:
             from core.providers.script.gemini_provider import GeminiScriptProvider
 
@@ -308,9 +326,12 @@ async def run_pipeline(
             with open(script_path, "w", encoding="utf-8") as handle:
                 json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
 
+            stats.stop_step("script")
+            stats.record_segments(len(segments))
             state.mark_done("script", "generated_script.json")
             state.save(work_dir)
         except Exception as e:
+            stats.stop_step("script")
             state.mark_failed("script", str(e))
             state.save(work_dir)
             raise
@@ -318,24 +339,44 @@ async def run_pipeline(
     # --- Step 3: align ---
     if state.is_step_done("align") and report_path.exists():
         print("\n=== Step 3: Alignment Analysis [SKIP: 完了済み] ===")
+        # resume時にalignment統計を復元
+        if report_path.exists():
+            try:
+                with open(report_path, "r", encoding="utf-8") as _rf:
+                    _rdata = json.load(_rf)
+                _rsum = _rdata.get("summary", {})
+                stats.record_alignment(
+                    supported=_rsum.get("supported", 0),
+                    orphaned=_rsum.get("orphaned", 0),
+                    conflict=_rsum.get("conflict", 0),
+                )
+            except (json.JSONDecodeError, OSError):
+                pass
     else:
         print("\n=== Step 3: Alignment Analysis ===")
         state.mark_running("align")
         state.save(work_dir)
+        stats.start_step("align")
         try:
             analyzer = ScriptAlignmentAnalyzer()
             normalized = await analyzer.load_script(script_path)
             report = await analyzer.analyze(package, normalized)
             report_path = analyzer.save_report(report, work_dir)
+            supported = report.summary.get("supported", 0)
+            orphaned = report.summary.get("orphaned", 0)
+            conflict = report.summary.get("conflict", 0)
             print(
                 f"Alignment: "
-                f"supported={report.summary.get('supported', 0)}, "
-                f"orphaned={report.summary.get('orphaned', 0)}, "
-                f"conflict={report.summary.get('conflict', 0)}"
+                f"supported={supported}, "
+                f"orphaned={orphaned}, "
+                f"conflict={conflict}"
             )
+            stats.stop_step("align")
+            stats.record_alignment(supported=supported, orphaned=orphaned, conflict=conflict)
             state.mark_done("align", "alignment_report.json")
             state.save(work_dir)
         except Exception as e:
+            stats.stop_step("align")
             state.mark_failed("align", str(e))
             state.save(work_dir)
             raise
@@ -348,11 +389,14 @@ async def run_pipeline(
         print("\n=== Step 4: Review ===")
         state.mark_running("review")
         state.save(work_dir)
+        stats.start_step("review")
         try:
             reviewed_csv = await run_review(report_path, auto_mode=auto_review)
+            stats.stop_step("review")
             state.mark_done("review", "final.csv")
             state.save(work_dir)
         except Exception as e:
+            stats.stop_step("review")
             state.mark_failed("review", str(e))
             state.save(work_dir)
             raise
@@ -372,6 +416,7 @@ async def run_pipeline(
             print("\n=== Step 5: Visual Resource Orchestration ===")
             state.mark_running("orchestrate")
             state.save(work_dir)
+            stats.start_step("orchestrate")
             try:
                 from core.visual.resource_orchestrator import VisualResourceOrchestrator
                 from core.visual.segment_classifier import SegmentClassifier
@@ -408,6 +453,13 @@ async def run_pipeline(
                 none_count = sum(1 for r in vis_package.resources if r.source == "none")
                 print(f"Orchestrated: stock={stock_count}, ai={ai_count}, slide={slide_count}, generated={gen_count}, none={none_count}, total={len(vis_package.resources)}")
 
+                stats.stop_step("orchestrate")
+                stats.record_visual(
+                    stock=stock_count + slide_count,
+                    ai=ai_count,
+                    text_slide=gen_count,
+                )
+
                 # クレジットファイル生成 (動画概要欄用)
                 if stock_count > 0 and orchestrator.last_stock_images:
                     credits = stock_client.get_attribution(orchestrator.last_stock_images)
@@ -419,6 +471,7 @@ async def run_pipeline(
                 state.mark_done("orchestrate", "stock_images/")
                 state.save(work_dir)
             except Exception as e:
+                stats.stop_step("orchestrate")
                 state.mark_failed("orchestrate", str(e))
                 state.save(work_dir)
                 raise
@@ -428,6 +481,7 @@ async def run_pipeline(
             print("\n=== Step 6: CsvAssembler (Orchestrated) ===")
             state.mark_running("assemble")
             state.save(work_dir)
+            stats.start_step("assemble")
             try:
                 from core.csv_assembler import CsvAssembler
                 import csv as csv_mod
@@ -478,9 +532,11 @@ async def run_pipeline(
                     print(f"Timeline CSV: {timeline_csv_path}")
                     reviewed_csv = timeline_csv_path
 
+                stats.stop_step("assemble")
                 state.mark_done("assemble", "timeline.csv")
                 state.save(work_dir)
             except Exception as e:
+                stats.stop_step("assemble")
                 state.mark_failed("assemble", str(e))
                 state.save(work_dir)
                 raise
@@ -529,6 +585,7 @@ async def run_pipeline(
             print("\n=== Step 5: Text Slide Auto-Generation ===")
             state.mark_running("orchestrate")
             state.save(work_dir)
+            stats.start_step("orchestrate")
             try:
                 from core.visual.resource_orchestrator import VisualResourceOrchestrator
                 from core.visual.segment_classifier import SegmentClassifier
@@ -548,9 +605,13 @@ async def run_pipeline(
                 none_count = sum(1 for r in vis_package.resources if r.source == "none")
                 print(f"Generated text slides: {gen_count}/{len(vis_package.resources)} segments, none={none_count}")
 
+                stats.stop_step("orchestrate")
+                stats.record_visual(stock=0, ai=0, text_slide=gen_count)
+
                 state.mark_done("orchestrate", "generated_slides/")
                 state.save(work_dir)
             except Exception as e:
+                stats.stop_step("orchestrate")
                 state.mark_failed("orchestrate", str(e))
                 state.save(work_dir)
                 raise
@@ -560,6 +621,7 @@ async def run_pipeline(
                 print("\n=== Step 6: CsvAssembler (Generated slides) ===")
                 state.mark_running("assemble")
                 state.save(work_dir)
+                stats.start_step("assemble")
                 try:
                     from core.csv_assembler import CsvAssembler
                     import csv as csv_mod
@@ -581,9 +643,11 @@ async def run_pipeline(
                         print(f"Timeline CSV: {timeline_csv_path}")
                         reviewed_csv = timeline_csv_path
 
+                    stats.stop_step("assemble")
                     state.mark_done("assemble", "timeline.csv")
                     state.save(work_dir)
                 except Exception as e:
+                    stats.stop_step("assemble")
                     state.mark_failed("assemble", str(e))
                     state.save(work_dir)
                     raise
@@ -608,6 +672,11 @@ async def run_pipeline(
                 print(f"  [{icon}] {issue.code}{row_info}: {issue.message}")
             if len(vresult.issues) > 10:
                 print(f"  ... and {len(vresult.issues) - 10} more issues")
+
+        # SP-042: validation統計を記録
+        errors = sum(1 for i in vresult.issues if i.severity.value == "error")
+        warnings = sum(1 for i in vresult.issues if i.severity.value == "warning")
+        stats.record_validation(errors=errors, warnings=warnings)
 
     # --- Post-pipeline: Thumbnail Generation (SP-037) ---
     thumbnail_path = work_dir / "thumbnail.png"
@@ -639,10 +708,17 @@ async def run_pipeline(
             print("\n=== Thumbnail Generation Skipped ===")
             print(f"  {e}")
 
+    # --- SP-042: 統計ファイナライズ + 保存 ---
+    stats.speaker_mapping_applied = speaker_mapping is not None and len(speaker_mapping) > 0
+    stats.finalize()
+    stats_path = stats.save(work_dir)
+
     print("\n=== Pipeline Complete ===")
     print(f"Output: {reviewed_csv}")
     print(f"Work dir: {work_dir}")
     print(state.summary())
+    print(f"\n{stats.summary()}")
+    print(f"Stats saved: {stats_path}")
     return reviewed_csv
 
 
@@ -824,7 +900,13 @@ async def run_batch(
                 target_duration=merged.get("duration", 300.0),
                 style=merged.get("style", "default"),
             )
-            results.append({"topic": topic_text, "status": "success", "csv": str(csv_path)})
+            # SP-042: pipeline_stats.json を読み込んで結果に埋め込む
+            result_entry: dict[str, Any] = {"topic": topic_text, "status": "success", "csv": str(csv_path)}
+            stats_file = topic_output / "pipeline_stats.json"
+            if stats_file.exists():
+                with open(stats_file, "r", encoding="utf-8") as sf:
+                    result_entry["stats"] = json.load(sf)
+            results.append(result_entry)
             print(f"\n[{i+1}/{len(topics)}] SUCCESS: {csv_path}")
 
         except Exception as e:
@@ -836,22 +918,136 @@ async def run_batch(
             print(f"\nWaiting {interval}s for API quota...")
             time.sleep(interval)
 
-    # バッチ結果レポート
+    # バッチ結果レポート (SP-042: 集約統計を含む)
+    batch_data: dict[str, Any] = {"batch_name": batch_name, "results": results}
+
+    # 集約統計の計算
+    stats_entries = [r["stats"] for r in results if r.get("stats")]
+    if stats_entries:
+        n = len(stats_entries)
+        batch_data["aggregate_stats"] = {
+            "count": n,
+            "avg_total_duration": round(sum(s["speed"]["total_duration"] for s in stats_entries) / n, 1),
+            "avg_alignment_rate": round(sum(s["density"]["alignment_rate"] for s in stats_entries) / n, 3),
+            "avg_image_hit_rate": round(sum(s["visual"]["image_hit_rate"] for s in stats_entries) / n, 3),
+            "total_errors": sum(s["consistency"]["pre_export_errors"] for s in stats_entries),
+            "total_warnings": sum(s["consistency"]["pre_export_warnings"] for s in stats_entries),
+        }
+
     result_path = base_output / "batch_result.json"
     with open(result_path, "w", encoding="utf-8") as f:
-        json.dump({"batch_name": batch_name, "results": results}, f, ensure_ascii=False, indent=2)
+        json.dump(batch_data, f, ensure_ascii=False, indent=2)
 
     success = sum(1 for r in results if r["status"] == "success")
     failed = sum(1 for r in results if r["status"] == "failed")
     print(f"\n{'='*60}")
     print(f"Batch Complete: {success} success, {failed} failed, {len(topics)} total")
     print(f"Results: {result_path}")
+    if "aggregate_stats" in batch_data:
+        agg = batch_data["aggregate_stats"]
+        print(f"  Avg duration: {agg['avg_total_duration']}s, "
+              f"Alignment: {agg['avg_alignment_rate']:.0%}, "
+              f"Image hit: {agg['avg_image_hit_rate']:.0%}")
     print(f"{'='*60}")
+
+
+def run_stats(work_dir: Path, batch_mode: bool = False, compare_dir: Optional[Path] = None) -> None:
+    """パイプライン統計を表示する (SP-042 Phase 2)。"""
+    from core.pipeline_stats import PipelineStats
+
+    if compare_dir:
+        # --- compare モード ---
+        stats_a = PipelineStats.load(work_dir)
+        stats_b = PipelineStats.load(compare_dir)
+        if not stats_a:
+            print(f"ERROR: pipeline_stats.json not found in {work_dir}")
+            return
+        if not stats_b:
+            print(f"ERROR: pipeline_stats.json not found in {compare_dir}")
+            return
+
+        print(f"\n{'='*60}")
+        print(f"Stats Comparison")
+        print(f"{'='*60}")
+        print(f"\n--- A: {work_dir.name} ---")
+        print(stats_a.summary())
+        print(f"\n--- B: {compare_dir.name} ---")
+        print(stats_b.summary())
+
+        # 差分表示
+        print(f"\n--- Diff (B - A) ---")
+        dt = stats_b.total_duration - stats_a.total_duration
+        print(f"  Total duration: {dt:+.1f}s")
+        dar = stats_b.alignment_rate - stats_a.alignment_rate
+        print(f"  Alignment rate: {dar:+.3f}")
+        dih = stats_b.image_hit_rate - stats_a.image_hit_rate
+        print(f"  Image hit rate: {dih:+.3f}")
+        de = stats_b.pre_export_errors - stats_a.pre_export_errors
+        dw = stats_b.pre_export_warnings - stats_a.pre_export_warnings
+        print(f"  Errors: {de:+d}, Warnings: {dw:+d}")
+        return
+
+    if batch_mode:
+        # --- batch モード: ディレクトリ内の全 topic_* を走査 ---
+        topic_dirs = sorted(d for d in work_dir.iterdir() if d.is_dir() and d.name.startswith("topic_"))
+        if not topic_dirs:
+            # work_dir自体がpipeline_stats.jsonを持つ場合
+            topic_dirs = [work_dir] if (work_dir / "pipeline_stats.json").exists() else []
+
+        if not topic_dirs:
+            print(f"No pipeline_stats.json found in {work_dir} or its subdirectories")
+            return
+
+        all_stats: list[PipelineStats] = []
+        print(f"\n{'='*60}")
+        print(f"Batch Stats: {work_dir.name} ({len(topic_dirs)} topics)")
+        print(f"{'='*60}")
+
+        for td in topic_dirs:
+            s = PipelineStats.load(td)
+            if s:
+                all_stats.append(s)
+                print(f"\n--- {td.name}: {s.topic[:50]} ---")
+                print(f"  Duration: {s.total_duration:.1f}s, Alignment: {s.alignment_rate:.0%}, "
+                      f"Image hit: {s.image_hit_rate:.0%}, Errors: {s.pre_export_errors}")
+            else:
+                print(f"\n--- {td.name}: no stats ---")
+
+        if all_stats:
+            # 集約統計
+            print(f"\n{'='*60}")
+            print(f"Aggregate ({len(all_stats)} runs)")
+            avg_dur = sum(s.total_duration for s in all_stats) / len(all_stats)
+            avg_align = sum(s.alignment_rate for s in all_stats) / len(all_stats)
+            avg_hit = sum(s.image_hit_rate for s in all_stats) / len(all_stats)
+            total_errors = sum(s.pre_export_errors for s in all_stats)
+            total_warnings = sum(s.pre_export_warnings for s in all_stats)
+            print(f"  Avg duration: {avg_dur:.1f}s")
+            print(f"  Avg alignment rate: {avg_align:.0%}")
+            print(f"  Avg image hit rate: {avg_hit:.0%}")
+            print(f"  Total errors: {total_errors}, warnings: {total_warnings}")
+
+            # ボトルネック集計
+            bottlenecks: dict[str, int] = {}
+            for s in all_stats:
+                if s.bottleneck_step:
+                    bottlenecks[s.bottleneck_step] = bottlenecks.get(s.bottleneck_step, 0) + 1
+            if bottlenecks:
+                print(f"  Bottleneck frequency: {bottlenecks}")
+        return
+
+    # --- 単一モード ---
+    stats = PipelineStats.load(work_dir)
+    if not stats:
+        print(f"ERROR: pipeline_stats.json not found in {work_dir}")
+        return
+
+    print(f"\n{stats.summary()}")
 
 
 def main() -> None:
     raw_args = sys.argv[1:]
-    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch"}
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats"}
     if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
@@ -909,6 +1105,12 @@ def main() -> None:
     # templates サブコマンド (SP-031)
     templates_parser = subparsers.add_parser("templates", help="List available style templates")
 
+    # stats サブコマンド (SP-042)
+    stats_parser = subparsers.add_parser("stats", help="View pipeline execution statistics")
+    stats_parser.add_argument("dir", help="Path to work_dir or batch output directory")
+    stats_parser.add_argument("--batch", action="store_true", help="Show batch aggregate stats")
+    stats_parser.add_argument("--compare", help="Compare with another work_dir")
+
     # verify サブコマンド (SP-039)
     verify_parser = subparsers.add_parser("verify", help="Verify MP4 output quality with FFprobe")
     verify_parser.add_argument("mp4", help="Path to MP4 file or directory (scans *.mp4 recursively)")
@@ -917,6 +1119,14 @@ def main() -> None:
     verify_parser.add_argument("--update-batch-result", action="store_true", help="Update batch_result.json with verification results")
 
     args = parser.parse_args(raw_args)
+
+    if args.command == "stats":
+        run_stats(
+            work_dir=Path(args.dir),
+            batch_mode=args.batch,
+            compare_dir=Path(args.compare) if args.compare else None,
+        )
+        return
 
     if args.command == "verify":
         from core.utils.mp4_checker import check_mp4

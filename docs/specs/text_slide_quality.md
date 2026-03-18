@@ -1,7 +1,7 @@
 # TextSlide 視覚品質向上 (SP-041)
 
 **最終更新**: 2026-03-18
-**ステータス**: draft
+**ステータス**: partial (Phase 1-2 完了 / Phase 3 未着手)
 
 ---
 
@@ -118,7 +118,8 @@ SegmentClassifier の分類結果 (visual/textual) を TextSlideGenerator に渡
 
 ## 7. 受け入れ条件
 
-- [ ] 4種レイアウトが content/key_points に応じて自動選択される
-- [ ] グラデーション背景が全テーマで動作する
-- [ ] 既存テスト全 PASS + 新規テスト追加
+- [x] 4種レイアウト (Standard/Emphasis/TwoColumn/Stats) が content/key_points に応じて自動選択される
+- [x] グラデーション背景が全テーマ (dark/light/blue/green/warm) で動作する
+- [x] 既存テスト全 PASS + 新規テスト追加 (18件 → 50件)
+- [ ] スタイルプリセット (SP-036) との連携 (Phase 3)
 - [ ] 30分動画の E2E で視覚的多様性が目視確認できる

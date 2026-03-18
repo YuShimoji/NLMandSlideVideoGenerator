@@ -171,6 +171,78 @@ class TestSerialization:
         assert raw["visual"]["text_slide_count"] == 6
 
 
+class TestCLIStats:
+    """run_stats 関数のテスト (SP-042 Phase 2)。"""
+
+    def _create_stats(self, work_dir: Path, topic: str = "test", **kwargs: float) -> None:
+        stats = PipelineStats()
+        stats.start_pipeline(work_dir.name, topic, style="news", target_duration=600)
+        stats.record_sources(5)
+        stats.record_segments(10)
+        stats.record_alignment(8, 1, 1)
+        stats.record_visual(stock=4, ai=1, text_slide=5)
+        stats.record_validation(errors=0, warnings=1)
+        stats.total_duration = kwargs.get("duration", 120.0)
+        stats.step_durations = {"collect": 1.0, "script": 50.0, "align": 60.0}
+        stats.finalize()
+        stats.save(work_dir)
+
+    def test_single_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """単一 work_dir の統計表示。"""
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from research_cli import run_stats
+
+        self._create_stats(tmp_path, topic="量子コンピュータ")
+        run_stats(tmp_path)
+        captured = capsys.readouterr()
+        assert "量子コンピュータ" in captured.out
+
+    def test_single_stats_not_found(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """pipeline_stats.json が存在しない場合のエラー表示。"""
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from research_cli import run_stats
+
+        run_stats(tmp_path)
+        captured = capsys.readouterr()
+        assert "not found" in captured.out
+
+    def test_batch_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """バッチ統計表示。"""
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from research_cli import run_stats
+
+        for i in range(3):
+            td = tmp_path / f"topic_{i+1:02d}"
+            td.mkdir()
+            self._create_stats(td, topic=f"topic_{i+1}", duration=100.0 + i * 50)
+
+        run_stats(tmp_path, batch_mode=True)
+        captured = capsys.readouterr()
+        assert "Aggregate" in captured.out
+        assert "3 runs" in captured.out
+
+    def test_compare_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        """2実行の比較表示。"""
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from research_cli import run_stats
+
+        dir_a = tmp_path / "run_a"
+        dir_b = tmp_path / "run_b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        self._create_stats(dir_a, topic="topic_a", duration=100.0)
+        self._create_stats(dir_b, topic="topic_b", duration=200.0)
+
+        run_stats(dir_a, compare_dir=dir_b)
+        captured = capsys.readouterr()
+        assert "Comparison" in captured.out
+        assert "Diff" in captured.out
+
+
 class TestSummary:
     def test_summary_output(self) -> None:
         stats = PipelineStats()

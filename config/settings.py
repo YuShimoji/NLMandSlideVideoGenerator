@@ -130,6 +130,8 @@ class Settings:
         self.PLACEHOLDER_THEMES = {
             "dark": {
                 "background": (20, 20, 25),
+                "gradient_top": (25, 25, 35),
+                "gradient_bottom": (12, 12, 18),
                 "title_color": (235, 235, 235),
                 "speaker_color": (180, 200, 255),
                 "body_color": (200, 200, 200),
@@ -138,6 +140,8 @@ class Settings:
             },
             "light": {
                 "background": (245, 245, 250),
+                "gradient_top": (250, 250, 255),
+                "gradient_bottom": (230, 230, 240),
                 "title_color": (30, 30, 40),
                 "speaker_color": (60, 80, 180),
                 "body_color": (50, 50, 60),
@@ -146,6 +150,8 @@ class Settings:
             },
             "blue": {
                 "background": (15, 25, 45),
+                "gradient_top": (20, 30, 55),
+                "gradient_bottom": (10, 18, 35),
                 "title_color": (220, 230, 255),
                 "speaker_color": (150, 200, 255),
                 "body_color": (180, 190, 210),
@@ -154,6 +160,8 @@ class Settings:
             },
             "green": {
                 "background": (15, 35, 25),
+                "gradient_top": (20, 42, 30),
+                "gradient_bottom": (10, 25, 18),
                 "title_color": (220, 255, 230),
                 "speaker_color": (150, 255, 180),
                 "body_color": (180, 210, 190),
@@ -162,6 +170,8 @@ class Settings:
             },
             "warm": {
                 "background": (40, 25, 20),
+                "gradient_top": (48, 30, 24),
+                "gradient_bottom": (30, 18, 14),
                 "title_color": (255, 235, 220),
                 "speaker_color": (255, 180, 140),
                 "body_color": (230, 210, 200),

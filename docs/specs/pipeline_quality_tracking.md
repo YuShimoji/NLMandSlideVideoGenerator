@@ -1,7 +1,7 @@
 # パイプライン品質トラッキング (SP-042)
 
 **最終更新**: 2026-03-18
-**ステータス**: draft
+**ステータス**: done
 
 ---
 
@@ -159,7 +159,7 @@
 
 ## 6. 受け入れ条件
 
-- [ ] pipeline 実行後に pipeline_stats.json が自動生成される
-- [ ] stats CLI で統計を閲覧できる
-- [ ] batch_result.json に各トピックの統計が含まれる
-- [ ] 既存テスト全 PASS + 新規テスト追加
+- [x] pipeline 実行後に pipeline_stats.json が自動生成される
+- [x] stats CLI で統計を閲覧できる (`stats <dir>`, `--batch`, `--compare`)
+- [x] batch_result.json に各トピックの統計が含まれる (aggregate_stats 付き)
+- [x] 既存テスト全 PASS + 新規テスト追加 (23件)

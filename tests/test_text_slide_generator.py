@@ -1,13 +1,23 @@
-"""TextSlideGenerator テスト (SP-033 Phase 3)"""
+"""TextSlideGenerator テスト (SP-033 Phase 3 + SP-041)"""
 import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from core.visual.text_slide_generator import TextSlideGenerator
+from core.visual.text_slide_generator import (
+    TextSlideGenerator,
+    LAYOUT_STANDARD,
+    LAYOUT_EMPHASIS,
+    LAYOUT_TWOCOLUMN,
+    LAYOUT_STATS,
+    EMPHASIS_CONTENT_MAX_LEN,
+    TWOCOLUMN_MIN_KEYPOINTS,
+)
 
 
 DARK_THEME = {
     "background": (20, 20, 25),
+    "gradient_top": (25, 25, 35),
+    "gradient_bottom": (12, 12, 18),
     "title_color": (235, 235, 235),
     "speaker_color": (180, 200, 255),
     "body_color": (200, 200, 200),
@@ -174,3 +184,238 @@ class TestSpeakerMappingCache:
         key1 = TextSlideGenerator._cache_key("s", "c", [])
         key2 = TextSlideGenerator._cache_key("s", "c", [], "")
         assert key1 == key2
+
+
+class TestSelectLayout:
+    """SP-041: レイアウト自動選択テスト。"""
+
+    def test_short_content_no_keypoints_returns_emphasis(self) -> None:
+        result = TextSlideGenerator._select_layout("短いテキスト", [])
+        assert result == LAYOUT_EMPHASIS
+
+    def test_empty_content_no_keypoints_returns_emphasis(self) -> None:
+        result = TextSlideGenerator._select_layout("", [])
+        assert result == LAYOUT_EMPHASIS
+
+    def test_long_content_no_keypoints_returns_standard(self) -> None:
+        long_text = "A" * EMPHASIS_CONTENT_MAX_LEN
+        result = TextSlideGenerator._select_layout(long_text, [])
+        assert result == LAYOUT_STANDARD
+
+    def test_with_keypoints_returns_standard(self) -> None:
+        result = TextSlideGenerator._select_layout("短い", ["point1", "point2"])
+        assert result == LAYOUT_STANDARD
+
+    def test_short_content_with_keypoints_returns_standard(self) -> None:
+        result = TextSlideGenerator._select_layout("短い", ["point1"])
+        assert result == LAYOUT_STANDARD
+
+
+class TestGradientBackground:
+    """SP-041: グラデーション背景テスト。"""
+
+    def test_gradient_applied(self, gen: TextSlideGenerator) -> None:
+        from PIL import Image
+        seg = {"section": "テスト", "content": "短い引用"}
+        path = gen.generate(seg, index=100)
+        img = Image.open(path)
+        # 上端と下端のピクセル色が異なる (グラデーション)
+        top_pixel = img.getpixel((self.width // 2, 0))
+        bottom_pixel = img.getpixel((self.width // 2, self.height - 1))
+        assert top_pixel != bottom_pixel
+
+    @property
+    def width(self) -> int:
+        return 1920
+
+    @property
+    def height(self) -> int:
+        return 1080
+
+    def test_gradient_without_theme_keys(self, tmp_path: Path) -> None:
+        """gradient_top/bottom がないテーマでもエラーにならない。"""
+        no_gradient_theme = {
+            "background": (50, 50, 50),
+            "title_color": (255, 255, 255),
+            "body_color": (200, 200, 200),
+            "label_color": (100, 100, 100),
+            "accent_color": (0, 255, 0),
+        }
+        gen = TextSlideGenerator(output_dir=tmp_path, theme=no_gradient_theme)
+        seg = {"section": "No gradient", "content": "test"}
+        path = gen.generate(seg, index=0)
+        assert path.exists()
+        from PIL import Image
+        img = Image.open(path)
+        # 単色背景のまま (上下同色)
+        top_pixel = img.getpixel((960, 0))
+        bottom_pixel = img.getpixel((960, 1079))
+        assert top_pixel == bottom_pixel == (50, 50, 50)
+
+
+class TestEmphasisLayout:
+    """SP-041: Emphasis レイアウト描画テスト。"""
+
+    def test_emphasis_generates_png(self, gen: TextSlideGenerator) -> None:
+        seg = {"section": "結論", "content": "AIは未来を変える", "speaker": "れいむ"}
+        path = gen.generate(seg, index=200)
+        assert path.exists()
+        assert path.stat().st_size > 1000
+
+    def test_emphasis_dimensions(self, gen: TextSlideGenerator) -> None:
+        from PIL import Image
+        seg = {"section": "引用", "content": "短い引用文"}
+        path = gen.generate(seg, index=201)
+        img = Image.open(path)
+        assert img.size == (1920, 1080)
+
+    def test_emphasis_without_content(self, gen: TextSlideGenerator) -> None:
+        """content なしでも section だけで描画される。"""
+        seg = {"section": "まとめ"}
+        path = gen.generate(seg, index=202)
+        assert path.exists()
+
+    def test_emphasis_with_speaker(self, gen: TextSlideGenerator) -> None:
+        seg = {"section": "", "content": "名言です", "speaker": "まりさ"}
+        path = gen.generate(seg, index=203)
+        assert path.exists()
+
+    def test_standard_for_long_content(self, gen: TextSlideGenerator) -> None:
+        """長い content は Standard レイアウトになる。"""
+        long = "これは非常に長いテキストであり" * 5
+        seg = {"section": "詳細", "content": long}
+        path = gen.generate(seg, index=204)
+        assert path.exists()
+
+    def test_standard_for_keypoints(self, gen: TextSlideGenerator) -> None:
+        """key_points がある場合は Standard レイアウトになる。"""
+        seg = {
+            "section": "概要",
+            "content": "短い",
+            "key_points": ["ポイント1", "ポイント2"],
+        }
+        path = gen.generate(seg, index=205)
+        assert path.exists()
+
+
+class TestSelectLayoutExtended:
+    """SP-041 Phase 2: TwoColumn / Stats レイアウト選択テスト。"""
+
+    def test_many_keypoints_returns_twocolumn(self) -> None:
+        kps = [f"point{i}" for i in range(TWOCOLUMN_MIN_KEYPOINTS)]
+        result = TextSlideGenerator._select_layout("content", kps)
+        assert result == LAYOUT_TWOCOLUMN
+
+    def test_three_keypoints_returns_standard(self) -> None:
+        kps = ["a", "b", "c"]
+        result = TextSlideGenerator._select_layout("content", kps)
+        assert result == LAYOUT_STANDARD
+
+    def test_percentage_returns_stats(self) -> None:
+        result = TextSlideGenerator._select_layout("成長率は150%に達した", [])
+        assert result == LAYOUT_STATS
+
+    def test_yen_amount_returns_stats(self) -> None:
+        result = TextSlideGenerator._select_layout("売上は$500に到達", [])
+        assert result == LAYOUT_STATS
+
+    def test_japanese_unit_returns_stats(self) -> None:
+        result = TextSlideGenerator._select_layout("利用者が500万人を突破", [])
+        assert result == LAYOUT_STATS
+
+    def test_comma_number_returns_stats(self) -> None:
+        result = TextSlideGenerator._select_layout("参加者は1,200,000人", [])
+        assert result == LAYOUT_STATS
+
+    def test_no_number_short_returns_emphasis(self) -> None:
+        result = TextSlideGenerator._select_layout("重要な結論", [])
+        assert result == LAYOUT_EMPHASIS
+
+    def test_stats_priority_over_emphasis(self) -> None:
+        """数値を含む短い文は Stats が Emphasis より優先される。"""
+        result = TextSlideGenerator._select_layout("成長率50%", [])
+        assert result == LAYOUT_STATS
+
+    def test_twocolumn_priority_over_stats(self) -> None:
+        """key_points >= 4 なら数値があっても TwoColumn。"""
+        kps = [f"p{i}" for i in range(5)]
+        result = TextSlideGenerator._select_layout("成長率50%", kps)
+        assert result == LAYOUT_TWOCOLUMN
+
+
+class TestTwoColumnLayout:
+    """SP-041 Phase 2: TwoColumn レイアウト描画テスト。"""
+
+    def test_twocolumn_generates_png(self, gen: TextSlideGenerator) -> None:
+        seg = {
+            "section": "主要ポイント",
+            "key_points": ["ポイント1", "ポイント2", "ポイント3", "ポイント4"],
+            "speaker": "れいむ",
+        }
+        path = gen.generate(seg, index=300)
+        assert path.exists()
+        assert path.stat().st_size > 1000
+
+    def test_twocolumn_dimensions(self, gen: TextSlideGenerator) -> None:
+        from PIL import Image
+        seg = {
+            "section": "分析",
+            "key_points": ["A", "B", "C", "D", "E"],
+        }
+        path = gen.generate(seg, index=301)
+        img = Image.open(path)
+        assert img.size == (1920, 1080)
+
+    def test_twocolumn_with_content(self, gen: TextSlideGenerator) -> None:
+        seg = {
+            "section": "詳細分析",
+            "content": "補足テキスト",
+            "key_points": ["1", "2", "3", "4"],
+        }
+        path = gen.generate(seg, index=302)
+        assert path.exists()
+
+    def test_twocolumn_many_keypoints(self, gen: TextSlideGenerator) -> None:
+        """大量の key_points でもクラッシュしない。"""
+        seg = {
+            "section": "大量ポイント",
+            "key_points": [f"ポイント{i}" for i in range(20)],
+        }
+        path = gen.generate(seg, index=303)
+        assert path.exists()
+
+
+class TestStatsLayout:
+    """SP-041 Phase 2: Stats レイアウト描画テスト。"""
+
+    def test_stats_generates_png(self, gen: TextSlideGenerator) -> None:
+        seg = {"section": "成長", "content": "前年比150%の成長を達成"}
+        path = gen.generate(seg, index=400)
+        assert path.exists()
+        assert path.stat().st_size > 1000
+
+    def test_stats_dimensions(self, gen: TextSlideGenerator) -> None:
+        from PIL import Image
+        seg = {"section": "売上", "content": "売上は$500に到達した"}
+        path = gen.generate(seg, index=401)
+        img = Image.open(path)
+        assert img.size == (1920, 1080)
+
+    def test_stats_japanese_unit(self, gen: TextSlideGenerator) -> None:
+        seg = {"section": "ユーザー数", "content": "利用者が500万人を突破しました"}
+        path = gen.generate(seg, index=402)
+        assert path.exists()
+
+    def test_stats_with_speaker(self, gen: TextSlideGenerator) -> None:
+        seg = {
+            "section": "データ",
+            "content": "処理速度は3倍に向上",
+            "speaker": "まりさ",
+        }
+        path = gen.generate(seg, index=403)
+        assert path.exists()
+
+    def test_stats_comma_number(self, gen: TextSlideGenerator) -> None:
+        seg = {"section": "参加者", "content": "累計1,200,000人が参加"}
+        path = gen.generate(seg, index=404)
+        assert path.exists()

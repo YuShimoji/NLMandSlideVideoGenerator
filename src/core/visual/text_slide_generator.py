@@ -1,13 +1,15 @@
-"""テキストスライド自動生成 (SP-033 Phase 3)
+"""テキストスライド自動生成 (SP-033 Phase 3 + SP-041 Visual Quality)
 
 スライドPNGが存在しないセグメントに対して、
-セグメント内容（section, key_points, content）からシンプルなテキストスライドPNGを生成する。
+セグメント内容（section, key_points, content）からテキストスライドPNGを生成する。
 
 PLACEHOLDER_THEMES (config/settings.py) のカラースキームを使用。
+SP-041: グラデーション背景 + 複数レイアウトパターン (Standard / Emphasis / TwoColumn / Stats)
 """
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -24,6 +26,7 @@ DEFAULT_HEIGHT = 1080
 TITLE_FONT_SIZE = 56
 BODY_FONT_SIZE = 40
 LABEL_FONT_SIZE = 28
+EMPHASIS_FONT_SIZE = 64
 
 # レイアウト定数
 PADDING_X = 120
@@ -34,6 +37,26 @@ LINE_SPACING = 1.5
 MAX_BODY_LINES = 12
 ACCENT_BAR_HEIGHT = 6
 ACCENT_BAR_Y = PADDING_TOP - 40
+
+# Emphasis レイアウト用の content 文字数上限
+EMPHASIS_CONTENT_MAX_LEN = 60
+
+# TwoColumn レイアウトの key_points 下限
+TWOCOLUMN_MIN_KEYPOINTS = 4
+
+# Stats レイアウト用の数値パターン
+_STATS_PATTERN = re.compile(
+    r"(?:\d+(?:\.\d+)?%|\d{1,3}(?:,\d{3})+|\$\d+|\d+(?:\.\d+)?(?:倍|億|万|兆|件|人|回|秒|分|時間))"
+)
+
+# Stats レイアウト用フォントサイズ
+STATS_NUMBER_FONT_SIZE = 96
+
+# レイアウト種別
+LAYOUT_STANDARD = "standard"
+LAYOUT_EMPHASIS = "emphasis"
+LAYOUT_TWOCOLUMN = "twocolumn"
+LAYOUT_STATS = "stats"
 
 # 日本語フォント候補 (Windows → Linux → macOS)
 _JP_FONT_CANDIDATES = [
@@ -168,6 +191,45 @@ class TextSlideGenerator:
             paths.append(self.generate(seg, idx))
         return paths
 
+    @staticmethod
+    def _select_layout(content: str, key_points: List[str]) -> str:
+        """セグメント内容に応じてレイアウトを選択する。
+
+        優先順:
+        1. key_points >= 4 → TwoColumn
+        2. 数値パターン検出 (key_points なし) → Stats
+        3. key_points なし + content が短い (< 60文字) → Emphasis
+        4. それ以外 → Standard
+        """
+        if len(key_points) >= TWOCOLUMN_MIN_KEYPOINTS:
+            return LAYOUT_TWOCOLUMN
+        if not key_points and content and _STATS_PATTERN.search(content):
+            return LAYOUT_STATS
+        if not key_points and len(content) < EMPHASIS_CONTENT_MAX_LEN:
+            return LAYOUT_EMPHASIS
+        return LAYOUT_STANDARD
+
+    def _draw_gradient_background(self, image: Image.Image) -> None:
+        """テーマのグラデーション色で上→下のグラデーション背景を描画する。
+
+        gradient_top / gradient_bottom がテーマに無い場合は単色 background のまま。
+        """
+        top = self.theme.get("gradient_top")
+        bottom = self.theme.get("gradient_bottom")
+        if top is None or bottom is None:
+            return
+
+        top = tuple(top)
+        bottom = tuple(bottom)
+        pixels = image.load()
+        for y_pos in range(self.height):
+            ratio = y_pos / max(self.height - 1, 1)
+            r = int(top[0] + (bottom[0] - top[0]) * ratio)
+            g = int(top[1] + (bottom[1] - top[1]) * ratio)
+            b = int(top[2] + (bottom[2] - top[2]) * ratio)
+            for x_pos in range(self.width):
+                pixels[x_pos, y_pos] = (r, g, b)
+
     def _render(
         self,
         section: str,
@@ -178,6 +240,30 @@ class TextSlideGenerator:
         """テキストスライド画像を描画する。"""
         bg_color = tuple(self.theme.get("background", (20, 20, 25)))
         image = Image.new("RGB", (self.width, self.height), bg_color)
+
+        # グラデーション背景 (SP-041)
+        self._draw_gradient_background(image)
+
+        layout = self._select_layout(content, key_points)
+
+        if layout == LAYOUT_EMPHASIS:
+            return self._render_emphasis(image, section, content, speaker)
+        if layout == LAYOUT_TWOCOLUMN:
+            return self._render_twocolumn(image, section, content, key_points, speaker)
+        if layout == LAYOUT_STATS:
+            return self._render_stats(image, section, content, speaker)
+
+        return self._render_standard(image, section, content, key_points, speaker)
+
+    def _render_standard(
+        self,
+        image: Image.Image,
+        section: str,
+        content: str,
+        key_points: List[str],
+        speaker: str,
+    ) -> Image.Image:
+        """Standard レイアウト: タイトル + 話者 + バレットリスト / テキスト。"""
         draw = ImageDraw.Draw(image)
 
         # アクセントバー (上部装飾)
@@ -232,7 +318,246 @@ class TextSlideGenerator:
                 y += int(BODY_FONT_SIZE * LINE_SPACING)
                 remaining_lines -= 1
 
-        # フッター: セグメント番号等（なくてもよいが視覚的区切り）
+        # フッター
+        footer_y = self.height - 60
+        draw.rectangle(
+            [PADDING_X, footer_y, self.width - PADDING_X, footer_y + 1],
+            fill=label_color,
+        )
+
+        return image
+
+    def _render_emphasis(
+        self,
+        image: Image.Image,
+        section: str,
+        content: str,
+        speaker: str,
+    ) -> Image.Image:
+        """Emphasis レイアウト: 短いテキストを大きなフォントで中央配置 + 装飾引用符。"""
+        draw = ImageDraw.Draw(image)
+        accent_color = tuple(self.theme.get("accent_color", (100, 150, 255)))
+        title_color = tuple(self.theme.get("title_color", (235, 235, 235)))
+        body_color = tuple(self.theme.get("body_color", (200, 200, 200)))
+        label_color = tuple(self.theme.get("label_color", (120, 120, 130)))
+
+        # 装飾引用符 (大きな「"」を薄く)
+        quote_font = _load_font(160)
+        quote_color = (*accent_color[:3], 40) if len(accent_color) >= 3 else accent_color
+        # RGBA で描画するために一時レイヤーを使う
+        overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+        overlay_draw.text(
+            (PADDING_X, self.height // 2 - 180),
+            "\u201c",
+            fill=(*accent_color[:3], 40),
+            font=quote_font,
+        )
+        image = image.convert("RGBA")
+        image = Image.alpha_composite(image, overlay)
+        image = image.convert("RGB")
+        draw = ImageDraw.Draw(image)
+
+        # セクションタイトル (上部、小さめ)
+        if section:
+            section_font = self._label_font
+            bbox = section_font.getbbox(section)
+            text_w = bbox[2] - bbox[0] if bbox else 0
+            x = (self.width - text_w) // 2
+            draw.text((x, PADDING_TOP), section, fill=label_color, font=section_font)
+
+        # メインテキスト (中央、大きなフォント)
+        emphasis_font = _load_font(EMPHASIS_FONT_SIZE)
+        text_to_show = content if content else section
+        if text_to_show:
+            wrapped = self._wrap_text(
+                text_to_show, emphasis_font, self.width - PADDING_X * 2
+            )
+            total_height = len(wrapped) * int(EMPHASIS_FONT_SIZE * LINE_SPACING)
+            y_start = (self.height - total_height) // 2
+            for line in wrapped[:4]:
+                bbox = emphasis_font.getbbox(line)
+                text_w = bbox[2] - bbox[0] if bbox else 0
+                x = (self.width - text_w) // 2
+                draw.text((x, y_start), line, fill=title_color, font=emphasis_font)
+                y_start += int(EMPHASIS_FONT_SIZE * LINE_SPACING)
+
+        # 話者ラベル (下部、中央)
+        if speaker:
+            speaker_color = tuple(self.theme.get("speaker_color", (180, 200, 255)))
+            label = f"— {speaker}"
+            bbox = self._label_font.getbbox(label)
+            text_w = bbox[2] - bbox[0] if bbox else 0
+            x = (self.width - text_w) // 2
+            draw.text(
+                (x, self.height - PADDING_TOP),
+                label,
+                fill=speaker_color,
+                font=self._label_font,
+            )
+
+        # アクセントバー (下部装飾)
+        bar_w = 200
+        bar_x = (self.width - bar_w) // 2
+        bar_y = self.height - 80
+        draw.rectangle(
+            [bar_x, bar_y, bar_x + bar_w, bar_y + ACCENT_BAR_HEIGHT],
+            fill=accent_color,
+        )
+
+        return image
+
+    def _render_twocolumn(
+        self,
+        image: Image.Image,
+        section: str,
+        content: str,
+        key_points: List[str],
+        speaker: str,
+    ) -> Image.Image:
+        """TwoColumn レイアウト: 左にタイトル+話者、右にバレットリスト。"""
+        draw = ImageDraw.Draw(image)
+        accent_color = tuple(self.theme.get("accent_color", (100, 150, 255)))
+        title_color = tuple(self.theme.get("title_color", (235, 235, 235)))
+        body_color = tuple(self.theme.get("body_color", (200, 200, 200)))
+        label_color = tuple(self.theme.get("label_color", (120, 120, 130)))
+        speaker_color = tuple(self.theme.get("speaker_color", (180, 200, 255)))
+
+        mid_x = self.width // 2
+
+        # 左カラム: アクセントバー + タイトル + 話者
+        draw.rectangle(
+            [PADDING_X, ACCENT_BAR_Y, mid_x - 40, ACCENT_BAR_Y + ACCENT_BAR_HEIGHT],
+            fill=accent_color,
+        )
+
+        y_left = TITLE_Y
+        if section:
+            left_width = mid_x - PADDING_X - 40
+            wrapped_title = self._wrap_text(section, self._title_font, left_width)
+            for line in wrapped_title[:3]:
+                draw.text((PADDING_X, y_left), line, fill=title_color, font=self._title_font)
+                y_left += int(TITLE_FONT_SIZE * LINE_SPACING)
+            y_left += 20
+
+        if speaker:
+            draw.text(
+                (PADDING_X, y_left),
+                f"— {speaker}",
+                fill=speaker_color,
+                font=self._label_font,
+            )
+            y_left += int(LABEL_FONT_SIZE * LINE_SPACING) + 10
+
+        # content があれば左カラム下部にテキストとして表示
+        if content:
+            left_width = mid_x - PADDING_X - 40
+            wrapped = self._wrap_text(content, self._label_font, left_width)
+            for line in wrapped[:4]:
+                draw.text((PADDING_X, y_left), line, fill=label_color, font=self._label_font)
+                y_left += int(LABEL_FONT_SIZE * LINE_SPACING)
+
+        # 右カラム: バレットリスト
+        right_x = mid_x + 40
+        right_width = self.width - right_x - PADDING_X
+        y_right = TITLE_Y
+
+        # 縦の分割線
+        draw.rectangle(
+            [mid_x - 1, PADDING_TOP - 20, mid_x + 1, self.height - 80],
+            fill=(*accent_color[:3],) if len(accent_color) >= 3 else accent_color,
+        )
+
+        for kp in key_points:
+            if y_right > self.height - 120:
+                break
+            bullet = f"•  {kp}"
+            wrapped = self._wrap_text(bullet, self._body_font, right_width - 20)
+            for line in wrapped:
+                if y_right > self.height - 120:
+                    break
+                draw.text((right_x, y_right), line, fill=body_color, font=self._body_font)
+                y_right += int(BODY_FONT_SIZE * LINE_SPACING)
+
+        # フッター
+        footer_y = self.height - 60
+        draw.rectangle(
+            [PADDING_X, footer_y, self.width - PADDING_X, footer_y + 1],
+            fill=label_color,
+        )
+
+        return image
+
+    def _render_stats(
+        self,
+        image: Image.Image,
+        section: str,
+        content: str,
+        speaker: str,
+    ) -> Image.Image:
+        """Stats レイアウト: 検出した数値を大きく表示 + コンテキスト文。"""
+        draw = ImageDraw.Draw(image)
+        accent_color = tuple(self.theme.get("accent_color", (100, 150, 255)))
+        title_color = tuple(self.theme.get("title_color", (235, 235, 235)))
+        body_color = tuple(self.theme.get("body_color", (200, 200, 200)))
+        label_color = tuple(self.theme.get("label_color", (120, 120, 130)))
+
+        # 数値を抽出
+        matches = _STATS_PATTERN.findall(content)
+        stat_value = matches[0] if matches else ""
+
+        # セクションタイトル (上部)
+        if section:
+            draw.rectangle(
+                [PADDING_X, ACCENT_BAR_Y, self.width - PADDING_X, ACCENT_BAR_Y + ACCENT_BAR_HEIGHT],
+                fill=accent_color,
+            )
+            wrapped_title = self._wrap_text(section, self._title_font, self.width - PADDING_X * 2)
+            y = TITLE_Y
+            for line in wrapped_title[:2]:
+                draw.text((PADDING_X, y), line, fill=title_color, font=self._title_font)
+                y += int(TITLE_FONT_SIZE * LINE_SPACING)
+
+        # 大きな数字 (中央)
+        if stat_value:
+            stats_font = _load_font(STATS_NUMBER_FONT_SIZE)
+            bbox = stats_font.getbbox(stat_value)
+            text_w = bbox[2] - bbox[0] if bbox else 0
+            x = (self.width - text_w) // 2
+            y_center = self.height // 2 - STATS_NUMBER_FONT_SIZE // 2
+            draw.text((x, y_center), stat_value, fill=accent_color, font=stats_font)
+
+            # 数値の下にコンテキスト文
+            context_text = _STATS_PATTERN.sub("", content).strip()
+            if context_text:
+                # 先頭の句読点やスペースを除去
+                context_text = context_text.strip("、。,. ")
+                wrapped = self._wrap_text(
+                    context_text, self._body_font, self.width - PADDING_X * 2
+                )
+                y_ctx = y_center + STATS_NUMBER_FONT_SIZE + 30
+                for line in wrapped[:3]:
+                    bbox = self._body_font.getbbox(line)
+                    text_w = bbox[2] - bbox[0] if bbox else 0
+                    x = (self.width - text_w) // 2
+                    draw.text((x, y_ctx), line, fill=body_color, font=self._body_font)
+                    y_ctx += int(BODY_FONT_SIZE * LINE_SPACING)
+
+        # 話者ラベル (下部)
+        if speaker:
+            speaker_color = tuple(self.theme.get("speaker_color", (180, 200, 255)))
+            label = f"— {speaker}"
+            bbox = self._label_font.getbbox(label)
+            text_w = bbox[2] - bbox[0] if bbox else 0
+            x = (self.width - text_w) // 2
+            draw.text(
+                (x, self.height - PADDING_TOP),
+                label,
+                fill=speaker_color,
+                font=self._label_font,
+            )
+
+        # フッター
         footer_y = self.height - 60
         draw.rectangle(
             [PADDING_X, footer_y, self.width - PADDING_X, footer_y + 1],

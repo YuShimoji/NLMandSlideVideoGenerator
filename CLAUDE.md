@@ -7,15 +7,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 2):
-  - 全42仕様。36 done + 4 partial (SP-035/038/039/042) + 1 draft (SP-041) + 1 archived
-  - Google CSE完全除去: source_collector.py, config, .env.example, docs 8ファイル15箇所
-  - TextSlide speaker_mappingキャッシュバグ修正 (_cache_keyにspeaker含む)
-  - SP-041 TextSlide Visual Quality 仕様策定 (draft): 4レイアウト + グラデーション背景
-  - SP-042 Pipeline Quality Tracking Phase 1実装 (40%): PipelineStats dataclass + 19テスト
-  - 別セッション進捗: SP-035(60%), SP-037(done), SP-038(65%), SP-040(done)
-  - テスト: 1040 passed, 1 skipped (fastapi skip 除く)
-  - 残: SP-035 YMM4実機テスト, SP-038 Phase3(YouTube API本番/OAuth), SP-039 Phase2, SP-041/042実装
+直近の状態 (2026-03-18 session 3):
+  - 全42仕様。38 done + 3 partial (SP-035/038/039) + 1 draft (SP-041) + 1 archived
+  - SP-042 Pipeline Quality Tracking 完了 (100%): Phase 2-3 実装
+    - run_pipeline()に全ステップの統計計測ポイント挿入
+    - CLI `stats` サブコマンド (single/batch/compare)
+    - batch_result.json に各トピックのstats + aggregate_stats統合
+    - テスト: 19→23件 (CLI stats 4件追加)
+  - テスト: 1057 passed, 3 skipped
+  - 残: SP-035 YMM4実機テスト(60%), SP-038 Phase3(YouTube API/65%), SP-039 Phase2(80%), SP-041(draft/0%)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
