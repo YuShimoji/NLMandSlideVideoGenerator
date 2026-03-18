@@ -394,5 +394,14 @@
     "cat": "pipeline",
     "file": "docs/specs/segment_duration_control.md",
     "summary": "Phase 1-3完了: 推定尺計算+セグメント検証+LLM自動調整(追加/統合)+CLI手動モード(--duration-mode manual|auto, continue/adjust/abort選択)。35テスト"
+  },
+  {
+    "id": "SP-045",
+    "title": "First Publish Checklist",
+    "status": "draft",
+    "pct": 0,
+    "cat": "pipeline",
+    "file": "docs/specs/first_publish_checklist.md",
+    "summary": "初回YouTube公開の通しチェックリスト。Phase A(自動CSV)+B(YMM4手動)+C(MP4検証+OAuth+upload)の全ステップ。SP-035/038の完了判定を兼ねる"
   }
 ]
