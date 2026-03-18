@@ -14,11 +14,17 @@ YMM4 不要の自動検証を実行し、実機テスト前の準備状態を確
 from __future__ import annotations
 
 import csv
+import io
 import json
 import os
 import re
 import sys
 from pathlib import Path
+
+# Windows コンソールの文字化け防止
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_PATH = PROJECT_ROOT / "src"

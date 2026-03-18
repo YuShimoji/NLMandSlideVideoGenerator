@@ -197,7 +197,9 @@ class Settings:
         # Google OAuth 設定
         self.GOOGLE_SCOPES = [
             "https://www.googleapis.com/auth/presentations",
-            "https://www.googleapis.com/auth/drive"
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly",
         ]
         self.GOOGLE_CLIENT_SECRETS_FILE = Path(os.getenv(
             "GOOGLE_CLIENT_SECRETS_FILE",
