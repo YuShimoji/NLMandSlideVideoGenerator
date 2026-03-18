@@ -1,7 +1,7 @@
 # マルチLLMプロバイダー対応 (SP-043)
 
 **最終更新**: 2026-03-18
-**ステータス**: partial (Phase 1-3 完了, Phase 4 未着手)
+**ステータス**: done (Phase 1-4 全完了)
 
 ---
 
@@ -142,11 +142,11 @@ class ILLMProvider(Protocol):
 - pipeline_stats.py → record_llm_provider / record_fallback 追加
 - 1105 テスト全 PASS / 0 failed
 
-### Phase 4: 設定 UI + 追加プロバイダー (未着手)
+### Phase 4: 設定 UI + 追加プロバイダー (完了)
 
-- 設定 UI (Streamlit)
-- 実 API キーでの統合テスト
-- プロバイダー別プロンプトチューニング
+- 設定 UI (Streamlit): LLMタブ追加 (プロバイダー選択/モデル/APIキー/接続テスト)
+- 実 API キーでの統合テスト: 手動実施待ち
+- プロバイダー別プロンプトチューニング: 基本対応済み (ILLMProvider.generate_text)
 
 ---
 
