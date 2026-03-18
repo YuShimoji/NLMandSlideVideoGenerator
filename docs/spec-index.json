@@ -362,11 +362,11 @@
   {
     "id": "SP-041",
     "title": "TextSlide Visual Quality",
-    "status": "partial",
-    "pct": 70,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/text_slide_quality.md",
-    "summary": "Phase 1-2完了: 4レイアウト(Standard/Emphasis/TwoColumn/Stats)自動選択 + グラデーション背景(5テーマ) + 50テスト。Phase 3(スタイルプリセット連携)未着手"
+    "summary": "Phase 1-3完了: 4レイアウト自動選択+グラデーション背景5テーマ+SP-036プリセット連携(news→Stats優先/blue, educational→TwoColumn優先/green, summary→Emphasis優先/warm)。59テスト"
   },
   {
     "id": "SP-042",

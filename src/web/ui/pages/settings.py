@@ -18,7 +18,7 @@ def show_settings_page():
         st.session_state.settings_modified = {}
 
     # タブで設定カテゴリを分類
-    tabs = st.tabs(["📁 ディレクトリ", "🎥 動画", "🗣️ TTS", "📺 YouTube", "🔧 パイプライン", "📊 ジョブ履歴"])
+    tabs = st.tabs(["📁 ディレクトリ", "🎥 動画", "🗣️ TTS", "📺 YouTube", "🔧 パイプライン", "🤖 LLM設定", "📊 ジョブ履歴"])
 
     # ディレクトリ設定
     with tabs[0]:
@@ -165,8 +165,81 @@ def show_settings_page():
                     key="stage3_mode"
                 )
 
-    # ジョブ履歴
+    # LLM設定 (SP-043 Phase 4)
     with tabs[5]:
+        st.subheader("LLMプロバイダー設定")
+
+        from core.llm_provider import _PROVIDERS, _DEFAULT_MODELS, create_llm_provider
+
+        provider_names = [p for p in _PROVIDERS if p != "mock"]
+        current_provider = os.getenv("LLM_PROVIDER", "gemini")
+        current_model = os.getenv("LLM_MODEL", "")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_provider = st.selectbox(
+                "プロバイダー",
+                provider_names,
+                index=provider_names.index(current_provider) if current_provider in provider_names else 0,
+                key="llm_provider_select",
+            )
+        with col2:
+            default_model = _DEFAULT_MODELS.get(selected_provider, "")
+            selected_model = st.text_input(
+                "モデル名",
+                value=current_model or default_model,
+                key="llm_model_input",
+                help=f"デフォルト: {default_model}",
+            )
+
+        # API キー表示
+        env_key_map = {
+            "gemini": "GEMINI_API_KEY",
+            "openai": "OPENAI_API_KEY",
+            "claude": "ANTHROPIC_API_KEY",
+            "deepseek": "DEEPSEEK_API_KEY",
+        }
+        env_var = env_key_map.get(selected_provider, "LLM_API_KEY")
+        key_value = os.getenv(env_var, "")
+        if key_value:
+            masked = key_value[:8] + "..." + key_value[-4:] if len(key_value) > 12 else "***"
+            st.success(f"APIキー (`{env_var}`): {masked}")
+        else:
+            st.warning(f"APIキー (`{env_var}`) が未設定です。.env ファイルに追加してください。")
+
+        st.divider()
+
+        # 接続テスト
+        if st.button("接続テスト", key="llm_test_btn"):
+            with st.spinner("接続テスト中..."):
+                try:
+                    provider = create_llm_provider(
+                        provider=selected_provider,
+                        model=selected_model,
+                    )
+                    import asyncio
+                    result = asyncio.run(provider.generate_text("Hello, respond with OK."))
+                    if result:
+                        st.success(f"接続成功: {selected_provider}/{selected_model}")
+                        st.code(result[:200], language="text")
+                    else:
+                        st.error("応答が空です")
+                except Exception as e:
+                    st.error(f"接続失敗: {e}")
+
+        # 環境変数設定ガイド
+        st.divider()
+        st.markdown("**設定方法**")
+        st.code(
+            f"# .env ファイルに追加\n"
+            f"LLM_PROVIDER={selected_provider}\n"
+            f"LLM_MODEL={selected_model}\n"
+            f"{env_var}=your-api-key-here",
+            language="bash",
+        )
+
+    # ジョブ履歴
+    with tabs[6]:
         st.subheader("ジョブ履歴")
 
         try:
