@@ -134,7 +134,7 @@ class TextSlideGenerator:
         speaker = segment.get("speaker", "")
 
         # キャッシュキー生成
-        cache_key = self._cache_key(section, content, key_points)
+        cache_key = self._cache_key(section, content, key_points, speaker)
         cached_path = self.output_dir / f"slide_{index:03d}_{cache_key}.png"
         if cached_path.exists():
             logger.debug(f"テキストスライドキャッシュヒット: {cached_path.name}")
@@ -316,7 +316,7 @@ class TextSlideGenerator:
         return chunks
 
     @staticmethod
-    def _cache_key(section: str, content: str, key_points: List[str]) -> str:
+    def _cache_key(section: str, content: str, key_points: List[str], speaker: str = "") -> str:
         """コンテンツからキャッシュキー（短いハッシュ）を生成する。"""
-        raw = f"{section}|{content}|{'|'.join(key_points)}"
+        raw = f"{section}|{content}|{'|'.join(key_points)}|{speaker}"
         return hashlib.md5(raw.encode("utf-8")).hexdigest()[:8]

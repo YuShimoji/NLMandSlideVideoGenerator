@@ -147,3 +147,30 @@ class TestThemeFallback:
         # Top-left corner should be red background
         pixel = img.getpixel((0, 0))
         assert pixel == (255, 0, 0)
+
+
+class TestSpeakerMappingCache:
+    """speaker_mapping適用後のキャッシュが話者名変更を反映することを検証。"""
+
+    def test_different_speaker_produces_different_slide(self, gen: TextSlideGenerator) -> None:
+        """同一content/sectionでもspeakerが異なれば別スライドを生成する。"""
+        seg_host1 = {"section": "テスト", "content": "内容", "speaker": "Host1"}
+        seg_reimu = {"section": "テスト", "content": "内容", "speaker": "れいむ"}
+        path1 = gen.generate(seg_host1, index=0)
+        path2 = gen.generate(seg_reimu, index=0)
+        # 異なるspeakerなので異なるファイルが生成される
+        assert path1 != path2
+        assert path1.exists()
+        assert path2.exists()
+
+    def test_cache_key_includes_speaker(self) -> None:
+        """_cache_keyがspeakerを含むことを確認。"""
+        key1 = TextSlideGenerator._cache_key("s", "c", [], "Host1")
+        key2 = TextSlideGenerator._cache_key("s", "c", [], "れいむ")
+        assert key1 != key2
+
+    def test_cache_key_backward_compat(self) -> None:
+        """speaker省略時も動作する (後方互換)。"""
+        key1 = TextSlideGenerator._cache_key("s", "c", [])
+        key2 = TextSlideGenerator._cache_key("s", "c", [], "")
+        assert key1 == key2
