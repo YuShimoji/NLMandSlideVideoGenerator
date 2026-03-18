@@ -190,6 +190,7 @@ async def run_pipeline(
     target_duration: float = 300.0,
     resume_dir: Optional[Path] = None,
     style: str = "default",
+    generate_thumbnail: bool = True,
 ) -> Path:
     """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
 
@@ -241,6 +242,7 @@ async def run_pipeline(
                 "speaker_mapping": speaker_mapping,
                 "auto_images": auto_images,
                 "target_duration": target_duration,
+                "generate_thumbnail": generate_thumbnail,
             },
         )
 
@@ -609,10 +611,11 @@ async def run_pipeline(
 
     # --- Post-pipeline: Thumbnail Generation (SP-037) ---
     thumbnail_path = work_dir / "thumbnail.png"
-    if not thumbnail_path.exists():
+    if generate_thumbnail and not thumbnail_path.exists():
         try:
-            from core.thumbnails import AIThumbnailGenerator
+            from core.thumbnails import AIThumbnailGenerator, resolve_thumbnail_style
 
+            thumb_style = resolve_thumbnail_style(style)
             generator = AIThumbnailGenerator()
 
             # 背景画像: 最初のストック画像があれば使用
@@ -627,9 +630,10 @@ async def run_pipeline(
                 script=script_bundle,
                 output_dir=work_dir,
                 background_image=bg_image,
-                style="modern",
+                style=thumb_style,
             )
             print("\n=== Thumbnail Generated ===")
+            print(f"  Style: {thumb_style} (from preset '{style}')")
             print(f"  {thumb_path}")
         except Exception as e:
             print("\n=== Thumbnail Generation Skipped ===")
@@ -883,6 +887,8 @@ def main() -> None:
     pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="Disable stock images")
     pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="Target duration in seconds (default: %(default)s)")
     pipe_parser.add_argument("--style", default="default", help="Script style preset: default/news/educational/summary (SP-036)")
+    pipe_parser.add_argument("--generate-thumbnail", action="store_true", default=defaults.get("generate_thumbnail", True), help="Generate thumbnail image (default: ON)")
+    pipe_parser.add_argument("--no-generate-thumbnail", dest="generate_thumbnail", action="store_false", help="Skip thumbnail generation")
     pipe_parser.add_argument("--resume", help="Resume from existing work_dir")
 
     # batch サブコマンド (SP-040)
@@ -1006,6 +1012,7 @@ def main() -> None:
                 target_duration=args.duration,
                 resume_dir=resume_dir,
                 style=args.style,
+                generate_thumbnail=bool(args.generate_thumbnail),
             )
         )
         return

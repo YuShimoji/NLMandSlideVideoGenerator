@@ -47,6 +47,16 @@
     "default_duration_seconds": 4.0
   },
 
+  "thumbnail": {
+    "style": "classic",
+    "bg_color": [20, 20, 30],
+    "text_color": [255, 238, 221],
+    "accent_color": [255, 215, 0],
+    "font_size_title": 68,
+    "font_size_subtitle": 34,
+    "gradient": true
+  },
+
   "validation": {
     "max_total_duration_seconds": 7200,
     "warn_gap_threshold_seconds": 1.5,

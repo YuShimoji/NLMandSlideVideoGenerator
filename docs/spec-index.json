@@ -309,10 +309,10 @@
     "id": "SP-035",
     "title": "Integration Test Checklist",
     "status": "partial",
-    "pct": 50,
+    "pct": 60,
     "cat": "infra",
     "file": "docs/integration_test_checklist.md",
-    "summary": "全SP完了後の統合実機テスト項目 (A-G)。チェックリスト整備済み、実施未完了。字幕/BGM/ストック画像/AI画像/Resync/Pre-Export/全統合E2Eの7セクション"
+    "summary": "全SP機能の統合実機テスト項目 (A-G)。チェックリスト整備済み + pre-flight自動チェック(preflight_sp035.py)追加 + テスト画像配置済み。YMM4実機テスト未実施。字幕/BGM/ストック画像/AI画像/Resync/Pre-Export/全統合E2Eの7セクション"
   },
   {
     "id": "SP-036",

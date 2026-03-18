@@ -31,6 +31,7 @@ class StyleTemplate:
     bgm: Dict[str, Any] = field(default_factory=dict)
     crossfade: Dict[str, Any] = field(default_factory=dict)
     timing: Dict[str, Any] = field(default_factory=dict)
+    thumbnail: Dict[str, Any] = field(default_factory=dict)
     validation: Dict[str, Any] = field(default_factory=dict)
     raw: Dict[str, Any] = field(default_factory=dict)
 
@@ -57,6 +58,8 @@ class StyleTemplate:
             result["bgm"] = self.bgm
         if self.crossfade:
             result["crossfade"] = self.crossfade
+        if self.thumbnail:
+            result["thumbnail"] = self.thumbnail
         return result
 
 
@@ -138,6 +141,7 @@ class StyleTemplateManager:
             bgm=data.get("bgm", {}),
             crossfade=data.get("crossfade", {}),
             timing=data.get("timing", {}),
+            thumbnail=data.get("thumbnail", {}),
             validation=data.get("validation", {}),
             raw=data,
         )

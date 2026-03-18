@@ -1,6 +1,6 @@
 # 統合検証チェックリスト
 
-最終更新: 2026-03-17
+最終更新: 2026-03-18
 
 全SP完了後の統合実機テスト項目。
 基本E2Eは `e2e_verification_guide.md` (Step 1-6) を先に実施すること。
@@ -14,6 +14,19 @@
 - [ ] Gemini API キー設定済み (.env GEMINI_API_KEY)
 - [ ] Pexels API キー設定済み (.env PEXELS_API_KEY) ※任意
 - [ ] `config/style_template.json` が存在する
+
+---
+
+## Pre-Flight チェック (自動)
+
+実機テストの前に、Python 側の前提条件を自動検証する。
+
+```bash
+.\venv\Scripts\python.exe scripts/preflight_sp035.py
+```
+
+全項目 PASS であれば、YMM4 実機テストに進む。
+WARN は画像パス不在（サンプルCSVの相対パス参照先が未配置）が主因で既知事項。
 
 ---
 
@@ -45,18 +58,19 @@
 ### 準備
 
 1. `config/style_template.json` の `bgm` セクションを確認:
-   - `file_path`: BGMファイルへの絶対パス
-   - `volume`: 0.0〜1.0
-   - `fade_in_sec` / `fade_out_sec`: フェード秒数
+   - `volume_percent`: 0〜100 (整数)
+   - `fade_in_seconds` / `fade_out_seconds`: フェード秒数
+   - `layer`: BGM配置レイヤー
 
-2. 指定した BGM ファイルが実在すること
+2. CsvImportDialog の BGM 選択 UI でファイルを指定すること
+   (テンプレートに file_path フィールドはない。UI で個別選択する設計)
 
 ### 検証項目
 
 | # | 確認項目 | 期待値 | 結果 |
 |---|----------|--------|------|
 | B1 | BGMがタイムラインに配置される | AudioItem として先頭に配置 | |
-| B2 | BGM音量 | style_template の volume 値と一致 | |
+| B2 | BGM音量 | style_template の volume_percent 値と一致 | |
 | B3 | FadeIn | 開始時に指定秒数でフェードイン | |
 | B4 | FadeOut | 終了時に指定秒数でフェードアウト | |
 | B5 | BGMと音声の同時再生 | BGMが音声の背景として再生される | |
@@ -119,9 +133,10 @@
 ### CLI 実行
 
 ```bash
-.\venv\Scripts\python.exe scripts/research_cli.py validate \
-  --csv output_csv/latest.csv
+.\venv\Scripts\python.exe scripts/research_cli.py validate output_csv/latest.csv
 ```
+
+オプション: `--template cinematic` (テンプレート指定), `--no-image-check` (画像存在チェック省略)
 
 ### 検証項目
 
@@ -150,6 +165,34 @@
 | G6 | アニメーション | 各種アニメが視覚的に確認可能 | |
 | G7 | 音声同期 | テキストとボイスが一致 | |
 | G8 | 総尺 | セグメント数に応じた適切な長さ | |
+
+---
+
+## テスト画像の準備
+
+e2e_baseline_test.csv は `slides/slide_0001.png` 等の相対パスで画像を参照する。
+`samples/image_slide/slides/` に 1920x1080 の PNG 画像を配置すること。
+
+プレースホルダー画像は以下で自動生成可能:
+
+```bash
+.\venv\Scripts\python.exe -c "
+from PIL import Image, ImageDraw
+colors = [(60,80,120),(80,120,60),(120,60,80)]
+for i,c in enumerate(colors,1):
+    img = Image.new('RGB',(1920,1080),c)
+    d = ImageDraw.Draw(img)
+    d.text((860,530),f'slide_{i:04d}',fill=(255,255,255))
+    img.save(f'samples/image_slide/slides/slide_{i:04d}.png')
+"
+```
+
+CSV バリデーションは `samples/image_slide/` をカレントディレクトリにして実行:
+
+```bash
+cd samples\image_slide
+..\..\venv\Scripts\python.exe ..\..\scripts\research_cli.py validate e2e_baseline_test.csv
+```
 
 ---
 

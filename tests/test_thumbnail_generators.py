@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from src.core.thumbnails import AIThumbnailGenerator, TemplateThumbnailGenerator
+from src.core.thumbnails import AIThumbnailGenerator, TemplateThumbnailGenerator, resolve_thumbnail_style, PRESET_TO_THUMBNAIL_STYLE
 from src.video_editor.models import VideoInfo  # Changed from video_composer
 from datetime import datetime
 from src.slides.slide_generator import SlidesPackage
@@ -505,3 +505,96 @@ class TestThumbnailIntegration:
                 assert result.file_path.stat().st_size > 1000
 
             asyncio.run(test_generation())
+
+
+class TestThumbnailStyleMapping:
+    """SP-037 Phase 2: script preset → thumbnail style マッピングのテスト"""
+
+    def test_all_presets_mapped(self):
+        """全 script preset がマッピングに含まれている"""
+        expected_presets = {"default", "news", "educational", "summary"}
+        assert set(PRESET_TO_THUMBNAIL_STYLE.keys()) == expected_presets
+
+    def test_resolve_default(self):
+        """default プリセット → modern"""
+        assert resolve_thumbnail_style("default") == "modern"
+
+    def test_resolve_news(self):
+        """news プリセット → classic"""
+        assert resolve_thumbnail_style("news") == "classic"
+
+    def test_resolve_educational(self):
+        """educational プリセット → educational"""
+        assert resolve_thumbnail_style("educational") == "educational"
+
+    def test_resolve_summary(self):
+        """summary プリセット → gaming"""
+        assert resolve_thumbnail_style("summary") == "gaming"
+
+    def test_resolve_unknown_fallback(self):
+        """未知のプリセットは modern にフォールバック"""
+        assert resolve_thumbnail_style("unknown_preset") == "modern"
+        assert resolve_thumbnail_style("") == "modern"
+
+    def test_all_mapped_styles_are_valid(self):
+        """マッピング先の全スタイルが AIThumbnailGenerator に存在する"""
+        generator = AIThumbnailGenerator()
+        for preset, thumb_style in PRESET_TO_THUMBNAIL_STYLE.items():
+            assert thumb_style in generator.styles, (
+                f"preset '{preset}' maps to '{thumb_style}' but it's not in generator.styles"
+            )
+
+
+class TestStyleTemplateThumbnailSection:
+    """SP-037 Phase 2: style_template.json の thumbnail セクションテスト"""
+
+    def test_default_template_has_thumbnail(self):
+        """default テンプレートに thumbnail セクションが存在する"""
+        from src.core.style_template import StyleTemplateManager
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        tmpl = mgr.get("default")
+        assert tmpl is not None
+        assert tmpl.thumbnail, "default テンプレートに thumbnail セクションがない"
+        assert tmpl.thumbnail.get("style") == "modern"
+
+    def test_cinematic_template_has_thumbnail(self):
+        """cinematic テンプレートに thumbnail セクションが存在する"""
+        from src.core.style_template import StyleTemplateManager
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        tmpl = mgr.get("cinematic")
+        assert tmpl is not None
+        assert tmpl.thumbnail, "cinematic テンプレートに thumbnail セクションがない"
+
+    def test_minimal_template_has_thumbnail(self):
+        """minimal テンプレートに thumbnail セクションが存在する"""
+        from src.core.style_template import StyleTemplateManager
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        tmpl = mgr.get("minimal")
+        assert tmpl is not None
+        assert tmpl.thumbnail, "minimal テンプレートに thumbnail セクションがない"
+
+    def test_thumbnail_section_fields(self):
+        """thumbnail セクションの必須フィールドが揃っている"""
+        from src.core.style_template import StyleTemplateManager
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        required_fields = {"style", "bg_color", "text_color", "accent_color", "font_size_title", "font_size_subtitle", "gradient"}
+        for name in ["default", "cinematic", "minimal"]:
+            tmpl = mgr.get(name)
+            assert tmpl is not None
+            for field in required_fields:
+                assert field in tmpl.thumbnail, f"{name} テンプレートの thumbnail に '{field}' がない"
+
+    def test_thumbnail_to_dict_roundtrip(self):
+        """to_dict に thumbnail が含まれる"""
+        from src.core.style_template import StyleTemplateManager
+        mgr = StyleTemplateManager()
+        mgr.load_all()
+        tmpl = mgr.get("default")
+        assert tmpl is not None
+        d = tmpl.to_dict()
+        assert "thumbnail" in d
+        assert d["thumbnail"]["style"] == "modern"
