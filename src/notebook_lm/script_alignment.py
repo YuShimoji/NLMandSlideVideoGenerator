@@ -220,16 +220,11 @@ class ScriptAlignmentAnalyzer:
         orphaned_items: List[Dict[str, Any]],
         candidates: Sequence[Dict[str, Any]],
     ) -> None:
-        """Use LLM (Gemini) to perform semantic matching for orphaned sentences."""
-        from config.settings import settings
-        api_key = settings.GEMINI_API_KEY
-        if not api_key:
-            return
-
+        """Use LLM to perform semantic matching for orphaned sentences."""
         try:
-            from google import genai
+            from core.llm_provider import create_llm_provider
             import json
-            client = genai.Client(api_key=api_key)
+            provider = create_llm_provider()
 
             sentences_payload = []
             for item in orphaned_items:
@@ -271,13 +266,8 @@ Format:
 }}
 Only output the JSON. Do not include markdown formatting or tags like ```json.
 """
-            resp = await asyncio.to_thread(
-                client.models.generate_content,
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            text_content = getattr(resp, "text", "")
-            content_str = str(text_content).strip() if text_content else ""
+            content_str = await provider.generate_text(prompt)
+            content_str = content_str.strip()
 
             if content_str.startswith("```json"):
                 content_str = content_str[7:]

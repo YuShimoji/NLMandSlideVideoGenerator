@@ -381,9 +381,9 @@
     "id": "SP-043",
     "title": "Multi-LLM Provider",
     "status": "partial",
-    "pct": 30,
+    "pct": 70,
     "cat": "core",
     "file": "docs/specs/multi_llm_provider.md",
-    "summary": "Gemini単一依存解消: ILLMProvider抽象化 + OpenAI/Claude/DeepSeek対応。LLM_PROVIDER env varで切替。一晩3本のAPI制約を解消"
+    "summary": "Gemini単一依存解消: ILLMProvider抽象化 + OpenAI/Claude/DeepSeek対応。Phase 1(抽象化+5プロバイダー)+Phase 2(script_alignment/stock_image_client移行)完了。残: Phase 3(segment_classifier既対応確認+api.py接続テスト)"
   }
 ]

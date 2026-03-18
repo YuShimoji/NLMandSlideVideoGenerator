@@ -138,15 +138,14 @@ class TestThreshold:
 
 
 class TestGeminiClassification:
-    """Geminiベース分類のテスト。"""
+    """LLMベース分類のテスト (SP-043 Phase 2-3: ILLMProvider注入方式)。"""
 
     def test_gemini_fallback_on_no_api_key(self) -> None:
-        """APIキーなし → ヒューリスティクスにフォールバック"""
-        from unittest.mock import patch
-
+        """APIキーなし / プロバイダーなし → ヒューリスティクスにフォールバック"""
         classifier = SegmentClassifier(use_gemini=True)
         segments = [{"content": "AIの世界へようこそ。", "section": "導入"}]
 
+        from unittest.mock import patch
         with patch.dict("os.environ", {"GEMINI_API_KEY": ""}, clear=False):
             with patch("config.settings.settings") as mock_settings:
                 mock_settings.GEMINI_API_KEY = ""
@@ -155,85 +154,70 @@ class TestGeminiClassification:
         assert len(result) == 1
         assert result[0] == SegmentType.VISUAL  # ヒューリスティクスで「導入」→ visual
 
-    def test_gemini_classify_with_mock(self) -> None:
-        """Gemini分類のモックテスト"""
-        from unittest.mock import MagicMock, patch
+    def test_llm_classify_with_mock_provider(self) -> None:
+        """ILLMProvider注入による分類テスト"""
+        from unittest.mock import AsyncMock
 
-        classifier = SegmentClassifier(use_gemini=True)
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "mock"
+        mock_provider.generate_text.return_value = "1. visual\n2. textual\n3. visual"
+
+        classifier = SegmentClassifier(llm_provider=mock_provider)
         segments = [
             {"content": "Welcome to AI.", "section": "intro"},
             {"content": "Accuracy: 95.3%.", "section": "data"},
             {"content": "In conclusion, AI is transformative.", "section": "conclusion"},
         ]
 
-        mock_response = MagicMock()
-        mock_response.text = "1. visual\n2. textual\n3. visual"
-
-        mock_client = MagicMock()
-        mock_client.models.generate_content.return_value = mock_response
-
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}, clear=False):
-            with patch("google.genai.Client", return_value=mock_client):
-                result = classifier.classify(segments)
-
+        result = classifier.classify(segments)
         assert result == [SegmentType.VISUAL, SegmentType.TEXTUAL, SegmentType.VISUAL]
+        mock_provider.generate_text.assert_called_once()
 
-    def test_gemini_classify_wrong_count_fallback(self) -> None:
-        """Geminiが間違った件数を返す → ヒューリスティクスにフォールバック"""
-        from unittest.mock import MagicMock, patch
+    def test_llm_classify_wrong_count_fallback(self) -> None:
+        """LLMが間違った件数を返す → ヒューリスティクスにフォールバック"""
+        from unittest.mock import AsyncMock
 
-        classifier = SegmentClassifier(use_gemini=True)
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "mock"
+        mock_provider.generate_text.return_value = "1. visual"  # 1件のみ (2件必要)
+
+        classifier = SegmentClassifier(llm_provider=mock_provider)
         segments = [
             {"content": "Test segment 1.", "section": "intro"},
             {"content": "Test segment 2.", "section": "body"},
         ]
 
-        mock_response = MagicMock()
-        mock_response.text = "1. visual"  # 1件のみ (2件必要)
-
-        mock_client = MagicMock()
-        mock_client.models.generate_content.return_value = mock_response
-
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}, clear=False):
-            with patch("google.genai.Client", return_value=mock_client):
-                result = classifier.classify(segments)
-
+        result = classifier.classify(segments)
         # フォールバック: ヒューリスティクスで分類
         assert len(result) == 2
 
-    def test_classify_with_keywords_mock(self) -> None:
-        """classify_with_keywords のモックテスト"""
-        from unittest.mock import MagicMock, patch
+    def test_classify_with_keywords_mock_provider(self) -> None:
+        """ILLMProvider注入による classify_with_keywords テスト"""
+        from unittest.mock import AsyncMock
 
-        classifier = SegmentClassifier(use_gemini=True)
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "mock"
+        # classify呼び出し → keywords呼び出しの順序
+        mock_provider.generate_text.side_effect = [
+            "1. visual\n2. textual",
+            "1. AI innovation technology\n2. data accuracy metrics",
+        ]
+
+        classifier = SegmentClassifier(llm_provider=mock_provider)
         segments = [
             {"content": "AIの革新。", "section": "intro", "key_points": ["AI revolution"]},
             {"content": "精度95%を達成。", "section": "data", "key_points": ["accuracy"]},
         ]
 
-        # classify用のモック
-        classify_response = MagicMock()
-        classify_response.text = "1. visual\n2. textual"
-
-        # keywords用のモック
-        keywords_response = MagicMock()
-        keywords_response.text = "1. AI innovation technology\n2. data accuracy metrics"
-
-        mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = [classify_response, keywords_response]
-
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}, clear=False):
-            with patch("google.genai.Client", return_value=mock_client):
-                types, keywords = classifier.classify_with_keywords(segments, topic="AI")
+        types, keywords = classifier.classify_with_keywords(segments, topic="AI")
 
         assert types == [SegmentType.VISUAL, SegmentType.TEXTUAL]
         assert keywords[0] == "AI innovation technology"
         assert keywords[1] == "data accuracy metrics"
+        assert mock_provider.generate_text.call_count == 2
 
     def test_classify_with_keywords_fallback(self) -> None:
         """キーワード抽出失敗 → key_pointsフォールバック"""
-        from unittest.mock import patch
-
         classifier = SegmentClassifier()  # use_gemini=False
         segments = [
             {"content": "Test.", "section": "intro", "key_points": ["AI", "tech"]},
@@ -242,3 +226,19 @@ class TestGeminiClassification:
         types, keywords = classifier.classify_with_keywords(segments)
         assert len(types) == 1
         assert keywords[0] == "AI tech"
+
+    def test_llm_provider_exception_fallback(self) -> None:
+        """ILLMProviderが例外 → ヒューリスティクスにフォールバック"""
+        from unittest.mock import AsyncMock
+
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "mock"
+        mock_provider.generate_text.side_effect = RuntimeError("API error")
+
+        classifier = SegmentClassifier(llm_provider=mock_provider)
+        segments = [{"content": "AIの世界へようこそ。", "section": "導入"}]
+
+        result = classifier.classify(segments)
+        assert len(result) == 1
+        # ヒューリスティクスフォールバック
+        assert result[0] == SegmentType.VISUAL

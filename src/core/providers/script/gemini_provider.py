@@ -1,10 +1,13 @@
 """
-GeminiベースのScriptProvider実装
+LLMベースのScriptProvider実装 (SP-043 Phase 2-3 移行済み)
+
+ILLMProvider 抽象を通じて任意の LLM プロバイダーで台本生成。
+後方互換: GeminiScriptProvider クラス名を維持。
 """
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from config.settings import settings
 from notebook_lm.gemini_integration import GeminiIntegration
@@ -12,9 +15,12 @@ from notebook_lm.source_collector import SourceInfo
 
 from ...interfaces import IScriptProvider
 
+if TYPE_CHECKING:
+    from core.llm_provider import ILLMProvider
+
 
 class GeminiScriptProvider(IScriptProvider):
-    """NotebookLM/Geminiを利用した台本生成プロバイダ"""
+    """LLMを利用した台本生成プロバイダ (旧名維持)"""
 
     def __init__(
         self,
@@ -23,18 +29,23 @@ class GeminiScriptProvider(IScriptProvider):
         language: Optional[str] = None,
         style: str = "default",
         speaker_mapping: Optional[Dict[str, str]] = None,
+        llm_provider: Optional["ILLMProvider"] = None,
     ) -> None:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.target_duration = target_duration
         self.language = language or settings.YOUTUBE_SETTINGS.get("default_language", "ja")
         self.style = style
         self.speaker_mapping = speaker_mapping
+        self._llm_provider = llm_provider
 
         # APIキーがない環境でもインターフェースチェック用にインスタンス化だけは許可し、
         # 実際の generate_script 呼び出し時にエラーとする（テスト互換のための設計）。
         self.client: Optional[GeminiIntegration] = None
-        if self.api_key:
-            self.client = GeminiIntegration(api_key=self.api_key)
+        if self.api_key or self._llm_provider:
+            self.client = GeminiIntegration(
+                api_key=self.api_key,
+                llm_provider=self._llm_provider,
+            )
 
     async def generate_script(
         self,
@@ -42,12 +53,15 @@ class GeminiScriptProvider(IScriptProvider):
         sources: List[SourceInfo],
         mode: str = "auto",
     ) -> Dict[str, Any]:
-        if not self.api_key:
-            raise ValueError("Gemini APIキーが設定されていません。環境変数 GEMINI_API_KEY を確認してください。")
+        if not self.api_key and self._llm_provider is None:
+            raise ValueError("LLM APIキーが設定されていません。環境変数 GEMINI_API_KEY / LLM_API_KEY を確認してください。")
 
         # 遅延初期化（テストや軽量チェック時に無駄な初期化を避ける）
         if self.client is None:
-            self.client = GeminiIntegration(api_key=self.api_key)
+            self.client = GeminiIntegration(
+                api_key=self.api_key,
+                llm_provider=self._llm_provider,
+            )
 
         sources_payload: List[Dict[str, Any]] = [
             {

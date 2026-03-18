@@ -6,12 +6,14 @@ pipeline.py から分離。
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 
 from config.settings import settings
 from .utils.logger import logger
+from .llm_provider import create_llm_provider
 
 from notebook_lm.source_collector import SourceInfo
 from notebook_lm.audio_generator import AudioInfo
@@ -42,10 +44,13 @@ async def run_legacy_stage1(
 
     script_bundle: Optional[Dict[str, Any]] = None
 
-    if settings.GEMINI_API_KEY:
-        logger.info("Gemini によるスクリプト・スライド生成パスを使用します")
+    # LLM プロバイダー生成 (LLM_PROVIDER env var で切替可能)
+    llm_api_key = settings.GEMINI_API_KEY or os.environ.get("LLM_API_KEY", "")
+    if llm_api_key:
+        logger.info("LLM によるスクリプト・スライド生成パスを使用します")
         try:
-            gemini = GeminiIntegration(api_key=settings.GEMINI_API_KEY)
+            llm_provider = create_llm_provider(api_key=llm_api_key)
+            gemini = GeminiIntegration(api_key=llm_api_key, llm_provider=llm_provider)
             sources_payload = [
                 {
                     "url": getattr(s, "url", ""),

@@ -2,7 +2,7 @@
 
 対象:
   - generate_script_from_sources() (L57-79)
-  - _try_model() (L164-182)
+  - _call_llm_provider() (ILLMProvider統合後)
   - _call_gemini_api() mock fallback / quota / ImportError (L192-247)
   - _parse_script_response() exception handling (L307-312)
   - generate_slide_content() (L402-447)
@@ -172,88 +172,53 @@ class TestGenerateScriptFromSources:
 
 
 # ===================================================================
-# 2. _try_model()  (L162-188)
+# 2. _call_llm_provider() (旧 _try_model — ILLMProvider統合後)
 # ===================================================================
-class TestTryModel:
-    """_try_model のモック付きテスト。"""
+class TestCallLLMProvider:
+    """_call_llm_provider のモック付きテスト (SP-043 Phase 2)。"""
 
     @pytest.mark.asyncio
-    async def test_happy_path_with_text(self):
-        """resp.text が設定されている場合、そのまま content に使われる。"""
-        g = GeminiIntegration(api_key="test-key")
+    async def test_happy_path_via_provider(self):
+        """ILLMProvider経由で正常にレスポンスが返る。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gpt-4o-mini"
+        mock_provider.generate_text.return_value = _make_valid_script_json()
 
-        mock_resp_obj = MagicMock()
-        mock_resp_obj.text = _make_valid_script_json()
-
-        mock_client = MagicMock()
-        mock_client.models.generate_content = MagicMock(return_value=mock_resp_obj)
-
-        with patch("google.genai.Client", return_value=mock_client):
-            result = await g._try_model("gemini-2.5-flash", "test prompt")
+        g = GeminiIntegration(api_key="test-key", llm_provider=mock_provider)
+        result = await g._call_gemini_api("test prompt")
 
         assert isinstance(result, GeminiResponse)
-        assert result.model == "gemini-2.5-flash"
+        assert result.model == "gpt-4o-mini"
         assert "テストトピック解説" in result.content
         assert g.request_count == 1
+        assert g.fallback_used is False
 
     @pytest.mark.asyncio
-    async def test_no_text_with_to_dict(self):
-        """resp.text が None / 空で to_dict() がある場合、json.dumps(to_dict()) が使われる。"""
-        g = GeminiIntegration(api_key="test-key")
+    async def test_provider_failure_falls_back_to_mock(self):
+        """ILLMProvider失敗時にモックフォールバックが使われる。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gpt-4o-mini"
+        mock_provider.generate_text.side_effect = RuntimeError("API error")
 
-        mock_resp_obj = MagicMock()
-        mock_resp_obj.text = None
-        mock_resp_obj.to_dict = MagicMock(return_value={"fallback": "data"})
+        g = GeminiIntegration(api_key="test-key", llm_provider=mock_provider)
+        result = await g._call_gemini_api("【トピック】\nテスト\n本文")
 
-        mock_client = MagicMock()
-        mock_client.models.generate_content = MagicMock(return_value=mock_resp_obj)
-
-        with patch("google.genai.Client", return_value=mock_client):
-            result = await g._try_model("gemini-2.0-flash", "prompt")
-
-        parsed = json.loads(result.content)
-        assert parsed["fallback"] == "data"
-        assert result.model == "gemini-2.0-flash"
+        assert isinstance(result, GeminiResponse)
+        assert g.fallback_used is True
+        assert g.actual_provider == "mock"
 
     @pytest.mark.asyncio
-    async def test_no_text_no_to_dict(self):
-        """resp.text が空で to_dict もない場合、str(resp) にフォールバック。"""
-        g = GeminiIntegration(api_key="test-key")
+    async def test_provider_quota_falls_back_to_mock(self):
+        """クォータ超過(429)時にモックフォールバック。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gemini-2.5-flash"
+        mock_provider.generate_text.side_effect = RuntimeError("429 RESOURCE_EXHAUSTED")
 
-        # text=None, to_dict=None で getattr(resp, "to_dict", None) が falsy → str(resp) 使用
-        class BareResponse:
-            text = None
-            to_dict = None
+        g = GeminiIntegration(api_key="test-key", llm_provider=mock_provider)
+        result = await g._call_gemini_api("【トピック】\nテスト\n本文")
 
-        bare_resp = BareResponse()
-        mock_client = MagicMock()
-        mock_client.models.generate_content = MagicMock(return_value=bare_resp)
-
-        with patch("google.genai.Client", return_value=mock_client):
-            result = await g._try_model("gemini-2.5-flash", "prompt")
-
-        # to_dict is None (not callable) → str(resp) が使われる
-        assert result.content is not None
-        assert len(result.content) > 0
-
-    @pytest.mark.asyncio
-    async def test_no_text_to_dict_raises(self):
-        """resp.text が空で to_dict() が例外を投げた場合、フォールバック JSON が返る (L176-180)。"""
-        g = GeminiIntegration(api_key="test-key")
-
-        mock_resp_obj = MagicMock()
-        mock_resp_obj.text = ""  # falsy
-        mock_resp_obj.to_dict = MagicMock(side_effect=RuntimeError("serialization failed"))
-
-        mock_client = MagicMock()
-        mock_client.models.generate_content = MagicMock(return_value=mock_resp_obj)
-
-        with patch("google.genai.Client", return_value=mock_client):
-            result = await g._try_model("gemini-2.5-flash", "prompt")
-
-        parsed = json.loads(result.content)
-        assert parsed["title"] == "生成結果"
-        assert parsed["segments"] == []
+        assert isinstance(result, GeminiResponse)
+        assert g.fallback_used is True
 
 
 # ===================================================================
@@ -304,82 +269,58 @@ class TestCallGeminiApi:
 
     @pytest.mark.asyncio
     async def test_import_error_falls_to_mock(self):
-        """google-genai SDK 未インストール → ImportError → モックフォールバック (L206-208)。"""
-        g = GeminiIntegration(api_key="real-key")
+        """LLM SDK未インストール → ImportError → モックフォールバック。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gpt-4o-mini"
+        mock_provider.generate_text.side_effect = ImportError("No module named 'openai'")
 
-        with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          side_effect=ImportError("No module named 'google.genai'")), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        g = GeminiIntegration(api_key="real-key", llm_provider=mock_provider)
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await g._call_gemini_api(
                 "前文\n【トピック】\nSDK不在テスト\n後文"
             )
 
         parsed = json.loads(result.content)
-        # ImportError で break → モックフォールバック
         assert len(parsed["segments"]) == 5
-        assert g.request_count == 1
+        assert g.fallback_used is True
 
     @pytest.mark.asyncio
-    async def test_quota_error_single_model_falls_to_mock(self):
-        """単一モデル構成で 429 クォータエラー → モックにフォールバック。"""
-        g = GeminiIntegration(api_key="real-key", model_name="gemini-2.5-flash")
+    async def test_quota_error_falls_to_mock(self):
+        """429クォータエラー → モックにフォールバック。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gemini-2.5-flash"
+        mock_provider.generate_text.side_effect = Exception("429 Resource has been exhausted")
 
-        async def side_effect_fn(model, prompt):
-            raise Exception("429 Resource has been exhausted")
+        g = GeminiIntegration(api_key="real-key", llm_provider=mock_provider)
 
-        with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          side_effect=side_effect_fn), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await g._call_gemini_api(
                 "前文\n【トピック】\nクォータテスト\n後文"
             )
 
-        # 全モデル失敗 → モックフォールバック
         parsed = json.loads(result.content)
         assert len(parsed["segments"]) == 5
-        assert isinstance(result, GeminiResponse)
+        assert g.fallback_used is True
+        assert g.actual_provider == "mock"
 
     @pytest.mark.asyncio
-    async def test_quota_error_all_models_fail_falls_to_mock(self):
-        """全モデルがクォータエラー → モックにフォールバック (L218-219)。"""
-        g = GeminiIntegration(api_key="real-key", model_name="gemini-2.5-flash")
+    async def test_non_quota_error_falls_to_mock(self):
+        """認証失敗等 → モックフォールバック。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gpt-4o-mini"
+        mock_provider.generate_text.side_effect = Exception("403 Permission denied")
 
-        async def all_fail(model, prompt):
-            raise Exception("429 Resource has been exhausted")
+        g = GeminiIntegration(api_key="real-key", llm_provider=mock_provider)
 
-        with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          side_effect=all_fail), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
-            result = await g._call_gemini_api(
-                "前文\n【トピック】\n全滅テスト\n後文"
-            )
-
-        parsed = json.loads(result.content)
-        assert len(parsed["segments"]) == 5
-
-    @pytest.mark.asyncio
-    async def test_non_quota_error_breaks_immediately(self):
-        """クォータ以外のエラー (認証失敗等) → 即 break してモックへ (L216-217)。"""
-        g = GeminiIntegration(api_key="real-key", model_name="gemini-2.5-flash")
-
-        call_count = 0
-
-        async def auth_fail(model, prompt):
-            nonlocal call_count
-            call_count += 1
-            raise Exception("403 Permission denied")
-
-        with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          side_effect=auth_fail), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await g._call_gemini_api(
                 "前文\n【トピック】\n認証失敗テスト\n後文"
             )
 
-        # フォールバックモデルは試行しない (break)
-        assert call_count == 1
         parsed = json.loads(result.content)
         assert len(parsed["segments"]) == 5
+        assert g.fallback_used is True
 
     @pytest.mark.asyncio
     async def test_cancelled_error_propagates(self):
@@ -403,16 +344,18 @@ class TestCallGeminiApi:
         assert g.request_count == initial_count + 1
 
     @pytest.mark.asyncio
-    async def test_primary_model_success_no_fallback_log(self):
-        """プライマリモデルが成功する場合、フォールバックログは出ない。"""
-        g = GeminiIntegration(api_key="real-key", model_name="gemini-2.5-flash")
+    async def test_primary_model_success_no_fallback(self):
+        """ILLMProvider経由で成功する場合、フォールバックは使われない。"""
+        mock_provider = AsyncMock()
+        mock_provider.model_name = "gpt-4o-mini"
+        mock_provider.generate_text.return_value = _make_valid_script_json()
 
-        with patch.object(g, "_try_model", new_callable=AsyncMock,
-                          return_value=_make_valid_gemini_response()):
-            result = await g._call_gemini_api("test prompt")
+        g = GeminiIntegration(api_key="real-key", llm_provider=mock_provider)
+        result = await g._call_gemini_api("test prompt")
 
         assert isinstance(result, GeminiResponse)
-        assert result.model == "gemini-2.5-flash"
+        assert result.model == "gpt-4o-mini"
+        assert g.fallback_used is False
 
 
 # ===================================================================

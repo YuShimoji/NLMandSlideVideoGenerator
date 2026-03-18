@@ -243,6 +243,66 @@ class TestCLIStats:
         assert "Diff" in captured.out
 
 
+class TestFallbackTracking:
+    """フォールバック可視化テスト (F-004)。"""
+
+    def test_record_fallback(self) -> None:
+        stats = PipelineStats()
+        stats.record_fallback("script: LLM API failed, used mock fallback")
+        assert len(stats.fallback_events) == 1
+        assert "mock" in stats.fallback_events[0]
+
+    def test_record_llm_provider(self) -> None:
+        stats = PipelineStats()
+        stats.record_llm_provider("gpt-4o-mini")
+        assert stats.llm_provider_used == "gpt-4o-mini"
+
+    def test_fallback_in_to_dict(self) -> None:
+        stats = PipelineStats()
+        stats.record_fallback("visual: 5/20 segments used TextSlide fallback")
+        stats.record_llm_provider("gemini-2.5-flash")
+        d = stats.to_dict()
+        assert d["fallback"]["events"] == ["visual: 5/20 segments used TextSlide fallback"]
+        assert d["fallback"]["llm_provider_used"] == "gemini-2.5-flash"
+        assert d["fallback"]["fallback_count"] == 1
+
+    def test_fallback_roundtrip(self, tmp_path: Path) -> None:
+        stats = PipelineStats()
+        stats.start_pipeline("fb_test", "test")
+        stats.record_fallback("script: mock")
+        stats.record_fallback("visual: TextSlide 3/10")
+        stats.record_llm_provider("mock")
+        stats.finalize()
+        stats.save(tmp_path)
+
+        loaded = PipelineStats.load(tmp_path)
+        assert loaded is not None
+        assert len(loaded.fallback_events) == 2
+        assert loaded.llm_provider_used == "mock"
+
+    def test_summary_with_fallback(self) -> None:
+        stats = PipelineStats()
+        stats.start_pipeline("warn_test", "topic")
+        stats.record_fallback("script: mock fallback")
+        stats.record_llm_provider("mock")
+        stats.total_duration = 10.0
+        stats.finalize()
+        summary = stats.summary()
+        assert "FALLBACK WARNING" in summary
+        assert "mock fallback" in summary
+        assert "LLM Provider: mock" in summary
+
+    def test_summary_no_fallback(self) -> None:
+        stats = PipelineStats()
+        stats.start_pipeline("ok_test", "topic")
+        stats.record_llm_provider("gpt-4o-mini")
+        stats.total_duration = 10.0
+        stats.finalize()
+        summary = stats.summary()
+        assert "FALLBACK WARNING" not in summary
+        assert "LLM Provider: gpt-4o-mini" in summary
+
+
 class TestSummary:
     def test_summary_output(self) -> None:
         stats = PipelineStats()

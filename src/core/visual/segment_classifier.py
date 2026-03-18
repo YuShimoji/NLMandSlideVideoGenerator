@@ -1,18 +1,21 @@
-"""セグメント分類器 (SP-033 Phase 2/2c)
+"""セグメント分類器 (SP-033 Phase 2/2c, SP-043 Phase 2-3 移行済み)
 
 台本セグメントを「visual (ストック画像候補)」と「textual (テキストスライド維持)」に分類する。
 
 方式:
 1. ヒューリスティクス (デフォルト): ルールベースのスコアリング
-2. Gemini (オプション): LLMによる分類 + 英語キーワード抽出の一括処理
+2. LLM (オプション): ILLMProvider による分類 + 英語キーワード抽出の一括処理
 """
 from __future__ import annotations
 
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from .models import SegmentType
+
+if TYPE_CHECKING:
+    from core.llm_provider import ILLMProvider
 
 
 # textual傾向を示すキーワード (section名・content内)
@@ -48,6 +51,7 @@ class SegmentClassifier:
         threshold: float = 0.5,
         visual_ratio_target: Optional[float] = None,
         use_gemini: bool = False,
+        llm_provider: Optional["ILLMProvider"] = None,
     ) -> None:
         """
         Args:
@@ -55,11 +59,13 @@ class SegmentClassifier:
             visual_ratio_target: 全体に占めるvisualセグメントの目標比率 (0.0~1.0)。
                 指定時、分類後にスコア順で調整して目標比率に近づける。
                 None の場合は閾値のみで判定。
-            use_gemini: True で Gemini API による分類を試行。失敗時はヒューリスティクスにフォールバック。
+            use_gemini: True で LLM API による分類を試行。失敗時はヒューリスティクスにフォールバック。
+            llm_provider: ILLMProvider インスタンス。指定時は use_gemini=True として扱う。
         """
         self.threshold = threshold
         self.visual_ratio_target = visual_ratio_target
-        self.use_gemini = use_gemini
+        self.use_gemini = use_gemini or (llm_provider is not None)
+        self._llm_provider = llm_provider
 
     def classify(self, segments: List[Dict[str, Any]]) -> List[SegmentType]:
         """セグメント群を分類する。
@@ -229,24 +235,50 @@ class SegmentClassifier:
 
         return result
 
-    def _classify_with_gemini(
-        self, segments: List[Dict[str, Any]]
-    ) -> Optional[List[SegmentType]]:
-        """Gemini APIでセグメントを分類する。
+    @staticmethod
+    def _run_async(coro):
+        """sync コンテキストから async コルーチンを実行するブリッジ。"""
+        import asyncio
+        try:
+            asyncio.get_running_loop()
+            # 既存イベントループ内 → 新スレッドで実行
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
+        except RuntimeError:
+            return asyncio.run(coro)
 
-        Returns:
-            分類結果リスト。API失敗時はNone (ヒューリスティクスにフォールバック)。
-        """
+    def _get_llm_provider(self) -> Optional["ILLMProvider"]:
+        """LLMプロバイダーを取得。注入済みならそれを、なければファクトリから生成。"""
+        if self._llm_provider is not None:
+            return self._llm_provider
+
+        # 後方互換: 環境変数 / settings から自動生成
         from config.settings import settings
-
         api_key = os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
         if not api_key:
             return None
 
         try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
+            from core.llm_provider import create_llm_provider
+            provider = create_llm_provider(api_key=api_key)
+            return provider
+        except Exception:
+            return None
 
+    def _classify_with_gemini(
+        self, segments: List[Dict[str, Any]]
+    ) -> Optional[List[SegmentType]]:
+        """LLM APIでセグメントを分類する。
+
+        Returns:
+            分類結果リスト。API失敗時はNone (ヒューリスティクスにフォールバック)。
+        """
+        provider = self._get_llm_provider()
+        if provider is None:
+            return None
+
+        try:
             # セグメント要約を作成 (トークン節約)
             summaries = []
             for i, seg in enumerate(segments):
@@ -267,12 +299,8 @@ class SegmentClassifier:
                 f"{batch}"
             )
 
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            raw_text = response.text or ""
-            text = raw_text.strip()
+            text = self._run_async(provider.generate_text(prompt))
+            text = (text or "").strip()
 
             types: List[SegmentType] = []
             for line in text.split("\n"):
@@ -294,21 +322,16 @@ class SegmentClassifier:
     def _extract_keywords_with_gemini(
         self, segments: List[Dict[str, Any]], topic: str = ""
     ) -> Optional[List[str]]:
-        """Gemini APIで各セグメントの英語検索キーワードを抽出する。
+        """LLM APIで各セグメントの英語検索キーワードを抽出する。
 
         Returns:
             英語キーワードリスト (セグメントと同じ長さ)。失敗時はNone。
         """
-        from config.settings import settings
-
-        api_key = os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
-        if not api_key:
+        provider = self._get_llm_provider()
+        if provider is None:
             return None
 
         try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
-
             summaries = []
             for i, seg in enumerate(segments):
                 content = seg.get("content", "") or seg.get("text", "")
@@ -325,12 +348,8 @@ class SegmentClassifier:
                 f"{batch}"
             )
 
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            raw_text = response.text or ""
-            text = raw_text.strip()
+            text = self._run_async(provider.generate_text(prompt))
+            text = (text or "").strip()
 
             keywords: List[str] = []
             for line in text.split("\n"):

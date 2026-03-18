@@ -397,20 +397,16 @@ class StockImageClient:
     def _translate_queries_to_english(self, queries: List[str]) -> List[str]:
         """日本語クエリ群を英語に一括翻訳する。
 
-        Gemini APIを使用。APIキー未設定や翻訳失敗時は元のクエリを返す。
+        ILLMProviderを使用。APIキー未設定や翻訳失敗時は元のクエリを返す。
         """
         japanese_indices = [i for i, q in enumerate(queries) if q and _JAPANESE_RE.search(q)]
         if not japanese_indices:
             return queries
 
-        api_key = os.getenv("GEMINI_API_KEY", "") or settings.GEMINI_API_KEY
-        if not api_key:
-            logger.debug("Gemini APIキー未設定: 日本語クエリをそのまま使用")
-            return queries
-
         try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
+            import asyncio
+            from core.llm_provider import create_llm_provider
+            provider = create_llm_provider()
 
             jp_queries = [queries[i] for i in japanese_indices]
             numbered = "\n".join(f"{i+1}. {q}" for i, q in enumerate(jp_queries))
@@ -422,12 +418,20 @@ class StockImageClient:
                 f"{numbered}"
             )
 
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            raw_text = response.text or ""
-            text = raw_text.strip()
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    text = pool.submit(
+                        asyncio.run, provider.generate_text(prompt)
+                    ).result(timeout=30)
+            else:
+                text = asyncio.run(provider.generate_text(prompt))
+            text = text.strip()
 
             result = list(queries)
             lines = [line.strip() for line in text.split("\n") if line.strip()]

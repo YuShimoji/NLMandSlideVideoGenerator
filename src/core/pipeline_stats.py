@@ -64,6 +64,10 @@ class PipelineStats:
     speaker_mapping_applied: bool = False
     style_preset: str = ""
 
+    # フォールバック追跡 (F-004)
+    fallback_events: List[str] = field(default_factory=list)
+    llm_provider_used: str = ""
+
     # 内部管理
     _timers: Dict[str, StepTimer] = field(default_factory=dict, repr=False)
     _pipeline_start: float = field(default=0.0, repr=False)
@@ -142,6 +146,14 @@ class PipelineStats:
         self.pre_export_errors = errors
         self.pre_export_warnings = warnings
 
+    def record_fallback(self, event: str) -> None:
+        """フォールバック発生を記録する。"""
+        self.fallback_events.append(event)
+
+    def record_llm_provider(self, provider: str) -> None:
+        """使用されたLLMプロバイダーを記録する。"""
+        self.llm_provider_used = provider
+
     def to_dict(self) -> Dict[str, Any]:
         """JSON シリアライズ用の辞書を返す。"""
         return {
@@ -175,6 +187,11 @@ class PipelineStats:
                 "pre_export_warnings": self.pre_export_warnings,
                 "speaker_mapping_applied": self.speaker_mapping_applied,
                 "style_preset": self.style_preset,
+            },
+            "fallback": {
+                "events": self.fallback_events,
+                "llm_provider_used": self.llm_provider_used,
+                "fallback_count": len(self.fallback_events),
             },
         }
 
@@ -226,6 +243,10 @@ class PipelineStats:
         stats.speaker_mapping_applied = consistency.get("speaker_mapping_applied", False)
         stats.style_preset = consistency.get("style_preset", "")
 
+        fallback = data.get("fallback", {})
+        stats.fallback_events = fallback.get("events", [])
+        stats.llm_provider_used = fallback.get("llm_provider_used", "")
+
         return stats
 
     def summary(self) -> str:
@@ -247,4 +268,10 @@ class PipelineStats:
             f"textslide={self.text_slide_count}, hit_rate={self.image_hit_rate:.0%}",
             f"  Quality: {self.pre_export_errors} errors, {self.pre_export_warnings} warnings",
         ])
+        if self.llm_provider_used:
+            lines.append(f"  LLM Provider: {self.llm_provider_used}")
+        if self.fallback_events:
+            lines.append(f"  !! FALLBACK WARNING: {len(self.fallback_events)} fallback(s) triggered:")
+            for event in self.fallback_events:
+                lines.append(f"    - {event}")
         return "\n".join(lines)

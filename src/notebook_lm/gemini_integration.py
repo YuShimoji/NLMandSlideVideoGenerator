@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Gemini API連携モジュール
-NotebookLMの代替としてGoogle AI Studio (Gemini API)を使用
+LLM連携スクリプト生成モジュール (SP-043 Phase 2-3 移行済み)
+
+ILLMProvider 抽象を通じて Gemini / OpenAI / Claude / DeepSeek を透過的に利用。
+後方互換: api_key のみ指定時は create_llm_provider() で自動生成。
 """
 import asyncio
 import json
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 from core.utils.logger import logger
+
+if TYPE_CHECKING:
+    from core.llm_provider import ILLMProvider
 
 @dataclass
 class GeminiResponse:
@@ -34,7 +39,7 @@ class ScriptInfo:
     created_at: datetime
 
 class GeminiIntegration:
-    """Gemini API連携クラス"""
+    """LLM連携スクリプト生成クラス (旧名 Gemini 固定、現在はマルチLLM対応)"""
 
     # モデルフォールバックチェーン (gemini-2.5-flash を全用途で使用)
     DEFAULT_MODELS = ["gemini-2.5-flash"]
@@ -42,7 +47,12 @@ class GeminiIntegration:
     # プリセットディレクトリのデフォルトパス
     PRESETS_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "script_presets"
 
-    def __init__(self, api_key: str, model_name: str | None = None):
+    def __init__(
+        self,
+        api_key: str = "",
+        model_name: str | None = None,
+        llm_provider: Optional["ILLMProvider"] = None,
+    ):
         self.api_key = api_key
         self.model_name: str = model_name or os.environ.get("GEMINI_MODEL") or self.DEFAULT_MODELS[0]
         self.fallback_models = [m for m in self.DEFAULT_MODELS if m != self.model_name]
@@ -50,6 +60,21 @@ class GeminiIntegration:
         self.request_count = 0
         self.max_requests_per_minute = 60
         self._presets_cache: Dict[str, Dict[str, Any]] = {}
+        self.fallback_used: bool = False
+        self.actual_provider: str = ""
+
+        # ILLMProvider: 外部注入 or api_key から自動生成
+        if llm_provider is not None:
+            self._llm_provider: Optional["ILLMProvider"] = llm_provider
+            self.model_name = llm_provider.model_name
+        elif api_key:
+            try:
+                from core.llm_provider import create_llm_provider
+                self._llm_provider = create_llm_provider(api_key=api_key)
+            except Exception:
+                self._llm_provider = None
+        else:
+            self._llm_provider = None
 
     def load_preset(self, style: str = "default") -> Dict[str, Any]:
         """スクリプトスタイルプリセットを読み込む (SP-036)"""
@@ -258,66 +283,49 @@ URL: {source.get('url', 'URL不明')}
 """
         return prompt
 
-    async def _try_model(self, model: str, prompt: str) -> GeminiResponse:
-        """指定モデルでAPI呼び出しを試行"""
-        from google import genai
-        client = genai.Client(api_key=self.api_key)
-        resp = await asyncio.to_thread(
-            client.models.generate_content,
-            model=model,
-            contents=prompt,
-        )
-        content_str = getattr(resp, "text", None)
-        if not content_str:
-            try:
-                to_dict = getattr(resp, "to_dict", None)
-                content_str = json.dumps(to_dict(), ensure_ascii=False) if to_dict else str(resp)
-            except Exception:
-                content_str = json.dumps({
-                    "title": "生成結果", "segments": [],
-                    "total_duration_estimate": 0, "language": "ja"
-                }, ensure_ascii=False)
+    async def _call_llm_provider(self, prompt: str) -> GeminiResponse:
+        """ILLMProvider 経由でテキスト生成を試行。"""
+        assert self._llm_provider is not None
+        text = await self._llm_provider.generate_text(prompt)
+        if not text:
+            raise RuntimeError("LLM provider returned empty response")
         self.request_count += 1
         return GeminiResponse(
-            content=content_str,
-            model=model,
+            content=text,
+            model=self._llm_provider.model_name,
             usage_metadata={},
             safety_ratings=[],
             created_at=datetime.now(),
         )
 
     async def _call_gemini_api(self, prompt: str) -> GeminiResponse:
-        """Gemini APIを呼び出し（モデルフォールバックチェーン付き）"""
+        """LLM API を呼び出し（プロバイダー抽象 + モックフォールバック）"""
         try:
             # レート制限チェック
             await self._check_rate_limit()
 
-            # 実API呼び出し（APIキーが設定されていれば試行）
-            if self.api_key:
-                models_to_try = [self.model_name] + self.fallback_models
-                last_error = None
-                for model in models_to_try:
-                    try:
-                        response = await self._try_model(model, prompt)
-                        if model != self.model_name:
-                            logger.info(f"フォールバックモデル {model} で生成成功")
-                        return response
-                    except ImportError as e:
-                        logger.warning(f"google-genai SDK未インストール: {e}")
-                        break  # SDK問題はモデル変更で解決しない
-                    except Exception as e:
-                        last_error = e
-                        err_str = str(e).lower()
-                        is_quota = "429" in err_str or "resource" in err_str and "exhaust" in err_str
-                        if is_quota and model != models_to_try[-1]:
-                            logger.warning(f"{model} クォータ超過、次のモデルへフォールバック: {e}")
-                            continue
-                        logger.warning(f"{model} API呼び出し失敗: {e}")
-                        break  # クォータ以外のエラーはフォールバック不要
-                if last_error:
-                    logger.warning(f"全モデル失敗、モックへフォールバック: {last_error}")
+            # ILLMProvider 経由の呼び出し
+            if self._llm_provider is not None:
+                try:
+                    response = await self._call_llm_provider(prompt)
+                    self.fallback_used = False
+                    self.actual_provider = self._llm_provider.model_name
+                    return response
+                except ImportError as e:
+                    logger.warning(f"LLM SDK未インストール: {e}")
+                    self.fallback_used = True
+                except Exception as e:
+                    err_str = str(e).lower()
+                    is_quota = "429" in err_str or ("resource" in err_str and "exhaust" in err_str)
+                    if is_quota:
+                        logger.warning(f"LLM クォータ超過、モックへフォールバック: {e}")
+                    else:
+                        logger.warning(f"LLM API呼び出し失敗、モックへフォールバック: {e}")
+                    self.fallback_used = True
 
             # モック実装（フォールバック）— Host1/Host2対話形式でYMM4 speaker_mapping互換
+            self.fallback_used = True
+            self.actual_provider = "mock"
             await asyncio.sleep(0.5)
             # プロンプトからトピック名を抽出
             import re
@@ -339,10 +347,10 @@ URL: {source.get('url', 'URL不明')}
         except asyncio.CancelledError:
             raise
         except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(f"Gemini API呼び出し失敗: {e}")
+            logger.error(f"LLM API呼び出し失敗: {e}")
             raise
         except Exception as e:
-            logger.error(f"Gemini API呼び出し失敗: {e}")
+            logger.error(f"LLM API呼び出し失敗: {e}")
             raise
 
     @staticmethod

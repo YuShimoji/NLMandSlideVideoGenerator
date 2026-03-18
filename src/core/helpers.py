@@ -68,13 +68,18 @@ def build_default_pipeline():
     platform_adapter: Optional[IPlatformAdapter] = None
     thumbnail_generator: Optional[IThumbnailGenerator] = None
 
-    if components.get("script_provider") == "gemini" and settings.GEMINI_API_KEY:
+    import os as _os
+    script_provider_type = components.get("script_provider", "")
+    has_llm_key = settings.GEMINI_API_KEY or _os.environ.get("LLM_API_KEY", "")
+    if script_provider_type == "llm" or (script_provider_type == "gemini" and has_llm_key):
         try:
             from .providers.script.gemini_provider import GeminiScriptProvider
-            script_provider = GeminiScriptProvider()
+            from .llm_provider import create_llm_provider
+            llm_provider = create_llm_provider()
+            script_provider = GeminiScriptProvider(llm_provider=llm_provider)
         except ValueError as err:
             logger.warning(f"GeminiScriptProviderの初期化に失敗しました: {err}")
-    elif components.get("script_provider") == "notebooklm":
+    elif script_provider_type == "notebooklm":
         try:
             from .providers.script.notebook_lm_provider import NotebookLMScriptProvider
             script_provider = NotebookLMScriptProvider()

@@ -323,6 +323,14 @@ async def run_pipeline(
             segments = script_bundle.get("segments", [])
             print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
 
+            # フォールバック追跡 (F-004)
+            if hasattr(provider, "client") and provider.client:
+                actual = getattr(provider.client, "actual_provider", "")
+                if isinstance(actual, str) and actual:
+                    stats.record_llm_provider(actual)
+                if getattr(provider.client, "fallback_used", False) is True:
+                    stats.record_fallback("script: LLM API failed, used mock fallback")
+
             with open(script_path, "w", encoding="utf-8") as handle:
                 json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
 
@@ -459,6 +467,14 @@ async def run_pipeline(
                     ai=ai_count,
                     text_slide=gen_count,
                 )
+
+                # フォールバック追跡 (F-004)
+                total_vis = stock_count + ai_count + slide_count + gen_count
+                if total_vis > 0:
+                    if gen_count > 0:
+                        stats.record_fallback(f"visual: {gen_count}/{total_vis} segments used TextSlide fallback")
+                    if none_count > 0:
+                        stats.record_fallback(f"visual: {none_count} segments have no visual resource")
 
                 # クレジットファイル生成 (動画概要欄用)
                 if stock_count > 0 and orchestrator.last_stock_images:
@@ -707,6 +723,48 @@ async def run_pipeline(
         except Exception as e:
             print("\n=== Thumbnail Generation Skipped ===")
             print(f"  {e}")
+
+    # --- Post-pipeline: Metadata + Credits (SP-038 + F-006) ---
+    metadata_path = work_dir / "metadata.json"
+    if not metadata_path.exists() and script_bundle:
+        try:
+            from youtube.metadata_generator import MetadataGenerator
+
+            meta_gen = MetadataGenerator()
+
+            # クレジット読み込み
+            credits_lines: list[str] = []
+            credits_file = work_dir / "image_credits.txt"
+            if credits_file.exists():
+                raw = credits_file.read_text(encoding="utf-8").strip()
+                credits_lines = [line.strip() for line in raw.splitlines() if line.strip()]
+
+            metadata = await meta_gen.generate_metadata_from_bundle(
+                script_bundle,
+                topic=topic,
+                credits=credits_lines or None,
+            )
+
+            # JSON化できない値を除去 (テスト環境のAsyncMock等)
+            def _sanitize(obj: Any) -> Any:
+                if isinstance(obj, dict):
+                    return {k: _sanitize(v) for k, v in obj.items()}
+                if isinstance(obj, list):
+                    return [_sanitize(v) for v in obj]
+                if isinstance(obj, (str, int, float, bool)) or obj is None:
+                    return obj
+                return str(obj)
+
+            with open(metadata_path, "w", encoding="utf-8") as mf:
+                json.dump(_sanitize(metadata), mf, ensure_ascii=False, indent=2)
+
+            print("\n=== Metadata Generated (SP-038 + F-006) ===")
+            print(f"  Title: {metadata.get('title', '(none)')}")
+            if credits_lines:
+                print(f"  Credits: {len(credits_lines)} image credit(s) appended to description")
+            print(f"  {metadata_path}")
+        except Exception as e:
+            print(f"\n=== Metadata Generation Skipped: {e} ===")
 
     # --- SP-042: 統計ファイナライズ + 保存 ---
     stats.speaker_mapping_applied = speaker_mapping is not None and len(speaker_mapping) > 0
