@@ -173,11 +173,11 @@
   {
     "id": "SP-020",
     "title": "YMM4 Template Diff Guide",
-    "status": "done",
-    "pct": 80,
+    "status": "superseded",
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_template_diff_guide.md",
-    "summary": "YMM4テンプレートカスタマイズ (字幕スタイル、背景色、話者設定)"
+    "summary": "SP-031に統合。speaker_name_colors+background+audioをstyle_template.jsonに吸収。ymm4_template_diff.jsonは後方互換で残存"
   },
   {
     "id": "SP-021",

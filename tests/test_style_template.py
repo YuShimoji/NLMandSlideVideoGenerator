@@ -296,3 +296,74 @@ class TestRealTemplates:
             assert template is not None
             assert template.bgm, f"Template '{name}' is missing bgm section"
             assert "volume_percent" in template.bgm
+
+
+class TestSpeakerNameColors:
+    """SP-020→SP-031統合: 話者名ベースの色マッピングテスト。"""
+
+    def test_name_match_takes_priority(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF", "#FFFF64"],
+            speaker_name_colors={"Alice": "#FF0000", "Bob": "#00FF00"},
+            subtitle={}, animation={}, timing={},
+        )
+        assert t.get_speaker_color(0, "Alice") == "#FF0000"
+        assert t.get_speaker_color(1, "Bob") == "#00FF00"
+
+    def test_fallback_to_index_when_name_not_found(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF", "#FFFF64"],
+            speaker_name_colors={"Alice": "#FF0000"},
+            subtitle={}, animation={}, timing={},
+        )
+        assert t.get_speaker_color(0, "Unknown") == "#FFFFFF"
+
+    def test_default_key_in_name_colors(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF"],
+            speaker_name_colors={"Alice": "#FF0000", "default": "#AAAAAA"},
+            subtitle={}, animation={}, timing={},
+        )
+        assert t.get_speaker_color(0, "Unknown") == "#AAAAAA"
+
+    def test_empty_speaker_falls_back_to_index(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF", "#FFFF64"],
+            speaker_name_colors={"Alice": "#FF0000"},
+            subtitle={}, animation={}, timing={},
+        )
+        assert t.get_speaker_color(0, "") == "#FFFFFF"
+
+    def test_no_name_colors_uses_index_only(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF", "#FFFF64"],
+            subtitle={}, animation={}, timing={},
+        )
+        assert t.get_speaker_color(0, "Alice") == "#FFFFFF"
+        assert t.get_speaker_color(1, "Bob") == "#FFFF64"
+
+    def test_name_colors_loaded_from_json(self, tmp_path: Path) -> None:
+        data = _valid_template_data("name_color_test")
+        data["speaker_name_colors"] = {"Host": "#112233", "Guest": "#445566"}
+        _write_template(tmp_path / "style_template_nc.json", data)
+        mgr = StyleTemplateManager(config_dir=tmp_path)
+        t = mgr.load_file(tmp_path / "style_template_nc.json")
+        assert t is not None
+        assert t.speaker_name_colors == {"Host": "#112233", "Guest": "#445566"}
+        assert t.get_speaker_color(0, "Host") == "#112233"
+
+    def test_name_colors_in_to_dict(self) -> None:
+        t = StyleTemplate(
+            name="test",
+            speaker_colors=["#FFFFFF"],
+            speaker_name_colors={"Alice": "#FF0000"},
+            subtitle={}, animation={}, timing={},
+        )
+        d = t.to_dict()
+        assert "speaker_name_colors" in d
+        assert d["speaker_name_colors"]["Alice"] == "#FF0000"

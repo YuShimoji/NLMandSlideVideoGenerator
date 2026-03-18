@@ -27,16 +27,24 @@ class StyleTemplate:
     video: Dict[str, Any] = field(default_factory=dict)
     subtitle: Dict[str, Any] = field(default_factory=dict)
     speaker_colors: List[str] = field(default_factory=list)
+    speaker_name_colors: Dict[str, str] = field(default_factory=dict)
     animation: Dict[str, Any] = field(default_factory=dict)
     bgm: Dict[str, Any] = field(default_factory=dict)
     crossfade: Dict[str, Any] = field(default_factory=dict)
     timing: Dict[str, Any] = field(default_factory=dict)
     thumbnail: Dict[str, Any] = field(default_factory=dict)
     validation: Dict[str, Any] = field(default_factory=dict)
+    background: Dict[str, Any] = field(default_factory=dict)
     raw: Dict[str, Any] = field(default_factory=dict)
 
-    def get_speaker_color(self, index: int) -> str:
-        """話者インデックスに対応する色を返す (サイクル方式)。"""
+    def get_speaker_color(self, index: int, speaker: str = "") -> str:
+        """話者に対応する色を返す。名前マッチ優先、フォールバックでインデックス循環。"""
+        if speaker and self.speaker_name_colors:
+            if speaker in self.speaker_name_colors:
+                return self.speaker_name_colors[speaker]
+            default = self.speaker_name_colors.get("default")
+            if default:
+                return default
         if not self.speaker_colors:
             return "#FFFFFF"
         return self.speaker_colors[index % len(self.speaker_colors)]
@@ -48,6 +56,7 @@ class StyleTemplate:
             "metadata": {"name": self.name, "description": self.description},
             "subtitle": self.subtitle,
             "speaker_colors": self.speaker_colors,
+            "speaker_name_colors": self.speaker_name_colors,
             "animation": self.animation,
             "timing": self.timing,
             "validation": self.validation,
@@ -137,12 +146,14 @@ class StyleTemplateManager:
             video=data.get("video", {}),
             subtitle=data.get("subtitle", {}),
             speaker_colors=data.get("speaker_colors", []),
+            speaker_name_colors=data.get("speaker_name_colors", {}),
             animation=data.get("animation", {}),
             bgm=data.get("bgm", {}),
             crossfade=data.get("crossfade", {}),
             timing=data.get("timing", {}),
             thumbnail=data.get("thumbnail", {}),
             validation=data.get("validation", {}),
+            background=data.get("background", {}),
             raw=data,
         )
 
