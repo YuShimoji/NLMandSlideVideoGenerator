@@ -11,6 +11,8 @@ from core.visual.text_slide_generator import (
     LAYOUT_STATS,
     EMPHASIS_CONTENT_MAX_LEN,
     TWOCOLUMN_MIN_KEYPOINTS,
+    _PRESET_THEME_MAP,
+    _PRESET_LAYOUT_PRIORITY,
 )
 
 
@@ -419,3 +421,56 @@ class TestStatsLayout:
         seg = {"section": "参加者", "content": "累計1,200,000人が参加"}
         path = gen.generate(seg, index=404)
         assert path.exists()
+
+
+class TestStylePresetIntegration:
+    """SP-041 Phase 3: スタイルプリセット連携テスト。"""
+
+    def test_news_preset_favors_stats_layout(self) -> None:
+        content = "市場は前年比30%増、売上1,000億円を突破"
+        layout = TextSlideGenerator._select_layout(content, [], style_preset="news")
+        assert layout == LAYOUT_STATS
+
+    def test_educational_preset_favors_twocolumn(self) -> None:
+        kps = ["ポイント1", "ポイント2", "ポイント3", "ポイント4"]
+        layout = TextSlideGenerator._select_layout("内容", kps, style_preset="educational")
+        assert layout == LAYOUT_TWOCOLUMN
+
+    def test_summary_preset_favors_emphasis(self) -> None:
+        content = "短いまとめ"
+        layout = TextSlideGenerator._select_layout(content, [], style_preset="summary")
+        assert layout == LAYOUT_EMPHASIS
+
+    def test_news_preset_falls_back_to_standard(self) -> None:
+        content = "普通の長さのニュース記事で数値なし。" * 3
+        layout = TextSlideGenerator._select_layout(content, [], style_preset="news")
+        assert layout == LAYOUT_STANDARD
+
+    def test_no_preset_uses_default_priority(self) -> None:
+        content = "市場は前年比30%増"
+        layout = TextSlideGenerator._select_layout(content, [], style_preset=None)
+        assert layout == LAYOUT_STATS
+
+    def test_unknown_preset_uses_default_priority(self) -> None:
+        content = "短い"
+        layout = TextSlideGenerator._select_layout(content, [], style_preset="unknown_preset")
+        assert layout == LAYOUT_EMPHASIS
+
+    def test_preset_theme_map_has_expected_entries(self) -> None:
+        assert "news" in _PRESET_THEME_MAP
+        assert "educational" in _PRESET_THEME_MAP
+        assert "summary" in _PRESET_THEME_MAP
+        assert _PRESET_THEME_MAP["news"] == "blue"
+        assert _PRESET_THEME_MAP["educational"] == "green"
+        assert _PRESET_THEME_MAP["summary"] == "warm"
+
+    def test_constructor_accepts_style_preset(self, tmp_path: Path) -> None:
+        gen = TextSlideGenerator(output_dir=tmp_path, style_preset="news")
+        assert gen.style_preset == "news"
+
+    def test_preset_generates_png(self, tmp_path: Path) -> None:
+        gen = TextSlideGenerator(output_dir=tmp_path, style_preset="educational")
+        seg = {"section": "学習", "content": "これは教育用スライド", "key_points": ["a", "b"]}
+        path = gen.generate(seg, index=500)
+        assert path.exists()
+        assert path.suffix == ".png"

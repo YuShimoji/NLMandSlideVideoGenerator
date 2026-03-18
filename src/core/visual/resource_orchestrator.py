@@ -60,6 +60,7 @@ class VisualResourceOrchestrator:
         self.ai_provider = ai_provider
         self.topic = topic
         self.work_dir = work_dir
+        self.style_preset: Optional[str] = None  # SP-041 Phase 3
         self.last_stock_images: list = []  # クレジット生成用
 
     def orchestrate(
@@ -332,7 +333,7 @@ class VisualResourceOrchestrator:
         from .text_slide_generator import TextSlideGenerator
 
         gen_dir = self.work_dir / "generated_slides"
-        generator = TextSlideGenerator(output_dir=gen_dir)
+        generator = TextSlideGenerator(output_dir=gen_dir, style_preset=self.style_preset)
 
         target_segments = [segments[i] for i in none_indices]
 

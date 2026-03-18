@@ -58,6 +58,22 @@ LAYOUT_EMPHASIS = "emphasis"
 LAYOUT_TWOCOLUMN = "twocolumn"
 LAYOUT_STATS = "stats"
 
+# SP-041 Phase 3: スタイルプリセット→テーママッピング
+_PRESET_THEME_MAP: Dict[str, str] = {
+    "news": "blue",
+    "educational": "green",
+    "summary": "warm",
+    "default": "dark",
+}
+
+# SP-041 Phase 3: スタイルプリセット→レイアウト優先度オーバーライド
+# 値はレイアウト名のリスト (優先順)。条件を満たす最初のレイアウトが選択される。
+_PRESET_LAYOUT_PRIORITY: Dict[str, List[str]] = {
+    "news": [LAYOUT_STATS, LAYOUT_TWOCOLUMN, LAYOUT_STANDARD],
+    "educational": [LAYOUT_TWOCOLUMN, LAYOUT_STANDARD, LAYOUT_EMPHASIS],
+    "summary": [LAYOUT_EMPHASIS, LAYOUT_STANDARD, LAYOUT_TWOCOLUMN],
+}
+
 # 日本語フォント候補 (Windows → Linux → macOS)
 _JP_FONT_CANDIDATES = [
     "C:/Windows/Fonts/meiryo.ttc",       # Windows: メイリオ
@@ -97,6 +113,7 @@ class TextSlideGenerator:
         theme: Optional[Dict[str, Any]] = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
+        style_preset: Optional[str] = None,
     ) -> None:
         """
         Args:
@@ -105,14 +122,17 @@ class TextSlideGenerator:
                 None の場合は settings から取得。
             width: スライド幅 (px)。
             height: スライド高さ (px)。
+            style_preset: SP-036 スタイルプリセット名 (news/educational/summary)。
+                指定時、テーマとレイアウト優先度を自動調整する。
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.width = width
         self.height = height
+        self.style_preset = style_preset
 
         if theme is None:
-            theme = self._load_default_theme()
+            theme = self._resolve_theme(style_preset)
         self.theme = theme
 
         # フォントキャッシュ
@@ -138,6 +158,25 @@ class TextSlideGenerator:
                 "label_color": (120, 120, 130),
                 "accent_color": (100, 150, 255),
             }
+
+    @staticmethod
+    def _resolve_theme(style_preset: Optional[str] = None) -> Dict[str, Any]:
+        """スタイルプリセットに応じたテーマを解決する (SP-041 Phase 3)。"""
+        try:
+            from config.settings import settings
+            themes = settings.PLACEHOLDER_THEMES
+        except ImportError:
+            return TextSlideGenerator._load_default_theme()
+
+        if style_preset and style_preset in _PRESET_THEME_MAP:
+            theme_name = _PRESET_THEME_MAP[style_preset]
+        else:
+            try:
+                theme_name = settings.PLACEHOLDER_THEME
+            except AttributeError:
+                theme_name = "dark"
+
+        return themes.get(theme_name, themes.get("dark", {}))  # type: ignore[no-any-return]
 
     def generate(self, segment: Dict[str, Any], index: int = 0) -> Path:
         """1セグメントからテキストスライドPNGを生成する。
@@ -192,20 +231,41 @@ class TextSlideGenerator:
         return paths
 
     @staticmethod
-    def _select_layout(content: str, key_points: List[str]) -> str:
+    def _select_layout(
+        content: str,
+        key_points: List[str],
+        style_preset: Optional[str] = None,
+    ) -> str:
         """セグメント内容に応じてレイアウトを選択する。
 
-        優先順:
+        style_preset が指定されている場合、プリセット固有の優先順を使用する。
+        指定がない場合のデフォルト優先順:
         1. key_points >= 4 → TwoColumn
         2. 数値パターン検出 (key_points なし) → Stats
         3. key_points なし + content が短い (< 60文字) → Emphasis
         4. それ以外 → Standard
         """
-        if len(key_points) >= TWOCOLUMN_MIN_KEYPOINTS:
+        # レイアウト適格性判定
+        eligible: Dict[str, bool] = {
+            LAYOUT_TWOCOLUMN: len(key_points) >= TWOCOLUMN_MIN_KEYPOINTS,
+            LAYOUT_STATS: bool(not key_points and content and _STATS_PATTERN.search(content)),
+            LAYOUT_EMPHASIS: bool(not key_points and len(content) < EMPHASIS_CONTENT_MAX_LEN),
+            LAYOUT_STANDARD: True,
+        }
+
+        # プリセット固有の優先順がある場合はそれに従う
+        if style_preset and style_preset in _PRESET_LAYOUT_PRIORITY:
+            for layout in _PRESET_LAYOUT_PRIORITY[style_preset]:
+                if eligible.get(layout, False):
+                    return layout
+            return LAYOUT_STANDARD
+
+        # デフォルト優先順
+        if eligible[LAYOUT_TWOCOLUMN]:
             return LAYOUT_TWOCOLUMN
-        if not key_points and content and _STATS_PATTERN.search(content):
+        if eligible[LAYOUT_STATS]:
             return LAYOUT_STATS
-        if not key_points and len(content) < EMPHASIS_CONTENT_MAX_LEN:
+        if eligible[LAYOUT_EMPHASIS]:
             return LAYOUT_EMPHASIS
         return LAYOUT_STANDARD
 
@@ -244,7 +304,7 @@ class TextSlideGenerator:
         # グラデーション背景 (SP-041)
         self._draw_gradient_background(image)
 
-        layout = self._select_layout(content, key_points)
+        layout = self._select_layout(content, key_points, self.style_preset)
 
         if layout == LAYOUT_EMPHASIS:
             return self._render_emphasis(image, section, content, speaker)
