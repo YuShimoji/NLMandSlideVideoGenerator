@@ -7,7 +7,7 @@
 
 ## 前提条件
 
-- [x] Python 1182 テスト PASS
+- [x] Python 1258 テスト PASS
 - [x] SP-035 preflight 36 PASS / 0 FAIL
 - [x] SP-038 upload テスト 45 PASS (mock モード)
 - [x] API キー設定済み: GEMINI, PEXELS, PIXABAY

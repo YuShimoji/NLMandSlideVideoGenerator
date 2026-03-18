@@ -11,13 +11,13 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
   - 全45仕様。43 done + 1 partial (SP-035) + 1 draft (SP-045) + 1 archived + 1 superseded
   - session 12 の成果:
     - [nightshift] 仕様書同期8件 (Imagen 4, pct→100%, ガイド全面更新, INDEX拡充)
-    - [nightshift] 数値同期 (テスト1050→1182), backlog整合, HANDOVER更新
+    - [nightshift] 数値同期 (テスト1050→1258), backlog整合, HANDOVER更新
     - [REFRESH] Drift check: ドキュメント偏重→体験逆算に方向転換
     - [REFRESH] SP-045 初回YouTube公開チェックリスト作成 (draft)
     - [REFRESH] SP-035 preflight 36 PASS/0 FAIL, SP-038 upload 45テスト全緑
     - [REFRESH] SP-043仕様同期 (Phase 4完了反映), pages.py.backup削除
     - [REFRESH] task-scout深層探索: TikTok方針未決定/style_template仕様欠落/IPublishingQueue空実装 発見
-  - テスト: 1182 passed, 3 skipped
+  - テスト: 1258 passed, 0 failed
   - 残 partial: SP-035 YMM4実機テスト (60%) — preflight済み、YMM4手動テスト待ち
   - 残 手動作業: SP-038 本番OAuth取得 + 実チャンネルテスト
   - 次のスライス: SP-045 初回YouTube公開 (OAuth→YMM4実機→upload→公開確認)

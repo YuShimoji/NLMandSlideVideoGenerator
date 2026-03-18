@@ -31,7 +31,7 @@ Audience: All Agents
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
 | Path B完全削除 | DONE | 15ファイル削除、7ファイル修正、コード・テスト・API・Web UI全削除 (2026-03-08) |
-| Python tests | 1182 passed / 3 skipped | カバレッジ84%+ (全体)。43/44仕様done。SP-035 partial(60%) |
+| Python tests | 1258 passed / 0 failed | カバレッジ84%+ (全体)。43/44仕様done。SP-035 partial(60%) |
 | .NET tests | 34 passed / 0 failed | Core分離後 |
 
 ## Consistency Audit

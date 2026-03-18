@@ -6,18 +6,18 @@ Type: Session Handover (session 12)
 
 ## Current Status
 
-45仕様中43 done + 1 partial (SP-035) + 1 draft (SP-045)。テスト 1182 passed。
+45仕様中43 done + 1 partial (SP-035) + 1 draft (SP-045)。テスト 1258 passed。
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
 | 仕様書同期 | DONE | 8件 pct→100%、Imagen 4移行、ガイド全面更新、INDEX拡充 |
-| 数値同期 | DONE | テスト数1050→1182、backlog整合 |
+| 数値同期 | DONE | テスト数1050→1258、backlog整合 |
 | SP-043 仕様同期 | DONE | Phase 4完了を spec ファイルに反映。pages.py.backup 削除 |
 | SP-045 チェックリスト | DRAFT | 初回YouTube公開の通しチェックリスト (Phase A/B/C全ステップ) |
 | SP-035 preflight | PASS | 36 PASS / 5 WARN / 0 FAIL。Python側準備完了 |
 | SP-038 upload テスト | PASS | 45テスト全緑 (mockモード)。OAuth未取得 |
 | task-scout | DONE | TikTok方針未決定/style_template仕様欠落/IPublishingQueue空実装 を発見 |
-| テスト | 1182 passed, 3 skipped | 全緑 |
+| テスト | 1258 passed, 0 failed | 全緑 |
 
 ## Current Slice
 
