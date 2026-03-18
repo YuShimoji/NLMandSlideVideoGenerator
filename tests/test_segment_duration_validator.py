@@ -1,4 +1,6 @@
 """セグメント粒度制御テスト (SP-044)"""
+import json
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -223,7 +225,7 @@ class TestAdjustSegments:
             {"speaker": "Host2", "content": "追加セグメント2の内容テキスト", "section": "補足", "key_points": ["追加2"]},
         ])
 
-        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+        with patch("core.llm_provider.create_llm_provider", return_value=mock_provider):
             result = await _expand_segments(segs, validation, "テストトピック", None)
 
         assert len(result) == 3  # 元1 + 追加2
@@ -241,7 +243,7 @@ class TestAdjustSegments:
             suggestion="add_segments",
         )
 
-        with patch("core.segment_duration_validator.create_llm_provider", side_effect=ImportError("no provider")):
+        with patch("core.llm_provider.create_llm_provider", side_effect=ImportError("no provider")):
             result = await _expand_segments(segs, validation, "topic", None)
 
         assert result is segs
@@ -259,7 +261,7 @@ class TestAdjustSegments:
         mock_provider = AsyncMock()
         mock_provider.generate_text.return_value = "not valid json at all"
 
-        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+        with patch("core.llm_provider.create_llm_provider", return_value=mock_provider):
             result = await _expand_segments(segs, validation, "topic", None)
 
         assert result is segs
@@ -277,7 +279,7 @@ class TestAdjustSegments:
         mock_provider = AsyncMock()
         mock_provider.generate_text.return_value = '{"not": "a list"}'
 
-        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+        with patch("core.llm_provider.create_llm_provider", return_value=mock_provider):
             result = await _expand_segments(segs, validation, "topic", None)
 
         assert result is segs

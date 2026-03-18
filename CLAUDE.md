@@ -7,17 +7,16 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 8):
+直近の状態 (2026-03-18 session 9 nightshift):
   - 全44仕様。40 done + 4 partial (SP-035/038/043/044) + 0 draft + 1 archived
-  - session 8の成果:
-    - 体験逆算: 摩擦インベントリ作成 (docs/friction_inventory.md) — 9件の摩擦特定・分類
-    - F-004: フォールバック可視化 (PipelineStats fallback_events + FALLBACK WARNING)
-    - F-006: クレジット自動統合 (パイプライン→metadata.json自動生成 + image_credits統合)
-    - SP-043 Phase 2: script_alignment + stock_image_client → ILLMProvider移行
-    - SP-044 Phase 1-2: セグメント粒度制御 (推定尺計算+検証+自動調整) — 25テスト
-    - テスト更新: 旧_try_modelテスト撤去 → ILLMProvider対応テストに書換え
-  - テスト: ~1105 passed
-  - 残: SP-035 YMM4実機テスト(60%), SP-038 Phase3(YouTube API/65%), SP-043 Phase4(85%), SP-044(90%)
+  - session 9の成果:
+    - SP-038 Phase 3: YouTube Data API v3 resumable upload実装 (65%→90%)
+      - uploader.py全面書き換え: 実API + モックフォールバック二重構成
+      - GoogleAuthHelper統合 + youtube.upload/youtube.readonlyスコープ追加
+      - CLI uploadサブコマンド (research_cli.py)
+      - テスト: 19→41件 (Phase 3: auth/upload/validation/status/batch/JSON)
+  - テスト: 1152 passed, 3 skipped, 0 failed
+  - 残: SP-035 YMM4実機テスト(60%), SP-038 本番OAuth(90%), SP-043 Phase4(85%), SP-044(90%)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
