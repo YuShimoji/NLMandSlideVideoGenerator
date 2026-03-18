@@ -8,13 +8,13 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
 直近の状態 (2026-03-18):
-  - 全40仕様。37 done + 1 partial (SP-035/039) + 1 draft (SP-038) + 1 archived
-  - SP-040 Phase 3完了: Streamlit バッチ制作キューWeb UI (topics.jsonアップロード/手動作成/実行/結果閲覧)
+  - 全40仕様。34 done + 5 partial (SP-035/037/038/039/040) + 1 archived
+  - SP-038 Phase 1-2完了(65%): ScriptBundle→TranscriptInfo変換 + メタデータJSON出力 + クレジット自動挿入
   - E2Eフィードバックループ確立: Brave実ソース + Gemini台本 + Pexels画像 + サムネイル自動生成
   - Brave Search API 移行完了。Custom Search JSON API廃止対応
   - Gemini 2.5-flash一本化。Imagen 4有料プラン必須(stock+TextSlideで代替)
-  - テスト: 987+ passed, 3 skipped
-  - 残: SP-035 YMM4実機テスト(50%), SP-038 YouTube連携(draft/0%), SP-039 Phase2(80%, SP-038依存)
+  - テスト: 1094 passed, 1 skipped
+  - 残: SP-035 YMM4実機テスト, SP-038 Phase3(YouTube API本番/HUMAN_AUTHORITY), SP-039 Phase2
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |

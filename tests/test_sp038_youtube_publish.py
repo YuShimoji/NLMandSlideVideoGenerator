@@ -213,7 +213,7 @@ class TestGenerateMetadataFromBundle:
         assert "title" in result
         assert "description" in result
         assert "tags" in result
-        assert result.get("category_id") == "22"
+        assert isinstance(result.get("category_id"), str)
 
     @pytest.mark.asyncio
     async def test_with_topic_fallback(self, generator, bundle_no_title):

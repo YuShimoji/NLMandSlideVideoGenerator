@@ -335,11 +335,11 @@
   {
     "id": "SP-038",
     "title": "YouTube Publish Pipeline",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 65,
     "cat": "pipeline",
     "file": "docs/specs/youtube_publish_pipeline.md",
-    "summary": "MetadataGenerator+YouTubeUploaderをパイプラインに統合。ScriptBundle→メタデータ自動生成→MP4アップロード→説明欄クレジット自動挿入の一気通貫。YouTubeUploader本番API実装"
+    "summary": "Phase 1-2完了: ScriptBundle→TranscriptInfo変換アダプタ + generate_metadata_from_bundle + パイプラインメタデータJSON出力(generate_metadata=True) + クレジット自動挿入(append_credits)。19テストPASS。Phase 3(YouTube API本番実装)未着手"
   },
   {
     "id": "SP-039",
