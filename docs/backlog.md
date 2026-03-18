@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-18
+最終更新: 2026-03-18 (session 8)
 
 ---
 
@@ -22,21 +22,24 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | NLMSlidePlugin CSVインポート | 完成 | CsvImportDialog + Ymm4TimelineImporter |
 | Voice自動生成 UI接続 (SP-024) | 完成 | VoiceSpeakerDiscovery + CsvImportDialog |
 | ImageItem自動配置 (SP-026) | 完成 | CSV 3列目に画像パス指定 |
-| アニメーション8種 (SP-033 Phase 1 + SP-004 pan_down) | 完成 | Values in-place方式、YMM4実機テストPASS (2026-03-16、pan_down追加 2026-03-17) |
-| Baseline E2E (SP-027) | 完成 | CSV→YMM4→mp4 全工程完走確認 (2026-03-16) |
+| アニメーション8種 (SP-033 Phase 1 + SP-004 pan_down) | 完成 | Values in-place方式、YMM4実機テストPASS |
+| Baseline E2E (SP-027) | 完成 | CSV→YMM4→mp4 全工程完走確認 |
 | Post-Voice Timeline Resync (SP-028) | 完成 | WavDurationReader+VoiceLength同期実装済み |
 | トランジション+字幕テンプレート (SP-030) | 完成 | FadeIn/FadeOut 0.5秒+Border/Bold/CenterBottom/話者色分け6色 |
 | CsvAssembler (SP-032 Phase A-D) | 完成 | 台本→CSV一気通貫 + CLI + Streamlit UI |
-| 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 + --auto-images + --duration (scripts/research_cli.py) |
+| 研究ワークフロー CLI | 完成 | collect→align→review→CSV + pipeline一気通貫 + --auto-images + --duration |
 | Gemini SDK移行 | 完成 | google-generativeai → google-genai |
 | 字幕生成 (SRT/ASS/VTT) | 完成 | |
 | 長文自動分割 | 完成 | |
 | サムネイル自動生成 | 完成 | |
 | メタデータ自動生成 | 完成 | |
-| SP-036 Script Style Presets | 完成 | 4プリセットJSON + CLI --style + Web UIドロップダウン。42テストPASS (2026-03-18) |
-| Brave Search API 移行 | 完成 | Google Custom Search → Brave Search。独自インデックス+無料枠 (2026-03-18) |
-| Gemini 2.5-flash 一本化 | 完成 | 旧2.0-flash依存を全廃。単一モデルで品質統一 (2026-03-18) |
-| SP-037 Thumbnail Phase 1+2 | 完成 | Phase 1: パイプライン統合+CJKフォント。Phase 2: スタイルプリセット連携+CLI --generate-thumbnail (2026-03-18) |
+| SP-036 Script Style Presets | 完成 | 4プリセットJSON + CLI --style + Web UIドロップダウン |
+| Brave Search API 移行 | 完成 | Google Custom Search → Brave Search |
+| Gemini 2.5-flash 一本化 | 完成 | 旧2.0-flash依存を全廃 |
+| SP-037 Thumbnail Phase 1+2 | 完成 | パイプライン統合+CJKフォント+スタイルプリセット連携 |
+| SP-043 Multi-LLM Provider Phase 1-3 | 完成 | ILLMProvider抽象化 + 5プロバイダー + 既存コード全移行 |
+| F-004 フォールバック可視化 | 完成 | PipelineStats fallback_events + FALLBACK WARNING |
+| F-006 クレジット自動統合 | 完成 | パイプライン→metadata.json + image_credits自動統合 |
 
 ---
 
@@ -50,15 +53,13 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
-| サムネイル | SP-037 完了 | -- | SP-037 (100%) | Phase 1+2完了。スタイルプリセット連携+CLI --generate-thumbnail |
-| バッチ制作 | SP-040 完了 | -- | SP-040 (100%) | Batch Production Queue done |
-| MP4品質検証 | SP-039 FFprobe自動チェック + YouTube連携 | 中 | SP-039 (80%) | Phase 1完了 (17テスト)。Phase 2 (SP-038連携) 後送り |
-| 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (50%) | チェックリスト整備済み。YMM4環境で実施待ち |
-| YouTube公開 | SP-038 メタデータ生成→アップロードの一気通貫接続 | 中 | SP-038 (draft) | MetadataGenerator, YouTubeUploader個別実装済み。OAuth未整備 |
-| セグメント粒度調整 | 目標尺に対するセグメント数の自動調整 (過少→追加生成、過多→圧縮) | 中 | なし | 体験逆算で発見。30分指定で29seg生成だが尺チェックなし。再実行削減に寄与 |
-| クレジット自動挿入 | ストック画像のPexels/PixabayクレジットをYouTube説明欄に自動追記 | 低 | なし | StockImageClientでcredit情報は取得済み。ライセンス準拠 |
+| MP4品質検証 | SP-039 FFprobe自動チェック + YouTube連携 | 中 | SP-039 (80%) | Phase 1完了。Phase 2 (SP-038連携) 後送り |
+| 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (60%) | チェックリスト整備済み+pre-flight自動チェック。YMM4環境で実施待ち |
+| YouTube公開 | SP-038 メタデータ生成→アップロードの一気通貫接続 | 中 | SP-038 (65%) | Phase 1-2完了。Phase 3 (OAuth+YouTube API) 未着手 |
+| Multi-LLM | SP-043 Phase 4: 設定UI + 実APIキー統合テスト | 低 | SP-043 (85%) | Phase 1-3完了。Phase 4は実運用開始後に必要に応じて |
+| セグメント粒度 | SP-044 残: 実運用での調整精度検証 | 低 | SP-044 (90%) | Phase 1-2完了 (検証+自動調整)。実動画での精度評価が残 |
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
-| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪。Inoreader API or 直接RSS/Atomパース |
+| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
 
 ---
@@ -67,21 +68,38 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ### 短期 (~1週): partial SP を done に
 
-- SP-037 Thumbnail: done (100%)
-- SP-040 Batch Production Queue: done (100%)
+- SP-035 統合実機テスト (60%→100%): YMM4環境で実施
 - SP-039 MP4 Quality Verification (80%→100%): SP-038連携待ち
-- SP-035 統合実機テスト (50%→100%): YMM4環境で実施
 
 ### 中期 (1-2ヶ月): YouTube公開パイプライン
 
-- SP-038 YouTube Publish Pipeline (draft→done): OAuth整備 + 自動公開
-- Gemini有料プラン検討 (無料枠20req/day → 本番運用)
+- SP-038 YouTube Publish Pipeline (65%→done): OAuth整備 + 自動公開
+- SP-043 Phase 4: 設定UI (Streamlit) + 実APIキーテスト
+- SP-044: 実運用での調整精度検証
 
 ### 長期 (3ヶ月+): 自動化 + スケーラビリティ
 
 - Docker化 / CI-CD強化
-- 多言語台本自動照合強化
+- トピック自動取得 (RSS/Inoreader)
 - Codecov統合
+
+---
+
+## 摩擦インベントリ
+
+詳細は [docs/friction_inventory.md](friction_inventory.md) を参照。
+
+| 摩擦 | 影響度 | 状態 |
+|------|--------|------|
+| F-001 Geminiクォータ枯渇 | CRITICAL | SP-043で解消 (LLM切替可能) |
+| F-002 YMM4手動操作 | CRITICAL | 未解消 (YMM4 SDK制限) |
+| F-003 レンダリング時間 | CRITICAL | 運用回避 (就寝時実行) |
+| F-004 フォールバック非可視 | HIGH | 解消済 (FALLBACK WARNING) |
+| F-005 セグメント粒度制御 | HIGH | SP-044で解消 (検証+自動調整) |
+| F-006 クレジット未統合 | HIGH | 解消済 (metadata.json自動統合) |
+| F-007 TextSlide生成速度 | MEDIUM | 未対応 |
+| F-008 API key設定複雑さ | MEDIUM | 部分対応 (.env.example) |
+| F-009 手動プレビュー負荷 | MEDIUM | 未対応 |
 
 ---
 
@@ -98,29 +116,11 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-09: SP-024 Voice自動生成UI完了
 - 2026-03-14: SP-026 ImageItem自動配置完了
 - 2026-03-14: SP-032 CsvAssembler + YMM4 backend統合
-- 2026-03-15: 研究ワークフロー Phase 1-4 完了 (CLI review + E2Eテスト)
-- 2026-03-15: SP-032 Phase C完了 (CLI pipeline サブコマンド: collect→script→align→review→CsvAssembler)
-- 2026-03-15: SP-032 Phase D完了 (Streamlit UI素材パイプライン)、Gemini SDK移行
-- 2026-03-16: SP-033 Direct API全面移行 (リフレクション全廃、-312行)
-- 2026-03-16: SP-027 Baseline E2E完走 + SP-033 Phase 1 全7種アニメーション実機テストPASS
-- 2026-03-17: SP-028 既存実装発見 (WavDurationReader+VoiceLength同期)、ステータス→done
-- 2026-03-17: SP-030 既存実装発見 (ApplySubtitleStyle: 話者色6色+Border+CenterBottom)、ステータス→done
-- 2026-03-17: SP-033 Phase 2 StockImageClient完了: Pexels/Pixabay + CLIパイプライン統合 + 30分+対応プロンプト改善
-- 2026-03-16: SP-033 Phase 2a 背景充実化基盤: SegmentClassifier + VisualResourceOrchestrator + CsvAssembler拡張 + テスト78件PASS
-- 2026-03-16: SP-033 Phase 2b パイプライン統合 + 30分動画E2Eテスト: クエリ重複バグ修正 (48%→74%ヒット率)、CLI/UI統合完了
-- 2026-03-16: SP-033 Phase 2b エラーハンドリング強化: _request_with_retry (指数バックオフ/429/5xx/接続エラー)、validate_api_keys()、Orchestrator進捗ログ改善
-- 2026-03-17: SP-033 Phase 2c 完了: Gemini分類+キーワード抽出+日英翻訳+Orchestrator統合。テスト228件PASS
-- 2026-03-16: SP-034 パイプラインステップ再開機能: PipelineState永続化+CLI --resume+UI再開セクション+テスト16件PASS
-- 2026-03-17: SP-031 Phase 1 完了: ExportValidator+StyleTemplateManager+3テンプレート(default/cinematic/minimal)+CLI validate/templates。テスト280件PASS
-- 2026-03-17: SP-031 Phase 2 完了: style_template.json v1.1 (video/crossfadeセクション追加)、C# StyleTemplateLoader拡張(VideoConfig/CrossfadeConfig)、ValidateImportItems拡張(連続同一画像検出/統計サマリー)
-- 2026-03-16: SP-031 C#ハードコード値全面テンプレート化: ApplySubtitleStyle/ApplyAnimationDirect/GetSpeakerColor/crossfade/padding/defaultDuration全てstyle_template.json参照に置換
-- 2026-03-17: SP-033 Phase 3 完了: AIImageProvider (Gemini Imagen 3.0) + Orchestrator AI統合 (stock→AI→slideフォールバック連鎖) + source分離。テスト301件PASS
-- 2026-03-17: SP-031 BGMテンプレート完了: style_template.json bgmセクション (volume/fadeIn/fadeOut/layer) + Python/C#双方対応。テスト330件PASS
-- 2026-03-18: SP-036 Script Style Presets done (42テストPASS)
-- 2026-03-18: Brave Search API移行完了 (Google Custom Search廃止対応)
-- 2026-03-18: Gemini 2.5-flash一本化
-- 2026-03-18: SP-037 Thumbnail Phase 1+2完了 (CJKフォント + スタイルプリセット連携 + CLI flag)
-- 2026-03-18: SP-040 Phase 3完了 (Streamlit バッチ制作キューWeb UI + 10テストPASS)
+- 2026-03-15: 研究ワークフロー Phase 1-4 完了
+- 2026-03-16: SP-033 Direct API全面移行、SP-027 E2E完走
+- 2026-03-17: SP-031/033 Phase 2-3 完了、SP-028/030 done
+- 2026-03-18: SP-036/037/040/041/042 完了、Brave移行、SP-043 Phase 1-3
+- 2026-03-18: 摩擦インベントリ + F-004/F-006 + SP-044 Phase 1-2
 
 ---
 
@@ -131,3 +131,4 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - `docs/e2e_verification_guide.md` — E2E検証ガイド
 - `docs/PROJECT_ALIGNMENT_SSOT.md` — プロジェクト方針SSOT
 - `docs/background_enrichment_design.md` — 背景充実化設計 (SP-033 Phase 2)
+- `docs/friction_inventory.md` — 摩擦インベントリ (体験逆算)
