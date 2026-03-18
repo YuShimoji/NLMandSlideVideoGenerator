@@ -12,7 +12,16 @@ def _ensure_google_genai_mockable() -> None:
     fails with ModuleNotFoundError because mock tries to import the target.
     This injects minimal stub modules into sys.modules so that patch()
     can resolve the path without the real SDK.
+
+    If the real SDK is installed, this function does nothing — the real
+    module is already importable and patchable.
     """
+    try:
+        import google.genai  # noqa: F401 — real SDK available
+        return
+    except (ImportError, ModuleNotFoundError):
+        pass
+
     if "google" not in sys.modules:
         google_pkg = types.ModuleType("google")
         google_pkg.__path__ = []  # make it a package

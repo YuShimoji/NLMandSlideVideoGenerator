@@ -62,6 +62,9 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
 | トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
+| 整理 | TikTokAdapter 廃止検討 | 低 | なし | 220行モック実装。YouTube長尺がターゲットなので廃止が妥当。HUMAN_AUTHORITY |
+| 整理 | IPublishingQueue 方針決定 | 低 | なし | Protocol定義のみ、具象実装なし。スケジュール投稿不要なら削除。HUMAN_AUTHORITY |
+| 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | helpers.py から参照あり。テスト済みだが実パイプラインでの使用状況要確認 |
 
 ---
 
