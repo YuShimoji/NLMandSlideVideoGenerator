@@ -7,16 +7,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 4):
-  - 全42仕様。38 done + 4 partial (SP-035/038/039/041) + 0 draft + 1 archived
-  - SP-041 TextSlide Visual Quality Phase 1-2 完了 (70%):
-    - 4レイアウト自動選択 (Standard/Emphasis/TwoColumn/Stats)
-    - グラデーション背景 (5テーマ対応)
-    - Emphasis: 短テキスト中央配置+装飾引用符
-    - TwoColumn: 左タイトル/右バレットリスト
-    - Stats: 数値パターン検出+大数字中央表示
-    - テスト: 18→50件
-  - テスト: 1075 passed, 3 skipped
+直近の状態 (2026-03-18 session 5):
+  - 全42仕様。39 done + 3 partial (SP-035/038/039) + 0 draft + 1 archived
+  - SP-042 Pipeline Quality Tracking 完了 (100%): Phase 2-3 実装
+    - run_pipeline()に全ステップの統計計測ポイント挿入
+    - CLI `stats` サブコマンド (single/batch/compare)
+    - batch_result.json に各トピックのstats + aggregate_stats統合
+    - テスト: 19→23件 (CLI stats 4件追加)
+  - SP-041 TextSlide Visual Quality Phase 1-2 完了 (70%)
+  - テスト: 1057 passed, 3 skipped
   - 残: SP-035 YMM4実機テスト(60%), SP-038 Phase3(YouTube API/65%), SP-039 Phase2(80%), SP-041 Phase3(プリセット連携/70%)
 
 ## DECISION LOG
