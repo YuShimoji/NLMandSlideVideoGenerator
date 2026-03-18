@@ -6,6 +6,9 @@
 - **Google AI Studio (Gemini API)**: `GEMINI_API_KEY`
   - Python側: Gemini統合（`src/notebook_lm/gemini_integration.py`）
   - YMM4プラグイン側: 台本テキスト補完・校正（`CsvScriptCompletionPlugin`）
+- **Pexels**: `PEXELS_API_KEY` — ストック写真検索 (200 req/hour)
+- **Pixabay**: `PIXABAY_API_KEY` — ストック写真検索フォールバック (5000 req/hour)
+- **Brave Search**: `BRAVE_API_KEY` — Web検索 ($5/月無料枠)
 - **YouTube API**: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`
 - **Google Slides API**: `GOOGLE_CLIENT_SECRETS_FILE`, `GOOGLE_OAUTH_TOKEN_FILE`
 
@@ -19,6 +22,13 @@
 ```env
 # Google AI Studio (Gemini API)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# ストック画像検索
+PEXELS_API_KEY=your_pexels_api_key_here
+PIXABAY_API_KEY=your_pixabay_api_key_here
+
+# Web検索 (Brave Search API)
+BRAVE_API_KEY=your_brave_api_key_here
 
 # YouTube API
 YOUTUBE_CLIENT_ID=your_youtube_client_id_here
@@ -96,9 +106,11 @@ dotnet test ymm4-plugin/tests/NLMSlidePlugin.Tests.csproj -c Release --nologo -q
 - 使用量監視の設定
 
 ### 3. レート制限対応
-- **Gemini API**: 60リクエスト/分
+- **Gemini API**: 15リクエスト/分 (無料枠)
+- **Pexels**: 200リクエスト/時
+- **Pixabay**: 5,000リクエスト/時
+- **Brave Search**: $5/月無料枠
 - **YouTube API**: 10,000クォータ/日
-- **ElevenLabs**: プランに応じて制限
 
 ## 🔍 トラブルシューティング
 

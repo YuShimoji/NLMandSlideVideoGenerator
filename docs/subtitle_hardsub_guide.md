@@ -1,6 +1,8 @@
 # 字幕ハードサブ環境ガイド
 
-このドキュメントでは、動画に字幕を直接焼き込む（ハードサブ）機能の使い方と環境設定について説明します。
+最終更新: 2026-03-18
+
+動画に字幕を直接焼き込む（ハードサブ）機能の使い方と環境設定について説明します。
 
 ## 概要
 
@@ -16,50 +18,34 @@
    - 視聴者は字幕のON/OFFを切替不可
    - どの環境でも確実に字幕が表示される
 
+### 現行パイプラインでの字幕
+
+本プロジェクトでは **YMM4 が最終レンダラー** です。字幕は以下の2つの方法で扱います:
+
+1. **YMM4 内蔵字幕 (推奨)**: CSVインポート時に `TextItem` として自動配置。`style_template.json` の `subtitle` 設定で書式を制御。話者ごとに色分け (6色サイクル)
+2. **FFmpeg 手動焼き込み**: YMM4 で出力した mp4 に対して後処理で字幕を焼き込む (特殊なケースのみ)
+
 ## 環境設定
 
-### 必要なライブラリ
+### 必要なツール
 
-#### 1. pysrt（推奨）
+#### FFmpeg（字幕焼き込みに必要）
 
-SRTファイルの読み込みに使用します。
+```powershell
+# Windows (winget)
+winget install FFmpeg
+
+# インストール確認
+ffmpeg -version
+```
+
+#### pysrt（オプション: SRT ファイル操作）
 
 ```bash
 pip install pysrt
 ```
 
-**確認方法:**
-```python
-python -c "import pysrt; print('pysrt OK')"
-```
-
-#### 2. FFmpeg（必須）
-
-動画への字幕焼き込みに使用します。
-
-**Windows:**
-```powershell
-winget install FFmpeg
-```
-
-**macOS:**
-```bash
-brew install ffmpeg
-```
-
-**Linux:**
-```bash
-sudo apt install ffmpeg
-```
-
-**確認方法:**
-```bash
-ffmpeg -version
-```
-
 ### 環境チェックスクリプト
-
-プロジェクトに含まれる環境チェックスクリプトを実行して、必要な環境が揃っているか確認できます：
 
 ```bash
 python scripts/check_environment.py
@@ -67,83 +53,68 @@ python scripts/check_environment.py
 
 ## 使用方法
 
-### 1. 設定ファイルでの制御
+### YMM4 での字幕設定 (推奨)
 
-`config/settings.py` の `SUBTITLE_SETTINGS` で字幕の設定を変更できます：
+1. CSVパイプラインで4列CSVを生成 (`research_cli.py pipeline`)
+2. YMM4 で CSVインポート (NLMSlidePlugin)
+3. `TextItem` が自動配置され、`style_template.json` のスタイルが適用される
+4. 字幕の書式は `config/style_template.json` の `subtitle` セクションで変更可能:
 
-```python
-SUBTITLE_SETTINGS = {
+```json
+{
+  "subtitle": {
     "font_size": 36,
-    "font_color": "white",
-    "outline_color": "black",
-    "outline_width": 2,
-    "position": "bottom",      # "top" or "bottom"
-    "background_opacity": 0.0, # 0.0〜1.0
-    "margin": 50,
+    "border_width": 3,
+    "bold": true,
+    "position": "center_bottom"
+  }
 }
 ```
 
-### 2. 字幕焼き込みの有効化
+### FFmpeg による手動焼き込み
 
-現在のパイプラインでは、以下の条件でハードサブが有効になります：
+YMM4 で出力した mp4 に後処理で字幕を追加する場合:
 
-1. `pysrt` がインストールされている
-2. 字幕ファイル（SRT）が生成されている
-3. YMM4 で動画を生成する際に字幕を含めるか、または FFmpeg で手動焼き込みを行う
-
-**注**: MoviePy バックエンドは 2026-03-08 に削除されました。現在は YMM4 が唯一のレンダリング方法です。
-
-#### FFmpegによる手動焼き込み
-
-生成された字幕ファイルを使って手動で焼き込む場合：
-
-```bash
+```powershell
 # SRT字幕の焼き込み
 ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt" output.mp4
 
 # ASS字幕の焼き込み（スタイル付き）
 ffmpeg -i input.mp4 -vf "ass=subtitles.ass" output.mp4
 
-# フォント・サイズ指定
-ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:force_style='FontSize=24,PrimaryColour=&Hffffff&'" output.mp4
+# フォント・サイズ指定 (日本語)
+ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:force_style='FontName=Noto Sans JP,FontSize=24,PrimaryColour=&Hffffff&'" output.mp4
 ```
 
 ## 出力ファイル
 
-CSVパイプラインを実行すると、以下の字幕ファイルが生成されます：
+CSVパイプラインを実行すると、以下の字幕ファイルが生成されます:
 
 | ファイル | 形式 | 用途 |
 |----------|------|------|
 | `*.srt` | SubRip | 汎用・YouTube |
-| `*.ass` | Advanced SubStation | スタイル付き・YMM4 |
+| `*.ass` | Advanced SubStation | スタイル付き |
 | `*.vtt` | WebVTT | Web用 |
 
 これらのファイルは `data/transcripts/` ディレクトリに保存されます。
 
 ## トラブルシューティング
 
-### pysrtがインストールできない
-
-```bash
-# pipを最新版に更新
-pip install --upgrade pip
-
-# 再インストール
-pip install pysrt
-```
-
 ### FFmpegが見つからない
 
 1. FFmpegがインストールされているか確認
 2. PATHに追加されているか確認
-3. ターミナル/コマンドプロンプトを再起動
+3. ターミナルを再起動
 
-```bash
-# Windowsでパスを確認
+```powershell
 where ffmpeg
+```
 
-# macOS/Linuxでパスを確認
-which ffmpeg
+### 日本語が文字化けする
+
+```powershell
+# フォント指定で焼き込み
+ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:force_style='FontName=Noto Sans JP'" output.mp4
 ```
 
 ### 字幕が表示されない
@@ -152,16 +123,9 @@ which ffmpeg
 2. タイムスタンプが動画の長さと一致しているか確認
 3. フォントが正しくインストールされているか確認
 
-### 日本語が文字化けする
-
-```bash
-# フォント指定で焼き込み
-ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:fontsdir=/path/to/fonts:force_style='FontName=Noto Sans JP'" output.mp4
-```
-
 ## YouTube投稿時の字幕
 
-### ソフトサブとして投稿
+### ソフトサブとして投稿 (推奨)
 
 1. 動画をアップロード
 2. 字幕設定で「字幕ファイルをアップロード」を選択
@@ -176,4 +140,4 @@ ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:fontsdir=/path/to/fonts:force_s
 
 - [CSVパイプライン使用ガイド](user_guide_manual_workflow.md)
 - [CSV入力フォーマット仕様](spec_csv_input_format.md)
-- [環境セットアップ](../README.md#セットアップ)
+- [トラブルシューティング](TROUBLESHOOTING.md)

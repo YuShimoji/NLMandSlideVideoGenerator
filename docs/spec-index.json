@@ -39,7 +39,7 @@
     "id": "SP-005",
     "title": "YMM4 Integration Architecture",
     "status": "done",
-    "pct": 95,
+    "pct": 100,
     "cat": "plugin",
     "file": "docs/ymm4_integration_arch.md",
     "summary": "現行Python/C#二層アーキテクチャ。全コンポーネント表+CSV形式+CLI/UI実行導線+関連仕様リンク (2026-03-17更新)"
@@ -66,7 +66,7 @@
     "id": "SP-008",
     "title": "Development Guide",
     "status": "done",
-    "pct": 85,
+    "pct": 100,
     "cat": "infra",
     "file": "docs/development_guide.md",
     "summary": "開発者セットアップ手順 (venv作成、依存インストール、設定)"
@@ -84,7 +84,7 @@
     "id": "SP-010",
     "title": "API Setup Guide",
     "status": "done",
-    "pct": 90,
+    "pct": 100,
     "cat": "infra",
     "file": "docs/api_setup_guide.md",
     "summary": "API認証設定ガイド (Gemini/YouTube/Slides)。YMM4プラグインGemini連携+TTS削除反映済(2026-03-07)"
@@ -93,7 +93,7 @@
     "id": "SP-011",
     "title": "Google API Setup Guide",
     "status": "done",
-    "pct": 95,
+    "pct": 100,
     "cat": "infra",
     "file": "docs/google_api_setup.md",
     "summary": "Google Cloud Console セットアップ手順"
@@ -138,7 +138,7 @@
     "id": "SP-016",
     "title": "User Guide: Manual Workflow",
     "status": "done",
-    "pct": 95,
+    "pct": 100,
     "cat": "core",
     "file": "docs/user_guide_manual_workflow.md",
     "summary": "Path A (CSV→YMM4) 制作手順のユーザーガイド (本番SSOT)"
@@ -156,7 +156,7 @@
     "id": "SP-018",
     "title": "Environment Setup Guide",
     "status": "done",
-    "pct": 85,
+    "pct": 100,
     "cat": "infra",
     "file": "docs/ENVIRONMENT_SETUP_GUIDE.md",
     "summary": "Windows環境セットアップ (Python, Node.js, Git, 外部ツール)"
@@ -183,7 +183,7 @@
     "id": "SP-021",
     "title": "Subtitle Hardsub Guide",
     "status": "done",
-    "pct": 75,
+    "pct": 100,
     "cat": "ui",
     "file": "docs/subtitle_hardsub_guide.md",
     "summary": "ハードサブ/ソフトサブ説明、必要ライブラリ、環境設定"
@@ -219,7 +219,7 @@
     "id": "SP-025",
     "title": "E2E Verification Guide",
     "status": "done",
-    "pct": 90,
+    "pct": 100,
     "cat": "infra",
     "file": "docs/e2e_verification_guide.md",
     "summary": "CSV→YMM4→mp4のE2E手動検証手順書。Step 4 (Voice生成) はSP-024完了済"

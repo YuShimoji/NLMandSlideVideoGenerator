@@ -74,7 +74,7 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 
 | 項目 | 内容 |
 |------|------|
-| 実装対象 | `AIImageProvider` (Gemini Imagen 3.0) **実装済み** |
+| 実装対象 | `AIImageProvider` (Gemini Imagen 4) **実装済み** |
 | 入力 | ScriptBundle → key_points/section/contentから画像プロンプト自動構築 |
 | 処理 | Imagen API → RAIチェック → PNG保存 → MD5キャッシュ |
 | 出力 | `GeneratedImage` (prompt, image_path, enhanced_prompt, error) |
@@ -374,7 +374,7 @@ Phase 3 はストック画像取得失敗時のフォールバックとして、
 | 項目 | 内容 |
 |------|------|
 | ファイル | `src/core/visual/ai_image_provider.py` |
-| モデル | `imagen-3.0-generate-002` |
+| モデル | `imagen-4.0-generate-001` (env: `IMAGEN_MODEL` で変更可) |
 | アスペクト比 | `16:9` (動画向け) |
 | API | `google.genai.Client.models.generate_images()` |
 | キャッシュ | MD5(prompt)[:12] ハッシュ → `ai_{hash}.png` |

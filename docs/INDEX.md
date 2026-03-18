@@ -1,5 +1,7 @@
 # ドキュメント INDEX
 
+最終更新: 2026-03-18
+
 ## まず読む (現行SSOT)
 
 - **方針/共有SSOT (AI Agent共通)**: `docs/PROJECT_ALIGNMENT_SSOT.md`
@@ -13,16 +15,18 @@
 
 - **クイックスタート (入口)**: `README.md`
 - **環境セットアップ**: `docs/ENVIRONMENT_SETUP_GUIDE.md`
+- **開発ガイド**: `docs/development_guide.md`
 - **Google API設定**: `docs/google_api_setup.md`
 
 ## YMM4連携
 
-- **運用責務境界 (Web UI / CLI補助)**: `docs/workflow_boundary.md`
-- **E2E手動検証ガイド**: `docs/e2e_verification_guide.md`
 - **YMM4連携アーキテクチャ**: `docs/ymm4_integration_arch.md`
 - **YMM4エクスポート仕様**: `docs/ymm4_export_spec.md`
-- **YMM4テンプレートカスタマイズ**: `docs/ymm4_template_diff_guide.md`
 - **YMM4最終ワークフロー**: `docs/ymm4_final_workflow.md`
+- **YMM4テンプレートカスタマイズ**: `docs/ymm4_template_diff_guide.md` *(superseded by SP-031)*
+- **運用責務境界 (Web UI / CLI補助)**: `docs/workflow_boundary.md`
+- **E2E手動検証ガイド**: `docs/e2e_verification_guide.md`
+- **統合テストチェックリスト**: `docs/integration_test_checklist.md`
 
 ## パイプライン
 
@@ -32,7 +36,20 @@
 - **背景充実化設計**: `docs/background_enrichment_design.md`
 - **研究ワークフロー設計**: `docs/research_workflow_design.md`
 
-## 仕様
+## 仕様 (docs/specs/)
+
+- **スクリプトスタイルプリセット (SP-036)**: `docs/specs/script_style_presets.md`
+- **サムネイルパイプライン (SP-037)**: `docs/specs/thumbnail_pipeline.md`
+- **YouTube投稿パイプライン (SP-038)**: `docs/specs/youtube_publish_pipeline.md`
+- **MP4品質検証 (SP-039)**: `docs/specs/mp4_quality_verification.md`
+- **バッチ制作キュー (SP-040)**: `docs/specs/batch_production_queue.md`
+- **テキストスライド品質 (SP-041)**: `docs/specs/text_slide_quality.md`
+- **パイプライン品質トラッキング (SP-042)**: `docs/specs/pipeline_quality_tracking.md`
+- **マルチLLMプロバイダー (SP-043)**: `docs/specs/multi_llm_provider.md`
+- **セグメント尺コントロール (SP-044)**: `docs/specs/segment_duration_control.md`
+- **テンプレート統合設計**: `docs/specs/template_consolidation.md`
+
+## データ仕様
 
 - **CSV入力形式仕様**: `docs/spec_csv_input_format.md`
 - **Transcript I/O仕様**: `docs/spec_transcript_io.md`
@@ -40,10 +57,16 @@
 
 ## 開発者向け
 
-- **開発ガイド**: `docs/development_guide.md`
 - **システム仕様書 (実装/長期設計)**: `docs/system_specification.md`
 - **トラブルシューティング**: `docs/TROUBLESHOOTING.md`
+- **字幕ハードサブガイド**: `docs/subtitle_hardsub_guide.md`
+- **音声パス比較**: `docs/voice_path_comparison.md`
 - **Spec Index (JSON)**: `docs/spec-index.json`
+- **摩擦インベントリ**: `docs/friction_inventory.md`
+
+## 検証・実績
+
+- **E2Eテスト結果 (2026-03-17)**: `docs/e2e_test_results_20260317.md`
 
 ## 引継ぎ (履歴/スナップショット)
 

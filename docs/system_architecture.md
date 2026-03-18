@@ -65,7 +65,7 @@ flowchart LR
 
 - **SegmentClassifier** (`src/core/visual/segment_classifier.py`): 台本セグメントをvisual/textualに分類。ヒューリスティック + Gemini分類の2モード。
 - **StockImageClient** (`src/core/visual/stock_image_client.py`): Pexels/Pixabay APIで写真検索・ダウンロード。日本語→英語クエリ翻訳 (Gemini)、指数バックオフリトライ。
-- **AIImageProvider** (`src/core/visual/ai_image_provider.py`): Gemini Imagen 3.0 でカスタムイラスト生成。stock画像取得失敗時のフォールバック。
+- **AIImageProvider** (`src/core/visual/ai_image_provider.py`): Gemini Imagen 4 でカスタムイラスト生成。stock画像取得失敗時のフォールバック。
 - **TextSlideGenerator** (`src/core/visual/text_slide_generator.py`): テキスト主体セグメント用のスライドPNG自動生成。Pillow描画、テーマ切替、日本語フォント自動検出、ハッシュベースキャッシュ。
 - **VisualResourceOrchestrator** (`src/core/visual/resource_orchestrator.py`): 全ビジュアルリソースを統合。stock→AI→slideのフォールバック連鎖、連続source多様性強制、アニメーション自動割当。
 - **AnimationAssigner** (`src/core/visual/animation_assigner.py`): ken_burns/zoom_in/zoom_out/pan_left/pan_right/pan_up/pan_down/static の8種を自動サイクル割当。
@@ -223,7 +223,7 @@ sequenceDiagram
 - 台本生成 (Gemini Flash)
 - セグメント分類 + 英語キーワード抽出 (Gemini Flash)
 - 日本語→英語クエリ翻訳 (Gemini Flash)
-- AI画像生成 (Imagen 3.0)
+- AI画像生成 (Imagen 4)
 - 台本補完 (CsvScriptCompletionPlugin, Gemini Flash)
 
 ## 支援サブシステム

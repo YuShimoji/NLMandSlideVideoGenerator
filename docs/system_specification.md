@@ -53,7 +53,7 @@ NLMandSlideVideoGenerator
 - **処理**:
   - SegmentClassifier: Gemini/ヒューリスティックによるvisual/textual分類
   - StockImageClient: Pexels/Pixabay APIで背景画像検索+ダウンロード (日本語→英語翻訳付き)
-  - AIImageProvider: Gemini Imagen 3.0でAI画像生成 (stock失敗時フォールバック)
+  - AIImageProvider: Gemini Imagen 4でAI画像生成 (stock失敗時フォールバック)
   - TextSlideGenerator: テキスト主体セグメント用スライドPNG自動生成 (Pillow描画、テーマ切替、キャッシュ)
   - VisualResourceOrchestrator: 全リソース統合+連続多様性制御
   - AnimationAssigner: 8種アニメーション自動割当
@@ -172,7 +172,7 @@ NLMandSlideVideoGenerator
 | API | 用途 | レート制限 |
 | --- | --- | --- |
 | Gemini 2.5 Flash | 台本生成/分類/キーワード抽出/翻訳/台本補完 | 15 req/min (free) |
-| Gemini Imagen 3.0 | AI画像生成 | -- |
+| Gemini Imagen 4 | AI画像生成 (有料プラン必須) | -- |
 | Pexels | ストック写真検索 | 200 req/hour (free) |
 | Pixabay | ストック写真検索 (フォールバック) | 5000 req/hour (free) |
 | YouTube Data API | 動画投稿 | 10,000 units/day |
