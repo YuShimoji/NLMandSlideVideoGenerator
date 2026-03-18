@@ -6,7 +6,7 @@ Type: Session Handover (session 12)
 
 ## Current Status
 
-45仕様中43 done + 1 partial (SP-035) + 1 draft (SP-045)。テスト 1258 passed。
+46仕様中44 done + 1 partial (SP-035) + 1 draft (SP-045)。テスト 1258 passed。
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
