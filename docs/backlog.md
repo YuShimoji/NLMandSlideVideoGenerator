@@ -36,7 +36,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | SP-036 Script Style Presets | 完成 | 4プリセットJSON + CLI --style + Web UIドロップダウン。42テストPASS (2026-03-18) |
 | Brave Search API 移行 | 完成 | Google Custom Search → Brave Search。独自インデックス+無料枠 (2026-03-18) |
 | Gemini 2.5-flash 一本化 | 完成 | 旧2.0-flash依存を全廃。単一モデルで品質統一 (2026-03-18) |
-| SP-037 Thumbnail Phase 1 | 完成 | generate_from_script() + run_pipeline統合 + CJKフォント対応 (2026-03-18) |
+| SP-037 Thumbnail Phase 1+2 | 完成 | Phase 1: パイプライン統合+CJKフォント。Phase 2: スタイルプリセット連携+CLI --generate-thumbnail (2026-03-18) |
 
 ---
 
@@ -50,8 +50,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 | 領域 | 内容 | 優先度 | 仕様 | 備考 |
 |------|------|--------|------|------|
-| サムネイル | SP-037 Phase 2: スタイルプリセット連携、レイアウト改善 | 中 | SP-037 (60%) | Phase 1完了。残: スタイル連携、高品質レイアウト |
-| バッチ制作 | SP-040 Batch Production Queue Web UI統合 | 中 | SP-040 (80%) | Phase 1+2完了(11テスト)。Web UIバッチ実行画面残 |
+| サムネイル | SP-037 完了 | -- | SP-037 (100%) | Phase 1+2完了。スタイルプリセット連携+CLI --generate-thumbnail |
+| バッチ制作 | SP-040 完了 | -- | SP-040 (100%) | Batch Production Queue done |
 | MP4品質検証 | SP-039 FFprobe自動チェック + YouTube連携 | 中 | SP-039 (80%) | Phase 1完了 (17テスト)。Phase 2 (SP-038連携) 後送り |
 | 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (50%) | チェックリスト整備済み。YMM4環境で実施待ち |
 | YouTube公開 | SP-038 メタデータ生成→アップロードの一気通貫接続 | 中 | SP-038 (draft) | MetadataGenerator, YouTubeUploader個別実装済み。OAuth未整備 |
@@ -66,8 +66,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ### 短期 (~1週): partial SP を done に
 
-- SP-037 Thumbnail Phase 2 (60%→100%): スタイルプリセット連携 + レイアウト改善
-- SP-040 Batch Production Queue (80%→100%): Web UI統合
+- SP-037 Thumbnail: done (100%)
+- SP-040 Batch Production Queue: done (100%)
 - SP-039 MP4 Quality Verification (80%→100%): SP-038連携待ち
 - SP-035 統合実機テスト (50%→100%): YMM4環境で実施
 
@@ -118,7 +118,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-18: SP-036 Script Style Presets done (42テストPASS)
 - 2026-03-18: Brave Search API移行完了 (Google Custom Search廃止対応)
 - 2026-03-18: Gemini 2.5-flash一本化
-- 2026-03-18: SP-037 Thumbnail Phase 1完了 (CJKフォント対応含む)
+- 2026-03-18: SP-037 Thumbnail Phase 1+2完了 (CJKフォント + スタイルプリセット連携 + CLI flag)
 
 ---
 
