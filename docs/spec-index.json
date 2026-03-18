@@ -376,5 +376,14 @@
     "cat": "pipeline",
     "file": "docs/specs/pipeline_quality_tracking.md",
     "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json (速度/情報密度/視覚完成度/一貫性) + CLI stats閲覧 + batch_result.json統合"
+  },
+  {
+    "id": "SP-043",
+    "title": "Multi-LLM Provider",
+    "status": "draft",
+    "pct": 0,
+    "cat": "core",
+    "file": "docs/specs/multi_llm_provider.md",
+    "summary": "Gemini単一依存解消: ILLMProvider抽象化 + OpenAI/Claude/DeepSeek対応。LLM_PROVIDER env varで切替。一晩3本のAPI制約を解消"
   }
 ]
