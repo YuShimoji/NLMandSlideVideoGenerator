@@ -337,12 +337,22 @@ async def run_pipeline(
             stats.stop_step("script")
             stats.record_segments(len(segments))
 
-            # セグメント粒度検証 (SP-044)
-            from core.segment_duration_validator import validate_segments
+            # セグメント粒度検証 + 自動調整 (SP-044)
+            from core.segment_duration_validator import validate_segments, adjust_segments
             seg_check = validate_segments(segments, target_duration)
             if not seg_check.is_ok:
                 print(f"  !! {seg_check.message}")
                 stats.record_fallback(f"duration: {seg_check.status} ({seg_check.message})")
+                # Phase 2: 自動調整
+                adjusted = await adjust_segments(segments, seg_check, topic=topic, speaker_mapping=speaker_mapping)
+                if len(adjusted) != len(segments):
+                    segments = adjusted
+                    script_bundle["segments"] = segments
+                    print(f"  -> 自動調整: {seg_check.segment_count}→{len(segments)}セグメント")
+                    stats.record_segments(len(segments))
+                    # 調整後のscript_bundleを再保存
+                    with open(script_path, "w", encoding="utf-8") as handle:
+                        json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
             else:
                 print(f"  Duration check: {seg_check.message}")
 

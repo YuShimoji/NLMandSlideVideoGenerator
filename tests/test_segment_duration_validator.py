@@ -1,10 +1,14 @@
 """セグメント粒度制御テスト (SP-044)"""
 import pytest
+from unittest.mock import AsyncMock
 
 from core.segment_duration_validator import (
     estimate_segment_duration,
     validate_segments,
+    adjust_segments,
     _get_segment_range,
+    _merge_short_segments,
+    SegmentValidationResult,
 )
 
 
@@ -129,3 +133,73 @@ class TestValidateSegments:
         result = validate_segments([], 300)
         assert result.status == "too_short"
         assert result.estimated_duration == 0.0
+
+
+class TestMergeShortSegments:
+    def test_merge_reduces_count(self) -> None:
+        segments = [
+            {"content": "A", "speaker": "Host1", "key_points": ["a"]},
+            {"content": "B", "speaker": "Host1", "key_points": ["b"]},
+            {"content": "C" * 100, "speaker": "Host2", "key_points": ["c"]},
+            {"content": "D" * 100, "speaker": "Host2", "key_points": ["d"]},
+        ]
+        validation = SegmentValidationResult(
+            status="too_many", segment_count=4, estimated_duration=100,
+            target_duration=300, ratio=0.33, expected_min=1, expected_max=2,
+            suggestion="merge_segments",
+        )
+        result = _merge_short_segments(segments, validation)
+        assert len(result) <= 2
+
+    def test_merge_preserves_content(self) -> None:
+        segments = [
+            {"content": "short", "speaker": "H1", "key_points": ["x"]},
+            {"content": "long text " * 20, "speaker": "H2", "key_points": ["y"]},
+        ]
+        validation = SegmentValidationResult(
+            status="too_many", segment_count=2, estimated_duration=100,
+            target_duration=300, ratio=0.33, expected_min=1, expected_max=1,
+            suggestion="merge_segments",
+        )
+        result = _merge_short_segments(segments, validation)
+        assert len(result) == 1
+        assert "short" in result[0]["content"]
+        assert "long text" in result[0]["content"]
+
+    def test_no_merge_when_within_range(self) -> None:
+        segments = [{"content": "ok", "key_points": []}]
+        validation = SegmentValidationResult(
+            status="too_many", segment_count=1, estimated_duration=10,
+            target_duration=300, ratio=0.03, expected_min=1, expected_max=5,
+            suggestion="merge_segments",
+        )
+        result = _merge_short_segments(segments, validation)
+        assert len(result) == 1
+
+
+class TestAdjustSegments:
+    @pytest.mark.asyncio
+    async def test_ok_returns_unchanged(self) -> None:
+        segs = [{"content": "test", "key_points": []}]
+        validation = SegmentValidationResult(
+            status="ok", segment_count=1, estimated_duration=10,
+            target_duration=300, ratio=0.8, expected_min=1, expected_max=5,
+            suggestion="",
+        )
+        result = await adjust_segments(segs, validation)
+        assert result is segs
+
+    @pytest.mark.asyncio
+    async def test_too_long_merges(self) -> None:
+        segs = [
+            {"content": "A", "speaker": "H1", "key_points": []},
+            {"content": "B", "speaker": "H1", "key_points": []},
+            {"content": "C" * 100, "speaker": "H2", "key_points": []},
+        ]
+        validation = SegmentValidationResult(
+            status="too_many", segment_count=3, estimated_duration=500,
+            target_duration=300, ratio=1.67, expected_min=1, expected_max=2,
+            suggestion="merge_segments",
+        )
+        result = await adjust_segments(segs, validation)
+        assert len(result) <= 2

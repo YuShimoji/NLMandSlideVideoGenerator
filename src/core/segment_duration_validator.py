@@ -1,11 +1,16 @@
 """セグメント粒度制御 (SP-044)
 
-台本生成後にセグメント数・推定尺を検証し、過不足を検出する。
+台本生成後にセグメント数・推定尺を検証し、過不足を検出・自動調整する。
+Phase 1: 検証 + 警告
+Phase 2: LLM経由の自動調整 (追加/統合)
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+from core.utils.logger import logger
 
 
 # セグメント数の目安テーブル (target_seconds → (min, recommended_min, recommended_max, max))
@@ -174,3 +179,164 @@ def validate_segments(
             suggestion="",
             message=f"推定尺 {estimated:.0f}秒 / 目標 {target_duration:.0f}秒 ({ratio:.0%}), {seg_count}セグメント",
         )
+
+
+# --- Phase 2: 自動調整 ---
+
+async def adjust_segments(
+    segments: List[Dict[str, Any]],
+    validation: SegmentValidationResult,
+    topic: str = "",
+    speaker_mapping: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
+    """検証結果に基づいてセグメントを自動調整する。
+
+    too_short/too_few → LLMに追加セグメント生成を依頼
+    too_long/too_many → 短いセグメントを統合
+
+    Args:
+        segments: 元のセグメント群。
+        validation: validate_segments()の結果。
+        topic: トピック名 (追加生成用プロンプトのコンテキスト)。
+        speaker_mapping: 話者マッピング。
+
+    Returns:
+        調整済みのセグメント群。調整できなかった場合は元のsegmentsを返す。
+    """
+    if validation.is_ok:
+        return segments
+
+    if validation.suggestion == "add_segments":
+        return await _expand_segments(segments, validation, topic, speaker_mapping)
+    elif validation.suggestion in ("trim_segments", "merge_segments"):
+        return _merge_short_segments(segments, validation)
+
+    return segments
+
+
+async def _expand_segments(
+    segments: List[Dict[str, Any]],
+    validation: SegmentValidationResult,
+    topic: str,
+    speaker_mapping: Optional[Dict[str, str]],
+) -> List[Dict[str, Any]]:
+    """セグメントを追加して尺を伸ばす。"""
+    try:
+        from core.llm_provider import create_llm_provider
+        provider = create_llm_provider()
+    except Exception:
+        logger.warning("LLMプロバイダー取得失敗: セグメント自動追加をスキップ")
+        return segments
+
+    # 既存セグメントの話者を取得
+    speakers = list({s.get("speaker", "Host1") for s in segments})
+    if speaker_mapping:
+        speakers = list(speaker_mapping.values()) or speakers
+
+    deficit_seconds = validation.target_duration - validation.estimated_duration
+    additional_count = max(1, int(deficit_seconds / 15))  # 1セグメント≒15秒と概算
+
+    existing_topics = [s.get("content", "")[:50] for s in segments[:5]]
+    prompt = (
+        f"以下のトピック「{topic}」について、既存の台本を補強する追加セグメントを{additional_count}件生成してください。\n"
+        f"話者: {', '.join(speakers)}\n"
+        f"既存セグメントの冒頭:\n" + "\n".join(f"- {t}" for t in existing_topics) + "\n\n"
+        f"出力はJSON配列のみ。各要素は {{'speaker': '...', 'content': '...', 'section': '補足', 'key_points': [...]}} の形式。\n"
+        f"```json から始めないこと。JSONのみ出力。"
+    )
+
+    try:
+        response = await provider.generate_text(prompt, max_tokens=2048)
+        response = response.strip()
+        if response.startswith("```"):
+            response = response.split("\n", 1)[1] if "\n" in response else response[7:]
+        if response.endswith("```"):
+            response = response[:-3]
+
+        new_segments = json.loads(response)
+        if not isinstance(new_segments, list):
+            logger.warning("LLM応答がリスト形式でない: セグメント追加をスキップ")
+            return segments
+
+        # 既存セグメントの末尾に追加
+        result = list(segments)
+        for seg in new_segments:
+            if isinstance(seg, dict) and seg.get("content"):
+                seg.setdefault("speaker", speakers[0] if speakers else "Host1")
+                seg.setdefault("section", "補足")
+                seg.setdefault("key_points", [])
+                result.append(seg)
+
+        logger.info(f"SP-044 自動追加: {len(result) - len(segments)}セグメント追加 ({len(segments)}→{len(result)})")
+        return result
+
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+        logger.warning(f"セグメント追加のLLM応答解析失敗: {e}")
+        return segments
+    except Exception as e:
+        logger.warning(f"セグメント追加失敗: {e}")
+        return segments
+
+
+def _merge_short_segments(
+    segments: List[Dict[str, Any]],
+    validation: SegmentValidationResult,
+) -> List[Dict[str, Any]]:
+    """短いセグメントを統合して数を減らす。"""
+    if len(segments) <= validation.expected_max:
+        return segments
+
+    # 推定尺が短い順にソートして統合候補を見つける
+    indexed = [(i, estimate_segment_duration(s)) for i, s in enumerate(segments)]
+    indexed.sort(key=lambda x: x[1])
+
+    # 統合対象: 最も短いセグメントを次のセグメントに統合
+    merge_count = len(segments) - validation.expected_max
+    to_merge = set()
+    for idx, (seg_idx, _) in enumerate(indexed):
+        if idx >= merge_count:
+            break
+        to_merge.add(seg_idx)
+
+    result: List[Dict[str, Any]] = []
+    pending_merge: Optional[Dict[str, Any]] = None
+
+    for i, seg in enumerate(segments):
+        if i in to_merge:
+            if pending_merge is None:
+                pending_merge = dict(seg)
+            else:
+                # 前のpendingを次のセグメントに統合
+                pending_merge["content"] = (
+                    str(pending_merge.get("content", ""))
+                    + " "
+                    + str(seg.get("content", ""))
+                )
+                kps = list(pending_merge.get("key_points", []))
+                kps.extend(seg.get("key_points", []))
+                pending_merge["key_points"] = kps
+        else:
+            if pending_merge is not None:
+                # pending_mergeを現在のセグメントに統合
+                seg = dict(seg)
+                seg["content"] = (
+                    str(pending_merge.get("content", ""))
+                    + " "
+                    + str(seg.get("content", ""))
+                )
+                kps = list(pending_merge.get("key_points", []))
+                kps.extend(seg.get("key_points", []))
+                seg["key_points"] = kps
+                pending_merge = None
+            result.append(seg)
+
+    if pending_merge is not None:
+        if result:
+            last = dict(result[-1])
+            last["content"] = str(last.get("content", "")) + " " + str(pending_merge.get("content", ""))
+            result[-1] = last
+        else:
+            result.append(pending_merge)
+
+    logger.info(f"SP-044 自動統合: {len(segments) - len(result)}セグメント統合 ({len(segments)}→{len(result)})")
+    return result
