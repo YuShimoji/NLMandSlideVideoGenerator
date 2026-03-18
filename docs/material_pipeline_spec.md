@@ -14,7 +14,7 @@
 ```
 [手動] トピック定義
   ↓
-[自動] SourceCollector: Web資料収集 (Google Custom Search API)
+[自動] SourceCollector: Web資料収集 (Brave Search API)
   ↓
 [手動/自動] 台本生成 (GeminiProvider or NotebookLMProvider)
   ↓
@@ -65,7 +65,7 @@
 |------|------|
 | 実行主体 | SourceCollector (src/notebook_lm/source_collector.py) |
 | 入力 | トピック文字列, シードURL群, 検索クエリ群 |
-| 処理 | Google Custom Search API → HTML解析 → 信頼度/関連度スコアリング |
+| 処理 | Brave Search API → HTML解析 → 信頼度/関連度スコアリング |
 | 出力 | ResearchPackage (JSON) |
 | 自動/手動 | **自動** |
 | 品質保証 | relevance_score + reliability_score でソート。低スコア除外 |

@@ -105,12 +105,10 @@ class Settings:
             "max_audio_duration": 1800  # 30分
         }
 
-        # リサーチ設定 (TASK_016)
+        # リサーチ設定
         self.RESEARCH_SETTINGS = {
             "data_dir": self.DATA_DIR / "research",
             "max_sources": 15,
-            "google_search_api_key": os.getenv("GOOGLE_SEARCH_API_KEY", ""),
-            "google_search_cx": os.getenv("GOOGLE_SEARCH_CX", ""),
         }
         
         # Google Slides設定

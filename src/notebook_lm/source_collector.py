@@ -102,16 +102,10 @@ class SourceCollector:
             return None
 
     async def _search_sources(self, topic: str, count: int) -> List[SourceInfo]:
-        """Search sources via Brave Search API (primary) or Google Custom Search (legacy fallback)."""
+        """Search sources via Brave Search API."""
         brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
         if brave_key:
             return await self._brave_search(topic, count, brave_key)
-
-        # Legacy: Google Custom Search (deprecated, closed to new users since 2025)
-        api_key = settings.RESEARCH_SETTINGS.get("google_search_api_key")
-        cx = settings.RESEARCH_SETTINGS.get("google_search_cx")
-        if api_key and cx:
-            return await self._google_search(topic, count, api_key, cx)
 
         logger.warning("No search API configured (set BRAVE_SEARCH_API_KEY); falling back to simulation.")
         return await self._simulate_search_sources(topic, count)
@@ -148,39 +142,6 @@ class SourceCollector:
             return sources
         except Exception as exc:
             logger.error(f"Brave Search API failed: {exc}")
-            return await self._simulate_search_sources(topic, count)
-
-    async def _google_search(self, topic: str, count: int, api_key: str, cx: str) -> List[SourceInfo]:
-        """Google Custom Search API (legacy, deprecated)."""
-        logger.info(f"Google Search API query: {topic} (max={count})")
-        try:
-            response = self.session.get(
-                "https://www.googleapis.com/customsearch/v1",
-                params={
-                    "key": api_key,
-                    "cx": cx,
-                    "q": topic,
-                    "num": str(min(count, 10)),
-                    "lr": "lang_ja",
-                },
-                timeout=10,
-            )
-            response.raise_for_status()
-            search_results = response.json()
-
-            sources: List[SourceInfo] = []
-            for item in search_results.get("items", [])[:count]:
-                search_url = item.get("link")
-                if not search_url:
-                    continue
-                source = await self._process_url(search_url, topic)
-                if source:
-                    sources.append(source)
-
-            logger.info(f"Google Search complete: {len(sources)}")
-            return sources
-        except Exception as exc:
-            logger.error(f"Google Search API failed: {exc}")
             return await self._simulate_search_sources(topic, count)
 
     async def _simulate_search_sources(self, topic: str, count: int) -> List[SourceInfo]:

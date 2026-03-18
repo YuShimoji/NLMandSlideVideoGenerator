@@ -22,8 +22,6 @@ def pipeline_tmp(tmp_path: Path):
     real_settings.RESEARCH_SETTINGS = {
         "data_dir": tmp_path / "research",
         "max_sources": 2,
-        "google_search_api_key": "",
-        "google_search_cx": "",
     }
     real_settings.DATA_DIR = tmp_path
 

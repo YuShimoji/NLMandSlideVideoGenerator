@@ -36,10 +36,10 @@
 - フォールバックチェーンは機能したが分類精度低下
 - 対策: Gemini有料プランまたはクォータリセット後の再テスト
 
-#### P3: Google Search API未設定
+#### P3: Google Search API未設定 (RESOLVED — Brave Search移行済み)
 - ソース収集が全て Simulated source → 台本の情報密度低下
-- .env の GOOGLE_SEARCH_API_KEY / GOOGLE_SEARCH_CX が未設定
-- 対策: ユーザーがAPI設定を完了する必要あり
+- ~~.env の GOOGLE_SEARCH_API_KEY / GOOGLE_SEARCH_CX が未設定~~
+- **解決済み**: 2026-03-18に Brave Search API へ移行。BRAVE_SEARCH_API_KEY を設定すればソース収集が動作する
 
 #### P4: 画像ヒット率 25% (3/12)
 - Pexels: 3/5 (日本語クエリのマッチ率)
@@ -98,7 +98,7 @@
 - Alignment bottleneck: 75% of pipeline time (252s for 30min video)
 
 ## Next Steps
-1. Google Cloud Console でCustom Search APIの有効化を確認
+1. ~~Google Cloud Console でCustom Search APIの有効化を確認~~ → Brave Search移行済み (BRAVE_SEARCH_API_KEY設定で動作)
 2. YMM4でCSVインポート → Voice生成 → mp4レンダリング (手動)
 3. mp4出力のMP4QualityChecker検証
 4. Gemini有料プラン検討 (バッチ制作に必要)

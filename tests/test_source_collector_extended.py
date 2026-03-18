@@ -20,10 +20,7 @@ def collector():
     """Create a SourceCollector with mocked settings."""
     with patch("notebook_lm.source_collector.settings") as mock_settings:
         mock_settings.NOTEBOOK_LM_SETTINGS = {"max_sources": 5}
-        mock_settings.RESEARCH_SETTINGS = {
-            "google_search_api_key": "",
-            "google_search_cx": "",
-        }
+        mock_settings.RESEARCH_SETTINGS = {}
         yield SourceCollector()
 
 
@@ -133,63 +130,44 @@ async def test_process_url_generic_exception(collector):
 
 
 # ---------------------------------------------------------------------------
-# 3. _search_sources() API path + exception fallback (lines 132, 139-141)
+# 3. _search_sources() Brave API — skip items without url + exception fallback
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_search_sources_api_skips_items_without_link():
-    """Items without 'link' key are skipped (line 132)."""
-    with patch("notebook_lm.source_collector.settings") as mock_settings:
-        mock_settings.NOTEBOOK_LM_SETTINGS = {"max_sources": 5}
-        mock_settings.RESEARCH_SETTINGS = {
-            "google_search_api_key": "key",
-            "google_search_cx": "cx",
-        }
-        collector = SourceCollector()
+async def test_brave_search_skips_items_without_url():
+    """Items without 'url' key are skipped."""
+    collector = SourceCollector()
 
     api_resp = MagicMock()
     api_resp.raise_for_status = MagicMock()
     api_resp.json.return_value = {
-        "items": [
-            {"link": "https://example.com/valid"},
-            {"title": "No link here"},  # no "link" key
-        ]
+        "web": {
+            "results": [
+                {"url": "https://example.com/valid", "title": "Valid"},
+                {"title": "No url here"},  # no "url" key
+            ]
+        }
     }
 
     async def mock_process(url, topic):
         return SourceInfo(url=url, title="T", content_preview="C",
                           relevance_score=0.8, reliability_score=0.8, source_type="article")
 
-    with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": ""}, clear=False):
-        with patch("notebook_lm.source_collector.settings") as mock_settings:
-            mock_settings.RESEARCH_SETTINGS = {
-                "google_search_api_key": "key",
-                "google_search_cx": "cx",
-            }
-            with patch.object(collector.session, "get", return_value=api_resp):
-                with patch.object(collector, "_process_url", side_effect=mock_process):
-                    sources = await collector._search_sources("topic", 5)
+    with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "fake_key"}):
+        with patch.object(collector.session, "get", return_value=api_resp):
+            with patch.object(collector, "_process_url", side_effect=mock_process):
+                sources = await collector._search_sources("topic", 5)
 
     assert len(sources) == 1
     assert sources[0].url == "https://example.com/valid"
 
 
 @pytest.mark.asyncio
-async def test_search_sources_api_exception_falls_back():
-    """API exception falls back to simulation (lines 139-141)."""
-    with patch("notebook_lm.source_collector.settings") as mock_settings:
-        mock_settings.NOTEBOOK_LM_SETTINGS = {"max_sources": 5}
-        mock_settings.RESEARCH_SETTINGS = {
-            "google_search_api_key": "key",
-            "google_search_cx": "cx",
-        }
-        collector = SourceCollector()
+async def test_brave_search_api_exception_falls_back():
+    """Brave API exception falls back to simulation."""
+    collector = SourceCollector()
 
-    with patch("notebook_lm.source_collector.settings") as mock_settings:
-        mock_settings.RESEARCH_SETTINGS = {
-            "google_search_api_key": "key",
-            "google_search_cx": "cx",
-        }
+    with patch.dict("os.environ", {"BRAVE_SEARCH_API_KEY": "fake_key"}):
         with patch.object(collector.session, "get", side_effect=Exception("API down")):
             sources = await collector._search_sources("topic", 2)
 
