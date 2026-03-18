@@ -26,6 +26,8 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
+> **注意**: 別 PC への移行時や venv を再作成した場合は `pip install -r requirements.txt` を再実行してください。特に `google-genai` (Gemini API SDK) が欠けると、台本生成・alignment・キーワード抽出が全てモックフォールバックで動作し、品質が大幅に低下します。
+
 ### 外部依存ツールの配置
 
 - **ffmpeg**: パスが通っていることを確認 (`ffmpeg -version`)
