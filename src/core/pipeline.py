@@ -104,6 +104,7 @@ class ModularVideoPipeline:
         quality: str = "1080p",
         private_upload: bool = True,
         upload: bool = True,
+        generate_metadata: bool = False,
         stage_modes: Optional[Dict[str, str]] = None,
         user_preferences: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
@@ -258,6 +259,17 @@ class ModularVideoPipeline:
                     )
                 )
             else:
+                # SP-038: upload=Falseでもメタデータ生成が要求された場合は生成・保存
+                if generate_metadata:
+                    if progress_callback:
+                        progress_callback("メタデータ生成", 0.9, "メタデータを生成します...")
+                    metadata = await self._generate_and_save_metadata(
+                        transcript=transcript,
+                        script_bundle=script_bundle,
+                        topic=topic,
+                        private_upload=private_upload,
+                        editing_outputs=editing_outputs,
+                    )
                 if progress_callback:
                     progress_callback("完了", 1.0, "アップロードをスキップしました")
 
@@ -315,6 +327,71 @@ class ModularVideoPipeline:
         if self.script_provider is not None:
             return await self.script_provider.generate_script(topic, sources, mode)
         raise PipelineError("script_provider is not configured", recoverable=False)
+
+    async def _generate_and_save_metadata(
+        self,
+        transcript: Any,
+        script_bundle: Optional[Dict[str, Any]],
+        topic: str,
+        private_upload: bool,
+        editing_outputs: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """メタデータを生成しJSONファイルに保存する (SP-038 Phase 1)。
+
+        script_bundleが存在する場合はgenerate_metadata_from_bundleを使い、
+        クレジット情報があれば概要欄に自動追記する (Phase 2)。
+        """
+        import json
+        from config.settings import settings
+
+        credits = self._extract_credits(editing_outputs)
+
+        if script_bundle and hasattr(self.metadata_generator, "generate_metadata_from_bundle"):
+            metadata = await self.metadata_generator.generate_metadata_from_bundle(
+                script_bundle,
+                topic=topic,
+                credits=credits or None,
+            )
+        else:
+            metadata = await self.metadata_generator.generate_metadata(transcript)
+            if credits and hasattr(self.metadata_generator, "append_credits"):
+                metadata["description"] = self.metadata_generator.append_credits(
+                    metadata.get("description", ""), credits
+                )
+
+        metadata["privacy_status"] = "private" if private_upload else "public"
+        metadata["language"] = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
+
+        # JSON保存 (output_csv/ はプロジェクト標準出力先)
+        from config.settings import PROJECT_ROOT
+        output_dir = PROJECT_ROOT / "output_csv"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        metadata_path = output_dir / "metadata.json"
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        logger.info(f"メタデータ保存: {metadata_path}")
+
+        return metadata
+
+    @staticmethod
+    def _extract_credits(editing_outputs: Optional[Dict[str, Any]]) -> List[str]:
+        """editing_outputs からクレジット情報を抽出する (SP-038 Phase 2)。"""
+        if not editing_outputs:
+            return []
+
+        credits: List[str] = []
+
+        # image_credits キーを探す
+        raw_credits = editing_outputs.get("image_credits", "")
+        if isinstance(raw_credits, str) and raw_credits.strip():
+            for line in raw_credits.strip().splitlines():
+                line = line.strip()
+                if line and not line.startswith("---"):
+                    credits.append(line)
+        elif isinstance(raw_credits, list):
+            credits.extend(str(c) for c in raw_credits if c)
+
+        return credits
 
     async def _normalize_script_with_fallback(self, raw_script: Dict[str, Any]) -> Dict[str, Any]:
         """スクリプト正規化（フォールバック付き）"""

@@ -5,8 +5,10 @@ YouTube関連モジュール
 
 from .uploader import YouTubeUploader
 from .metadata_generator import MetadataGenerator
+from .script_to_transcript import script_bundle_to_transcript
 
 __all__ = [
     "YouTubeUploader",
-    "MetadataGenerator"
+    "MetadataGenerator",
+    "script_bundle_to_transcript",
 ]

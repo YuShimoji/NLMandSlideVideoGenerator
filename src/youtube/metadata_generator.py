@@ -808,6 +808,57 @@ class MetadataGenerator:
 
         logger.info(f"テンプレート '{template_name}' を更新しました")
 
+    async def generate_metadata_from_bundle(
+        self,
+        script_bundle: Dict[str, Any],
+        *,
+        topic: str = "",
+        template_name: str = "default",
+        credits: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """ScriptBundle辞書からメタデータを生成する便利メソッド (SP-038 Phase 1)。
+
+        内部で ScriptBundle → TranscriptInfo 変換を行い generate_metadata() を呼ぶ。
+
+        Args:
+            script_bundle: GeminiProvider等が出力するscript_bundle辞書。
+            topic: フォールバック用トピック名。
+            template_name: 使用するテンプレート名。
+            credits: 画像クレジット行のリスト (Phase 2)。
+
+        Returns:
+            Dict[str, Any]: 生成されたメタデータ。
+        """
+        from .script_to_transcript import script_bundle_to_transcript
+
+        transcript = script_bundle_to_transcript(script_bundle, topic=topic)
+        metadata = await self.generate_metadata(transcript, template_name=template_name)
+
+        if credits:
+            metadata["description"] = self.append_credits(
+                metadata.get("description", ""), credits
+            )
+
+        return metadata
+
+    @staticmethod
+    def append_credits(description: str, credits: List[str]) -> str:
+        """概要欄にクレジット情報を追記する (SP-038 Phase 2)。
+
+        Args:
+            description: 既存の概要欄テキスト。
+            credits: クレジット行のリスト (例: ["Photo by X on Pexels"])。
+
+        Returns:
+            str: クレジット追記済みの概要欄。
+        """
+        if not credits:
+            return description
+
+        unique = list(dict.fromkeys(credits))  # 重複除去 (順序保持)
+        credit_block = "\n\n【画像クレジット】\n" + "\n".join(unique)
+        return description + credit_block
+
     def list_templates(self) -> Dict[str, Dict[str, Any]]:
         """
         利用可能なテンプレート一覧を取得
