@@ -276,7 +276,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "style_template.json v1.1 (video/subtitle/animation/bgm/crossfade/timing/validation)。Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。ExportValidator + ValidateImportItems拡張。BGMテンプレート自動配置 (fadeIn/fadeOut分離対応)"
+    "summary": "style_template.json v1.1 + cinematic/minimal バリアント3種。Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。ExportValidator + ValidateImportItems拡張。BGMテンプレート自動配置 (fadeIn/fadeOut分離対応)"
   },
   {
     "id": "SP-032",
