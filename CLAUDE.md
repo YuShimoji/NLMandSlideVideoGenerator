@@ -7,18 +7,21 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 9 nightshift):
-  - 全44仕様。41 done + 3 partial (SP-035/043/044) + 0 draft + 1 archived
-  - session 9の成果:
-    - SP-038 Phase 3: YouTube Data API v3 resumable upload実装 (65%→90%)
-      - uploader.py全面書き換え: 実API + モックフォールバック二重構成
-      - GoogleAuthHelper統合 + youtube.upload/youtube.readonlyスコープ追加
-      - CLI uploadサブコマンド (research_cli.py)
-    - SP-039 Phase 2: MP4品質検証→SP-038連携 (80%→done/100%)
-      - upload前自動品質ゲート (CRITICAL失敗でアップロード阻止)
-      - --no-verify CLIオプション
-  - テスト: 1161 passed, 3 skipped, 0 failed
-  - 残: SP-035 YMM4実機テスト(60%), SP-038 本番OAuth(90%), SP-043 Phase4(85%), SP-044 Phase3(95%)
+直近の状態 (2026-03-18 session 10 nightshift):
+  - 全44仕様。41 done + 3 partial (SP-035/038/041/043/044) + 0 draft + 1 archived
+  - session 10の成果:
+    - SP-035: preflight_sp035.py UTF-8エンコーディング修正 (Windows mojibake解消)
+    - SP-044: Phase 2テスト強化 (25→30件, LLM graceful degradation 4テスト追加) + スペック同期 (90%→95%)
+    - config/settings.py: YouTube OAuth scopes追加 (SP-038 prep)
+    - 全partial spec棚卸し完了: SP-035/038/041/043/044 の残作業をHUMAN_AUTHORITY分類
+    - src/ TODO/FIXME: 0件 (クリーン)
+  - テスト: 1237 passed, 1 skipped, 0 failed
+  - 残 partial:
+    - SP-035 YMM4実機テスト (60%) — 手動テスト必要
+    - SP-038 本番OAuth (90%) — 認証情報必要
+    - SP-041 Phase 3 プリセット統合 (70%) — 設計判断必要
+    - SP-043 Phase 4 設定UI (85%) — UI設計判断必要
+    - SP-044 Phase 3 手動モード (95%) — UX設計判断必要
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
