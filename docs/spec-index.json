@@ -385,5 +385,14 @@
     "cat": "core",
     "file": "docs/specs/multi_llm_provider.md",
     "summary": "Gemini単一依存解消: ILLMProvider抽象化 + 5プロバイダー。Phase 1-3完了(抽象化+既存コード全移行+1105テスト全PASS)。残: Phase 4(設定UI+実APIキー統合テスト+プロンプトチューニング)"
+  },
+  {
+    "id": "SP-044",
+    "title": "Segment Duration Control",
+    "status": "partial",
+    "pct": 60,
+    "cat": "pipeline",
+    "file": "docs/specs/segment_duration_control.md",
+    "summary": "台本セグメント粒度検証: 推定尺計算(日本語4文字/秒)+セグメント数範囲チェック+パイプライン統合。Phase 1(検証+警告)完了。Phase 2(自動調整)未着手"
   }
 ]
