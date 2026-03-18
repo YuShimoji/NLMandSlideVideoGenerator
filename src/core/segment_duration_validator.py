@@ -1,0 +1,176 @@
+"""セグメント粒度制御 (SP-044)
+
+台本生成後にセグメント数・推定尺を検証し、過不足を検出する。
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+
+
+# セグメント数の目安テーブル (target_seconds → (min, recommended_min, recommended_max, max))
+_SEGMENT_TABLE: List[Tuple[float, int, int, int, int]] = [
+    (300, 3, 5, 7, 10),
+    (900, 7, 10, 15, 20),
+    (1800, 15, 20, 30, 40),
+    (3600, 25, 30, 45, 60),
+]
+
+# ゆっくりボイスの読み上げ速度 (文字/秒)
+_JA_CHARS_PER_SEC = 4.0
+# 英語の読み上げ速度 (単語/秒)
+_EN_WORDS_PER_SEC = 2.5
+# 1セグメントあたりのパディング (秒)
+_SEGMENT_PADDING = 0.5
+
+
+@dataclass
+class SegmentValidationResult:
+    """検証結果。"""
+    status: str  # "ok" | "too_short" | "too_long" | "too_few" | "too_many"
+    segment_count: int
+    estimated_duration: float
+    target_duration: float
+    ratio: float
+    expected_min: int
+    expected_max: int
+    suggestion: str  # "" | "add_segments" | "trim_segments" | "merge_segments"
+    message: str = ""
+
+    @property
+    def is_ok(self) -> bool:
+        return self.status == "ok"
+
+
+def estimate_segment_duration(segment: Dict[str, object]) -> float:
+    """1セグメントの推定読み上げ時間(秒)を算出する。"""
+    text = str(segment.get("content", "") or segment.get("text", "") or "")
+    if not text:
+        return 3.0  # デフォルト
+
+    # 日本語文字数 (CJK統合漢字 + ひらがな + カタカナ + 全角記号)
+    ja_chars = sum(1 for c in text if _is_ja_char(c))
+
+    # 英語単語数 (日本語文字を除いた残りの単語数)
+    ascii_part = "".join(c if not _is_ja_char(c) else " " for c in text)
+    en_words = len([w for w in ascii_part.split() if w.strip()])
+
+    duration = ja_chars / _JA_CHARS_PER_SEC + en_words / _EN_WORDS_PER_SEC
+    return max(duration, 1.0) + _SEGMENT_PADDING
+
+
+def _is_ja_char(c: str) -> bool:
+    """日本語文字かどうか。"""
+    cp = ord(c)
+    return (
+        0x3000 <= cp <= 0x303F  # 句読点
+        or 0x3040 <= cp <= 0x309F  # ひらがな
+        or 0x30A0 <= cp <= 0x30FF  # カタカナ
+        or 0x4E00 <= cp <= 0x9FFF  # CJK統合漢字
+        or 0xFF00 <= cp <= 0xFFEF  # 全角英数
+    )
+
+
+def _get_segment_range(target_duration: float) -> Tuple[int, int]:
+    """target_durationに対する(min, max)セグメント数を返す。"""
+    if target_duration <= 0:
+        return (1, 10)
+
+    # テーブル内の最も近いエントリを補間
+    for i, (threshold, seg_min, _, _, seg_max) in enumerate(_SEGMENT_TABLE):
+        if target_duration <= threshold:
+            if i == 0:
+                # テーブルの最小エントリ以下
+                scale = target_duration / threshold
+                return (max(1, int(seg_min * scale)), max(2, int(seg_max * scale)))
+            # 前エントリとの線形補間
+            prev_t, prev_min, _, _, prev_max = _SEGMENT_TABLE[i - 1]
+            frac = (target_duration - prev_t) / (threshold - prev_t)
+            interp_min = int(prev_min + frac * (seg_min - prev_min))
+            interp_max = int(prev_max + frac * (seg_max - prev_max))
+            return (max(1, interp_min), max(2, interp_max))
+
+    # テーブルの最大エントリ以上
+    last_t, last_min, _, _, last_max = _SEGMENT_TABLE[-1]
+    scale = target_duration / last_t
+    return (max(1, int(last_min * scale)), int(last_max * scale))
+
+
+def validate_segments(
+    segments: List[Dict[str, object]],
+    target_duration: float,
+) -> SegmentValidationResult:
+    """セグメント群を検証する。
+
+    Args:
+        segments: 台本セグメント群。
+        target_duration: 目標動画尺(秒)。
+
+    Returns:
+        SegmentValidationResult: 検証結果。
+    """
+    seg_count = len(segments)
+    estimated = sum(estimate_segment_duration(s) for s in segments)
+    ratio = estimated / target_duration if target_duration > 0 else 0.0
+    expected_min, expected_max = _get_segment_range(target_duration)
+
+    if ratio < 0.5:
+        return SegmentValidationResult(
+            status="too_short",
+            segment_count=seg_count,
+            estimated_duration=round(estimated, 1),
+            target_duration=target_duration,
+            ratio=round(ratio, 3),
+            expected_min=expected_min,
+            expected_max=expected_max,
+            suggestion="add_segments",
+            message=f"推定尺 {estimated:.0f}秒 は目標 {target_duration:.0f}秒 の {ratio:.0%} (不足)",
+        )
+    elif ratio > 1.5:
+        return SegmentValidationResult(
+            status="too_long",
+            segment_count=seg_count,
+            estimated_duration=round(estimated, 1),
+            target_duration=target_duration,
+            ratio=round(ratio, 3),
+            expected_min=expected_min,
+            expected_max=expected_max,
+            suggestion="trim_segments",
+            message=f"推定尺 {estimated:.0f}秒 は目標 {target_duration:.0f}秒 の {ratio:.0%} (超過)",
+        )
+    elif seg_count < expected_min:
+        return SegmentValidationResult(
+            status="too_few",
+            segment_count=seg_count,
+            estimated_duration=round(estimated, 1),
+            target_duration=target_duration,
+            ratio=round(ratio, 3),
+            expected_min=expected_min,
+            expected_max=expected_max,
+            suggestion="add_segments",
+            message=f"セグメント数 {seg_count} は期待範囲 {expected_min}-{expected_max} を下回る",
+        )
+    elif seg_count > expected_max:
+        return SegmentValidationResult(
+            status="too_many",
+            segment_count=seg_count,
+            estimated_duration=round(estimated, 1),
+            target_duration=target_duration,
+            ratio=round(ratio, 3),
+            expected_min=expected_min,
+            expected_max=expected_max,
+            suggestion="merge_segments",
+            message=f"セグメント数 {seg_count} は期待範囲 {expected_min}-{expected_max} を上回る",
+        )
+    else:
+        return SegmentValidationResult(
+            status="ok",
+            segment_count=seg_count,
+            estimated_duration=round(estimated, 1),
+            target_duration=target_duration,
+            ratio=round(ratio, 3),
+            expected_min=expected_min,
+            expected_max=expected_max,
+            suggestion="",
+            message=f"推定尺 {estimated:.0f}秒 / 目標 {target_duration:.0f}秒 ({ratio:.0%}), {seg_count}セグメント",
+        )

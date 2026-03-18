@@ -1,7 +1,7 @@
 # マルチLLMプロバイダー対応 (SP-043)
 
 **最終更新**: 2026-03-18
-**ステータス**: draft
+**ステータス**: partial (Phase 1-3 完了, Phase 4 未着手)
 
 ---
 
@@ -117,29 +117,36 @@ class ILLMProvider(Protocol):
 
 ## 6. 実装方針
 
-### Phase 1: 抽象化レイヤー
+### Phase 1: 抽象化レイヤー (完了)
 
-- `src/core/llm_provider.py` — ILLMProvider Protocol + ファクトリ
-- `.env` に `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` 追加
-- GeminiLLMProvider: 既存コードをラップ
+- `src/core/llm_provider.py` — ILLMProvider Protocol + 5プロバイダー + ファクトリ
+- `.env` の `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` 対応
+- 25 テスト全 PASS
 
-### Phase 2: OpenAI / Claude 実装
+### Phase 2: プロバイダー実装 (完了)
 
-- OpenAILLMProvider: `openai` SDK
-- ClaudeLLMProvider: `anthropic` SDK
-- テスト: モック + 実 API 検証
+- OpenAILLMProvider: `openai.AsyncOpenAI` SDK
+- ClaudeLLMProvider: `anthropic.AsyncAnthropic` SDK
+- DeepSeekLLMProvider: OpenAI互換 (`base_url="https://api.deepseek.com"`)
+- GeminiLLMProvider: `asyncio.to_thread` で sync→async 変換
+- MockLLMProvider: テスト・フォールバック用
 
-### Phase 3: 既存コードの移行
+### Phase 3: 既存コードの移行 (完了)
 
-- gemini_integration.py → ILLMProvider 使用
-- script_alignment.py → ILLMProvider 使用
-- segment_classifier.py → ILLMProvider 使用
-- stock_image_client.py → ILLMProvider 使用
+- gemini_integration.py → ILLMProvider 注入 (後方互換: api_key のみでも動作)
+- segment_classifier.py → ILLMProvider 注入 + `_run_async` sync-async ブリッジ
+- stage_runners.py → `create_llm_provider()` ファクトリ経由
+- gemini_provider.py → ILLMProvider 注入対応
+- helpers.py → `LLM_PROVIDER` env var 対応
+- research_cli.py → fallback_used / actual_provider 追跡
+- pipeline_stats.py → record_llm_provider / record_fallback 追加
+- 1105 テスト全 PASS / 0 failed
 
-### Phase 4: DeepSeek / 追加プロバイダー
+### Phase 4: 設定 UI + 追加プロバイダー (未着手)
 
-- DeepSeekLLMProvider: OpenAI互換
 - 設定 UI (Streamlit)
+- 実 API キーでの統合テスト
+- プロバイダー別プロンプトチューニング
 
 ---
 

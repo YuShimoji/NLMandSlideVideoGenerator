@@ -336,6 +336,16 @@ async def run_pipeline(
 
             stats.stop_step("script")
             stats.record_segments(len(segments))
+
+            # セグメント粒度検証 (SP-044)
+            from core.segment_duration_validator import validate_segments
+            seg_check = validate_segments(segments, target_duration)
+            if not seg_check.is_ok:
+                print(f"  !! {seg_check.message}")
+                stats.record_fallback(f"duration: {seg_check.status} ({seg_check.message})")
+            else:
+                print(f"  Duration check: {seg_check.message}")
+
             state.mark_done("script", "generated_script.json")
             state.save(work_dir)
         except Exception as e:
