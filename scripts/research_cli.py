@@ -1123,9 +1123,84 @@ def run_stats(work_dir: Path, batch_mode: bool = False, compare_dir: Optional[Pa
     print(f"\n{stats.summary()}")
 
 
+async def run_upload(
+    video_path: Path,
+    metadata_path: Path,
+    privacy: str = "private",
+    thumbnail_path: Optional[Path] = None,
+    credentials_path: Optional[Path] = None,
+) -> None:
+    """Upload an MP4 to YouTube using metadata.json (SP-038 Phase 3)."""
+    from youtube.uploader import YouTubeUploader, load_metadata_from_json
+
+    # メタデータ読み込み
+    if not metadata_path.exists():
+        print(f"ERROR: metadata.json not found: {metadata_path}")
+        return
+    if not video_path.exists():
+        print(f"ERROR: MP4 file not found: {video_path}")
+        return
+
+    meta = load_metadata_from_json(metadata_path)
+    meta.privacy_status = privacy
+    if thumbnail_path:
+        meta.thumbnail_path = thumbnail_path
+
+    file_size_mb = video_path.stat().st_size / (1024 * 1024)
+
+    print(f"\n{'='*60}")
+    print(f"YouTube Upload (SP-038)")
+    print(f"{'='*60}")
+    print(f"Video:    {video_path} ({file_size_mb:.1f} MB)")
+    print(f"Title:    {meta.title}")
+    print(f"Privacy:  {meta.privacy_status}")
+    print(f"Tags:     {', '.join(meta.tags[:5])}{'...' if len(meta.tags) > 5 else ''}")
+    print()
+
+    uploader = YouTubeUploader(credentials_path=credentials_path)
+    auth_ok = await uploader.authenticate()
+    if not auth_ok:
+        print("ERROR: YouTube API authentication failed")
+        return
+
+    if uploader.is_mock_mode:
+        print("WARNING: OAuth credentials not found. Running in MOCK mode.")
+        print("  To set up credentials: python scripts/google_auth_setup.py")
+        print()
+
+    def progress_cb(p: float) -> None:
+        bar_len = 40
+        filled = int(bar_len * p)
+        bar = "#" * filled + "-" * (bar_len - filled)
+        print(f"\r  [{bar}] {p*100:.1f}%", end="", flush=True)
+
+    result = await uploader.upload_video(
+        video=video_path,
+        metadata=meta,
+        thumbnail_path=thumbnail_path,
+        progress_callback=progress_cb,
+    )
+
+    print()
+    print()
+    print(f"{'='*60}")
+    if uploader.is_mock_mode:
+        print(f"[MOCK] Upload complete")
+    else:
+        print(f"Upload complete!")
+    print(f"  Video ID:   {result.video_id}")
+    print(f"  URL:        {result.video_url}")
+    print(f"  Status:     {result.upload_status}")
+    print(f"  Privacy:    {result.privacy_status}")
+    print(f"{'='*60}")
+
+    quota = uploader.get_quota_usage()
+    print(f"  Quota:      {quota['used']}/{quota['limit']} ({quota['remaining']} remaining)")
+
+
 def main() -> None:
     raw_args = sys.argv[1:]
-    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats"}
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats", "upload", "verify"}
     if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
@@ -1196,7 +1271,27 @@ def main() -> None:
     verify_parser.add_argument("--resolution", default="1920x1080", help="Expected resolution (WxH)")
     verify_parser.add_argument("--update-batch-result", action="store_true", help="Update batch_result.json with verification results")
 
+    # upload サブコマンド (SP-038 Phase 3)
+    upload_parser = subparsers.add_parser("upload", help="Upload MP4 to YouTube with metadata")
+    upload_parser.add_argument("--video", required=True, help="Path to MP4 file")
+    upload_parser.add_argument("--metadata", required=True, help="Path to metadata.json (from pipeline)")
+    upload_parser.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"], help="Privacy status (default: private)")
+    upload_parser.add_argument("--thumbnail", help="Path to thumbnail image (optional)")
+    upload_parser.add_argument("--credentials", help="Path to OAuth client secrets JSON (optional, uses settings default)")
+
     args = parser.parse_args(raw_args)
+
+    if args.command == "upload":
+        asyncio.run(
+            run_upload(
+                video_path=Path(args.video),
+                metadata_path=Path(args.metadata),
+                privacy=args.privacy,
+                thumbnail_path=Path(args.thumbnail) if args.thumbnail else None,
+                credentials_path=Path(args.credentials) if args.credentials else None,
+            )
+        )
+        return
 
     if args.command == "stats":
         run_stats(

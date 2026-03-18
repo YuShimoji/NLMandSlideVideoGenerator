@@ -1,6 +1,6 @@
 """セグメント粒度制御テスト (SP-044)"""
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from core.segment_duration_validator import (
     estimate_segment_duration,
@@ -8,6 +8,7 @@ from core.segment_duration_validator import (
     adjust_segments,
     _get_segment_range,
     _merge_short_segments,
+    _expand_segments,
     SegmentValidationResult,
 )
 
@@ -200,6 +201,99 @@ class TestAdjustSegments:
             status="too_many", segment_count=3, estimated_duration=500,
             target_duration=300, ratio=1.67, expected_min=1, expected_max=2,
             suggestion="merge_segments",
+        )
+        result = await adjust_segments(segs, validation)
+        assert len(result) <= 2
+
+    @pytest.mark.asyncio
+    async def test_add_segments_with_mock_llm(self) -> None:
+        """LLMプロバイダー成功時: 追加セグメントが結合される。"""
+        segs = [
+            {"content": "導入部分のテキスト" * 5, "speaker": "Host1", "section": "intro", "key_points": ["導入"]},
+        ]
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=1, estimated_duration=30,
+            target_duration=300, ratio=0.1, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+
+        mock_provider = AsyncMock()
+        mock_provider.generate_text.return_value = json.dumps([
+            {"speaker": "Host1", "content": "追加セグメント1の内容テキスト", "section": "補足", "key_points": ["追加1"]},
+            {"speaker": "Host2", "content": "追加セグメント2の内容テキスト", "section": "補足", "key_points": ["追加2"]},
+        ])
+
+        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+            result = await _expand_segments(segs, validation, "テストトピック", None)
+
+        assert len(result) == 3  # 元1 + 追加2
+        assert result[0]["content"] == segs[0]["content"]
+        assert "追加セグメント1" in result[1]["content"]
+        assert "追加セグメント2" in result[2]["content"]
+
+    @pytest.mark.asyncio
+    async def test_add_segments_llm_failure_graceful(self) -> None:
+        """LLMプロバイダー取得失敗時: 元のセグメントが返される (graceful degradation)。"""
+        segs = [{"content": "テスト", "key_points": []}]
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=1, estimated_duration=10,
+            target_duration=300, ratio=0.03, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+
+        with patch("core.segment_duration_validator.create_llm_provider", side_effect=ImportError("no provider")):
+            result = await _expand_segments(segs, validation, "topic", None)
+
+        assert result is segs
+
+    @pytest.mark.asyncio
+    async def test_add_segments_llm_bad_json(self) -> None:
+        """LLMが不正なJSONを返した場合: 元のセグメントが返される。"""
+        segs = [{"content": "テスト", "key_points": []}]
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=1, estimated_duration=10,
+            target_duration=300, ratio=0.03, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+
+        mock_provider = AsyncMock()
+        mock_provider.generate_text.return_value = "not valid json at all"
+
+        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+            result = await _expand_segments(segs, validation, "topic", None)
+
+        assert result is segs
+
+    @pytest.mark.asyncio
+    async def test_add_segments_llm_returns_non_list(self) -> None:
+        """LLMがオブジェクトを返した場合: 元のセグメントが返される。"""
+        segs = [{"content": "テスト", "key_points": []}]
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=1, estimated_duration=10,
+            target_duration=300, ratio=0.03, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+
+        mock_provider = AsyncMock()
+        mock_provider.generate_text.return_value = '{"not": "a list"}'
+
+        with patch("core.segment_duration_validator.create_llm_provider", return_value=mock_provider):
+            result = await _expand_segments(segs, validation, "topic", None)
+
+        assert result is segs
+
+    @pytest.mark.asyncio
+    async def test_trim_suggestion_routes_to_merge(self) -> None:
+        """trim_segments suggestion が _merge_short_segments にルーティングされる。"""
+        segs = [
+            {"content": "短い", "speaker": "H1", "key_points": []},
+            {"content": "テスト" * 50, "speaker": "H2", "key_points": ["a"]},
+            {"content": "テスト" * 50, "speaker": "H1", "key_points": ["b"]},
+        ]
+        validation = SegmentValidationResult(
+            status="too_long", segment_count=3, estimated_duration=600,
+            target_duration=300, ratio=2.0, expected_min=1, expected_max=2,
+            suggestion="trim_segments",
         )
         result = await adjust_segments(segs, validation)
         assert len(result) <= 2

@@ -70,23 +70,42 @@ class SegmentDurationValidator:
 - auto-mode: 警告のみ出力し続行
 - manual-mode: 警告出力 + 続行/再生成の選択肢
 
-### Phase 2: 自動調整 (将来)
+### Phase 2: 自動調整 (実装済み)
 
 検証結果に基づいてセグメントを自動的に追加/統合する。
 
-- too_short: LLMに追加セグメント生成を依頼
-- too_long: 類似セグメントを統合
-- too_few: セグメント分割を依頼
-- too_many: 短いセグメントを統合
+- too_short / too_few: `_expand_segments()` — LLM (ILLMProvider) に追加セグメント生成を依頼
+  - 不足秒数から追加セグメント数を概算 (1セグメント≒15秒)
+  - JSON形式のプロンプトで話者・内容・セクション・key_pointsを含む追加セグメントを生成
+  - LLMプロバイダー取得失敗時は元のセグメントをそのまま返す (graceful degradation)
+- too_long / too_many: `_merge_short_segments()` — 短いセグメントを隣接セグメントに統合
+  - 推定尺が短い順にソート
+  - expected_max を超過する分だけ統合
+  - content と key_points を連結して保持
+
+#### パイプライン統合 (Phase 2)
+
+- research_cli.py の Step 2 直後に validate → adjust の2段階を実行
+- 調整結果は script_bundle JSON に書き戻し
+- PipelineStats に記録
+
+### Phase 3: 手動モード (未着手)
+
+- manual-mode: 警告出力 + 続行/再生成の選択肢
+- CLI フラグ `--duration-mode manual|auto` (デフォルト auto)
+- HUMAN_AUTHORITY: UX設計判断が必要
 
 ## テスト方針
 
-- 推定尺計算の単体テスト
-- 検証ロジックの境界値テスト
-- パイプライン統合テスト (モックLLM)
+- 推定尺計算の単体テスト (6件)
+- セグメント数レンジの境界値テスト (6件)
+- 検証ロジックの境界値テスト (9件)
+- 統合ロジック (_merge_short_segments) テスト (3件)
+- 自動調整 (adjust_segments) テスト (2件+)
+- LLMプロバイダー失敗時の graceful degradation テスト
 
 ## 実装ファイル
 
-- `src/core/segment_duration_validator.py` (新規)
+- `src/core/segment_duration_validator.py`
 - `scripts/research_cli.py` (統合)
-- `tests/test_segment_duration_validator.py` (新規)
+- `tests/test_segment_duration_validator.py` (25+ テスト)
