@@ -7,21 +7,17 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 10 nightshift):
-  - 全44仕様。41 done + 3 partial (SP-035/038/041/043/044) + 0 draft + 1 archived
-  - session 10の成果:
-    - SP-035: preflight_sp035.py UTF-8エンコーディング修正 (Windows mojibake解消)
-    - SP-044: Phase 2テスト強化 (25→30件, LLM graceful degradation 4テスト追加) + スペック同期 (90%→95%)
-    - config/settings.py: YouTube OAuth scopes追加 (SP-038 prep)
-    - 全partial spec棚卸し完了: SP-035/038/041/043/044 の残作業をHUMAN_AUTHORITY分類
-    - src/ TODO/FIXME: 0件 (クリーン)
-  - テスト: 1237 passed, 1 skipped, 0 failed
-  - 残 partial:
-    - SP-035 YMM4実機テスト (60%) — 手動テスト必要
-    - SP-038 本番OAuth (90%) — 認証情報必要
-    - SP-041 Phase 3 プリセット統合 (70%) — 設計判断必要
-    - SP-043 Phase 4 設定UI (85%) — UI設計判断必要
-    - SP-044 Phase 3 手動モード (95%) — UX設計判断必要
+直近の状態 (2026-03-18 session 11):
+  - 全44仕様。43 done + 1 partial (SP-035) + 1 archived + 1 superseded
+  - session 11の成果:
+    - SP-020→SP-031統合: speaker_name_colors+background (名前優先3段フォールバック, 7テスト)
+    - SP-041 Phase 3完了: TextSlideプリセット連携 (news→Stats/blue, educational→TwoColumn/green, summary→Emphasis/warm, 9テスト)
+    - SP-043 Phase 4完了: LLM設定UI Streamlit新タブ (プロバイダー/モデル/APIキー/接続テスト)
+    - SP-044 Phase 3完了: 手動モード CLI --duration-mode manual|auto (continue/adjust/abort, 4テスト)
+    - テンプレート統合仕様書: docs/specs/template_consolidation.md
+  - テスト: ~1270+ passed
+  - 残 partial: SP-035 YMM4実機テスト (60%) — 手動テスト必要
+  - 残 手動作業: SP-038 本番OAuth取得 + 実チャンネルテスト
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -58,6 +54,9 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-17 | SP-039 MP4品質検証はPhase 1(FFprobe+CLI)先行 | Phase 1のみ/Phase 1+2同時 | Phase 2 (SP-038 YouTube連携) は本番OAuth未整備のため後送り |
 | 2026-03-18 | Google Custom Search → Brave Search API 移行 | Brave/Serper/Tavily/Vertex AI/現状維持 | Custom Search JSON APIが新規利用不可(2027/1完全終了)。Brave Search APIは独自インデックス+$5/月無料枠で十分 |
 | 2026-03-18 | Imagen 3→4 移行 | imagen-4.0-generate-001 | Imagen 3は廃止済み。Imagen 4 (standard/fast/ultra) が現行。ただしGemini無料プランでは利用不可(400 paid plans only) |
+| 2026-03-18 | SP-020→SP-031テンプレート統合 | 統合/並行維持/SP-020削除 | speaker_name_colors(名前キー色)をstyle_templateに吸収。ymm4_template_diff.jsonは後方互換で残存。SP-020はsuperseded |
+| 2026-03-18 | SP-041 Phase 3: プリセット影響は両方(C) | A:レイアウトのみ/B:カラーのみ/C:両方 | news→Stats優先+blue, educational→TwoColumn優先+green, summary→Emphasis優先+warm。パイプラインinjection方式 |
+| 2026-03-18 | SP-044 Phase 3: 手動モードUX | CLI対話型/GUI/保留 | --duration-mode manual/auto。検証失敗時にcontinue/adjust/abort選択。autoがデフォルト |
 
 ## Key Paths
 
