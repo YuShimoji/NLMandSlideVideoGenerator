@@ -7,18 +7,16 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18 session 6):
-  - 全43仕様。39 done + 4 partial (SP-035/038/039/043) + 0 draft + 1 archived
-  - SP-043 Multi-LLM Provider Phase 1完了 (30%): ILLMProvider抽象化 + 5プロバイダー + 25テスト
-    - OpenAI/Claude/Gemini/DeepSeek/Mock の5プロバイダー実装
-    - create_llm_provider() ファクトリ (LLM_PROVIDER env var で切替)
-    - Phase 2-3 (既存コード移行) は別セッションに委譲
-  - 実運用動画完走検証: google-genai SDK修復 + Gemini有効で台本品質劇的改善確認
-    - ただし無料枠20req/dayで1動画すら困難 → SP-043の動機
-  - Google CSE完全除去 (8ファイル15箇所)
-  - TextSlide speaker_mappingキャッシュバグ修正
-  - テスト: ~1080 passed
-  - 残: SP-035 YMM4実機テスト(60%), SP-038 Phase3(YouTube API/65%), SP-039 Phase2(80%), SP-041 Phase3(70%), SP-043 Phase2-3(30%)
+直近の状態 (2026-03-18 session 7 nightshift):
+  - 全43仕様+。39 done + 4 partial (SP-035/038/039/043) + 0 draft + 1 archived
+  - SP-043 Multi-LLM Provider Phase 1-3完了 (85%):
+    - Phase 1: ILLMProvider抽象化 + 5プロバイダー + ファクトリ
+    - Phase 2-3: 既存コード全移行完了 (gemini_integration/segment_classifier/stage_runners/gemini_provider/helpers)
+    - GeminiLLMProvider: asyncio.to_thread でイベントループブロック回避
+    - pipeline_stats: fallback_used / actual_provider 追跡追加
+    - 残 Phase 4: 設定UI + 実APIキー統合テスト + プロンプトチューニング
+  - テスト: 1105 passed / 0 failed / 3 skipped
+  - 残: SP-035 YMM4実機テスト(60%), SP-038 Phase3(YouTube API/65%), SP-039 Phase2(80%), SP-043 Phase4(85%)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
