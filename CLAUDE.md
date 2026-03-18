@@ -7,16 +7,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
-直近の状態 (2026-03-18):
-  - 全40仕様。36 done + 2 partial (SP-035/039) + 1 draft (SP-038) + 1 archived
-  - SP-035 pre-flight自動チェック追加 (preflight_sp035.py)、チェックリスト実コード照合修正
-  - SP-037 Thumbnail (100%): Phase 1+2完了。CJKフォント + スタイルプリセット連携 + CLI --generate-thumbnail
-  - SP-038 Phase 1 WIP: ScriptBundle→TranscriptInfo変換 + メタデータ生成 (未コミットコードあり)
-  - E2Eフィードバックループ確立: Brave実ソース + Gemini台本 + Pexels画像 + サムネイル自動生成
-  - Brave Search API 移行完了。Custom Search JSON API廃止対応
-  - Gemini 2.5-flash一本化。Imagen 4有料プラン必須(stock+TextSlideで代替)
-  - テスト: 1018 passed, 3 skipped
-  - 残: SP-035 YMM4実機テスト(60%), SP-038 YouTube連携(draft/0%), SP-039 Phase2(80%)
+直近の状態 (2026-03-18 session 2):
+  - 全42仕様。36 done + 4 partial (SP-035/038/039/042) + 1 draft (SP-041) + 1 archived
+  - Google CSE完全除去: source_collector.py, config, .env.example, docs 8ファイル15箇所
+  - TextSlide speaker_mappingキャッシュバグ修正 (_cache_keyにspeaker含む)
+  - SP-041 TextSlide Visual Quality 仕様策定 (draft): 4レイアウト + グラデーション背景
+  - SP-042 Pipeline Quality Tracking Phase 1実装 (40%): PipelineStats dataclass + 19テスト
+  - 別セッション進捗: SP-035(60%), SP-037(done), SP-038(65%), SP-040(done)
+  - テスト: 1040 passed, 1 skipped (fastapi skip 除く)
+  - 残: SP-035 YMM4実機テスト, SP-038 Phase3(YouTube API本番/OAuth), SP-039 Phase2, SP-041/042実装
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
