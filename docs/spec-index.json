@@ -326,11 +326,11 @@
   {
     "id": "SP-037",
     "title": "Thumbnail Pipeline Integration",
-    "status": "partial",
-    "pct": 60,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/thumbnail_pipeline.md",
-    "summary": "Phase 1完了: generate_from_script() + run_pipeline統合。ストック画像を背景にサムネイル自動生成→output/thumbnail.png。残: 日本語フォント対応、スタイルプリセット連携"
+    "summary": "Phase 1+2完了: パイプライン統合 + CJKフォント + SP-036スタイルマッピング(resolve_thumbnail_style) + SP-031 style_template thumbnail連携 + CLI --generate-thumbnail。35テストPASS"
   },
   {
     "id": "SP-038",
@@ -353,10 +353,10 @@
   {
     "id": "SP-040",
     "title": "Batch Production Queue",
-    "status": "partial",
-    "pct": 80,
+    "status": "done",
+    "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/batch_production_queue.md",
-    "summary": "Phase 1+2完了: CLI batch + topics.json + 順次実行 + エラー続行 + batch_result.json。11テストPASS。残: Web UIバッチ実行画面"
+    "summary": "Phase 1-3完了: CLI batch + topics.json + 順次実行 + エラー続行 + batch_result.json + Streamlit Web UI (バッチキューページ)。テストPASS"
   }
 ]

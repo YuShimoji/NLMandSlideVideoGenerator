@@ -21,6 +21,7 @@ from src.web.ui.pages import (  # noqa: E402
     show_documentation_page,
     show_settings_page,
     show_tests_page,
+    show_batch_queue_page,
 )
 
 st.set_page_config(
@@ -35,6 +36,7 @@ PAGE_OPTIONS = [
     "🔍 リサーチ・台本照合",
     "📦 素材パイプライン",
     "🤖 AI生成（API設定後）",
+    "📋 バッチ制作キュー",
     "📁 生成物一覧",
     "📖 ドキュメント",
     "⚙️ 設定",
@@ -46,6 +48,7 @@ PAGE_ALIASES = {
     "research": "🔍 リサーチ・台本照合",
     "material": "📦 素材パイプライン",
     "pipeline": "🤖 AI生成（API設定後）",
+    "batch": "📋 バッチ制作キュー",
     "assets": "📁 生成物一覧",
     "docs": "📖 ドキュメント",
     "settings": "⚙️ 設定",
@@ -91,6 +94,8 @@ def main():
         show_material_pipeline_page()
     elif page == "🤖 AI生成（API設定後）":
         show_pipeline_page()
+    elif page == "📋 バッチ制作キュー":
+        show_batch_queue_page()
     elif page == "📁 生成物一覧":
         show_assets_page()
     elif page == "📖 ドキュメント":

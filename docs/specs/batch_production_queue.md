@@ -1,7 +1,7 @@
 # バッチ制作キュー仕様 (SP-040)
 
-**最終更新**: 2026-03-17
-**ステータス**: partial (Phase 1+2 done, Web UI残)
+**最終更新**: 2026-03-18
+**ステータス**: done (Phase 1-3 完了)
 
 ---
 
@@ -66,7 +66,7 @@
 
 - `defaults`: 全トピック共通のパラメータ
 - 各トピックで個別にオーバーライド可能
-- `seed_urls` は任意（省略時はGoogle Custom Search APIのみ）
+- `seed_urls` は任意（省略時はBrave Search APIのみ）
 
 ---
 
@@ -89,6 +89,19 @@
 | SP-034連携 | PipelineState をバッチ単位で管理。`--resume` でバッチ途中から再開 |
 | ログ | バッチ実行結果をJSON出力 (`batch_result.json`) |
 
+### Phase 3: Web UI バッチ実行画面
+
+| 項目 | 内容 |
+|------|------|
+| 対象 | `src/web/ui/pages/batch_queue.py` (Streamlit ページ) |
+| 入力 | topics.json アップロード or インタラクティブ作成 (手動トピック追加/削除/編集) |
+| デフォルト設定 | style / duration / auto_images / auto_review / speaker_map を GUI で設定 |
+| 実行 | `run_pipeline()` を順次呼び出し、進捗バーでリアルタイム表示 |
+| 結果表示 | 成功/失敗/スキップのサマリー + トピック別ステータス |
+| ダウンロード | topics.json (設定) / batch_result.json (結果) |
+| 過去結果閲覧 | batch_result.json パス指定で過去のバッチ結果を表示 |
+| ナビゲーション | web_app.py の PAGE_OPTIONS に追加、`?page=batch` でアクセス可能 |
+
 ---
 
 ## 4. クォータ管理戦略
@@ -98,7 +111,7 @@
 | Gemini | 20 req/day | 3-6 req (台本+分類+キーワード) | フォールバックチェーン |
 | Pexels | 200 req/h | 30-90 req (ストック画像検索) | トピック間にインターバル |
 | Pixabay | 5000 req/h | フォールバックのみ | 十分 |
-| Google Custom Search | 100 req/day | 3-9 req (ソース収集) | 十分 |
+| Brave Search | 2000 req/月 (無料) | 3-9 req (ソース収集) | 十分 |
 
 ---
 
