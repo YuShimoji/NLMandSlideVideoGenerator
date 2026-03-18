@@ -380,8 +380,8 @@
   {
     "id": "SP-043",
     "title": "Multi-LLM Provider",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 30,
     "cat": "core",
     "file": "docs/specs/multi_llm_provider.md",
     "summary": "Gemini単一依存解消: ILLMProvider抽象化 + OpenAI/Claude/DeepSeek対応。LLM_PROVIDER env varで切替。一晩3本のAPI制約を解消"
