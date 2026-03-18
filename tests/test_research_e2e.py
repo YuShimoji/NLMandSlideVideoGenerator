@@ -4,11 +4,35 @@ Research workflow E2E test: collect → align → review → CSV
 """
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from scripts.research_cli import run_alignment, run_research, run_review
+
+
+def _make_alignment_mock_provider():
+    """LLM alignment 用のモックプロバイダーを生成する。
+
+    全 orphaned セグメントの先頭を supported に変換する JSON を返す。
+    """
+    async def _fake_generate(prompt, **kwargs):
+        # プロンプトから sentence id を抽出し、最初のものだけ match させる
+        import re
+        ids = re.findall(r'"id":\s*(\d+)', prompt)
+        claim_keys = re.findall(r'"claim_key":\s*"([^"]+)"', prompt)
+        matches = []
+        if ids and claim_keys:
+            matches.append({
+                "sentence_id": int(ids[0]),
+                "matched_claim_keys": [claim_keys[0]],
+            })
+        return json.dumps({"matches": matches})
+
+    mock_provider = AsyncMock()
+    mock_provider.generate_text = _fake_generate
+    mock_provider.model_name = "test-mock"
+    return mock_provider
 
 
 @pytest.fixture
@@ -66,7 +90,12 @@ async def test_e2e_collect_align_review(research_tmp):
     script_path.write_text("\n".join(script_lines), encoding="utf-8")
 
     # ========== Step 3: align ==========
-    report_path = await run_alignment(package_path, script_path)
+    # LLM alignment をモック化 (Brave 実ソースの key_claims とテスト台本が一致しないため)
+    with patch(
+        "core.llm_provider.create_llm_provider",
+        return_value=_make_alignment_mock_provider(),
+    ):
+        report_path = await run_alignment(package_path, script_path)
 
     assert report_path.exists()
     report_data = json.loads(report_path.read_text(encoding="utf-8"))
