@@ -371,8 +371,8 @@
   {
     "id": "SP-042",
     "title": "Pipeline Quality Tracking",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 40,
     "cat": "pipeline",
     "file": "docs/specs/pipeline_quality_tracking.md",
     "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json (速度/情報密度/視覚完成度/一貫性) + CLI stats閲覧 + batch_result.json統合"
