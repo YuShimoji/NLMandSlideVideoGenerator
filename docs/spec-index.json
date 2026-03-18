@@ -403,5 +403,14 @@
     "cat": "pipeline",
     "file": "docs/specs/first_publish_checklist.md",
     "summary": "初回YouTube公開の通しチェックリスト。Phase A(自動CSV)+B(YMM4手動)+C(MP4検証+OAuth+upload)の全ステップ。SP-035/038の完了判定を兼ねる"
+  },
+  {
+    "id": "SP-046",
+    "title": "Template Consolidation (SP-020→SP-031)",
+    "status": "done",
+    "pct": 100,
+    "cat": "pipeline",
+    "file": "docs/specs/template_consolidation.md",
+    "summary": "SP-020(ymm4_template_diff)のSP-031(style_template)への統合設計。speaker_name_colors名前優先+background+audio追加。後方互換あり"
   }
 ]

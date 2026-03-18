@@ -8,7 +8,7 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 ブランチ戦略: trunk-based (master)
 現フェーズ: 実運用品質仕上げ
 直近の状態 (2026-03-18 session 12 nightshift + REFRESH):
-  - 全45仕様。43 done + 1 partial (SP-035) + 1 draft (SP-045) + 1 archived + 1 superseded
+  - 全46仕様。44 done + 1 partial (SP-035) + 1 draft (SP-045) + 1 archived + 1 superseded
   - session 12 の成果:
     - [nightshift] 仕様書同期8件 (Imagen 4, pct→100%, ガイド全面更新, INDEX拡充)
     - [nightshift] 数値同期 (テスト1050→1258), backlog整合, HANDOVER更新
