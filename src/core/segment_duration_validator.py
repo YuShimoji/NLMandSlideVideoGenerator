@@ -340,3 +340,53 @@ def _merge_short_segments(
 
     logger.info(f"SP-044 自動統合: {len(segments) - len(result)}セグメント統合 ({len(segments)}→{len(result)})")
     return result
+
+
+# --- Phase 3: 手動モード ---
+
+class DurationModeAction:
+    """手動モードのユーザー選択結果。"""
+    CONTINUE = "continue"
+    ADJUST = "adjust"
+    ABORT = "abort"
+
+
+def prompt_manual_decision(validation: SegmentValidationResult) -> str:
+    """CLIで検証結果を表示し、ユーザーに続行/調整/中断を選択させる。
+
+    Returns:
+        DurationModeAction の値 (continue/adjust/abort)。
+    """
+    print("\n" + "=" * 60)
+    print("セグメント粒度検証結果 (SP-044)")
+    print("=" * 60)
+    print(f"  ステータス: {validation.status}")
+    print(f"  セグメント数: {validation.segment_count}")
+    print(f"  推定尺: {validation.estimated_duration:.0f}秒")
+    print(f"  目標尺: {validation.target_duration:.0f}秒")
+    print(f"  比率: {validation.ratio:.0%}")
+    print(f"  期待範囲: {validation.expected_min}-{validation.expected_max}セグメント")
+    if validation.message:
+        print(f"  詳細: {validation.message}")
+    if validation.suggestion:
+        print(f"  推奨: {validation.suggestion}")
+    print("=" * 60)
+    print("\n選択してください:")
+    print("  [c] 続行 (現在のセグメントをそのまま使用)")
+    print("  [a] 自動調整 (LLM経由で追加/統合)")
+    print("  [q] 中断 (パイプライン停止)")
+
+    while True:
+        try:
+            choice = input("\n> ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return DurationModeAction.ABORT
+
+        if choice in ("c", "continue"):
+            return DurationModeAction.CONTINUE
+        elif choice in ("a", "adjust", "auto"):
+            return DurationModeAction.ADJUST
+        elif choice in ("q", "quit", "abort"):
+            return DurationModeAction.ABORT
+        else:
+            print("  [c] 続行 / [a] 自動調整 / [q] 中断 のいずれかを入力してください")

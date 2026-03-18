@@ -12,6 +12,8 @@ from core.segment_duration_validator import (
     _merge_short_segments,
     _expand_segments,
     SegmentValidationResult,
+    prompt_manual_decision,
+    DurationModeAction,
 )
 
 
@@ -299,3 +301,54 @@ class TestAdjustSegments:
         )
         result = await adjust_segments(segs, validation)
         assert len(result) <= 2
+
+
+class TestManualMode:
+    """SP-044 Phase 3: 手動モードテスト。"""
+
+    def test_duration_mode_action_values(self) -> None:
+        assert DurationModeAction.CONTINUE == "continue"
+        assert DurationModeAction.ADJUST == "adjust"
+        assert DurationModeAction.ABORT == "abort"
+
+    def test_prompt_manual_decision_continue(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("builtins.input", lambda _: "c")
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=3, estimated_duration=100,
+            target_duration=300, ratio=0.33, expected_min=3, expected_max=10,
+            suggestion="add_segments", message="推定尺不足",
+        )
+        result = prompt_manual_decision(validation)
+        assert result == DurationModeAction.CONTINUE
+
+    def test_prompt_manual_decision_adjust(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("builtins.input", lambda _: "a")
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=3, estimated_duration=100,
+            target_duration=300, ratio=0.33, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+        result = prompt_manual_decision(validation)
+        assert result == DurationModeAction.ADJUST
+
+    def test_prompt_manual_decision_abort(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("builtins.input", lambda _: "q")
+        validation = SegmentValidationResult(
+            status="too_long", segment_count=50, estimated_duration=1000,
+            target_duration=300, ratio=3.33, expected_min=3, expected_max=10,
+            suggestion="trim_segments",
+        )
+        result = prompt_manual_decision(validation)
+        assert result == DurationModeAction.ABORT
+
+    def test_prompt_manual_decision_eof(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        def raise_eof(_: str) -> str:
+            raise EOFError()
+        monkeypatch.setattr("builtins.input", raise_eof)
+        validation = SegmentValidationResult(
+            status="too_short", segment_count=3, estimated_duration=100,
+            target_duration=300, ratio=0.33, expected_min=3, expected_max=10,
+            suggestion="add_segments",
+        )
+        result = prompt_manual_decision(validation)
+        assert result == DurationModeAction.ABORT

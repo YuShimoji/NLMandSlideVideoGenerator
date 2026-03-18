@@ -191,6 +191,7 @@ async def run_pipeline(
     resume_dir: Optional[Path] = None,
     style: str = "default",
     generate_thumbnail: bool = True,
+    duration_mode: str = "auto",
 ) -> Path:
     """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
 
@@ -337,22 +338,31 @@ async def run_pipeline(
             stats.stop_step("script")
             stats.record_segments(len(segments))
 
-            # セグメント粒度検証 + 自動調整 (SP-044)
-            from core.segment_duration_validator import validate_segments, adjust_segments
+            # セグメント粒度検証 + 調整 (SP-044)
+            from core.segment_duration_validator import validate_segments, adjust_segments, prompt_manual_decision, DurationModeAction
             seg_check = validate_segments(segments, target_duration)
             if not seg_check.is_ok:
                 print(f"  !! {seg_check.message}")
                 stats.record_fallback(f"duration: {seg_check.status} ({seg_check.message})")
-                # Phase 2: 自動調整
-                adjusted = await adjust_segments(segments, seg_check, topic=topic, speaker_mapping=speaker_mapping)
-                if len(adjusted) != len(segments):
-                    segments = adjusted
-                    script_bundle["segments"] = segments
-                    print(f"  -> 自動調整: {seg_check.segment_count}→{len(segments)}セグメント")
-                    stats.record_segments(len(segments))
-                    # 調整後のscript_bundleを再保存
-                    with open(script_path, "w", encoding="utf-8") as handle:
-                        json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
+
+                should_adjust = True
+                if duration_mode == "manual":
+                    decision = prompt_manual_decision(seg_check)
+                    if decision == DurationModeAction.ABORT:
+                        raise RuntimeError(f"ユーザーが中断を選択: {seg_check.message}")
+                    elif decision == DurationModeAction.CONTINUE:
+                        should_adjust = False
+                        print("  -> ユーザー選択: 現在のセグメントで続行")
+
+                if should_adjust:
+                    adjusted = await adjust_segments(segments, seg_check, topic=topic, speaker_mapping=speaker_mapping)
+                    if len(adjusted) != len(segments):
+                        segments = adjusted
+                        script_bundle["segments"] = segments
+                        print(f"  -> 自動調整: {seg_check.segment_count}→{len(segments)}セグメント")
+                        stats.record_segments(len(segments))
+                        with open(script_path, "w", encoding="utf-8") as handle:
+                            json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
             else:
                 print(f"  Duration check: {seg_check.message}")
 
@@ -1237,6 +1247,7 @@ def main() -> None:
     pipe_parser.add_argument("--auto-images", action="store_true", default=defaults.get("auto_images", True), help="Auto stock image collection (default: ON)")
     pipe_parser.add_argument("--no-auto-images", dest="auto_images", action="store_false", help="Disable stock images")
     pipe_parser.add_argument("--duration", type=float, default=defaults.get("target_duration", 300.0), help="Target duration in seconds (default: %(default)s)")
+    pipe_parser.add_argument("--duration-mode", choices=["auto", "manual"], default="auto", help="Duration validation mode: auto (adjust silently) or manual (prompt user)")
     pipe_parser.add_argument("--style", default="default", help="Script style preset: default/news/educational/summary (SP-036)")
     pipe_parser.add_argument("--generate-thumbnail", action="store_true", default=defaults.get("generate_thumbnail", True), help="Generate thumbnail image (default: ON)")
     pipe_parser.add_argument("--no-generate-thumbnail", dest="generate_thumbnail", action="store_false", help="Skip thumbnail generation")
@@ -1400,6 +1411,7 @@ def main() -> None:
                 resume_dir=resume_dir,
                 style=args.style,
                 generate_thumbnail=bool(args.generate_thumbnail),
+                duration_mode=getattr(args, 'duration_mode', 'auto'),
             )
         )
         return

