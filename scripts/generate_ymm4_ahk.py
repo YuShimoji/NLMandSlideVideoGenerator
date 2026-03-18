@@ -513,7 +513,7 @@ def main():
 
     # 設定
     config = {
-        "debug": args.debug or True,  # デフォルトでデバッグモード
+        "debug": args.debug,
         "window_timeout": args.timeout,
         "operation_delay": args.delay,
         "max_retries": args.retries,

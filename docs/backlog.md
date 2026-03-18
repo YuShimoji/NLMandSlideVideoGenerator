@@ -119,6 +119,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-18: Brave Search API移行完了 (Google Custom Search廃止対応)
 - 2026-03-18: Gemini 2.5-flash一本化
 - 2026-03-18: SP-037 Thumbnail Phase 1+2完了 (CJKフォント + スタイルプリセット連携 + CLI flag)
+- 2026-03-18: SP-040 Phase 3完了 (Streamlit バッチ制作キューWeb UI + 10テストPASS)
 
 ---
 
