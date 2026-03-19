@@ -63,24 +63,57 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ## 実装フェーズ
 
-### Phase 1: NotebookLM統合調査
+### Phase 1: NotebookLM統合調査 [DONE 2026-03-19]
 
-- NotebookLMのAPIアクセス方法・制約の調査
-- スライド生成機能の入出力仕様の確認
-- 現行パイプラインとの統合ポイントの特定
-- 著作権クリア画像の自動収集方法の調査
+- [x] NotebookLMのAPIアクセス方法・制約の調査
+  - 結論: notebooklm-py (非公式PyPI) を採用。pip install + playwright install chromium
+  - 公式Enterprise APIは有料ライセンス必須のため不採用
+- [x] スライド生成機能の入出力: PPTX/PDF で取得可能
+- [x] 台本取得経路: Audio OverviewはMP3のみ。Study Guide (テキスト) を台本ソースとして使用
+- [x] 統合方式確定: P1+A (notebooklm-py + YMM4キャラ維持)
+  - Study Guide → Gemini → CSV → YMM4 (音声合成)
+  - Slides (PPTX/PDF) → PNG → YMM4 (画像トラック)
 
-### Phase 2: 台本パイプライン移行
+### Phase 2: 台本パイプライン移行 [NEXT]
 
-- NotebookLMベースの台本生成フローの構築
-- 現行Gemini台本生成との共存/段階移行
-- セグメント粒度の細分化
+アーキテクチャ:
+```
+sources (URLs/PDFs)
+  → notebooklm_client.create_notebook(sources)
+  → notebooklm_client.generate_study_guide()  → Markdown テキスト
+  → NlmScriptConverter.convert(study_guide)   → segment CSV
+  → CsvAssembler (既存)                       → YMM4 CSV
+```
+
+実装タスク:
+- [ ] `pip install "notebooklm-py[browser]"` を requirements.txt に追加
+- [ ] `src/notebook_lm/notebooklm_client.py` 新設
+  - NotebookLMClient クラス: create_notebook / generate_study_guide / generate_slides / cleanup
+  - 認証: notebooklm login (初回のみ、セッション永続化)
+- [ ] `src/notebook_lm/nlm_script_converter.py` 新設
+  - Study Guide (Markdown) → YMM4 CSV 変換
+  - 品質基準適用 (SP-047): フック・セグメント粒度 15-30秒・発話50-100文字
+  - 内部実装: Gemini を「変換エンジン」として使用
+- [ ] `src/notebook_lm/gemini_integration.py` 役割変更
+  - 旧: 台本生成 (Geminiプロンプト駆動)
+  - 新: NLMテキスト → CSV 変換補助 (NlmScriptConverter から呼び出し)
+- [ ] テスト: NotebookLM API はモック化、変換ロジックは実テスト
 
 ### Phase 3: ビジュアルパイプライン移行
 
-- NotebookLMスライド生成の統合
-- 著作権クリア画像検索の実装
-- PILスライド生成の廃止
+アーキテクチャ:
+```
+notebooklm_client.generate_slides()  → PPTX/PDF
+  → SlideExtractor.extract_png(pptx) → PNG list
+  → 既存 ImageItem 配置パイプライン (SP-026)
+```
+
+実装タスク:
+- [ ] `src/slides/slide_extractor.py` 新設: PPTX/PDF → PNG (python-pptx or pdf2image)
+- [ ] TextSlideGenerator (PIL/Pillow, 708行) を廃止フラグ付きで縮退
+  - NLMスライドが利用可能な場合は PIL 生成をスキップ
+  - PIL は fallback として残す (NLM失敗時)
+- [ ] 著作権クリア画像検索: Wikimedia Commons API 統合 (Brave Search に加えて)
 
 ### Phase 4: 品質検証
 

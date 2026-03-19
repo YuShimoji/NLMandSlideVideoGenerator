@@ -1,95 +1,109 @@
 """
-NotebookLM ベースの Script Provider
-OpenSpec IScriptProvider 実装
-"""
-from typing import Dict, Any, List, Optional
-from pathlib import Path
-import json
-from datetime import datetime
+NotebookLM ベースの Script Provider (SP-047 Phase 2 刷新)
 
-from notebook_lm.source_collector import SourceCollector, SourceInfo
-from notebook_lm.audio_generator import AudioGenerator
-from notebook_lm.transcript_processor import TranscriptProcessor
+IScriptProvider 実装。
+notebooklm_client.py + nlm_script_converter.py を組み合わせて
+Study Guide → YMM4 CSV 互換 ScriptInfo を生成する。
+"""
+import asyncio
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from notebook_lm.notebooklm_client import NotebookLMClient, NLMNotebook
+from notebook_lm.nlm_script_converter import NlmScriptConverter
+from notebook_lm.source_collector import SourceInfo
 
 from ...interfaces import IScriptProvider
 
+logger = logging.getLogger(__name__)
+
 
 class NotebookLMScriptProvider(IScriptProvider):
-    """NotebookLM を利用したスクリプト生成プロバイダ"""
+    """
+    NotebookLM を利用したスクリプト生成プロバイダ (SP-047 Phase 2)
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key
-        self.source_collector = SourceCollector()
-        self.audio_generator = AudioGenerator()
-        self.transcript_processor = TranscriptProcessor()
+    フロー:
+        sources (URLs) → NLM notebook → Study Guide (text)
+        → NlmScriptConverter → ScriptInfo (YMM4 CSV 互換)
+    """
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        llm_provider: Any = None,
+        nlm_output_dir: Optional[Path] = None,
+        style: str = "default",
+    ):
+        self.api_key = api_key or ""
+        self._nlm_client = NotebookLMClient(output_dir=nlm_output_dir)
+        self._converter = NlmScriptConverter(
+            api_key=self.api_key,
+            llm_provider=llm_provider,
+            style=style,
+        )
 
     async def generate_script(
         self,
         topic: str,
         sources: List[SourceInfo],
         mode: str = "auto",
+        target_duration: float = 600.0,
+        language: str = "ja",
+        style: str = "default",
+        speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
-        NotebookLM を利用してスクリプトを生成
+        NotebookLM Study Guide → ScriptInfo → スクリプトバンドルを生成。
 
         Args:
-            topic: トピック
+            topic: 動画のトピック
             sources: ソース情報リスト
             mode: 生成モード (auto/assist/manual)
+            target_duration: 目標尺 (秒)
+            language: 言語コード
+            style: スクリプトスタイルプリセット名
+            speaker_mapping: {"a": "ずんだもん", "b": "四国めたん"} 形式
 
         Returns:
-            Dict[str, Any]: スクリプトバンドル
+            スクリプトバンドル (既存パイプラインと互換)
         """
-        # NotebookLM の音声生成と文字起こしを活用
-        # 実際の NotebookLM API を模擬
+        source_urls = [s.url for s in sources if hasattr(s, "url") and s.url]
 
-        # 1. ソース収集 (もし sources が空の場合)
-        if not sources:
-            sources = await self.source_collector.collect_sources(topic)
+        speaker_a = (speaker_mapping or {}).get("a", "ずんだもん")
+        speaker_b = (speaker_mapping or {}).get("b", "四国めたん")
 
-        # 2. 音声生成 (NotebookLM 風)
-        audio_info = await self.audio_generator.generate_audio(sources)
+        async with self._nlm_client as client:
+            # 1. NLM ノートブック作成 + ソース追加
+            notebook: NLMNotebook = await client.create_notebook(topic, sources=source_urls)
+            logger.info("NLM notebook: %s (%d sources)", notebook.notebook_id, len(source_urls))
 
-        # 3. 文字起こしでスクリプト生成
-        transcript = await self.transcript_processor.process_audio(audio_info)
+            # 2. Study Guide 取得
+            study_guide = await client.get_study_guide(notebook)
+            logger.info("Study Guide 取得: %d chars", len(study_guide.text))
 
-        # 4. スクリプト構造の構築
-        script_bundle = {
-            "title": transcript.title,
+            # 3. Study Guide → ScriptInfo 変換
+            script_info = await self._converter.convert(
+                study_guide_text=study_guide.text,
+                topic=topic,
+                target_duration=target_duration,
+                language=language,
+                speaker_a=speaker_a,
+                speaker_b=speaker_b,
+            )
+
+            # 4. クリーンアップ
+            await client.delete_notebook(notebook)
+
+        # 既存パイプライン互換のバンドル形式に変換
+        return {
+            "title": script_info.title,
             "topic": topic,
-            "source_count": len(sources),
-            "audio_duration": audio_info.duration,
-            "generated_at": datetime.now().isoformat(),
-            "segments": []
+            "source_count": len(source_urls),
+            "total_duration_estimate": script_info.total_duration_estimate,
+            "quality_score": script_info.quality_score,
+            "language": language,
+            "generated_at": script_info.created_at.isoformat(),
+            "provider": "notebooklm",
+            "segments": script_info.segments,
         }
-
-        # 文字起こし結果からセグメント構築
-        for i, segment in enumerate(transcript.segments, 1):
-            script_bundle["segments"].append({
-                "id": f"seg_{i}",
-                "start_time": getattr(segment, "start_time", 0.0),
-                "end_time": getattr(segment, "end_time", 0.0),
-                "speaker": getattr(segment, "speaker", ""),
-                "content": getattr(segment, "text", ""),
-                "key_points": getattr(segment, "key_points", []),
-                "slide_suggestion": getattr(segment, "slide_suggestion", ""),
-                "confidence": getattr(segment, "confidence_score", 1.0),
-            })
-
-        # スクリプト保存
-        self._save_script(script_bundle)
-
-        return script_bundle
-
-    def _save_script(self, script_bundle: Dict[str, Any]) -> Path:
-        """スクリプトをファイルに保存"""
-        from config.settings import settings
-        settings.SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        script_path = settings.SCRIPTS_DIR / f"notebooklm_script_{timestamp}.json"
-
-        with open(script_path, "w", encoding="utf-8") as f:
-            json.dump(script_bundle, f, ensure_ascii=False, indent=2)
-
-        return script_path

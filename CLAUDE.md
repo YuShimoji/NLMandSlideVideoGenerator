@@ -7,16 +7,20 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 出力品質改善 (NotebookLM回帰)
-直近の状態 (2026-03-19 session 14 REFRESH):
-  - 出力品質診断実施: YouTube公開水準に未達 (docs/video_quality_diagnosis.md)
-  - NotebookLM→Geminiドリフト検出・回帰決定 (docs/notebooklm_drift_analysis.md)
+直近の状態 (2026-03-19 session 15):
+  - SP-047 Phase 1 完了: notebooklm-py 統合調査完了、P1+A 設計確定
+  - SP-047 Phase 2 着手 (40%): NLM ラッパー + Study Guide→CSV 変換器 実装済み
   - 全47仕様。44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047) + 1 archived + 1 superseded
-  - テスト: 1258 passed, 0 failed
-  - 次のスライス: SP-047 出力品質基準 Phase 1 (NotebookLM統合調査)
-  - 主要な設計転換:
-    - 台本生成: Geminiプロンプト駆動 → NotebookLMベースに回帰
-    - スライド: PIL/Pillow独自生成 → NotebookLMスライド生成活用
-    - 画像素材: Pexelsストック → ウェブ上の著作権クリア画像優先
+  - テスト: 1199 passed, 3 failed (pre-existing), 3 skipped / 新規 10件追加
+  - 現在のスライス: SP-047 Phase 2 (台本パイプライン移行)
+  - 実装済みファイル (未コミット):
+    - src/notebook_lm/notebooklm_client.py (NEW): NLM ラッパー
+    - src/notebook_lm/nlm_script_converter.py (NEW): Study Guide → ScriptInfo 変換
+    - src/core/providers/script/notebook_lm_provider.py (UPDATED): AudioGenerator スタブ廃止
+    - requirements.txt (UPDATED): notebooklm-py[browser] + python-pptx 追加
+    - tests/test_notebooklm_client.py (NEW): 10件
+  - 統合方式確定: P1+A (notebooklm-py + YMM4キャラ維持 + Study Guide 経路)
+  - 次のアクション: notebooklm login 実認証 → Phase 3 スライド PNG 変換
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -64,6 +68,8 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-19 | テキストスライドはNotebookLMスライド生成を活用、PIL生成廃止方向 | PIL改善/NotebookLM/画像生成AI/Canva API | PILでの独自スライド生成は車輪の再発明。NotebookLMのスライド生成機能を活用する |
 | 2026-03-19 | 画像素材はウェブ上の著作権クリア画像を優先 | ストック継続/ウェブ優先/AI生成優先 | Pexelsストック画像は汎用的すぎてテーマとの関連性が弱い。著作権クリアなウェブ画像を優先し、ストックはフォールバック |
 | 2026-03-19 | 台本生成はNotebookLMベースに切替 | Geminiプロンプト改修/NotebookLM切替/ハイブリッド | NotebookLMの台本品質が高い。Geminiプロンプトの台本はセグメント粒度・対話テンポ・個性がYouTube水準に未達 |
+| 2026-03-19 | SP-047 統合方式: P1+A (notebooklm-py + YMM4キャラ維持) | P1自動化/P2手動/P3ハイブリッド + YMM4維持/NLM声 | notebooklm-pyでStudy Guide(テキスト)+スライド(PPTX)を取得。Audio Overviewは使用しない(テキスト取得不可)。YMM4キャラ声を維持。一晩N本バッチ制作を目標 |
+| 2026-03-19 | NLM台本取得経路: Study Guide → Gemini CSV変換 | Audio Overview STT/Study Guide/Briefing Doc | Audio OverviewはMP3のみでテキスト取得不可。Study Guideがテキスト出力としてYMM4 CSV変換の入力に最適 |
 
 ## Key Paths
 
