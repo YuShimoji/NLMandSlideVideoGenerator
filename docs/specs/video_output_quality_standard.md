@@ -85,16 +85,29 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 - Audio Overview: ノートブック内のソースから生成、言語指定可、フォーカスエリア指定可
 - スライド生成API: **公式APIとしては未提供** (Web UIの "Slide Deck" / "Infographics" 機能はAPI非公開)
 
+**Standalone Podcast API** (Enterprise不要):
+- Enterprise ライセンス不要、GCPプロジェクト + `roles/discoveryengine.podcastApiUser` ロールのみ
+- **現在allowlist制** (Googleに申請が必要)
+- テキスト/画像/文書/動画/音声を入力 → MP3を出力 (最大約100kトークン)
+- 尺: SHORT (4-5分) / STANDARD (約10分)
+- NotebookLMの独自マルチスピーカーボイスモデルを使用 (汎用TTSより自然)
+
 **非公式ライブラリ**:
-- [notebooklm-py](https://github.com/teng-lin/notebooklm-py) — 非公式Python API (Web UIの非公開APIをリバースエンジニアリング)
+- [notebooklm-py](https://github.com/teng-lin/notebooklm-py) — 非公式Python API (5.6k+ stars, notebooks/sources/audio/slides/chat)
+- [notebooklm-sdk](https://github.com/agmmnn/notebooklm-sdk) — TypeScript/Node.js SDK (同等機能)
 - [nblm-rs](https://github.com/K-dash/nblm-rs) — Rust/Python SDK for Enterprise API
 - [notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli) — MCP統合
 
+**DIYパス**: Gemini + Cloud TTS でNotebookLM的ワークフローを再現可能
+- Google Cloud Blogにチュートリアルあり (LangGraph + Gemini 1.5 Pro)
+- 音声品質はNotebookLMネイティブより劣る
+
 **統合設計への示唆**:
-1. **台本生成**: Audio Overview APIでpodcast風台本を生成可能だが、Enterprise ライセンスが必要
-2. **スライド生成**: 公式APIなし。notebooklm-pyの非公式APIか、Gemini+αで独自生成が現実的
-3. **現実的な統合パス**: Gemini台本生成を改善 (Phase 1.5で実施済み) + NotebookLMは手動補助ツールとして活用
-4. **将来**: Enterprise API のGA化またはスライドAPI公開を待つ
+1. **最有望**: Standalone Podcast API (allowlistアクセス申請を推奨)
+2. **即時利用可**: notebooklm-py (非公式、無料Googleアカウントで動作、破損リスクあり)
+3. **台本生成**: Gemini改善 (Phase 1.5完了) で当面十分。Podcast APIが使えればさらに品質向上
+4. **スライド生成**: 公式APIなし。notebooklm-py/notebooklm-sdkの非公式APIか、Gemini+テンプレートが現実的
+5. **将来**: Standalone Podcast API のGA化 + スライドAPI公開を待つ
 
 ### Phase 1.5: 台本品質改善 (Gemini側, 完了)
 
