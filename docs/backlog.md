@@ -62,9 +62,11 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
 | トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
-| 整理 | TikTokAdapter 廃止検討 | 低 | なし | 220行モック実装。YouTube長尺がターゲットなので廃止が妥当。HUMAN_AUTHORITY |
-| 整理 | IPublishingQueue 方針決定 | 低 | なし | Protocol定義のみ、具象実装なし。スケジュール投稿不要なら削除。HUMAN_AUTHORITY |
-| 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | helpers.py から参照あり。テスト済みだが実パイプラインでの使用状況要確認 |
+| 整理 | TikTokAdapter 廃止検討 | 低 | なし | 221行モック実装。全メソッドスタブ (publish→2秒sleep→mock応答)。helpers.pyで条件付きロード。HUMAN_AUTHORITY |
+| 整理 | IPublishingQueue 方針決定 | 低 | なし | interfaces.py 7行のProtocol定義のみ。pipeline.py/stage_runners.pyでimportされるが常にNone。具象実装なし。HUMAN_AUTHORITY |
+| 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | **NOT DEAD**: helpers.pyでYMM4 backend有効時に実体化。104行、テスト3件。削除不要 |
+| 整理 | audio_generator.py Gemini+TTS到達不能コード除去 | 低 | なし | _tts_is_available()が常にFalse。_generate_script_with_gemini()/_generate_audio_with_tts()の約60行が到達不能。自走可 |
+| 整理 | slide_builder.py のproduction接続確認 | 低 | なし | 246行。テストのみ使用 (test_slide_builder.py)。production未importだが害なし |
 
 ---
 
