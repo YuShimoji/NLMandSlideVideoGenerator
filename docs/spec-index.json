@@ -416,10 +416,10 @@
   {
     "id": "SP-047",
     "title": "Video Output Quality Standard",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 40,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。NotebookLMベース台本回帰、NotebookLMスライド活用、ウェブ著作権クリア画像優先、セグメント粒度細分化。docs/video_quality_diagnosis.md + docs/notebooklm_drift_analysis.md が前提"
+    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(NotebookLM API調査)完了+Phase 1.5(台本品質改善)完了+SP-044バリデーション接続完了。Enterprise API発見だがライセンス必要。残: Phase 2(台本移行), Phase 3(ビジュアル移行), Phase 4(品質検証)"
   }
 ]

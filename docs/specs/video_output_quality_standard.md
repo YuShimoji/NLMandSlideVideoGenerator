@@ -63,12 +63,38 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ## 実装フェーズ
 
-### Phase 1: NotebookLM統合調査
+### Phase 1: NotebookLM統合調査 (完了)
 
-- NotebookLMのAPIアクセス方法・制約の調査
-- スライド生成機能の入出力仕様の確認
-- 現行パイプラインとの統合ポイントの特定
-- 著作権クリア画像の自動収集方法の調査
+#### 調査結果 (2026-03-21)
+
+**NotebookLM Enterprise API** (Discovery Engine API v1alpha):
+- ベースURL: `https://{location}-discoveryengine.googleapis.com/v1alpha/projects/{project}/locations/{location}/`
+- 認証: Google Cloud IAM + Bearer token (`gcloud auth print-access-token`)
+- 前提: Google Cloud プロジェクト + discoveryengine API有効化 + NotebookLM Enterprise ライセンス
+
+**利用可能なAPI**:
+- `notebooks.create` — ノートブック作成
+- `sources.batchCreate` — ソース追加 (Google Drive / テキスト / Web URL / YouTube URL)
+- `sources.uploadFile` — ファイルアップロード (PDF/DOCX/PPTX/XLSX/音声/画像)
+- `audioOverviews.create` — Audio Overview生成 (podcast風音声, 数分かかる, 1ノートブックにつき1つ)
+- `audioOverviews.delete` — Audio Overview削除
+
+**制約**:
+- Pre-GA (v1alpha): 仕様変更の可能性あり
+- Enterprise ライセンスが必要 (無料版NotebookLMにはAPI無し)
+- Audio Overview: ノートブック内のソースから生成、言語指定可、フォーカスエリア指定可
+- スライド生成API: **公式APIとしては未提供** (Web UIの "Slide Deck" / "Infographics" 機能はAPI非公開)
+
+**非公式ライブラリ**:
+- [notebooklm-py](https://github.com/teng-lin/notebooklm-py) — 非公式Python API (Web UIの非公開APIをリバースエンジニアリング)
+- [nblm-rs](https://github.com/K-dash/nblm-rs) — Rust/Python SDK for Enterprise API
+- [notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli) — MCP統合
+
+**統合設計への示唆**:
+1. **台本生成**: Audio Overview APIでpodcast風台本を生成可能だが、Enterprise ライセンスが必要
+2. **スライド生成**: 公式APIなし。notebooklm-pyの非公式APIか、Gemini+αで独自生成が現実的
+3. **現実的な統合パス**: Gemini台本生成を改善 (Phase 1.5で実施済み) + NotebookLMは手動補助ツールとして活用
+4. **将来**: Enterprise API のGA化またはスライドAPI公開を待つ
 
 ### Phase 1.5: 台本品質改善 (Gemini側, 完了)
 
