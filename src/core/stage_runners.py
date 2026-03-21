@@ -29,7 +29,6 @@ from .interfaces import (
     IEditingBackend,
     IMetadataGenerator,
     IPlatformAdapter,
-    IPublishingQueue,
     IUploader,
     ThumbnailGeneratorProtocol,
 )
@@ -248,14 +247,13 @@ async def run_stage3_upload(
     *,
     metadata_generator: IMetadataGenerator,
     platform_adapter: Optional[IPlatformAdapter] = None,
-    publishing_queue: Optional[IPublishingQueue] = None,
     uploader: Optional[IUploader] = None,
     progress_callback: Optional[Callable[[str, float, str], None]] = None,
 ) -> tuple[Optional[UploadResult], Optional[str], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """Stage3: アップロード処理
 
     Returns:
-        tuple: (upload_result, youtube_url, metadata, publishing_result)
+        tuple: (upload_result, youtube_url, metadata, platform_result)
     """
     if progress_callback:
         progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
@@ -279,13 +277,6 @@ async def run_stage3_upload(
             "thumbnail": thumbnail_path,
             "schedule": user_preferences.get("schedule") if user_preferences else None,
         }
-
-        if publishing_queue:
-            queue_id = await publishing_queue.enqueue(
-                package,
-                schedule=package.get("schedule"),
-            )
-            logger.info(f"投稿キューに登録しました: {queue_id}")
 
         publishing_result = await platform_adapter.publish(
             package,
