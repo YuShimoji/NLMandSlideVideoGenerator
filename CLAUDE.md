@@ -6,17 +6,18 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: 出力品質改善 (NotebookLM回帰)
-直近の状態 (2026-03-19 session 14 REFRESH):
-  - 出力品質診断実施: YouTube公開水準に未達 (docs/video_quality_diagnosis.md)
-  - NotebookLM→Geminiドリフト検出・回帰決定 (docs/notebooklm_drift_analysis.md)
-  - 全47仕様。44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047) + 1 archived + 1 superseded
-  - テスト: 1258 passed, 0 failed
-  - 次のスライス: SP-047 出力品質基準 Phase 1 (NotebookLM統合調査)
-  - 主要な設計転換:
-    - 台本生成: Geminiプロンプト駆動 → NotebookLMベースに回帰
-    - スライド: PIL/Pillow独自生成 → NotebookLMスライド生成活用
-    - 画像素材: Pexelsストック → ウェブ上の著作権クリア画像優先
+現フェーズ: 出力品質改善 (台本品質改善済み、NotebookLM API調査完了)
+直近の状態 (2026-03-21 session 15 NIGHTSHIFT):
+  - SP-047 Phase 1 (NotebookLM API調査) 完了: Enterprise API発見だがライセンス必要
+  - SP-047 Phase 1.5 (台本品質改善) 完了: セグメント粒度15-25秒、プロンプト品質改善
+  - SP-044 バリデーション接続完了: stage_runners.pyで台本生成後に自動検証+調整
+  - 全47仕様。44 done + 2 partial (SP-035, SP-047) + 1 draft (SP-045) + 1 archived + 1 superseded
+  - テスト: 1262 passed, 0 failed
+  - 次のスライス: SP-047 Phase 2 (台本パイプライン改善) または著作権クリア画像収集
+  - NotebookLM Enterprise API制約:
+    - スライド生成APIは公式未提供 (Web UI機能のみ)
+    - Enterprise ライセンスが必要 (無料版にはAPI無し)
+    - 現実的パス: Gemini台本改善 (完了) + NotebookLMは手動補助
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
