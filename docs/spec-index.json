@@ -417,9 +417,18 @@
     "id": "SP-047",
     "title": "Video Output Quality Standard",
     "status": "partial",
-    "pct": 50,
+    "pct": 75,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(API調査)完了+Phase 1.5(台本品質改善)完了+SP-044接続完了。Standalone Podcast API(allowlist)が最有望。Wikimedia Commons統合設計済み。残: Phase 2(台本移行), Phase 3(ビジュアル実装), Phase 4(品質検証)"
+    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(API調査)+1.5(台本品質改善)+Phase 2(実検証)+Phase 3(Wikimedia Commons統合+E2E dry-runスクリプト+自動テスト16件+手動テストガイド36項目)完了。残: Phase 4(NotebookLMスライド統合), Phase 5(実API品質検証)"
+  },
+  {
+    "id": "SP-048",
+    "title": "InoReader/RSS Feed Integration",
+    "status": "partial",
+    "pct": 80,
+    "cat": "pipeline",
+    "file": "docs/spec_feed_integration.md",
+    "summary": "InoReader APIからRSSフィードのトピック候補を自動取得。Phase 1完了: OAuth認証クライアント+トピック抽出+CLI+61テストPASS。残: 実API疎通テスト、Phase 2(パイプライン自動連携)"
   }
 ]
