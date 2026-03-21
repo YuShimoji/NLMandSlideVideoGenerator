@@ -86,27 +86,47 @@ class TestBuildScriptPrompt:
     def test_segment_count_hint_short(self):
         g = GeminiIntegration(api_key="key")
         prompt = g._build_script_prompt([], "topic", 200.0, "ja")
-        assert "5-7" in prompt
+        assert "12-20" in prompt
 
     def test_segment_count_hint_medium(self):
         g = GeminiIntegration(api_key="key")
         prompt = g._build_script_prompt([], "topic", 600.0, "ja")
-        assert "10-15" in prompt
+        assert "36-60" in prompt
 
     def test_segment_count_hint_long(self):
         g = GeminiIntegration(api_key="key")
         prompt = g._build_script_prompt([], "topic", 1200.0, "ja")
-        assert "20-30" in prompt
+        assert "72-120" in prompt
 
     def test_segment_count_hint_very_long(self):
         g = GeminiIntegration(api_key="key")
         prompt = g._build_script_prompt([], "topic", 3600.0, "ja")
-        assert "30-45" in prompt
+        assert "144-240" in prompt
 
     def test_empty_sources(self):
         g = GeminiIntegration(api_key="key")
         prompt = g._build_script_prompt([], "topic", 300.0, "ja")
         assert "topic" in prompt
+
+    def test_prompt_includes_short_utterance_instruction(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_script_prompt([], "topic", 300.0, "ja")
+        assert "50-150文字" in prompt
+
+    def test_prompt_includes_hook_instruction(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_script_prompt([], "topic", 300.0, "ja")
+        assert "フック" in prompt
+
+    def test_prompt_includes_natural_citation_instruction(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_script_prompt([], "topic", 300.0, "ja")
+        assert "自然な言い回し" in prompt
+
+    def test_prompt_no_long_monologue_instruction(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_script_prompt([], "topic", 300.0, "ja")
+        assert "200-400文字" not in prompt
 
 
 class TestExtractJsonFromResponse:
