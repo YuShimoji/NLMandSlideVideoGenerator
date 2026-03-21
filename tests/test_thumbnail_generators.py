@@ -598,3 +598,107 @@ class TestStyleTemplateThumbnailSection:
         d = tmpl.to_dict()
         assert "thumbnail" in d
         assert d["thumbnail"]["style"] == "modern"
+
+
+class TestThumbnailVisualQuality:
+    """サムネイル画像の視覚的品質を検証するテスト"""
+
+    @pytest.fixture
+    def mock_video_info(self):
+        return VideoInfo(
+            file_path=Path("test_video.mp4"),
+            duration=120.0,
+            resolution=(1920, 1080),
+            fps=30,
+            file_size=10000000,
+            has_subtitles=True,
+            has_effects=True,
+            created_at=datetime.now(),
+        )
+
+    @pytest.fixture
+    def mock_script(self):
+        return {
+            "title": "AI技術の最新動向 2026年版",
+            "content": "人工知能の進化について詳しく解説します",
+            "segments": [
+                {"text": "AIの基礎から最前線まで", "duration": 30, "segment_id": "seg_1"},
+                {"text": "将来展望と社会への影響", "duration": 45, "segment_id": "seg_2"},
+            ],
+        }
+
+    @pytest.fixture
+    def mock_slides(self):
+        return SlidesPackage(
+            presentation_id="test_presentation",
+            slides=[
+                Mock(title="タイトル", content="AI技術の最新動向"),
+                Mock(title="内容", content="技術の進化"),
+            ],
+            total_slides=2,
+        )
+
+    @pytest.mark.asyncio
+    async def test_ai_generator_has_text(self, mock_video_info, mock_script, mock_slides):
+        """AIジェネレータの出力にテキスト描画がある (単色でない)"""
+        gen = AIThumbnailGenerator()
+        result = await gen.generate(
+            video=mock_video_info, script=mock_script, slides=mock_slides, style="modern"
+        )
+        img = Image.open(result.file_path)
+        unique_colors = len(set(img.getdata()))
+        # 単色画像なら unique_colors == 1。テキスト+装飾があれば数百以上
+        assert unique_colors > 50, f"画像がほぼ単色 (unique={unique_colors})。テキスト描画されていない可能性"
+        result.file_path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_ai_generator_all_styles_have_text(self, mock_video_info, mock_script, mock_slides):
+        """全4スタイルでテキストが描画される"""
+        gen = AIThumbnailGenerator()
+        for style in ["modern", "classic", "gaming", "educational"]:
+            result = await gen.generate(
+                video=mock_video_info, script=mock_script, slides=mock_slides, style=style
+            )
+            img = Image.open(result.file_path)
+            unique_colors = len(set(img.getdata()))
+            assert unique_colors > 50, f"style={style}: 画像がほぼ単色 (unique={unique_colors})"
+            result.file_path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_template_generator_has_text(self, mock_video_info, mock_script, mock_slides):
+        """テンプレートジェネレータの出力にテキスト描画がある"""
+        gen = TemplateThumbnailGenerator()
+        result = await gen.generate(
+            video=mock_video_info, script=mock_script, slides=mock_slides, style="modern"
+        )
+        img = Image.open(result.file_path)
+        unique_colors = len(set(img.getdata()))
+        assert unique_colors > 50, f"画像がほぼ単色 (unique={unique_colors})。テキスト描画されていない可能性"
+        result.file_path.unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_generate_from_script_has_text(self):
+        """generate_from_script の出力にテキスト描画がある"""
+        gen = AIThumbnailGenerator()
+        script = {
+            "title": "サムネイルテスト動画",
+            "segments": [{"content": "テストセグメント内容です", "duration": 30}],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = await gen.generate_from_script(
+                script=script, output_dir=Path(tmpdir), style="modern"
+            )
+            img = Image.open(path)
+            unique_colors = len(set(img.getdata()))
+            assert unique_colors > 50, f"画像がほぼ単色 (unique={unique_colors})"
+
+    @pytest.mark.asyncio
+    async def test_file_size_reasonable(self, mock_video_info, mock_script, mock_slides):
+        """サムネイルのファイルサイズが妥当 (10KB以上)"""
+        gen = AIThumbnailGenerator()
+        result = await gen.generate(
+            video=mock_video_info, script=mock_script, slides=mock_slides, style="modern"
+        )
+        size = result.file_path.stat().st_size
+        assert size > 10000, f"ファイルサイズが小さすぎる ({size} bytes)。テキスト描画されていない可能性"
+        result.file_path.unlink(missing_ok=True)

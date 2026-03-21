@@ -142,15 +142,6 @@ class IPlatformAdapter(Protocol):
         """YouTube/TikTok等、プラットフォーム固有ロジックを抽象化"""
 
 
-class IPublishingQueue(Protocol):
-    async def enqueue(
-        self,
-        package: Dict[str, Any],
-        schedule: Optional[str] = None,
-    ) -> str:
-        """予約投稿や承認待ちキューに投入"""
-
-
 class ThumbnailGeneratorProtocol(Protocol):
     """サムネイル自動生成プロトコル"""
 

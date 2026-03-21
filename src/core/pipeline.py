@@ -24,7 +24,6 @@ from .interfaces import (
     IEditingBackend,
     IThumbnailGenerator,
     IPlatformAdapter,
-    IPublishingQueue,
 )
 # 既存実装（デフォルトDI）
 from notebook_lm.source_collector import SourceCollector
@@ -64,7 +63,6 @@ class ModularVideoPipeline:
         editing_backend: Optional[IEditingBackend] = None,
         thumbnail_generator: Optional[IThumbnailGenerator] = None,
         platform_adapter: Optional[IPlatformAdapter] = None,
-        publishing_queue: Optional[IPublishingQueue] = None,
     ) -> None:
         # Stage1 legacy fallbacks
         self.source_collector = source_collector or SourceCollector()
@@ -88,7 +86,6 @@ class ModularVideoPipeline:
 
         # Stage3 modular components
         self.platform_adapter = platform_adapter
-        self.publishing_queue = publishing_queue
 
         # Operation modes per stage
         self.stage_modes = {
@@ -253,7 +250,6 @@ class ModularVideoPipeline:
                         user_preferences=user_preferences,
                         metadata_generator=self.metadata_generator,
                         platform_adapter=self.platform_adapter,
-                        publishing_queue=self.publishing_queue,
                         uploader=self.uploader,
                         progress_callback=progress_callback,
                     )

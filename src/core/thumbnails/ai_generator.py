@@ -281,40 +281,42 @@ class AIThumbnailGenerator(IThumbnailGenerator):
 
         # 新しい画像を作成
         image = Image.new('RGB', (width, height), style_config['bg_color'])
-        draw = ImageDraw.Draw(image)
 
         # グラデーション効果（対応スタイルの場合）
         if style_config.get('gradient', False):
             image = self._apply_gradient(image, style_config)
 
-        # フォント設定（デフォルトフォントを使用）
+        draw = ImageDraw.Draw(image)
+
+        # フォント設定（CJK対応フォントを使用）
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        font_path = self._find_cjk_font()
         try:
-            # システムフォントを試行
-            title_font = ImageFont.truetype("arial.ttf", style_config['font_size_title'])
-            subtitle_font = ImageFont.truetype("arial.ttf", style_config['font_size_subtitle'])
+            title_font = ImageFont.truetype(font_path, style_config['font_size_title'])
+            subtitle_font = ImageFont.truetype(font_path, style_config['font_size_subtitle'])
         except (OSError, TypeError, ValueError):
-            # デフォルトフォントを使用
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
 
-        # タイトルを描画（中央揃え）
-        title_bbox = draw.textbbox((0, 0), title, font=title_font)
-        title_width = title_bbox[2] - title_bbox[0]
-        title_x = (width - title_width) // 2
+        # タイトルを描画（中央揃え、複数行対応）
+        title_lines = textwrap.wrap(title, width=20)
         title_y = height // 3
-
-        # タイトルに影効果
         shadow_offset = 2
-        draw.text((title_x + shadow_offset, title_y + shadow_offset),
-                 title, fill=(0, 0, 0, 128), font=title_font)
-        draw.text((title_x, title_y), title,
-                 fill=style_config['text_color'], font=title_font)
+
+        for line in title_lines:
+            line_bbox = draw.textbbox((0, 0), line, font=title_font)
+            line_width = line_bbox[2] - line_bbox[0]
+            line_x = (width - line_width) // 2
+            draw.text((line_x + shadow_offset, title_y + shadow_offset),
+                     line, fill=(0, 0, 0, 128), font=title_font)
+            draw.text((line_x, title_y), line,
+                     fill=style_config['text_color'], font=title_font)
+            title_y += line_bbox[3] - line_bbox[1] + 10
 
         # サブタイトルを描画
         subtitle_lines = textwrap.wrap(subtitle, width=30)
-        subtitle_y = title_y + 120
+        subtitle_y = title_y + 30
 
         for line in subtitle_lines:
             subtitle_bbox = draw.textbbox((0, 0), line, font=subtitle_font)
@@ -343,26 +345,20 @@ class AIThumbnailGenerator(IThumbnailGenerator):
         return filepath
 
     def _apply_gradient(self, image: Image.Image, style_config: Dict[str, Any]) -> Image.Image:
-        """グラデーション効果を適用"""
+        """グラデーション効果を適用（bg_color から暗色への縦グラデーション）"""
         width, height = image.size
         gradient_image = Image.new('RGB', (width, height))
 
-        # 単純な縦グラデーション
+        bg = style_config['bg_color']
         for y in range(height):
-            # 上から下へのグラデーション
             ratio = y / height
-            r = int(style_config['bg_color'][0] * (1 - ratio * 0.3))
-            g = int(style_config['bg_color'][1] * (1 - ratio * 0.3))
-            b = int(style_config['bg_color'][2] * (1 - ratio * 0.3))
-
+            r = int(bg[0] * (1 - ratio * 0.3))
+            g = int(bg[1] * (1 - ratio * 0.3))
+            b = int(bg[2] * (1 - ratio * 0.3))
             for x in range(width):
                 gradient_image.putpixel((x, y), (r, g, b))
 
-        # 元の画像を合成
-        result = Image.alpha_composite(gradient_image.convert('RGBA'),
-                                     image.convert('RGBA')).convert('RGB')
-
-        return result
+        return gradient_image
 
     def _add_decorative_elements(
         self,

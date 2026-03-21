@@ -20,11 +20,12 @@ def client(tmp_path: Path) -> StockImageClient:
 
 @pytest.fixture
 def client_no_keys(tmp_path: Path) -> StockImageClient:
-    """APIキーなしのクライアント。"""
+    """APIキーなし+Wikimedia無効のクライアント。"""
     return StockImageClient(
         pexels_api_key="",
         pixabay_api_key="",
         cache_dir=tmp_path / "stock_cache",
+        enable_wikimedia=False,
     )
 
 
@@ -65,6 +66,150 @@ class TestStockImageClient:
     def test_build_query_empty_segment(self, client: StockImageClient) -> None:
         """空セグメント → 空文字列"""
         assert client._build_query_from_segment({}) == ""
+
+
+class TestWikimediaSearch:
+    """Wikimedia Commons API検索テスト (モック)。"""
+
+    def test_wikimedia_search_success(self, client: StockImageClient) -> None:
+        """正常レスポンスからStockImageリストを生成"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "query": {
+                "pages": {
+                    "12345": {
+                        "pageid": 12345,
+                        "title": "File:Test_image.jpg",
+                        "imageinfo": [
+                            {
+                                "url": "https://upload.wikimedia.org/commons/test.jpg",
+                                "thumburl": "https://upload.wikimedia.org/commons/thumb/test.jpg",
+                                "width": 2048,
+                                "height": 1024,
+                                "user": "WikiUser",
+                                "extmetadata": {
+                                    "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                                    "ImageDescription": {"value": "A test image"},
+                                },
+                            }
+                        ],
+                    }
+                }
+            }
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            results = client._search_wikimedia("technology", 5)
+
+        assert len(results) == 1
+        assert results[0].id == "wikimedia_12345"
+        assert results[0].source == "wikimedia"
+        assert results[0].photographer == "WikiUser"
+        assert "commons.wikimedia.org" in results[0].url
+
+    def test_wikimedia_filters_small_images(self, client: StockImageClient) -> None:
+        """min_width 未満の画像をフィルタ"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "query": {
+                "pages": {
+                    "1": {
+                        "pageid": 1,
+                        "title": "File:Small.jpg",
+                        "imageinfo": [{"url": "https://example.com/small.jpg", "width": 800, "height": 600, "user": "U", "extmetadata": {"LicenseShortName": {"value": "CC0"}}}],
+                    },
+                    "2": {
+                        "pageid": 2,
+                        "title": "File:Large.jpg",
+                        "imageinfo": [{"url": "https://example.com/large.jpg", "thumburl": "https://example.com/thumb.jpg", "width": 2048, "height": 1024, "user": "U", "extmetadata": {"LicenseShortName": {"value": "CC0"}}}],
+                    },
+                }
+            }
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            results = client._search_wikimedia("test", 5)
+
+        assert len(results) == 1
+        assert results[0].id == "wikimedia_2"
+
+    def test_wikimedia_filters_non_cc_licenses(self, client: StockImageClient) -> None:
+        """CC/PD以外のライセンスをフィルタ"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "query": {
+                "pages": {
+                    "1": {
+                        "pageid": 1,
+                        "title": "File:NonFree.jpg",
+                        "imageinfo": [{"url": "https://example.com/nonfree.jpg", "thumburl": "https://example.com/thumb.jpg", "width": 2048, "height": 1024, "user": "U", "extmetadata": {"LicenseShortName": {"value": "Fair use"}}}],
+                    },
+                    "2": {
+                        "pageid": 2,
+                        "title": "File:CC.jpg",
+                        "imageinfo": [{"url": "https://example.com/cc.jpg", "thumburl": "https://example.com/thumb2.jpg", "width": 2048, "height": 1024, "user": "U", "extmetadata": {"LicenseShortName": {"value": "CC BY 4.0"}}}],
+                    },
+                }
+            }
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            results = client._search_wikimedia("test", 5)
+
+        assert len(results) == 1
+        assert results[0].id == "wikimedia_2"
+
+    def test_wikimedia_empty_result(self, client: StockImageClient) -> None:
+        """空結果 → 空リスト"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"query": {"pages": {}}}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(client.session, "get", return_value=mock_response):
+            results = client._search_wikimedia("nonexistent_query", 5)
+
+        assert results == []
+
+    def test_wikimedia_fallback_to_pexels(self, client: StockImageClient) -> None:
+        """Wikimedia 0件 → Pexelsにフォールバック"""
+        call_count = 0
+
+        def mock_get(url, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            if "commons.wikimedia.org" in url:
+                resp.json.return_value = {"query": {"pages": {}}}
+            elif "pexels.com" in url:
+                resp.json.return_value = {
+                    "photos": [{
+                        "id": 99, "width": 1920, "height": 1080,
+                        "url": "", "photographer": "Pexels User", "alt": "",
+                        "src": {"large2x": "https://images.pexels.com/99.jpg"},
+                    }]
+                }
+            return resp
+
+        with patch.object(client.session, "get", side_effect=mock_get):
+            results = client.search("technology", count=3)
+
+        assert len(results) == 1
+        assert results[0].source == "pexels"
+
+    def test_wikimedia_attribution(self, client: StockImageClient) -> None:
+        """Wikimedia画像のクレジット表記"""
+        images = [
+            StockImage(id="wm1", url="https://commons.wikimedia.org/wiki/File:Test.jpg",
+                       download_url="", width=0, height=0,
+                       photographer="WikiUser", source="wikimedia"),
+        ]
+        attr = client.get_attribution(images)
+        assert "WikiUser" in attr
+        assert "Wikimedia Commons" in attr
 
 
 class TestPexelsSearch:

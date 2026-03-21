@@ -397,23 +397,34 @@ class VisualResourceOrchestrator:
     ) -> List[VisualResource]:
         """ソースに応じたアニメーションを割当する。
 
-        - stock: サイクル方式 (ken_burns, pan, zoom)
-        - slide: STATIC
+        - stock / ai: フルサイクル方式 (ken_burns, pan, zoom)
+        - generated (TextSlide): 控えめサイクル (ken_burns, zoom_in/out)
         - none: STATIC
         """
-        cycle = AnimationType.cycle_types()
-        cycle_idx = 0
+        full_cycle = AnimationType.cycle_types()
+        gentle_cycle = AnimationType.gentle_cycle_types()
+        full_idx = 0
+        gentle_idx = 0
         prev_animation: Optional[AnimationType] = None
 
         for r in resources:
             if r.source in ("stock", "ai") and r.image_path:
-                animation = cycle[cycle_idx % len(cycle)]
-                if animation == prev_animation and len(cycle) > 1:
-                    cycle_idx += 1
-                    animation = cycle[cycle_idx % len(cycle)]
+                animation = full_cycle[full_idx % len(full_cycle)]
+                if animation == prev_animation and len(full_cycle) > 1:
+                    full_idx += 1
+                    animation = full_cycle[full_idx % len(full_cycle)]
                 r.animation_type = animation
                 prev_animation = animation
-                cycle_idx += 1
+                full_idx += 1
+            elif r.source == "generated" and r.image_path:
+                # TextSlide: 控えめなアニメーションで単調さを軽減
+                animation = gentle_cycle[gentle_idx % len(gentle_cycle)]
+                if animation == prev_animation and len(gentle_cycle) > 1:
+                    gentle_idx += 1
+                    animation = gentle_cycle[gentle_idx % len(gentle_cycle)]
+                r.animation_type = animation
+                prev_animation = animation
+                gentle_idx += 1
             else:
                 r.animation_type = AnimationType.STATIC
                 prev_animation = AnimationType.STATIC

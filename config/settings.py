@@ -262,6 +262,16 @@ class Settings:
             "style": "default",  # SP-036: 台本スタイルプリセット
         }
 
+        # フィード連携設定 (SP-048)
+        self.FEED_SETTINGS: Dict[str, Any] = {
+            "inoreader_app_id": os.getenv("INOREADER_APP_ID", ""),
+            "inoreader_app_key": os.getenv("INOREADER_APP_KEY", ""),
+            "inoreader_token": os.getenv("INOREADER_TOKEN", ""),
+            "default_count": 50,
+            "freshness_days": 7,
+            "output_dir": str(PROJECT_ROOT / "output" / "feed"),
+        }
+
         # リトライ設定
         self.RETRY_SETTINGS = {
             "max_retries": 3,

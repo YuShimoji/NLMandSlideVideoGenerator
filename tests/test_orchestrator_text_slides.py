@@ -43,7 +43,10 @@ class TestOrchestratorFillNone:
             assert r.source == "generated", f"Expected generated, got {r.source}"
             assert r.image_path is not None
             assert r.image_path.exists()
-            assert r.animation_type == AnimationType.STATIC
+            # generated (TextSlide) には控えめなアニメーション (ken_burns/zoom) が割当される
+            assert r.animation_type in (
+                AnimationType.KEN_BURNS, AnimationType.ZOOM_IN, AnimationType.ZOOM_OUT
+            )
 
     def test_generated_slides_saved_in_work_dir(self, tmp_path: Path) -> None:
         """生成されたスライドが work_dir/generated_slides/ に保存される。"""

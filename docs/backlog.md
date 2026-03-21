@@ -60,7 +60,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (60%) | チェックリスト整備済み+pre-flight自動チェック。YMM4環境で実施待ち |
 | YouTube公開 | SP-038 本番OAuthトークン取得+実チャンネルテスト | 中 | SP-038 (90%) | Phase 1-3実装完了。残: 本番OAuth取得・実チャンネルテストアップロード |
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
-| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
+| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | SP-048 (80%) | Phase 1完了: クライアント+抽出+CLI+61テスト。残: 実API疎通、Phase 2パイプライン連携 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
 | 整理 | TikTokAdapter 廃止検討 | 低 | なし | 221行モック実装。全メソッドスタブ (publish→2秒sleep→mock応答)。helpers.pyで条件付きロード。HUMAN_AUTHORITY |
 | 整理 | IPublishingQueue 方針決定 | 低 | なし | interfaces.py 7行のProtocol定義のみ。pipeline.py/stage_runners.pyでimportされるが常にNone。具象実装なし。HUMAN_AUTHORITY |

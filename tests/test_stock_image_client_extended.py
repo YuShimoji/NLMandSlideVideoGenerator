@@ -257,7 +257,15 @@ class TestValidateApiKeys:
 # ===========================================================================
 
 class TestSearchOrchestration:
-    """search() のPexels優先 → Pixabayフォールバック。"""
+    """search() のWikimedia→Pexels→Pixabayフォールバック。
+
+    Wikimediaは空を返す前提で、Pexels/Pixabayのフォールバックをテストする。
+    """
+
+    @pytest.fixture(autouse=True)
+    def _disable_wikimedia(self, client: StockImageClient) -> None:
+        """Wikimediaを無効化してPexels/Pixabayのフォールバックに集中する。"""
+        client.enable_wikimedia = False
 
     def test_pexels_success_skips_pixabay(self, client: StockImageClient) -> None:
         """Pexels成功 → Pixabayは呼ばれない。"""

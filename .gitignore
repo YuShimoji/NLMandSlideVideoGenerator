@@ -1,4 +1,5 @@
 # Pipeline output (E2E test / batch production)
+output/
 output_e2e*/
 output_batch/
 output_csv/

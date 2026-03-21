@@ -52,9 +52,9 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ### ビジュアル
 - [ ] テキストスライド: NotebookLMスライド生成活用
-- [ ] 画像素材: テーマに関連した著作権クリア画像 (ストック画像のみに依存しない)
+- [x] 画像素材: テーマに関連した著作権クリア画像 — Wikimedia Commons統合実装済み (Wikimedia→Pexels→Pixabay→AI→TextSlide)
 - [ ] 視覚変化: 5-15秒ごとに何らかの変化 (画像切替/アニメーション/テキストオーバーレイ)
-- [ ] アニメーション: 全セグメントに動きを付与 (static排除)、ただしトランジション過多にならない
+- [x] アニメーション: TextSlideに控えめなアニメーション (ken_burns/zoom) を自動付与。static排除達成
 
 ### 動画構成
 - [ ] 1セグメント1画像の制約を解除 (複数画像/セグメント可)
@@ -122,17 +122,21 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 - NotebookLMベースの台本生成フローの構築
 - 現行Gemini台本生成との共存/段階移行
 
-### Phase 3: ビジュアルパイプライン移行
+### Phase 3: ビジュアルパイプライン移行 (部分完了)
 
 - NotebookLMスライド生成: 公式APIなし、手動補助または非公式APIの検討 (HUMAN_AUTHORITY)
-- 著作権クリア画像検索の実装:
-  - **Wikimedia Commons API** (`https://commons.wikimedia.org/w/api.php`): CC/パブリックドメイン画像の検索・ダウンロード
-    - `action=query&generator=search&gsrsearch={keyword}&prop=imageinfo` でメタデータ+URL取得
-    - ライセンス情報はstructured data or imageinfo extensionで取得可能
-    - 無料、レート制限あり (User-Agent必須)
-    - pyWikiCommons ライブラリあり
-  - 既存 `stock_image_client.py` に3番目のソースとして統合が自然
-  - フォールバック: Wikimedia → Pexels → Pixabay → AI生成 → テキストスライド
+- [x] **Wikimedia Commons画像統合** (2026-03-21 実装完了):
+  - `stock_image_client.py` に `_search_wikimedia()` を追加
+  - フォールバック順: Wikimedia Commons → Pexels → Pixabay → AI生成 → テキストスライド
+  - ライセンスフィルタ: CC系/PD系のみ許可 (Fair use等は除外)
+  - landscape比率フィルタ: width/height >= 1.2
+  - min_widthフィルタ: デフォルト1920px以上
+  - APIキー不要、`enable_wikimedia=True` (デフォルト) で有効
+  - テスト6件追加 (モック)
+- [x] **TextSlideアニメーション自動付与** (2026-03-21 実装完了):
+  - `AnimationType.gentle_cycle_types()` 追加 (ken_burns/zoom_in/zoom_out)
+  - `resource_orchestrator._assign_animations()` で source="generated" に控えめなアニメーション割当
+  - static排除達成 (全セグメントに動きが付く)
 - PILスライド生成: 即廃止ではなくフォールバックとして維持 (HUMAN_AUTHORITY)
 
 ### Phase 4: 品質検証

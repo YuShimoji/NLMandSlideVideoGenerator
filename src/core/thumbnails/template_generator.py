@@ -18,12 +18,25 @@ from slides.slide_generator import SlidesPackage
 from config.settings import settings
 
 
+_CJK_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/NotoSansJP-VF.ttf",
+    "C:/Windows/Fonts/YuGothM.ttc",
+    "C:/Windows/Fonts/meiryo.ttc",
+    "C:/Windows/Fonts/msgothic.ttc",
+    "C:/Windows/Fonts/BIZ-UDGothicR.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "arial.ttf",
+]
+
+
 class TemplateThumbnailGenerator(IThumbnailGenerator):
     """テンプレートベースのサムネイル生成"""
 
     def __init__(self, template_dir: Optional[Path] = None):
         self.output_dir = settings.THUMBNAILS_DIR
         self.output_dir.mkdir(exist_ok=True)
+        self._cached_font_path: str | None = None
 
         # テンプレートディレクトリ
         self.template_dir = template_dir or settings.TEMPLATES_DIR / "thumbnails"
@@ -58,6 +71,17 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
                     logger.warning(f"テンプレート読み込みエラー {json_file}: {e}")
 
         return templates
+
+    def _find_cjk_font(self) -> str:
+        """CJK (日本語) 対応フォントを検索する。"""
+        if self._cached_font_path:
+            return self._cached_font_path
+        for candidate in _CJK_FONT_CANDIDATES:
+            if Path(candidate).exists():
+                self._cached_font_path = candidate
+                return candidate
+        self._cached_font_path = "arial.ttf"
+        return "arial.ttf"
 
     async def generate(
         self,
@@ -123,12 +147,13 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         img = Image.new('RGB', (width, height), background_color)
         draw = ImageDraw.Draw(img)
 
-        # フォント設定（システムフォントを使用）
+        # フォント設定（CJK対応フォントを使用）
+        font_path = self._find_cjk_font()
         font_title: ImageFont.FreeTypeFont | ImageFont.ImageFont
         font_subtitle: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            font_title = ImageFont.truetype("arial.ttf", 60)
-            font_subtitle = ImageFont.truetype("arial.ttf", 36)
+            font_title = ImageFont.truetype(font_path, 60)
+            font_subtitle = ImageFont.truetype(font_path, 36)
         except (OSError, TypeError, ValueError):
             font_title = ImageFont.load_default()
             font_subtitle = ImageFont.load_default()
@@ -143,7 +168,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
             # フォントサイズ調整
             font: ImageFont.FreeTypeFont | ImageFont.ImageFont
             try:
-                font = ImageFont.truetype("arial.ttf", font_size)
+                font = ImageFont.truetype(font_path, font_size)
             except (OSError, TypeError, ValueError):
                 font = ImageFont.load_default()
 
@@ -208,7 +233,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル（大きなフォント、中央）
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            title_font = ImageFont.truetype("arial.ttf", 72)
+            title_font = ImageFont.truetype(self._find_cjk_font(), 72)
         except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
@@ -217,7 +242,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            subtitle_font = ImageFont.truetype("arial.ttf", 36)
+            subtitle_font = ImageFont.truetype(self._find_cjk_font(), 36)
         except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
@@ -250,7 +275,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            title_font = ImageFont.truetype("arial.ttf", 64)
+            title_font = ImageFont.truetype(self._find_cjk_font(), 64)
         except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
@@ -259,7 +284,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            subtitle_font = ImageFont.truetype("arial.ttf", 32)
+            subtitle_font = ImageFont.truetype(self._find_cjk_font(), 32)
         except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
@@ -289,7 +314,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル（ネオン効果）
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            title_font = ImageFont.truetype("arial.ttf", 68)
+            title_font = ImageFont.truetype(self._find_cjk_font(), 68)
         except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
@@ -298,7 +323,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            subtitle_font = ImageFont.truetype("arial.ttf", 34)
+            subtitle_font = ImageFont.truetype(self._find_cjk_font(), 34)
         except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
@@ -328,7 +353,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # タイトル
         title_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            title_font = ImageFont.truetype("arial.ttf", 60)
+            title_font = ImageFont.truetype(self._find_cjk_font(), 60)
         except (OSError, TypeError, ValueError):
             title_font = ImageFont.load_default()
 
@@ -337,7 +362,7 @@ class TemplateThumbnailGenerator(IThumbnailGenerator):
         # サブタイトル
         subtitle_font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            subtitle_font = ImageFont.truetype("arial.ttf", 30)
+            subtitle_font = ImageFont.truetype(self._find_cjk_font(), 30)
         except (OSError, TypeError, ValueError):
             subtitle_font = ImageFont.load_default()
 
