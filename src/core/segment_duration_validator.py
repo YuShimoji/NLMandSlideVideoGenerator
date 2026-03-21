@@ -14,11 +14,12 @@ from core.utils.logger import logger
 
 
 # セグメント数の目安テーブル (target_seconds → (min, recommended_min, recommended_max, max))
+# 15-25秒/セグメント基準 (YouTube解説の視覚変化テンポに合わせて短縮)
 _SEGMENT_TABLE: List[Tuple[float, int, int, int, int]] = [
-    (300, 3, 5, 7, 10),
-    (900, 7, 10, 15, 20),
-    (1800, 15, 20, 30, 40),
-    (3600, 25, 30, 45, 60),
+    (300, 8, 12, 20, 30),
+    (900, 25, 36, 60, 80),
+    (1800, 50, 72, 120, 160),
+    (3600, 100, 144, 240, 320),
 ]
 
 # ゆっくりボイスの読み上げ速度 (文字/秒)

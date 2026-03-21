@@ -54,18 +54,18 @@ class TestEstimateDuration:
 class TestGetSegmentRange:
     def test_5min(self) -> None:
         min_s, max_s = _get_segment_range(300)
-        assert min_s == 3
-        assert max_s == 10
+        assert min_s == 8
+        assert max_s == 30
 
     def test_30min(self) -> None:
         min_s, max_s = _get_segment_range(1800)
-        assert min_s >= 10
-        assert max_s <= 50
+        assert min_s >= 40
+        assert max_s <= 200
 
     def test_60min(self) -> None:
         min_s, max_s = _get_segment_range(3600)
-        assert min_s >= 20
-        assert max_s >= 40
+        assert min_s >= 80
+        assert max_s >= 200
 
     def test_very_short(self) -> None:
         min_s, max_s = _get_segment_range(60)
@@ -74,8 +74,8 @@ class TestGetSegmentRange:
 
     def test_very_long(self) -> None:
         min_s, max_s = _get_segment_range(7200)
-        assert min_s >= 40
-        assert max_s >= 80
+        assert min_s >= 150
+        assert max_s >= 400
 
     def test_zero_duration(self) -> None:
         min_s, max_s = _get_segment_range(0)
@@ -91,12 +91,10 @@ class TestValidateSegments:
         ]
 
     def test_ok_5min(self) -> None:
-        # 5セグメント x 80文字 = 5 x (80/4 + 0.5) = 102.5秒, target=300
-        # ratio = 102.5/300 = 0.34 → too_short
-        # Use 120 chars per seg: 5 x (120/4 + 0.5) = 152.5秒, ratio = 0.51
-        segs = self._make_segments(5, chars_per=200)
+        # 15セグメント x 80文字 = 15 x (80/4 + 0.5) = 307.5秒, target=300
+        # ratio = 307.5/300 = 1.025, seg_count=15 in range [8, 30]
+        segs = self._make_segments(15, chars_per=80)
         result = validate_segments(segs, 300)
-        # 5 x (200/4 + 0.5) = 252.5秒, ratio = 0.84
         assert result.is_ok
 
     def test_too_short(self) -> None:
