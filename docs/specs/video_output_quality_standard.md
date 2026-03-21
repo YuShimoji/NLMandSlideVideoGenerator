@@ -111,9 +111,16 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ### Phase 3: ビジュアルパイプライン移行
 
-- NotebookLMスライド生成の統合
-- 著作権クリア画像検索の実装
-- PILスライド生成の廃止
+- NotebookLMスライド生成: 公式APIなし、手動補助または非公式APIの検討 (HUMAN_AUTHORITY)
+- 著作権クリア画像検索の実装:
+  - **Wikimedia Commons API** (`https://commons.wikimedia.org/w/api.php`): CC/パブリックドメイン画像の検索・ダウンロード
+    - `action=query&generator=search&gsrsearch={keyword}&prop=imageinfo` でメタデータ+URL取得
+    - ライセンス情報はstructured data or imageinfo extensionで取得可能
+    - 無料、レート制限あり (User-Agent必須)
+    - pyWikiCommons ライブラリあり
+  - 既存 `stock_image_client.py` に3番目のソースとして統合が自然
+  - フォールバック: Wikimedia → Pexels → Pixabay → AI生成 → テキストスライド
+- PILスライド生成: 即廃止ではなくフォールバックとして維持 (HUMAN_AUTHORITY)
 
 ### Phase 4: 品質検証
 
