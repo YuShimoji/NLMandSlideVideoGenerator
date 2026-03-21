@@ -33,6 +33,7 @@ from .interfaces import (
     IUploader,
     ThumbnailGeneratorProtocol,
 )
+from .segment_duration_validator import validate_segments, adjust_segments
 
 
 async def run_legacy_stage1(
@@ -81,6 +82,18 @@ async def run_legacy_stage1(
             except json.JSONDecodeError:
                 logger.warning("Gemini スクリプトをJSONとして解析できませんでした。生テキストを保持します。")
                 script_bundle = {"title": script_info.title, "content": script_info.content}
+
+            # SP-044: セグメント粒度検証 + 自動調整
+            if isinstance(script_bundle, dict) and "segments" in script_bundle:
+                segments = script_bundle["segments"]
+                validation = validate_segments(segments, 300.0)
+                logger.info(f"SP-044 検証: {validation.message}")
+                if not validation.is_ok:
+                    logger.warning(f"SP-044 セグメント検証: {validation.status} - {validation.message}")
+                    adjusted = await adjust_segments(segments, validation, topic=topic)
+                    if adjusted is not segments:
+                        script_bundle["segments"] = adjusted
+                        logger.info(f"SP-044 自動調整適用: {len(segments)}→{len(adjusted)}セグメント")
 
             # Geminiスライド情報の生成（任意）
             prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
