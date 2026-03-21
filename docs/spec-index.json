@@ -417,9 +417,9 @@
     "id": "SP-047",
     "title": "Video Output Quality Standard",
     "status": "partial",
-    "pct": 40,
+    "pct": 50,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(NotebookLM API調査)完了+Phase 1.5(台本品質改善)完了+SP-044バリデーション接続完了。Enterprise API発見だがライセンス必要。残: Phase 2(台本移行), Phase 3(ビジュアル移行), Phase 4(品質検証)"
+    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(API調査)完了+Phase 1.5(台本品質改善)完了+SP-044接続完了。Standalone Podcast API(allowlist)が最有望。Wikimedia Commons統合設計済み。残: Phase 2(台本移行), Phase 3(ビジュアル実装), Phase 4(品質検証)"
   }
 ]
