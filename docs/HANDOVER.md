@@ -6,7 +6,7 @@ Type: Session Handover
 
 ## Current Status
 
-47仕様中44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047)。テスト 1258 passed / 0 failed。
+47仕様中44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047)。テスト 1262 passed / 0 failed。
 
 **重要: 出力品質の設計ギャップが検出された。パイプラインは技術的に正しく動作するが、生成される動画がYouTube公開水準に達していない。**
 
@@ -17,7 +17,7 @@ Type: Session Handover
 | SP-047 仕様 | DRAFT | docs/specs/video_output_quality_standard.md — 品質基準と設計変更計画 |
 | DECISION LOG | UPDATED | CLAUDE.md に6件の設計決定を追記 |
 | spec-index | UPDATED | SP-047エントリ追加 (47仕様) |
-| テスト | 1258 passed, 0 failed | 変更なし (今回はドキュメント・分析のみ) |
+| テスト | 1262 passed, 0 failed | 変更なし (今回はドキュメント・分析のみ) |
 
 ## Current Slice
 
