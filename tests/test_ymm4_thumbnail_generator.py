@@ -308,6 +308,221 @@ class TestYmm4ThumbnailAssetCopy:
         assert result.exists()
 
 
+class TestYmm4ThumbnailColorPreset:
+    """色彩プリセット適用テスト (SP-037 Phase 4)"""
+
+    def test_apply_color_preset_main_text(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """メインテキストに色彩プリセットが適用される"""
+        output_dir = tmp_path / "output"
+        result = generator.generate(
+            template_name="test_template",
+            output_dir=output_dir,
+            replacements={"TITLE": "テスト", "SUBTITLE": "サブ"},
+            color_preset="dark_red",
+        )
+
+        with open(result, "r", encoding="utf-8") as f:
+            project = json.load(f)
+
+        items = project["Timelines"][0]["Items"]
+        # TITLE = メインテキスト → dark_red プリセットの色
+        title_item = items[2]
+        assert title_item["FontColor"] == "#FF0000"
+        assert title_item["OutlineColor"] == "#FFFFFF"
+        assert title_item["OutlineWidth"] == 5
+
+    def test_apply_color_preset_sub_text(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """サブテキストに色彩プリセットが適用される"""
+        output_dir = tmp_path / "output"
+        result = generator.generate(
+            template_name="test_template",
+            output_dir=output_dir,
+            replacements={"TITLE": "テスト", "SUBTITLE": "サブ"},
+            color_preset="dark_red",
+        )
+
+        with open(result, "r", encoding="utf-8") as f:
+            project = json.load(f)
+
+        items = project["Timelines"][0]["Items"]
+        sub_item = items[3]
+        assert sub_item["FontColor"] == "#FFFFFF"
+        assert sub_item["OutlineColor"] == "#333333"
+
+    def test_all_presets_valid(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """全5プリセットが適用可能"""
+        from src.core.thumbnails.ymm4_thumbnail_generator import COLOR_PRESETS
+        for preset_name in COLOR_PRESETS:
+            output_dir = tmp_path / f"output_{preset_name}"
+            result = generator.generate(
+                template_name="test_template",
+                output_dir=output_dir,
+                replacements={"TITLE": "テスト"},
+                color_preset=preset_name,
+            )
+            assert result.exists()
+
+    def test_unknown_preset_ignored(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """不明なプリセット名は警告のみでエラーにならない"""
+        output_dir = tmp_path / "output"
+        result = generator.generate(
+            template_name="test_template",
+            output_dir=output_dir,
+            replacements={"TITLE": "テスト"},
+            color_preset="nonexistent_preset",
+        )
+        assert result.exists()
+
+    def test_list_color_presets(self):
+        """色彩プリセット一覧の取得"""
+        presets = Ymm4ThumbnailGenerator.list_color_presets()
+        assert len(presets) == 5
+        assert "dark_red" in presets
+        assert "dark_yellow" in presets
+        assert "map_white" in presets
+        assert "high_contrast" in presets
+        assert "warm_alert" in presets
+
+
+class TestYmm4ThumbnailVariants:
+    """バリエーション生成テスト (SP-037 Phase 4)"""
+
+    def test_text_variants(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """テキストバリエーション生成"""
+        output_dir = tmp_path / "output"
+        results = generator.generate_variants(
+            template_name="test_template",
+            output_dir=output_dir,
+            base_replacements={"TITLE": "ベース"},
+            variant_texts=[
+                {"TITLE": "バリエーション1"},
+                {"TITLE": "バリエーション2"},
+            ],
+        )
+        assert len(results) == 2
+        assert all(p.exists() for p in results)
+
+    def test_color_variants(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """色バリエーション生成"""
+        output_dir = tmp_path / "output"
+        results = generator.generate_variants(
+            template_name="test_template",
+            output_dir=output_dir,
+            base_replacements={"TITLE": "テスト"},
+            color_presets=["dark_red", "dark_yellow", "map_white"],
+        )
+        assert len(results) == 3
+
+    def test_combined_variants(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """テキスト x 色 の組み合わせバリエーション"""
+        output_dir = tmp_path / "output"
+        results = generator.generate_variants(
+            template_name="test_template",
+            output_dir=output_dir,
+            base_replacements={"SUBTITLE": "サブ"},
+            variant_texts=[{"TITLE": "A"}, {"TITLE": "B"}],
+            color_presets=["dark_red", "warm_alert"],
+        )
+        assert len(results) == 4  # 2 texts x 2 colors
+
+    def test_no_variants_generates_one(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """バリエーション指定なしでも1つ生成"""
+        output_dir = tmp_path / "output"
+        results = generator.generate_variants(
+            template_name="test_template",
+            output_dir=output_dir,
+            base_replacements={"TITLE": "テスト"},
+        )
+        assert len(results) == 1
+
+
+class TestYmm4ThumbnailFromCopy:
+    """generate_from_thumbnail_copy テスト (SP-037 Phase 4)"""
+
+    def test_basic_from_copy(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """Gemini文言からサムネイル生成"""
+        thumbnail_copy = {
+            "main_text": "なぜAIは",
+            "sub_text": "衝撃の理由を徹底解説",
+            "label": "ゆっくり解説",
+            "suggested_pattern": "A",
+            "suggested_color": "dark_red",
+        }
+        # test_template しかないので suggested_pattern は無視されて test_template が使われる
+        result = generator.generate_from_thumbnail_copy(
+            thumbnail_copy=thumbnail_copy,
+            output_dir=tmp_path / "output",
+        )
+        assert result.exists()
+
+        with open(result, "r", encoding="utf-8") as f:
+            project = json.load(f)
+
+        items = project["Timelines"][0]["Items"]
+        # TITLE/MAIN_TEXT 両方にセット → TITLE が差し替わる
+        assert items[2]["Text"] == "なぜAIは"
+        # SUBTITLE/SUB_TEXT 両方にセット → SUBTITLE が差し替わる
+        assert items[3]["Text"] == "衝撃の理由を徹底解説"
+        # dark_red プリセットが適用される
+        assert items[2]["FontColor"] == "#FF0000"
+
+    def test_explicit_template_override(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """テンプレート名を明示指定"""
+        thumbnail_copy = {
+            "main_text": "テスト",
+            "sub_text": "サブ",
+            "label": "解説",
+            "suggested_pattern": "C",
+            "suggested_color": "map_white",
+        }
+        result = generator.generate_from_thumbnail_copy(
+            thumbnail_copy=thumbnail_copy,
+            output_dir=tmp_path / "output",
+            template_name="test_template",
+        )
+        assert result.exists()
+
+    def test_with_images(self, generator: Ymm4ThumbnailGenerator, tmp_path: Path):
+        """背景・キャラ画像指定"""
+        thumbnail_copy = {
+            "main_text": "テスト",
+            "sub_text": "サブ",
+            "label": "解説",
+            "suggested_pattern": "A",
+            "suggested_color": "high_contrast",
+        }
+        bg = tmp_path / "bg.png"
+        bg.write_bytes(b"fake")
+
+        result = generator.generate_from_thumbnail_copy(
+            thumbnail_copy=thumbnail_copy,
+            output_dir=tmp_path / "output",
+            background_image=bg,
+        )
+
+        with open(result, "r", encoding="utf-8") as f:
+            project = json.load(f)
+
+        items = project["Timelines"][0]["Items"]
+        assert str(bg.resolve()) in items[0]["FilePath"]
+
+    def test_no_templates_raises(self, tmp_path: Path):
+        """テンプレートが1つもない場合FileNotFoundError"""
+        gen = Ymm4ThumbnailGenerator(template_dir=tmp_path / "empty_templates")
+        (tmp_path / "empty_templates").mkdir()
+
+        thumbnail_copy = {
+            "main_text": "テスト", "sub_text": "サブ",
+            "label": "解説", "suggested_pattern": "A",
+            "suggested_color": "dark_red",
+        }
+        with pytest.raises(FileNotFoundError, match="テンプレートが1つも"):
+            gen.generate_from_thumbnail_copy(
+                thumbnail_copy=thumbnail_copy,
+                output_dir=tmp_path / "output",
+            )
+
+
 class TestYmm4ThumbnailWithRealTemplate:
     """config/thumbnail_templates/ の実テンプレートでのテスト"""
 
