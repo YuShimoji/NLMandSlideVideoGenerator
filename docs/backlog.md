@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-18 (session 12 nightshift)
+最終更新: 2026-03-22 (session 17 nightshift)
 
 ---
 
@@ -71,8 +71,10 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ### 短期 (~1週): partial SP を done に
 
+- SP-050 未決定事項解消 (90%→100%): 実制作で Q1-1/Q6-2/Q-X1 を確認
 - SP-035 統合実機テスト (60%→100%): YMM4環境で手動実施
 - SP-038 YouTube投稿 (90%→100%): 本番OAuthトークン取得 + 実チャンネルテスト
+- SP-045 初回公開通し実行 (draft→partial): SP-050準拠で1本通し
 
 ### 中期 (1-2ヶ月): 実運用開始
 
@@ -128,6 +130,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-18: nightshift — 仕様書同期8件(Imagen4, pct100%), 開発ガイド全面更新, INDEX拡充
 - 2026-03-21: SP-047 Phase 2実検証(台本品質全指標PASS) + Phase 3(Wikimedia Commons統合+TextSlideアニメーション)
 - 2026-03-21: デッドコード削除3件 (TikTokAdapter 221行 + IPublishingQueue 7行 + Gemini+TTS 60行)
+- 2026-03-22: 根本ワークフロー復元 (DESIGN_FOUNDATIONS.md) + 矛盾仕様7件修正 + SP-050 E2Eワークフロー仕様起草
+- 2026-03-22: SP-045 SP-050準拠改版 + ドキュメント同期 (テスト数1346, 仕様数50)
 
 ---
 

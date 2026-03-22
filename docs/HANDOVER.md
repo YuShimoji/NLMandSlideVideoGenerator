@@ -1,75 +1,56 @@
 # HANDOVER
 
-Timestamp: 2026-03-21
-Actor: Claude Code (session 15 NIGHTSHIFT)
+Timestamp: 2026-03-22
+Actor: Claude Code (session 17 NIGHTSHIFT)
 Type: Session Handover
 
 ## Current Status
 
-47仕様中44 done + 2 partial (SP-035 60%, SP-047 40%) + 1 draft (SP-045)。テスト 1262 passed / 0 failed。
+50仕様中45 done + 4 partial (SP-035 60%, SP-037 75%, SP-047 75%, SP-048 80%) + 1 draft (SP-045) + 1 archived + 1 superseded。
+テスト 1346 passed / 0 failed。
 
-**今回の進捗: 台本品質改善 + NotebookLM API調査 + パイプラインバリデーション接続**
+**直近の進捗 (session 16-17):**
+- session 16: 矛盾仕様7件修正 + SP-045 SP-050準拠改版 + 前セッション未コミット変更統合
+- session 17: ドキュメント同期 (テスト数1262→1346, 仕様数更新, backlog更新)
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
-| SP-047 Phase 1 | DONE | NotebookLM Enterprise API調査完了。Enterpriseライセンス必要、スライドAPI未公開 |
-| SP-047 Phase 1.5 | DONE | 台本品質改善: セグメント粒度15-25秒、プロンプト5項目改善、テスト4件追加 |
-| SP-044 接続 | DONE | segment_duration_validatorをstage_runners.pyに接続。バリデーション+自動調整 |
-| テスト | 1262 passed (+4) | 台本品質検証テスト追加 |
+| 矛盾仕様修正 | DONE | HIGH 3件 + MEDIUM 3件 + LOW 1件、根本ワークフロー準拠に修正 |
+| SP-045 改版 | DONE | SP-050準拠でPhase 0-5構成に全面改版 |
+| SP-050 E2Eワークフロー仕様 | partial (90%) | Phase 0-7定義。未決定事項はQ形式で整理 |
+| DESIGN_FOUNDATIONS | DONE | 根本ワークフロー復元。三層モデル明文化 |
+| ドキュメント同期 | DONE | テスト数・仕様数を全主要ドキュメントで更新 |
 
-## Commits (session 15)
+## Commits
 
-1. `a0cd8a1` fix(SP-047): セグメント粒度短縮 + 台本プロンプト品質改善
-2. `ca06b16` fix(SP-044): セグメントバリデータの期待範囲を新粒度に同期
-3. `adc35d8` docs: SP-047台本品質改善を反映 + テスト数1258→1262同期
-4. `0623d17` feat(SP-044): セグメントバリデーションをパイプラインに接続
-5. `3df3c41` docs(SP-047): Phase 1 NotebookLM API調査完了
+### Session 16 (3 commits, unpushed)
+1. `fb7c0d9` docs: 根本ワークフロー復元に伴う矛盾仕様7件修正 + SP-045 SP-050準拠改版
+2. `14077f2` feat: 前セッション未コミット変更の統合
+3. `511a676` docs: CLAUDE.md session 16 状態更新
 
-## Key Findings (session 15)
-
-### 1. NotebookLM Enterprise API
-
-- 正式API (Discovery Engine v1alpha) が存在する
-- notebooks.create / sources.batchCreate / audioOverviews.create が利用可能
-- **スライド生成APIは未提供** (Web UIのSlide Deck / Infographics機能のみ)
-- **Enterprise ライセンスが必要** — 無料版NotebookLMではAPI利用不可
-- 非公式ライブラリ (notebooklm-py) はWeb UIの非公開APIをリバースエンジニアリング
-
-### 2. 台本品質改善 (実装済み)
-
-- セグメント粒度: 40-65秒 → 15-25秒 (全4プリセット)
-- 発話長: 200-400文字 → 50-150文字
-- フック: 冒頭セグメントにフック指示追加
-- ソース引用: リテラル番号 → 自然な言い回し
-- キャラクター個性: テンプレート相槌排除指示 (news/educational)
-
-### 3. パイプラインバリデーション接続
-
-- segment_duration_validator はテストのみで利用されていた (productionコード未接続)
-- stage_runners.py に validate_segments + adjust_segments を接続済み
+### Session 17 (pending commit)
+- docs: ドキュメント同期 (テスト数1346, 仕様数50, backlog更新)
 
 ## Next Actions
 
 | 優先度 | タスク | 手動/自動 |
 |--------|--------|----------|
-| 1 | SP-047 Phase 2: 台本品質を実際のGemini出力で検証 (1本生成して確認) | 手動 |
-| 2 | 著作権クリア画像の自動収集方法の実装 (Wikimedia Commons / CC検索) | 自動 |
-| 3 | SP-035: YMM4実機テスト (60%→100%) | 手動 |
-| 4 | SP-038: 本番OAuth取得 + 実チャンネルテスト | 手動 |
-| 5 | デッドコード整理 (TikTokAdapter/IPublishingQueue) | HUMAN_AUTHORITY |
+| 1 | SP-050 未決定事項 (Q1-1 Audio Overview設定, Q6-2 レンダリング実測, Q-X1 目標時間方針) | 手動 (実制作で確認) |
+| 2 | SP-035: YMM4実機テスト (60%→100%) | 手動 |
+| 3 | SP-038: 本番OAuth取得 + 実チャンネルテスト (90%→100%) | 手動 |
+| 4 | SourceCollector レガシーコード削除 | HUMAN_AUTHORITY |
+| 5 | SP-045: 初回公開通し実行 (draft→partial) | 手動 |
 
 ## Pending Design Decisions
 
-1. **NotebookLM Enterprise ライセンス取得**: コスト vs 価値の判断 (HUMAN_AUTHORITY)
-2. **notebooklm-py (非公式API) の採用**: 安定性リスク vs 機能の豊富さ (HUMAN_AUTHORITY)
-3. **TikTokAdapter / IPublishingQueue**: デッドコード削除 (HUMAN_AUTHORITY, session 13からの持ち越し)
-4. **スライド生成の方向性**: PIL改善 / NotebookLM非公式API / Gemini+テンプレート (HUMAN_AUTHORITY)
+1. **SourceCollector (Brave Search) 削除**: ISourceCollectorインターフェース含む設計変更が必要 (HUMAN_AUTHORITY)
+2. **NotebookLM Enterprise ライセンス取得**: コスト vs 価値の判断 (HUMAN_AUTHORITY)
+3. **DESIGN_FOUNDATIONS 過剰実装マップの解消**: gemini_integration.py / text_slide_generator.py / audio_generator.py / notebook_lm_provider.py (HUMAN_AUTHORITY)
 
 ## Primary References
 
-- `docs/specs/video_output_quality_standard.md` — SP-047 品質基準仕様 (API調査結果含む)
-- `docs/video_quality_diagnosis.md` — 品質診断結果
-- `docs/notebooklm_drift_analysis.md` — NLM→Geminiドリフト分析
-- `config/script_presets/*.json` — 台本スタイルプリセット (更新済み)
-- `src/core/segment_duration_validator.py` — セグメントバリデータ (更新済み)
-- `src/core/stage_runners.py` — パイプラインステージ (バリデーション接続済み)
+- `docs/DESIGN_FOUNDATIONS.md` — 設計公理 (根本ワークフロー + 三層モデル)
+- `docs/specs/e2e_workflow_spec.md` — SP-050 E2Eワークフロー仕様
+- `docs/specs/first_publish_checklist.md` — SP-045 初回公開チェックリスト
+- `docs/spec-index.json` — 全50仕様の索引
+- `docs/backlog.md` — 開発バックログ
