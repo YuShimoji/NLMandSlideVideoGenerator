@@ -92,7 +92,7 @@ NLMandSlideVideoGenerator
 
 #### 2.2.1 NotebookLM統合 (`src/notebook_lm/`)
 
-- **SourceCollector**: Web情報収集 + 信頼度スコアリング
+- **SourceCollector**: Web情報収集 + 信頼度スコアリング (**レガシー**: 根本ワークフローではNLMに直接ソース投入するため不要。削除はHUMAN_AUTHORITY待ち)
 - **GeminiIntegration**: Gemini APIによる台本構造化 (NotebookLMテキスト→speaker/text分離)。NLMテキスト未提供時のみフォールバック台本生成。モデルチェーン: gemini-2.5-flash → gemini-2.0-flash → モック
 - **TranscriptProcessor**: 音声文字起こし結果の構造化 (SRT変換、キーポイント抽出、精度算出)
 - **ScriptAlignment**: 台本と素材の整合チェック
