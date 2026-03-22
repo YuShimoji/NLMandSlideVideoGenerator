@@ -106,6 +106,46 @@ class TestRunLegacyStage1:
 # run_legacy_stage1_with_fallback
 # ---------------------------------------------------------------------------
 
+class TestRunLegacyStage1Transcript:
+    """transcript_text パス (根本ワークフロー) のテスト"""
+
+    @pytest.mark.asyncio
+    async def test_transcript_path_no_api_key(self):
+        """APIキーなしでもtranscript_textを渡せること（モックフォールバック経由）"""
+        mock_audio_gen = AsyncMock()
+        mock_audio_gen.generate_audio.return_value = _make_audio_info()
+
+        with patch("src.core.stage_runners.settings") as mock_settings:
+            mock_settings.GEMINI_API_KEY = ""
+            with patch.dict("os.environ", {"LLM_API_KEY": ""}, clear=False):
+                script_bundle, audio_info = await run_legacy_stage1(
+                    topic="test",
+                    sources=[_make_source()],
+                    audio_generator=mock_audio_gen,
+                    transcript_text="Host1: テスト " * 20,
+                )
+                # No API key → script_bundle is None (transcript path requires LLM)
+                assert script_bundle is None
+
+    @pytest.mark.asyncio
+    async def test_transcript_kwarg_accepted(self):
+        """transcript_text がキーワード引数として受け入れられること"""
+        mock_audio_gen = AsyncMock()
+        mock_audio_gen.generate_audio.return_value = _make_audio_info()
+
+        with patch("src.core.stage_runners.settings") as mock_settings:
+            mock_settings.GEMINI_API_KEY = ""
+            with patch.dict("os.environ", {"LLM_API_KEY": ""}, clear=False):
+                # transcript_text=None は従来動作と同じ
+                script_bundle, audio_info = await run_legacy_stage1(
+                    topic="test",
+                    sources=[_make_source()],
+                    audio_generator=mock_audio_gen,
+                    transcript_text=None,
+                )
+                assert audio_info is not None
+
+
 class TestRunLegacyStage1WithFallback:
     @pytest.mark.asyncio
     async def test_success_passthrough(self):

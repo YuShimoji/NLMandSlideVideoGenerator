@@ -102,6 +102,7 @@ class ModularVideoPipeline:
         user_preferences: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
         job_id: Optional[str] = None,
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         パイプライン実行
@@ -144,6 +145,7 @@ class ModularVideoPipeline:
                         topic=topic,
                         sources=sources,
                         mode=stage1_mode,
+                        transcript_text=transcript_text,
                     )
                     script_bundle = await self._normalize_script_with_fallback(raw_script)
                     if progress_callback:
@@ -173,7 +175,10 @@ class ModularVideoPipeline:
                 if progress_callback:
                     progress_callback("従来処理", 0.2, "従来の処理方式を使用します...")
                 logger.info("Stage1カスタムプロバイダ未設定のため従来フローを使用")
-                script_bundle, audio_info = await sr.run_legacy_stage1_with_fallback(topic, sources, self.audio_generator)
+                script_bundle, audio_info = await sr.run_legacy_stage1_with_fallback(
+                    topic, sources, self.audio_generator,
+                    transcript_text=transcript_text,
+                )
 
             logger.info(f"音声生成完了: {audio_info.file_path}")
             if progress_callback:
@@ -297,11 +302,14 @@ class ModularVideoPipeline:
         self,
         topic: str,
         sources: List,
-        mode: str = "auto"
+        mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """スクリプト生成（リトライ付き）"""
         if self.script_provider is not None:
-            return await self.script_provider.generate_script(topic, sources, mode)
+            return await self.script_provider.generate_script(
+                topic, sources, mode, transcript_text=transcript_text,
+            )
         raise PipelineError("script_provider is not configured", recoverable=False)
 
     async def _generate_and_save_metadata(

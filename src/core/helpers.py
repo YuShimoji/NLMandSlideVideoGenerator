@@ -99,14 +99,8 @@ def build_default_pipeline():
         from .platforms.youtube_adapter import YouTubePlatformAdapter
         platform_adapter = YouTubePlatformAdapter()
 
-    # サムネイル生成の初期化
-    thumbnail_setting = components.get("thumbnail_generator", "ai")
-    if thumbnail_setting == "ai":
-        from .thumbnails import AIThumbnailGenerator
-        thumbnail_generator = AIThumbnailGenerator()
-    elif thumbnail_setting == "template":
-        from .thumbnails.template_generator import TemplateThumbnailGenerator
-        thumbnail_generator = TemplateThumbnailGenerator()
+    # サムネイル: YMM4テンプレートで人間が作成 (DESIGN_FOUNDATIONS準拠)
+    # PIL自動生成は廃止済み。thumbnail_generatorはNoneのまま。
 
     pipeline = ModularVideoPipeline(
         script_provider=script_provider,

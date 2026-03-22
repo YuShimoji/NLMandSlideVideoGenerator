@@ -81,7 +81,8 @@ async def test_pipeline_auto_review(pipeline_tmp):
     script_path = output_dir / "generated_script.json"
     assert script_path.exists()
     script_data = json.loads(script_path.read_text(encoding="utf-8"))
-    assert len(script_data["segments"]) == 3
+    # SP-044セグメント自動追加により元の3セグメントから拡張される
+    assert len(script_data["segments"]) >= 3
 
     # alignment_report が存在する
     report_files = list(output_dir.glob("alignment_report*.json"))

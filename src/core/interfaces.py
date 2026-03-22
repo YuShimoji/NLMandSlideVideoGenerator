@@ -24,8 +24,13 @@ class IScriptProvider(Protocol):
         topic: str,
         sources: List[SourceInfo],
         mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """台本生成/取得。NotebookLM, Gemini, 手動入力などを抽象化"""
+        """台本構造化/生成。
+
+        transcript_text がある場合: NLMトランスクリプトの構造化 (メインパス)
+        transcript_text がない場合: ソースからの台本生成 (フォールバック)
+        """
 
 
 class IContentAdapter(Protocol):
