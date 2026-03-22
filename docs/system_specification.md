@@ -156,7 +156,7 @@ NLMandSlideVideoGenerator
 ### 3.4 保守性要件
 
 - Python/C# 二層構成。共有設定は `style_template.json` で一元管理
-- Python 1346テスト (pytest, カバレッジ84%/コア92%)、C# 34テスト (dotnet test) によるコンパイル検証
+- Python 1346テスト (pytest, カバレッジ75%全体/コア90%+)、C# 34テスト (dotnet test) によるコンパイル検証
 - Ruff 0 errors、Mypy 0 errors (CI 5段階全緑)
 - ドキュメントは `docs/` に集約、`docs/spec-index.json` でインデックス管理
 - ドメイン固有例外階層 (`src/core/exceptions.py`) で統一エラーハンドリング
@@ -285,7 +285,7 @@ config/
 
 - Docker化 / CI-CD強化 (GitHub Actions有効化)
 - バッチ処理 / 多言語対応
-- ~~テストカバレッジ 80%+~~ **達成済み**: 84% (全体) / 92% (コア)。残は外部API/Web UI依存
+- ~~テストカバレッジ 80%+~~ **コア達成**: 75% (全体) / 90%+ (コア)。Web UI (3-30%) と server (10-17%) が全体を押し下げ。外部API/Streamlit依存コードはテスト困難
 
 ### 7.3 長期
 
