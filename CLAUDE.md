@@ -6,18 +6,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: 出力品質改善 (台本品質改善済み、NotebookLM API調査完了)
-直近の状態 (2026-03-21 session 15 NIGHTSHIFT):
-  - SP-047 Phase 1 (NotebookLM API調査) 完了: Enterprise API発見だがライセンス必要
-  - SP-047 Phase 1.5 (台本品質改善) 完了: セグメント粒度15-25秒、プロンプト品質改善
-  - SP-044 バリデーション接続完了: stage_runners.pyで台本生成後に自動検証+調整
-  - 全47仕様。44 done + 2 partial (SP-035, SP-047) + 1 draft (SP-045) + 1 archived + 1 superseded
-  - テスト: 1262 passed, 0 failed
-  - 次のスライス: SP-047 Phase 2 (台本パイプライン改善) または著作権クリア画像収集
-  - NotebookLM Enterprise API制約:
-    - スライド生成APIは公式未提供 (Web UI機能のみ)
-    - Enterprise ライセンスが必要 (無料版にはAPI無し)
-    - 現実的パス: Gemini台本改善 (完了) + NotebookLMは手動補助
+現フェーズ: 根本ワークフロー復元完了 + 矛盾仕様修正完了
+直近の状態 (2026-03-22 session 16 NIGHTSHIFT):
+  - 矛盾仕様7件修正完了 (HIGH 3件 + MEDIUM 3件 + LOW 1件)
+  - SP-045 SP-050準拠で全面改版 (Phase 0-5構成)
+  - 前セッション未コミット変更統合 (SP-037 YMM4サムネイル, tiktok_adapter削除等)
+  - 全50仕様。45 done + 4 partial (SP-035/037/047/048) + 1 draft (SP-045)
+  - テスト: 1346 passed, 0 failed
+  - 次のアクション: SP-050 未決定事項 (Q1-1/Q6-2/Q-X1) は実制作で確認
+  - SourceCollector (Brave Search) はレガシーだが広範に参照されており削除保留
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
