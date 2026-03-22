@@ -5,6 +5,7 @@
 
 from .ai_generator import AIThumbnailGenerator
 from .template_generator import TemplateThumbnailGenerator
+from .ymm4_thumbnail_generator import Ymm4ThumbnailGenerator
 
 # Script preset (SP-036) → thumbnail style マッピング
 # script_presets/ の name フィールドを thumbnail スタイル名に変換する。
@@ -36,6 +37,7 @@ def resolve_thumbnail_style(script_preset: str) -> str:
 __all__ = [
     'AIThumbnailGenerator',
     'TemplateThumbnailGenerator',
+    'Ymm4ThumbnailGenerator',
     'PRESET_TO_THUMBNAIL_STYLE',
     'resolve_thumbnail_style',
 ]

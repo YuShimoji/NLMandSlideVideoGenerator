@@ -146,7 +146,9 @@ class TestStageAssembleCsv:
         for rec in image_records:
             Path(rec["local_path"]).write_bytes(b"fake")
 
-        csv_path = stage_assemble_csv(segments, image_records, tmp_path / "test.csv")
+        csv_path = stage_assemble_csv(
+            segments, tmp_path / "test.csv", image_records=image_records,
+        )
         assert csv_path.exists()
 
         lines = csv_path.read_text(encoding="utf-8").strip().split("\n")
@@ -157,7 +159,9 @@ class TestStageAssembleCsv:
         segments = _mock_script_bundle("test", 3)["segments"]
         image_records = [{"local_path": None} for _ in range(3)]
 
-        csv_path = stage_assemble_csv(segments, image_records, tmp_path / "test.csv")
+        csv_path = stage_assemble_csv(
+            segments, tmp_path / "test.csv", image_records=image_records,
+        )
         assert csv_path.exists()
 
 

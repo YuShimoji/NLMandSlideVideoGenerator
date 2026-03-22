@@ -1,6 +1,10 @@
 """
 NotebookLM ベースの Script Provider
 OpenSpec IScriptProvider 実装
+
+DESIGN NOTE: Placeholder. Does not actually integrate NotebookLM API.
+Uses AudioGenerator (stub) + TranscriptProcessor internally.
+See docs/DESIGN_FOUNDATIONS.md Section 2.
 """
 from typing import Dict, Any, List, Optional
 from pathlib import Path

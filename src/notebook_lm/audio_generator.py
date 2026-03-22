@@ -1,6 +1,10 @@
 """
 音声生成モジュール
 NotebookLMを使用したラジオ風音声の生成
+
+DESIGN NOTE: Legacy stub. Audio synthesis is YMM4's responsibility.
+This module only generates placeholder WAV files (_tts_is_available() always returns False).
+See docs/DESIGN_FOUNDATIONS.md Section 3.
 """
 import asyncio
 from typing import List

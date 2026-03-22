@@ -5,6 +5,10 @@
 
 PLACEHOLDER_THEMES (config/settings.py) のカラースキームを使用。
 SP-041: グラデーション背景 + 複数レイアウトパターン (Standard / Emphasis / TwoColumn / Stats)
+
+DESIGN NOTE: Fallback only. Primary slides should come from NotebookLM or external tools.
+PIL-based generation does not meet YouTube publication quality standards.
+See docs/DESIGN_FOUNDATIONS.md Section 2.
 """
 from __future__ import annotations
 

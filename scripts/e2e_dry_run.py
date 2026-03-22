@@ -180,10 +180,58 @@ def stage_validate_segments(
     }
 
 
+def stage_orchestrate_visuals(
+    segments: List[Dict[str, Any]], output_dir: Path, topic: str
+) -> tuple[List[Dict[str, Any]], str, Any]:
+    """Stage 3: Orchestrator統合 (セグメント分類 + 画像収集 + アニメーション割当)
+
+    VisualResourceOrchestratorを使い、セグメントをvisual/textualに分類し、
+    visualセグメントにはストック画像、textualにはテキストスライドを割当。
+    アニメーションも自動割当される (ken_burns/zoom_in/zoom_out/static等)。
+
+    Returns:
+        (image_records, credits, package): 画像メタデータ、クレジット、VisualResourcePackage
+    """
+    from core.visual.stock_image_client import StockImageClient
+    from core.visual.resource_orchestrator import VisualResourceOrchestrator
+    from core.visual.segment_classifier import SegmentClassifier
+
+    images_dir = output_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    client = StockImageClient(cache_dir=images_dir)
+    classifier = SegmentClassifier()
+
+    orchestrator = VisualResourceOrchestrator(
+        classifier=classifier,
+        stock_client=client,
+        topic=topic,
+        work_dir=output_dir,
+    )
+
+    package = orchestrator.orchestrate(segments)
+
+    # 画像メタデータ収集
+    image_records = []
+    for i, resource in enumerate(package.resources):
+        record = {
+            "segment_index": i,
+            "source": resource.source,
+            "animation": resource.animation_type.value,
+            "local_path": str(resource.image_path) if resource.image_path else None,
+        }
+        image_records.append(record)
+
+    # クレジット生成
+    credits = client.get_attribution(orchestrator.last_stock_images) if orchestrator.last_stock_images else ""
+
+    return image_records, credits, package
+
+
 def stage_collect_images(
     segments: List[Dict[str, Any]], output_dir: Path
 ) -> tuple[List[Dict[str, Any]], str]:
-    """Stage 3: 画像収集 (Wikimedia → Pexels → Pixabay)"""
+    """Stage 3 (fallback): StockImageClient直接使用 (Orchestrator未使用時)"""
     from core.visual.stock_image_client import StockImageClient
 
     images_dir = output_dir / "images"
@@ -213,22 +261,29 @@ def stage_collect_images(
 
 def stage_assemble_csv(
     segments: List[Dict[str, Any]],
-    image_records: List[Dict[str, Any]],
     output_path: Path,
+    package: Optional[Any] = None,
+    image_records: Optional[List[Dict[str, Any]]] = None,
 ) -> Path:
-    """Stage 4: CSV組立"""
+    """Stage 4: CSV組立 (Orchestrator package優先、なければimage_recordsから組立)"""
     from core.csv_assembler import CsvAssembler
 
-    # image_records から slide_image_paths を構築
+    assembler = CsvAssembler()
+
+    if package is not None:
+        # Orchestratorからのpackageを使用 (アニメーション割当済み)
+        return assembler.assemble_from_package(
+            script_segments=segments,
+            package=package,
+            output_path=output_path,
+        )
+
+    # フォールバック: image_records から直接組立
     slide_paths: List[Path] = []
-    for rec in image_records:
+    for rec in (image_records or []):
         if rec.get("local_path"):
             slide_paths.append(Path(rec["local_path"]))
-        else:
-            # 画像なしの場合、空パスを追加しない (CsvAssemblerが処理)
-            pass
 
-    assembler = CsvAssembler()
     return assembler.assemble(
         script_segments=segments,
         slide_image_paths=slide_paths,
@@ -355,11 +410,19 @@ async def run_e2e_dry_run(
     status_label = "PASS" if validation["is_ok"] else "WARN"
     print(f"  -> Validation: [{status_label}] {validation['message']}")
 
-    # --- Stage 3: Image Collection ---
-    print("[3/4] Collecting images (Wikimedia -> Pexels -> Pixabay)...")
+    # --- Stage 3: Visual Orchestration ---
+    print("[3/4] Orchestrating visuals (classify + stock + text slides + animation)...")
     t0 = time.time()
+    package = None
     if segments:
-        image_records, credits = stage_collect_images(segments, output_dir)
+        try:
+            image_records, credits, package = stage_orchestrate_visuals(
+                segments, output_dir, topic
+            )
+            logger.info("Orchestrator統合モード使用")
+        except Exception as e:
+            logger.warning(f"Orchestrator失敗、フォールバック: {e}")
+            image_records, credits = stage_collect_images(segments, output_dir)
     else:
         image_records, credits = [], ""
     elapsed = time.time() - t0
@@ -371,18 +434,25 @@ async def run_e2e_dry_run(
         credits_path = output_dir / "image_credits.txt"
         credits_path.write_text(credits, encoding="utf-8")
 
-    stock_count = sum(1 for r in image_records if r["source"] != "none")
+    stock_count = sum(1 for r in image_records if r.get("source") not in ("none", "slide", None))
+    slide_count = sum(1 for r in image_records if r.get("source") == "slide")
+    anim_types = set(r.get("animation", "static") for r in image_records)
     manifest["stages"]["images"] = {
-        "status": "ok", "total": len(image_records), "stock_found": stock_count,
+        "status": "ok", "total": len(image_records),
+        "stock_found": stock_count, "text_slides": slide_count,
+        "animation_types": sorted(anim_types),
         "elapsed_s": round(elapsed, 2), "file": "images_metadata.json",
     }
-    print(f"  -> {stock_count}/{len(image_records)} images found ({elapsed:.1f}s)")
+    print(f"  -> stock={stock_count}, slides={slide_count}, animations={anim_types} ({elapsed:.1f}s)")
 
     # --- Stage 4: CSV Assembly ---
     print("[4/4] Assembling CSV for YMM4...")
     t0 = time.time()
     if segments:
-        csv_path = stage_assemble_csv(segments, image_records, output_dir / "timeline.csv")
+        csv_path = stage_assemble_csv(
+            segments, output_dir / "timeline.csv",
+            package=package, image_records=image_records,
+        )
         manifest["stages"]["csv"] = {
             "status": "ok", "rows": len(segments),
             "elapsed_s": round(time.time() - t0, 2),

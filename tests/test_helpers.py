@@ -202,15 +202,6 @@ class TestBuildDefaultPipeline:
         assert pipeline.platform_adapter is not None
 
     @patch("core.helpers.settings")
-    def test_tiktok_adapter_configured(self, mock_settings):
-        mock_settings.PIPELINE_STAGE_MODES = {}
-        mock_settings.PIPELINE_COMPONENTS = _base_components(platform_adapter="tiktok")
-        mock_settings.GEMINI_API_KEY = ""
-
-        pipeline = build_default_pipeline()
-        assert pipeline.platform_adapter is not None
-
-    @patch("core.helpers.settings")
     def test_template_thumbnail_configured(self, mock_settings):
         mock_settings.PIPELINE_STAGE_MODES = {}
         mock_settings.PIPELINE_COMPONENTS = _base_components(thumbnail_generator="template")

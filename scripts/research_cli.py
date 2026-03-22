@@ -725,34 +725,61 @@ async def run_pipeline(
         stats.record_validation(errors=errors, warnings=warnings)
 
     # --- Post-pipeline: Thumbnail Generation (SP-037) ---
-    thumbnail_path = work_dir / "thumbnail.png"
-    if generate_thumbnail and not thumbnail_path.exists():
+    # Phase 3: YMM4テンプレートベースのサムネイル生成を優先
+    thumbnail_ymm4_path = work_dir / "thumbnail_project.y4mmp"
+    if generate_thumbnail and not thumbnail_ymm4_path.exists():
         try:
-            from core.thumbnails import AIThumbnailGenerator, resolve_thumbnail_style
+            from core.thumbnails import Ymm4ThumbnailGenerator
 
-            thumb_style = resolve_thumbnail_style(style)
-            generator = AIThumbnailGenerator()
+            ymm4_gen = Ymm4ThumbnailGenerator()
+            templates = ymm4_gen.discover_templates()
+            if templates:
+                # 背景画像: 最初のストック画像があれば使用
+                bg_image = None
+                if vis_package:
+                    for r in vis_package.resources:
+                        if r.source == "stock" and r.image_path and r.image_path.exists():
+                            bg_image = r.image_path
+                            break
 
-            # 背景画像: 最初のストック画像があれば使用
-            bg_image = None
-            if vis_package:
-                for r in vis_package.resources:
-                    if r.source == "stock" and r.image_path and r.image_path.exists():
-                        bg_image = r.image_path
-                        break
-
-            thumb_path = await generator.generate_from_script(
-                script=script_bundle,
-                output_dir=work_dir,
-                background_image=bg_image,
-                style=thumb_style,
-            )
-            print("\n=== Thumbnail Generated ===")
-            print(f"  Style: {thumb_style} (from preset '{style}')")
-            print(f"  {thumb_path}")
+                ymm4_path = ymm4_gen.generate_from_script(
+                    template_name=templates[0],
+                    script=script_bundle,
+                    output_dir=work_dir,
+                    background_image=bg_image,
+                )
+                print("\n=== YMM4 Thumbnail Project Generated ===")
+                print(f"  Template: {templates[0]}")
+                print(f"  {ymm4_path}")
+                print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
+            else:
+                raise FileNotFoundError("YMM4サムネイルテンプレートなし")
         except Exception as e:
-            print("\n=== Thumbnail Generation Skipped ===")
-            print(f"  {e}")
+            # フォールバック: PILベースのサムネイル生成
+            print(f"\n=== YMM4 Thumbnail Skipped ({e}) ===")
+            print("  -> PILフォールバックでサムネイルを生成します")
+            try:
+                from core.thumbnails import AIThumbnailGenerator, resolve_thumbnail_style
+
+                thumb_style = resolve_thumbnail_style(style)
+                generator = AIThumbnailGenerator()
+
+                bg_image_fallback = None
+                if vis_package:
+                    for r in vis_package.resources:
+                        if r.source == "stock" and r.image_path and r.image_path.exists():
+                            bg_image_fallback = r.image_path
+                            break
+
+                thumb_path = await generator.generate_from_script(
+                    script=script_bundle,
+                    output_dir=work_dir,
+                    background_image=bg_image_fallback,
+                    style=thumb_style,
+                )
+                print(f"  PIL Thumbnail: {thumb_path}")
+            except Exception as e2:
+                print(f"  PIL Thumbnail also failed: {e2}")
 
     # --- Post-pipeline: Metadata + Credits (SP-038 + F-006) ---
     metadata_path = work_dir / "metadata.json"
@@ -1212,7 +1239,7 @@ async def run_upload(
 
 def main() -> None:
     raw_args = sys.argv[1:]
-    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats", "upload", "verify"}
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats", "upload", "verify", "thumbnail"}
     if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
@@ -1284,6 +1311,17 @@ def main() -> None:
     verify_parser.add_argument("--resolution", default="1920x1080", help="Expected resolution (WxH)")
     verify_parser.add_argument("--update-batch-result", action="store_true", help="Update batch_result.json with verification results")
 
+    # thumbnail サブコマンド (SP-037 Phase 3)
+    thumb_parser = subparsers.add_parser("thumbnail", help="List/inspect YMM4 thumbnail templates")
+    thumb_parser.add_argument("--list", action="store_true", default=True, help="List available templates (default)")
+    thumb_parser.add_argument("--inspect", help="Show placeholders in a specific template")
+    thumb_parser.add_argument("--generate", help="Generate thumbnail project from template")
+    thumb_parser.add_argument("--title", help="Title text for generation")
+    thumb_parser.add_argument("--subtitle", help="Subtitle text for generation")
+    thumb_parser.add_argument("--background", help="Background image path for generation")
+    thumb_parser.add_argument("--character", help="Character image path for generation")
+    thumb_parser.add_argument("--output-dir", help="Output directory for generated project")
+
     # upload サブコマンド (SP-038 Phase 3)
     upload_parser = subparsers.add_parser("upload", help="Upload MP4 to YouTube with metadata")
     upload_parser.add_argument("--video", required=True, help="Path to MP4 file")
@@ -1294,6 +1332,53 @@ def main() -> None:
     upload_parser.add_argument("--no-verify", action="store_true", help="Skip MP4 quality verification before upload")
 
     args = parser.parse_args(raw_args)
+
+    if args.command == "thumbnail":
+        from core.thumbnails import Ymm4ThumbnailGenerator
+        gen = Ymm4ThumbnailGenerator()
+        templates = gen.discover_templates()
+
+        if args.inspect:
+            if args.inspect not in templates:
+                print(f"Template '{args.inspect}' not found. Available: {templates}")
+                return
+            placeholders = gen.list_placeholders(args.inspect)
+            print(f"=== Template: {args.inspect} ===")
+            print(f"  Text placeholders: {placeholders['text']}")
+            print(f"  Image placeholders: {placeholders['image']}")
+        elif args.generate:
+            if args.generate not in templates:
+                print(f"Template '{args.generate}' not found. Available: {templates}")
+                return
+            replacements: dict[str, str] = {}
+            if args.title:
+                replacements["TITLE"] = args.title
+            if args.subtitle:
+                replacements["SUBTITLE"] = args.subtitle
+            if args.background:
+                replacements["BACKGROUND"] = str(Path(args.background).resolve())
+            if args.character:
+                replacements["CHARACTER"] = str(Path(args.character).resolve())
+
+            out_dir = Path(args.output_dir) if args.output_dir else Path("data/thumbnails/output")
+            result = gen.generate(
+                template_name=args.generate,
+                output_dir=out_dir,
+                replacements=replacements,
+            )
+            print(f"=== Generated: {result} ===")
+            print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
+        else:
+            print("=== YMM4 Thumbnail Templates ===")
+            if not templates:
+                print("  (テンプレートなし)")
+                print(f"  配置先: config/thumbnail_templates/*.y4mmp")
+            else:
+                for name in templates:
+                    ph = gen.list_placeholders(name)
+                    all_ph = ph["text"] + ph["image"]
+                    print(f"  {name}: {', '.join(all_ph) if all_ph else '(プレースホルダーなし)'}")
+        return
 
     if args.command == "upload":
         asyncio.run(

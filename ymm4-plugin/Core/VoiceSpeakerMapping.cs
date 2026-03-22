@@ -65,6 +65,7 @@ namespace NLMSlidePlugin.Core
                 { "Speaker1", new("YukkuriVoice", "reimu") },
                 { "Speaker2", new("YukkuriVoice", "marisa") },
                 { "ナレーター", new("YukkuriVoice", "reimu") },
+                { "Host", new("YukkuriVoice", "reimu") },
                 { "Host1", new("YukkuriVoice", "reimu") },
                 { "Host2", new("YukkuriVoice", "marisa") },
 

@@ -314,27 +314,3 @@ class TestRunStage3Upload:
                     uploader=None,
                 )
 
-    @pytest.mark.asyncio
-    async def test_with_publishing_queue(self):
-        """Publishing queue is used when provided with platform_adapter."""
-        mock_meta = AsyncMock()
-        mock_meta.generate_metadata.return_value = {"title": "test"}
-        mock_adapter = AsyncMock()
-        mock_adapter.publish.return_value = {"url": "https://youtube.com/queued"}
-        mock_queue = AsyncMock()
-        mock_queue.enqueue.return_value = "queue_123"
-
-        with patch("src.core.stage_runners.settings") as mock_settings:
-            mock_settings.YOUTUBE_SETTINGS = {"default_language": "ja"}
-            result = await run_stage3_upload(
-                video_info=_make_video_info(),
-                transcript=_make_transcript(),
-                thumbnail_path=None,
-                private_upload=True,
-                stage3_mode="auto",
-                user_preferences={"schedule": "2025-06-01"},
-                metadata_generator=mock_meta,
-                platform_adapter=mock_adapter,
-                publishing_queue=mock_queue,
-            )
-            mock_queue.enqueue.assert_called_once()

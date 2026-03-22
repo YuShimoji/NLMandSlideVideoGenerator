@@ -98,9 +98,6 @@ def build_default_pipeline():
     if platform_adapter_setting == "youtube":
         from .platforms.youtube_adapter import YouTubePlatformAdapter
         platform_adapter = YouTubePlatformAdapter()
-    elif platform_adapter_setting == "tiktok":
-        from .platforms.tiktok_adapter import TikTokPlatformAdapter
-        platform_adapter = TikTokPlatformAdapter()
 
     # サムネイル生成の初期化
     thumbnail_setting = components.get("thumbnail_generator", "ai")

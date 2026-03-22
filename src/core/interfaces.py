@@ -139,7 +139,7 @@ class IPlatformAdapter(Protocol):
         package: Dict[str, Any],
         options: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """YouTube/TikTok等、プラットフォーム固有ロジックを抽象化"""
+        """YouTube等、プラットフォーム固有ロジックを抽象化"""
 
 
 class ThumbnailGeneratorProtocol(Protocol):
