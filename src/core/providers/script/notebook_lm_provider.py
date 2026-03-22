@@ -11,7 +11,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 
-from notebook_lm.source_collector import SourceCollector, SourceInfo
+from notebook_lm.research_models import SourceInfo
 from notebook_lm.audio_generator import AudioGenerator
 from notebook_lm.transcript_processor import TranscriptProcessor
 
@@ -23,7 +23,6 @@ class NotebookLMScriptProvider(IScriptProvider):
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
-        self.source_collector = SourceCollector()
         self.audio_generator = AudioGenerator()
         self.transcript_processor = TranscriptProcessor()
 
@@ -47,11 +46,7 @@ class NotebookLMScriptProvider(IScriptProvider):
         # NotebookLM の音声生成と文字起こしを活用
         # 実際の NotebookLM API を模擬
 
-        # 1. ソース収集 (もし sources が空の場合)
-        if not sources:
-            sources = await self.source_collector.collect_sources(topic)
-
-        # 2. 音声生成 (NotebookLM 風)
+        # 1. 音声生成 (NotebookLM 風)
         audio_info = await self.audio_generator.generate_audio(sources)
 
         # 3. 文字起こしでスクリプト生成

@@ -16,7 +16,6 @@ except ImportError as e:
     print(f"設定ファイルの読み込みエラー: {e}")
     sys.exit(1)
 try:
-    from notebook_lm.source_collector import SourceCollector
     from notebook_lm.audio_generator import AudioGenerator
     from notebook_lm.transcript_processor import TranscriptProcessor
     from slides.slide_generator import SlideGenerator
@@ -31,7 +30,6 @@ class VideoGenerationPipeline:
     """動画生成パイプライン"""
 
     def __init__(self):
-        self.source_collector = SourceCollector()
         self.audio_generator = AudioGenerator()
         self.transcript_processor = TranscriptProcessor()
         self.slide_generator = SlideGenerator()
@@ -66,10 +64,9 @@ class VideoGenerationPipeline:
         try:
             logger.info(f"動画生成開始: {topic}")
 
-            # Phase 1: NotebookLMでの作業
-            logger.info("Phase 1: ソース収集・音声生成")
-            sources = await self.source_collector.collect_sources(topic, urls)
-            audio_info = await self.audio_generator.generate_audio(sources)
+            # Phase 1: NotebookLMでの作業 (ソース収集は廃止、人間がNLMに直接投入)
+            logger.info("Phase 1: 音声生成")
+            audio_info = await self.audio_generator.generate_audio([])
             transcript = await self.transcript_processor.process_audio(audio_info)
 
             # Phase 2: Google Slideでの作業

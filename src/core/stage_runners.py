@@ -15,7 +15,7 @@ from config.settings import settings
 from .utils.logger import logger
 from .llm_provider import create_llm_provider
 
-from notebook_lm.source_collector import SourceInfo
+from notebook_lm.research_models import SourceInfo
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo

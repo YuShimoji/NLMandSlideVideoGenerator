@@ -48,15 +48,8 @@ class TestPipelineInit:
     def test_defaults(self):
         """Pipeline can be created with default components."""
         pipeline = ModularVideoPipeline()
-        assert pipeline.source_collector is not None
         assert pipeline.audio_generator is not None
         assert pipeline.stage_modes["stage1"] == "auto"
-
-    def test_custom_components(self):
-        """Pipeline accepts custom DI components."""
-        mock_collector = MagicMock()
-        pipeline = ModularVideoPipeline(source_collector=mock_collector)
-        assert pipeline.source_collector is mock_collector
 
 
 # ---------------------------------------------------------------------------
@@ -67,8 +60,6 @@ class TestPipelineRunLegacy:
     @pytest.mark.asyncio
     async def test_run_upload_skipped(self):
         """Pipeline run with upload=False skips stage3."""
-        mock_collector = AsyncMock()
-        mock_collector.collect_sources.return_value = [MagicMock()]
         mock_audio = AsyncMock()
         mock_audio.generate_audio.return_value = _make_audio_info()
         mock_transcript = AsyncMock()
@@ -81,7 +72,6 @@ class TestPipelineRunLegacy:
         mock_backend.render.return_value = _make_video_info()
 
         pipeline = ModularVideoPipeline(
-            source_collector=mock_collector,
             audio_generator=mock_audio,
             transcript_processor=mock_transcript,
             slide_generator=mock_slides,
@@ -98,22 +88,8 @@ class TestPipelineRunLegacy:
             assert result["youtube_url"] is None
 
     @pytest.mark.asyncio
-    async def test_run_source_collection_failure(self):
-        """PipelineError raised on source collection failure."""
-        mock_collector = AsyncMock()
-        mock_collector.collect_sources.side_effect = RuntimeError("network error")
-
-        pipeline = ModularVideoPipeline(source_collector=mock_collector)
-
-        with patch("src.core.pipeline.create_directories"), \
-             pytest.raises(PipelineError):
-            await pipeline.run(topic="test", upload=False)
-
-    @pytest.mark.asyncio
     async def test_run_with_progress_callback(self):
         """Progress callback is called throughout the run."""
-        mock_collector = AsyncMock()
-        mock_collector.collect_sources.return_value = [MagicMock()]
         mock_audio = AsyncMock()
         mock_audio.generate_audio.return_value = _make_audio_info()
         mock_transcript = AsyncMock()
@@ -127,7 +103,6 @@ class TestPipelineRunLegacy:
         progress_cb = MagicMock()
 
         pipeline = ModularVideoPipeline(
-            source_collector=mock_collector,
             audio_generator=mock_audio,
             transcript_processor=mock_transcript,
             slide_generator=mock_slides,
@@ -146,8 +121,6 @@ class TestPipelineRunLegacy:
     @pytest.mark.asyncio
     async def test_run_with_stage_modes(self):
         """Stage modes are applied from kwargs."""
-        mock_collector = AsyncMock()
-        mock_collector.collect_sources.return_value = [MagicMock()]
         mock_audio = AsyncMock()
         mock_audio.generate_audio.return_value = _make_audio_info()
         mock_transcript = AsyncMock()
@@ -160,7 +133,6 @@ class TestPipelineRunLegacy:
         mock_backend.render.return_value = _make_video_info()
 
         pipeline = ModularVideoPipeline(
-            source_collector=mock_collector,
             audio_generator=mock_audio,
             transcript_processor=mock_transcript,
             slide_generator=mock_slides,
@@ -186,8 +158,6 @@ class TestPipelineRunModular:
     @pytest.mark.asyncio
     async def test_run_modular_path(self):
         """When script_provider and voice_pipeline are set, uses modular path."""
-        mock_collector = AsyncMock()
-        mock_collector.collect_sources.return_value = [MagicMock()]
         mock_script = AsyncMock()
         mock_script.generate_script.return_value = {"title": "test", "segments": []}
         mock_voice = AsyncMock()
@@ -204,7 +174,6 @@ class TestPipelineRunModular:
         mock_adapter_mgr.normalize_script.return_value = {"title": "normalized"}
 
         pipeline = ModularVideoPipeline(
-            source_collector=mock_collector,
             script_provider=mock_script,
             voice_pipeline=mock_voice,
             transcript_processor=mock_transcript,

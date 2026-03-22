@@ -61,8 +61,13 @@ async def test_e2e_collect_align_review(research_tmp):
     mock_settings, tmp_path = research_tmp
     topic = "量子コンピュータの最新動向"
 
-    # ========== Step 1: collect (シミュレーションモード) ==========
-    await run_research(topic, max_sources=3)
+    # ========== Step 1: collect (手動URL指定) ==========
+    test_urls = [
+        "https://example.com/source-1",
+        "https://example.com/source-2",
+        "https://example.com/source-3",
+    ]
+    await run_research(topic, urls=test_urls, max_sources=3)
 
     research_dir = tmp_path / "research"
     package_dirs = list(research_dir.glob("rp_*"))

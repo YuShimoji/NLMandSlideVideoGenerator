@@ -20,7 +20,7 @@ from core.utils.logger import logger
 
 
 from config.settings import settings
-from .source_collector import SourceInfo
+from .research_models import SourceInfo
 
 # Type checking imports (used only in type annotations)
 from typing import TYPE_CHECKING

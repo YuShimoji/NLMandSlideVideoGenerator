@@ -10,7 +10,6 @@ from typing import List, Optional, Dict, Any, Callable
 from config.settings import create_directories
 
 from .interfaces import (
-    ISourceCollector,
     IAudioGenerator,
     ITranscriptProcessor,
     ISlideGenerator,
@@ -26,7 +25,6 @@ from .interfaces import (
     IPlatformAdapter,
 )
 # 既存実装（デフォルトDI）
-from notebook_lm.source_collector import SourceCollector
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor
 from slides.slide_generator import SlideGenerator
@@ -49,7 +47,6 @@ class ModularVideoPipeline:
 
     def __init__(
         self,
-        source_collector: Optional[ISourceCollector] = None,
         audio_generator: Optional[IAudioGenerator] = None,
         transcript_processor: Optional[ITranscriptProcessor] = None,
         slide_generator: Optional[ISlideGenerator] = None,
@@ -65,7 +62,6 @@ class ModularVideoPipeline:
         platform_adapter: Optional[IPlatformAdapter] = None,
     ) -> None:
         # Stage1 legacy fallbacks
-        self.source_collector = source_collector or SourceCollector()
         self.audio_generator = audio_generator or AudioGenerator()
         self.transcript_processor = transcript_processor or TranscriptProcessor()
         self.slide_generator = slide_generator or SlideGenerator()
@@ -123,21 +119,10 @@ class ModularVideoPipeline:
             self.stage_modes.update(stage_modes)
 
         try:
-            # Phase 1: ソース収集
+            # Phase 1: ソース (根本WFでは人間がNotebookLMに直接投入。自動収集は廃止)
+            sources: List = []
             if progress_callback:
-                progress_callback("ソース収集", 0.1, "関連ソースの収集を開始します...")
-            try:
-                sources = await self._collect_sources_with_retry(topic, urls)
-                logger.info(f"ソース収集完了: {len(sources)}件")
-                if progress_callback:
-                    progress_callback("ソース収集", 0.1, f"ソース収集完了: {len(sources)}件")
-            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.error(f"ソース収集失敗 (recoverable): {e}")
-                raise PipelineError(str(e), stage="sources", recoverable=True)
-            except Exception as e:
-                import traceback
-                logger.error(f"ソース収集で予期せぬエラー: {e}\n{traceback.format_exc()}")
-                raise PipelineError(str(e), stage="sources", recoverable=False)
+                progress_callback("初期化", 0.1, "パイプライン初期化完了")
 
             stage1_mode = self.stage_modes.get("stage1", "auto")
             stage2_mode = self.stage_modes.get("stage2", "auto")
@@ -306,11 +291,6 @@ class ModularVideoPipeline:
         except Exception as e:
             logger.error(f"Unexpected error (Job {job_id}): {e}")
             raise PipelineError(str(e), recoverable=False)
-
-    @retry_on_failure()
-    async def _collect_sources_with_retry(self, topic: str, urls: Optional[List[str]] = None) -> List:
-        """ソース収集（リトライ付き）"""
-        return await self.source_collector.collect_sources(topic, urls)
 
     @retry_on_failure()
     async def _generate_script_with_retry(

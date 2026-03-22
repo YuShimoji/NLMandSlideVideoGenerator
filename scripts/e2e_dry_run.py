@@ -72,18 +72,16 @@ async def stage_collect_sources(
         logger.info("MOCK: ソースシミュレーション")
         return _mock_sources(topic)
 
-    from notebook_lm.source_collector import SourceCollector
-    collector = SourceCollector()
-    raw_sources = await collector.collect_sources(topic, urls)
+    # SourceCollector (Brave Search) は廃止。手動URLのみ受付
     return [
         {
-            "url": getattr(s, "url", ""),
-            "title": getattr(s, "title", ""),
-            "content_preview": getattr(s, "content_preview", "")[:500],
-            "relevance_score": getattr(s, "relevance_score", 0.0),
-            "reliability_score": getattr(s, "reliability_score", 0.0),
+            "url": url,
+            "title": url.split("/")[-1] or url,
+            "content_preview": "",
+            "relevance_score": 0.5,
+            "reliability_score": 0.5,
         }
-        for s in raw_sources
+        for url in (urls or [])
     ]
 
 

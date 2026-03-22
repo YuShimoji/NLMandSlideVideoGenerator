@@ -17,18 +17,29 @@ from config.settings import create_directories, settings
 from core.utils.logger import logger
 from notebook_lm.research_models import AlignmentReport, ResearchPackage
 from notebook_lm.script_alignment import ScriptAlignmentAnalyzer
-from notebook_lm.source_collector import SourceCollector
+from notebook_lm.research_models import SourceInfo
 
 
 async def run_research(topic: str, urls: list[str] | None = None, max_sources: int | None = None) -> None:
-    """Collect sources and persist a ResearchPackage."""
+    """Create a ResearchPackage from manually provided URLs.
+
+    NOTE: Brave Search (SourceCollector) has been deprecated.
+    Sources are now provided manually via NotebookLM (see DESIGN_FOUNDATIONS.md Section 0).
+    """
     create_directories()
 
-    collector = SourceCollector()
-    collector.max_sources = max_sources or settings.RESEARCH_SETTINGS["max_sources"]
-
     logger.info(f"Research start: topic='{topic}'")
-    sources = await collector.collect_sources(topic, urls)
+    sources: list[SourceInfo] = []
+    if urls:
+        for url in urls:
+            sources.append(SourceInfo(
+                url=url,
+                title=url.split("/")[-1] or url,
+                content_preview="",
+                relevance_score=0.5,
+                reliability_score=0.5,
+                source_type="article",
+            ))
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     package_id = f"rp_{timestamp}"
@@ -277,9 +288,18 @@ async def run_pipeline(
         state.save(work_dir)
         stats.start_step("collect")
         try:
-            collector = SourceCollector()
-            collector.max_sources = max_sources or settings.RESEARCH_SETTINGS["max_sources"]
-            sources = await collector.collect_sources(topic, urls)
+            # SourceCollector (Brave Search) は廃止。手動URLのみ受付
+            sources = []
+            if urls:
+                for url in urls:
+                    sources.append(SourceInfo(
+                        url=url,
+                        title=url.split("/")[-1] or url,
+                        content_preview="",
+                        relevance_score=0.5,
+                        reliability_score=0.5,
+                        source_type="article",
+                    ))
             print(f"Collected {len(sources)} sources")
 
             package = ResearchPackage(

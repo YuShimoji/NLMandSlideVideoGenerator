@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from config.settings import settings
 from notebook_lm.gemini_integration import GeminiIntegration
-from notebook_lm.source_collector import SourceInfo
+from notebook_lm.research_models import SourceInfo
 
 from ...interfaces import IScriptProvider
 

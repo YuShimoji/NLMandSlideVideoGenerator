@@ -59,6 +59,7 @@ async def test_pipeline_auto_review(pipeline_tmp):
     ):
         csv_path = await run_pipeline(
             topic=topic,
+            urls=["https://example.com/src-1", "https://example.com/src-2"],
             max_sources=2,
             auto_review=True,
             output_dir=output_dir,

@@ -4,7 +4,21 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any
 from datetime import datetime
-from .source_collector import SourceInfo
+
+
+@dataclass
+class SourceInfo:
+    """Source metadata stored in ResearchPackage."""
+
+    url: str
+    title: str
+    content_preview: str
+    relevance_score: float
+    reliability_score: float
+    source_type: str
+    adoption_status: str = "pending"
+    adoption_reason: str = ""
+    key_claims: List[str] = field(default_factory=list)
 
 @dataclass
 class ResearchPackage:

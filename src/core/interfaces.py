@@ -9,7 +9,7 @@ from pathlib import Path
 
 if TYPE_CHECKING:
     # 型チェック専用のインポート（実行時には評価しない）
-    from notebook_lm.source_collector import SourceInfo
+    from notebook_lm.research_models import SourceInfo
     from notebook_lm.audio_generator import AudioInfo
     from notebook_lm.transcript_processor import TranscriptInfo
     from slides.slide_generator import SlidesPackage
@@ -74,11 +74,6 @@ class IEditingBackend(Protocol):
         extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         """YMM4等のレンダラー共通インターフェイス"""
-
-
-class ISourceCollector(Protocol):
-    async def collect_sources(self, topic: str, urls: Optional[List[str]] = None) -> List[SourceInfo]:
-        ...
 
 
 class IAudioGenerator(Protocol):

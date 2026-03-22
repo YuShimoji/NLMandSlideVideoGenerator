@@ -48,9 +48,9 @@ class TestModuleImports:
 
     def test_notebook_lm_imports(self):
         """NotebookLMモジュールのインポートテスト"""
-        from notebook_lm import SourceCollector, AudioGenerator, TranscriptProcessor
+        from notebook_lm import SourceInfo, AudioGenerator, TranscriptProcessor
 
-        assert SourceCollector is not None
+        assert SourceInfo is not None
         assert AudioGenerator is not None
         assert TranscriptProcessor is not None
 

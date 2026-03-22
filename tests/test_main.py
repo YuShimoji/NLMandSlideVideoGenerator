@@ -25,7 +25,6 @@ class TestVideoGenerationPipeline:
     def test_init(self):
         """Pipeline initializes all sub-components."""
         pipeline = VideoGenerationPipeline()
-        assert pipeline.source_collector is not None
         assert pipeline.audio_generator is not None
         assert pipeline.transcript_processor is not None
         assert pipeline.slide_generator is not None
@@ -36,8 +35,6 @@ class TestVideoGenerationPipeline:
     async def test_generate_video_raises_deprecation(self):
         """generate_video raises RuntimeError (deprecated, use ModularVideoPipeline)."""
         pipeline = VideoGenerationPipeline()
-        pipeline.source_collector = AsyncMock()
-        pipeline.source_collector.collect_sources.return_value = [MagicMock()]
         pipeline.audio_generator = AsyncMock()
         pipeline.audio_generator.generate_audio.return_value = MagicMock(file_path=Path("/fake"))
         pipeline.transcript_processor = AsyncMock()
