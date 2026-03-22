@@ -33,7 +33,7 @@ copy .env.example .env
 
 ### 4. API キーの設定
 `.env` に必要なAPI キーを設定：
-- `GEMINI_API_KEY` — 台本生成・セグメント分類・キーワード抽出・翻訳・台本補完
+- `GEMINI_API_KEY` — 台本構造化 (NLMテキスト→speaker/text)・セグメント分類・キーワード抽出・翻訳 (フォールバック時のみ台本生成)
 - `PEXELS_API_KEY` — ストック写真検索 (Pexels)
 - `PIXABAY_API_KEY` — ストック写真検索 (Pixabay、フォールバック)
 - `BRAVE_API_KEY` — Web検索 (Brave Search API)
