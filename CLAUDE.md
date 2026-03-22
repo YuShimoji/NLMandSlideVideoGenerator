@@ -7,13 +7,13 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: 根本ワークフロー復元完了 + 矛盾仕様修正完了
-直近の状態 (2026-03-22 session 17 NIGHTSHIFT):
-  - session 17: ドキュメント同期 (テスト数1262→1346全8ファイル, INDEX拡充, backlog更新, HANDOVER更新)
-  - session 16: 矛盾仕様7件修正完了 + SP-045 SP-050準拠改版 + 前セッション未コミット統合
+直近の状態 (2026-03-22 session 18):
+  - session 18: SourceCollector レガシー削除 (438行→9行, テスト3ファイル削除, 23ファイル変更)
+  - session 17: ドキュメント同期 (テスト数1262→1346全8ファイル, INDEX拡充)
+  - session 16: 矛盾仕様7件修正完了 + SP-045 SP-050準拠改版
   - 全50仕様。45 done + 4 partial (SP-035/037/047/048) + 1 draft (SP-045)
-  - テスト: 1346 passed, 0 failed
+  - テスト: 1267 passed, 0 failed (SourceCollectorテスト79件削除後)
   - 次のアクション: SP-050 未決定事項 (Q1-1/Q6-2/Q-X1) は実制作で確認
-  - SourceCollector (Brave Search) はレガシーだが広範に参照されており削除保留
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
