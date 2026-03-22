@@ -20,7 +20,7 @@
 ### Python側 (前工程)
 
 1. **台本取得**: NotebookLM Audio Overview → テキスト化 → Gemini構造化 (DESIGN_FOUNDATIONS.md Section 0)
-2. **ビジュアルリソース取得**: SegmentClassifier → StockImageClient (Pexels/Pixabay) → AIImageProvider (Gemini Imagen) → スライドフォールバック
+2. **ビジュアルリソース取得**: SegmentClassifier → StockImageClient (Pexels/Pixabay/Wikimedia Commons) → placeholder
 3. **CSV生成**: CsvAssembler が台本 + 画像パス + アニメーション種別 を4列CSVに統合
 4. **品質検証**: Pre-Export Validator が画像存在・アニメーション種別・行数を検証
 
@@ -48,8 +48,7 @@
 | CsvAssembler | `src/core/csv_assembler.py` | 台本+画像+アニメーション→4列CSV |
 | SegmentClassifier | `src/core/visual/segment_classifier.py` | visual/textualセグメント分類 (ヒューリスティック+Gemini) |
 | StockImageClient | `src/core/visual/stock_image_client.py` | Pexels/Pixabay画像検索+ダウンロード |
-| AIImageProvider | `src/core/visual/ai_image_provider.py` | Gemini Imagen 4によるAI画像生成 |
-| VisualResourceOrchestrator | `src/core/visual/resource_orchestrator.py` | 全ビジュアルリソース統合 (stock→AI→slideフォールバック) |
+| VisualResourceOrchestrator | `src/core/visual/resource_orchestrator.py` | 全ビジュアルリソース統合 (Pexels→Pixabay→Wikimedia→placeholderフォールバック) |
 | AnimationAssigner | `src/core/visual/animation_assigner.py` | 8種アニメーション自動割当 |
 | StyleTemplateManager | `src/core/style_template.py` | style_template.json読み込み・検証・管理 |
 | Pre-Export Validator | `src/core/editing/pre_export_validator.py` | CSVバリデーション (画像存在・種別・行数) |

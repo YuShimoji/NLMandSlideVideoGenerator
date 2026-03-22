@@ -1,7 +1,7 @@
 # YouTube公開パイプライン仕様 (SP-038)
 
-**最終更新**: 2026-03-18
-**ステータス**: partial (Phase 1-3 実装完了, 本番OAuth未テスト)
+**最終更新**: 2026-03-22
+**ステータス**: partial (Phase 1-4 実装完了, 本番OAuth未テスト)
 
 ---
 
@@ -150,11 +150,90 @@ python scripts/research_cli.py upload \
 
 ---
 
+### Phase 4: Phase 7 一気通貫統合 (publish コマンド) ✅
+
+| 項目 | 内容 |
+|------|------|
+| 対象 | `src/youtube/publisher.py` (新規) |
+| 変更 | Phase 7 全ステップ (MP4品質検証→メタデータ読み込み→アップロード→結果永続化) を一気通貫実行 |
+| CLI | `research_cli.py publish --video path/to/mp4 --topic-dir data/topics/my_topic` |
+| 自動検出 | メタデータ (topic_dir/output_csv/metadata.json)、サムネイル (topic_dir/final/thumbnail.*) |
+| 結果永続化 | `publish_result.json` をトピックディレクトリまたは動画と同階層に保存 |
+
+#### 実装ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/youtube/publisher.py` | **新規**: YouTubePublisher + PublishOptions + PublishResult |
+| `src/youtube/__init__.py` | YouTubePublisher, PublishOptions, PublishResult エクスポート追加 |
+| `scripts/research_cli.py` | `publish` サブコマンド + `run_publish()` 追加 |
+
+#### アーキテクチャ
+
+```
+YouTubePublisher.publish(options)
+  ├── Step 1: _verify_quality() — MP4品質検証 (check_mp4)
+  │     └── CRITICAL 失敗 → 即時リターン (quality_failed)
+  ├── Step 2: _load_metadata() — メタデータ自動検出
+  │     ├── 明示パス (--metadata) 優先
+  │     ├── topic_dir/output_csv/metadata.json
+  │     └── 動画と同階層の metadata.json
+  ├── Step 3: _resolve_thumbnail() — サムネイル自動検出
+  │     ├── 明示パス (--thumbnail) 優先
+  │     ├── topic_dir/final/thumbnail.*
+  │     └── 動画と同階層の thumbnail.*
+  ├── Step 4: _upload() — YouTubeUploader 経由アップロード
+  │     └── verify_quality=False (Step 1 で検証済み)
+  └── Step 5: _save_result() — publish_result.json 永続化
+```
+
+#### CLI 使用方法
+
+```bash
+# トピックディレクトリ連携 (メタデータ+サムネイル自動検出)
+python scripts/research_cli.py publish \
+  --video data/topics/my_topic/final/video.mp4 \
+  --topic-dir data/topics/my_topic
+
+# 個別指定
+python scripts/research_cli.py publish \
+  --video output_mp4/video.mp4 \
+  --metadata output_csv/metadata.json \
+  --thumbnail thumbnail.png \
+  --privacy unlisted
+
+# 品質検証スキップ + 結果保存スキップ
+python scripts/research_cli.py publish \
+  --video video.mp4 \
+  --topic-dir data/topics/test \
+  --no-verify --no-save
+```
+
+#### publish_result.json の構造
+
+```json
+{
+  "video_id": "abc123",
+  "video_url": "https://www.youtube.com/watch?v=abc123",
+  "upload_status": "uploaded",
+  "privacy_status": "private",
+  "quality_passed": true,
+  "quality_warnings": [],
+  "metadata_source": "auto",
+  "topic_dir": "data/topics/my_topic",
+  "published_at": "2026-03-22T15:30:00",
+  "result_file": "data/topics/my_topic/publish_result.json"
+}
+```
+
+---
+
 ## 5. テスト
 
 | テストファイル | 件数 | 対象 |
 |---------------|------|------|
-| `tests/test_sp038_youtube_publish.py` | 41 | Phase 1-3 全体 (変換アダプタ、メタデータ生成、クレジット挿入、抽出、アップロード、バリデーション、バッチ、CLI ヘルパー) |
+| `tests/test_sp038_youtube_publish.py` | 45 | Phase 1-3 全体 (変換アダプタ、メタデータ生成、クレジット挿入、抽出、アップロード、バリデーション、バッチ、CLI ヘルパー) |
+| `tests/test_youtube_publisher.py` | 21 | Phase 4 (PublishResult/Options, メタデータ読み込み, サムネイル検出, 品質検証, 公開フロー, 結果永続化) |
 | `tests/test_metadata_generator.py` | 64 | MetadataGenerator 既存テスト |
 
 ---
@@ -163,4 +242,5 @@ python scripts/research_cli.py upload \
 
 - [ ] 本番 OAuth トークン取得・接続テスト (google_auth_setup.py で YouTube スコープ再取得)
 - [ ] 実 YouTube チャンネルへのテストアップロード (private)
-- [ ] SP-039 との統合 (MP4品質検証 → アップロード連携)
+- [ ] スケジュール投稿 (publishAt パラメータ対応)
+- [ ] バッチ投稿連携 (SP-040 batch_result.json への YouTube URL 記録)

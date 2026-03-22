@@ -24,7 +24,7 @@ ScriptBundle（台本セグメント群）
 VisualResourceProvider（複数ソース対応）
     ├── SlideImageProvider（既存: Google Slides PNG）
     ├── StockImageProvider（Phase 2: Pexels/Pixabay API）
-    └── AIImageProvider（Phase 3: Gemini Imagen等）
+    └── Wikimedia Commons → placeholder（Phase 3: AIImageProvider は削除済み）
     ↓
 AnimationAssigner（自動アニメーション割当）
     ↓
@@ -68,19 +68,14 @@ YMM4 NLMSlidePlugin（拡張: アニメーション種別に応じた配置）
 | 処理 | API検索 → 画像/動画DL → ライセンス確認 |
 | 出力 | VisualResourcePackage (画像パス + メタデータ) |
 
-### Phase 3: AI生成イラスト
+### Phase 3: AI生成イラスト (削除済み)
 
-**目標**: 台本セグメントごとにユニークなイラスト・図解を自動生成
+> **注記 (2026-03-23)**: AIImageProvider (`src/core/visual/ai_image_provider.py`) および TextSlideGenerator (`src/core/visual/text_slide_generator.py`) は削除済み。Gemini 無料プランでは Imagen 利用不可 (有料プラン専用)、PIL スライドは YouTube 品質水準に未達のため廃止。現行のフォールバック: Pexels → Pixabay → Wikimedia Commons → placeholder。以下は歴史的記録。
 
 | 項目 | 内容 |
 |------|------|
-| 実装対象 | `AIImageProvider` (Gemini Imagen 4) **実装済み** |
-| 入力 | ScriptBundle → key_points/section/contentから画像プロンプト自動構築 |
-| 処理 | Imagen API → RAIチェック → PNG保存 → MD5キャッシュ |
-| 出力 | `GeneratedImage` (prompt, image_path, enhanced_prompt, error) |
-| フォールバック | stock失敗 → AI生成 → それも失敗 → スライド (3段階) **実装済み** |
-| CLI統合 | `research_cli.py` GEMINI_API_KEY設定時に自動有効化 **実装済み** |
-| テスト | 15件 (provider) + 4件 (orchestrator fallback) PASS |
+| 実装対象 | ~~`AIImageProvider` (Gemini Imagen 4)~~ **削除済み** |
+| フォールバック | ~~stock失敗 → AI生成 → スライド (3段階)~~ → 現行: Pexels → Pixabay → Wikimedia Commons → placeholder |
 
 ---
 
@@ -363,13 +358,16 @@ Phase 2 はセグメント分類に基づくストック画像の自動調達と
 
 ---
 
-## 8. Phase 3 詳細設計
+## 8. Phase 3 詳細設計 (歴史的記録 — AIImageProvider/TextSlideGenerator は削除済み)
+
+> **注記 (2026-03-23)**: Phase 3 で実装した AIImageProvider および TextSlideGenerator は削除済み。
+> 詳細は Phase 3 概要テーブルの注記を参照。以下は当時の設計記録として保持。
 
 ### 8.1 概要
 
 Phase 3 はストック画像取得失敗時のフォールバックとして、Gemini Imagen API による AI 画像自動生成を統合する。
 
-### 8.2 AIImageProvider
+### 8.2 AIImageProvider (削除済み)
 
 | 項目 | 内容 |
 |------|------|

@@ -145,7 +145,61 @@ FEED_SETTINGS = {
 | 1 | Google DeepMind... | TechCrunch | 03-21 | [link](...) |
 ```
 
+## Phase 2: パイプライン自動連携 (SP-048 Phase 2)
+
+### 概要
+フィードトピックをバッチキュー (SP-040) 互換形式に自動変換し、
+`research_cli.py batch` で直接実行可能にする。
+
+### 追加モジュール
+
+#### topic_extractor.py 追加関数
+- `convert_to_batch_format(topics, batch_name, defaults)` → バッチ互換辞書
+- `save_batch_json(topics, output_dir, batch_name, defaults)` → `batch_topics.json` 保存
+
+#### feed_runner.py 追加オプション
+- `--batch` — バッチ互換形式 `batch_topics.json` も出力
+- `--batch-name` — バッチ名指定 (デフォルト: feed_batch)
+
+#### research_cli.py 追加サブコマンド
+- `feed` — InoReaderフィード → トピック取得 → バッチ互換出力を一気通貫実行
+
+### 使用例
+
+```bash
+# フィード取得 → バッチ互換出力 (デフォルト)
+python scripts/research_cli.py feed --unread --count 50
+
+# フォルダ指定 + カスタムバッチ名
+python scripts/research_cli.py feed --folder "Tech News" --batch-name "tech_news"
+
+# バッチ実行 (フィード出力をそのまま投入)
+python scripts/research_cli.py batch --topics output/feed/batch_topics.json
+```
+
+### 出力形式 (batch_topics.json)
+```json
+{
+  "batch_name": "feed_batch",
+  "defaults": {
+    "style": "news",
+    "duration": 1800,
+    "auto_images": true,
+    "auto_review": true
+  },
+  "topics": [
+    {
+      "topic": "Google DeepMind、Gemini 2.5の推論能力を大幅強化",
+      "seed_urls": ["https://example.com/article1"],
+      "_source": "TechCrunch",
+      "_published": "2026-03-21T10:00:00Z"
+    }
+  ]
+}
+```
+
 ## ステータス
 
-- Phase 1: InoReader クライアント + トピック抽出 + CLI + テスト
-- Phase 2 (将来): パイプライン自動連携、スコアリング、NotebookLM直接投入
+- Phase 1: InoReader クライアント + トピック抽出 + CLI + テスト (完了)
+- Phase 2: バッチキュー連携 + CLI feed サブコマンド (完了)
+- Phase 3 (将来): スコアリング、NotebookLM直接投入、トピック重複検出

@@ -23,14 +23,14 @@ NLMandSlideVideoGenerator
 | --- | --- | --- |
 | Stage 0: 台本生成 | NotebookLM Audio Overview → テキスト化 | NotebookLM (人間操作) |
 | Stage 1: 台本構造化+素材用意 | Gemini構造化・Web素材取得 | Gemini (構造化), Content Adapter, Research CLI |
-| Stage 2: ビジュアル+CSV | 画像取得・分類・CSV組立・検証 | SegmentClassifier, StockImageClient, AIImageProvider, TextSlideGenerator, Orchestrator, CsvAssembler, Pre-Export Validator |
+| Stage 2: ビジュアル+CSV | 画像取得・分類・CSV組立・検証 | SegmentClassifier, StockImageClient, Orchestrator, CsvAssembler, Pre-Export Validator |
 | Stage 3: YMM4レンダリング | CSVインポート・音声合成・動画出力 | CsvImportDialog, StyleTemplateLoader, VoiceSpeakerDiscovery |
 | Stage 4: 投稿配信 | メタデータ・サムネイル・投稿 | MetadataGenerator, ThumbnailGenerator, YouTubeUploader |
 
 ### 1.5 現行実装状態 (2026-03-22)
 
 - **Stage 1**: Research CLI一気通貫 (collect→script→align→review→pipeline) 実装済み
-- **Stage 2**: VisualResourceOrchestrator (stock→AI→slideフォールバック) + Pre-Export Validation 実装済み。1346テストPASS
+- **Stage 2**: VisualResourceOrchestrator (Pexels→Pixabay→Wikimedia→placeholderフォールバック) + Pre-Export Validation 実装済み。1346テストPASS
 - **Stage 3**: NLMSlidePlugin CSVインポート + style_template.json統一テンプレート + 8種アニメーション実機テストPASS
 - **Stage 4**: メタデータ・サムネイル・YouTube投稿・字幕 (SRT/ASS/VTT) 生成実装済み
 
@@ -63,9 +63,7 @@ NLMandSlideVideoGenerator
 - **処理**:
   - SegmentClassifier: Gemini/ヒューリスティックによるvisual/textual分類
   - StockImageClient: Pexels/Pixabay APIで背景画像検索+ダウンロード (日本語→英語翻訳付き)
-  - AIImageProvider: Gemini Imagen 4でAI画像生成 (stock失敗時フォールバック)
-  - TextSlideGenerator: テキスト主体セグメント用スライドPNG自動生成 (Pillow描画、テーマ切替、キャッシュ)
-  - VisualResourceOrchestrator: 全リソース統合+連続多様性制御
+  - VisualResourceOrchestrator: 全リソース統合+連続多様性制御 (Pexels→Pixabay→Wikimedia Commons→placeholder)
   - AnimationAssigner: 8種アニメーション自動割当
   - CsvAssembler: 4列CSV生成 (speaker, text, image_path, animation_type)
   - Pre-Export Validator: 品質検証
@@ -111,8 +109,7 @@ NLMandSlideVideoGenerator
 
 #### 2.2.4 サムネイル生成 (`src/core/thumbnails/`)
 
-- **TemplateThumbnailGenerator**: テンプレートベースのサムネイル自動生成 (Pillow描画)
-- **AIThumbnailGenerator**: AI画像を活用したサムネイル生成
+- **Ymm4ThumbnailGenerator**: YMM4テンプレートベースのサムネイル生成 (PILフォールバック付き)
 
 #### 2.2.5 運用API (`src/server/`) [オプション]
 
@@ -129,7 +126,7 @@ NLMandSlideVideoGenerator
 ### 2.4 エラーハンドリング
 
 - **API**: 指数バックオフリトライ (1s→2s→4s)、429/5xx自動リトライ、401/403即時失敗
-- **フォールバック連鎖**: Pexels→Pixabay→Gemini Imagen→TextSlideGenerator→空欄
+- **フォールバック連鎖**: Pexels→Pixabay→Wikimedia Commons→placeholder
 - **Geminiモデルフォールバック**: gemini-2.5-flash → gemini-2.0-flash → モック
 - **パイプライン再開**: PipelineState永続化 + CLI `--resume` (SP-034)
 - **例外階層**: `PipelineError` → `StageError` / `ConfigError` / `APIError` 等 (`src/core/exceptions.py`)
@@ -145,7 +142,7 @@ NLMandSlideVideoGenerator
 ### 3.2 可用性要件
 
 - **ステージ単位の復旧**: PipelineState永続化により失敗ステップから再開可能 (`--resume`)
-- **フォールバック**: 各外部API障害時に代替パスあり (stock→AI→slide)
+- **フォールバック**: 各外部API障害時に代替パスあり (Pexels→Pixabay→Wikimedia→placeholder)
 
 ### 3.3 セキュリティ要件
 
@@ -168,7 +165,7 @@ NLMandSlideVideoGenerator
 ```text
 [NLMソース投入] → [Audio Overview] → [テキスト化] → [Gemini構造化] → [ScriptBundle]
                                                       ↓
-[SegmentClassifier] → [Pexels/Pixabay] → [Gemini Imagen] → [TextSlideGenerator] → [VisualResourcePackage]
+[SegmentClassifier] → [Pexels/Pixabay/Wikimedia] → [placeholder] → [VisualResourcePackage]
                                                                                           ↓
 [CsvAssembler] → [Pre-Export Validation] → [4列CSV]
                                                 ↓
@@ -182,9 +179,9 @@ NLMandSlideVideoGenerator
 | API | 用途 | レート制限 |
 | --- | --- | --- |
 | Gemini 2.5 Flash | 台本構造化/分類/キーワード抽出/翻訳 (フォールバック時のみ台本生成) | 15 req/min (free) |
-| Gemini Imagen 4 | AI画像生成 (有料プラン必須) | -- |
 | Pexels | ストック写真検索 | 200 req/hour (free) |
 | Pixabay | ストック写真検索 (フォールバック) | 5000 req/hour (free) |
+| Wikimedia Commons | CC/PD画像検索 | APIキー不要 |
 | YouTube Data API | 動画投稿 | 10,000 units/day |
 | Google Slides API | プレゼンテーション生成 (オプション) | 300 req/min |
 
@@ -205,7 +202,7 @@ google-genai             # Gemini SDK (旧google-generativeai から移行済み
 requests                 # Pexels/Pixabay API
 
 # 画像・音声
-Pillow                   # サムネイル・テキストスライド生成
+Pillow                   # サムネイル生成
 pydub                    # 音声処理
 
 # Web UI / Server
@@ -237,10 +234,10 @@ src/
 │   ├── editing/                     # Pre-Export Validator, YMM4Backend
 │   ├── platforms/                   # YouTube/TikTokアダプター
 │   ├── providers/script/            # IScriptProvider実装 (Gemini, NotebookLM)
-│   ├── thumbnails/                  # サムネイル生成 (Template, AI)
+│   ├── thumbnails/                  # サムネイル生成 (YMM4テンプレート, PILフォールバック)
 │   ├── timeline/                    # タイムラインプランナー
 │   ├── utils/                       # Logger, FFmpeg, ToolDetection, Decorators
-│   └── visual/                      # SegmentClassifier, Stock/AI/TextSlide, Orchestrator
+│   └── visual/                      # SegmentClassifier, StockImageClient, Orchestrator
 ├── notebook_lm/                     # NotebookLM統合 (7ファイル)
 ├── slides/                          # スライド分割・Google Slides
 ├── youtube/                         # メタデータ生成・YouTube投稿
@@ -265,14 +262,14 @@ config/
 ### 6.1 技術的制約
 
 - YMM4 は Windows 環境依存
-- Gemini Imagen は RAIフィルタにより一部プロンプトが拒否される
+- Wikimedia Commons は画像サイズ・ライセンス条件によりフィルタされる場合がある
 - Pexels/Pixabay の無料プランにはレート制限あり
 
 ### 6.2 リスク要因
 
-- **外部API依存**: Gemini/Pexels/Pixabay 停止時はTextSlideGeneratorフォールバック
+- **外部API依存**: Pexels/Pixabay/Wikimedia 停止時はplaceholderフォールバック
 - **品質リスク**: AI生成画像の品質ばらつき (RAIフィルタ、プロンプト品質)
-- **コストリスク**: Gemini Imagen のトークン消費 (現在は無料枠内)
+- **コストリスク**: Gemini Flash のトークン消費 (現在は無料枠内)
 
 ## 7. 今後の拡張計画
 

@@ -94,7 +94,7 @@ pytest tests/test_gemini_integration.py
 pytest tests/test_slide_builder.py
 
 # ビジュアルリソーステスト
-pytest tests/test_stock_image_client.py tests/test_ai_image_provider.py tests/test_resource_orchestrator.py
+pytest tests/test_stock_image_client.py tests/test_resource_orchestrator.py
 
 # YouTube投稿テスト
 pytest tests/test_sp038_youtube_publish.py

@@ -1,5 +1,9 @@
 # WORKFLOW STATE SSOT
 
+> **注記 (2026-03-23)**: この文書の Done 条件は全て完了済み。
+> 現在の制作パイプライン全体像は `docs/PRODUCER_PIPELINE.md` を参照。
+> 設計公理は `docs/DESIGN_FOUNDATIONS.md` を参照。
+
 ## Mission
 
 NLM台本調整ワークフローと動画生成パイプライン全体の統合および安定運用

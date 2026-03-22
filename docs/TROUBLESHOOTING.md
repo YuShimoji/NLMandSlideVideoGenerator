@@ -238,19 +238,17 @@ echo $PIXABAY_API_KEY
 | Solution | Steps | When to Use |
 |----------|-------|-------------|
 | **API キー設定** | `.env` に `PEXELS_API_KEY=xxx` を追加 | キー未設定 |
-| **フォールバック確認** | Pexels → Pixabay → Gemini Imagen → TextSlideGenerator の順で自動フォールバック | 自動 (設定不要) |
+| **フォールバック確認** | Pexels → Pixabay → Wikimedia Commons → placeholder の順で自動フォールバック | 自動 (設定不要) |
 | **レート制限回避** | Pexels: 200 req/hour, Pixabay: 5000 req/hour。大量実行時は間隔を空ける | 429エラー頻発 |
-| **テキストスライド許容** | `source=none` のセグメントは TextSlideGenerator で自動生成される | 画像不要の場合 |
+| **placeholder許容** | `source=none` のセグメントは画像なし (placeholder) になる | 画像不要の場合 |
 
-**4層フォールバック:**
+**3層フォールバック:**
 ```
 Pexels/Pixabay ストック画像
   ↓ 失敗時
-Gemini Imagen (AI生成画像)
+Wikimedia Commons (CC/PD画像)
   ↓ 失敗時
-TextSlideGenerator (テキストスライドPNG)
-  ↓ 設定なし
-source=none (画像なし)
+source=none (placeholder、画像なし)
 ```
 
 ---

@@ -32,7 +32,11 @@ Audience: All Agents
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
 | Path B完全削除 | DONE | 15ファイル削除、7ファイル修正、コード・テスト・API・Web UI全削除 (2026-03-08) |
-| Python tests | 1346 passed / 0 failed | カバレッジ75% (全体) / コア90%+ (web UI 3-30%が全体を押し下げ)。45/50仕様done + 4 partial + 1 draft。SP-035 partial(60%) |
+| PIL/AI画像生成廃止 | DONE | text_slide_generator.py, ai_image_provider.py, ai_generator.py, template_generator.py 削除済み (session 19-20) |
+| SourceCollector廃止 | DONE | Brave Search リサーチ廃止。NLMに人間が直接ソース投入 (session 18) |
+| 根本ワークフロー復元 | DONE | DESIGN_FOUNDATIONS.md Section 0。NLM→Audio→テキスト化→Gemini構造化→CSV→YMM4 |
+| 制作者パイプライン文書 | DONE | docs/PRODUCER_PIPELINE.md — 手動/自動/未実装の境界を1枚に明確化 (session 21) |
+| Python tests | 1230 passed / 0 failed | 52仕様 (41 done + 6 partial + 2 draft + 1 archived + 1 superseded)。SP-035 partial(60%) |
 | .NET tests | 34 passed / 0 failed | Core分離後 |
 
 ## Consistency Audit

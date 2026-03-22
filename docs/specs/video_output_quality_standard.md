@@ -24,13 +24,12 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ### D2: テキストスライドはNotebookLMのスライド生成を活用
 
-- 現行: TextSlideGenerator (PIL/Pillow, 708行) で箇条書きスライドをプログラム生成
-- 新: NotebookLMのスライド生成機能を活用
-- PIL生成は廃止方向
+- 旧: TextSlideGenerator (PIL/Pillow, 708行) で箇条書きスライドをプログラム生成 — **削除済み**
+- 新: NotebookLMのスライド生成機能を活用 / Google Slides API に移行決定
 
 ### D3: 画像素材はウェブ上の著作権クリア画像を優先
 
-- 現行: Pexelsストック画像 + Imagen AIフォールバック
+- 旧: Pexelsストック画像 + Imagen AIフォールバック (AIImageProvider削除済み)
 - 新: テーマに合ったウェブ上の著作権クリア画像を優先使用
   - 検索対象: Creative Commons, Wikimedia Commons, 政府公開資料, パブリックドメイン
   - ストック画像はフォールバック
