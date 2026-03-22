@@ -326,11 +326,11 @@
   {
     "id": "SP-037",
     "title": "Thumbnail Pipeline Integration",
-    "status": "done",
-    "pct": 100,
+    "status": "partial",
+    "pct": 75,
     "cat": "pipeline",
     "file": "docs/specs/thumbnail_pipeline.md",
-    "summary": "Phase 1+2完了: パイプライン統合 + CJKフォント + SP-036スタイルマッピング(resolve_thumbnail_style) + SP-031 style_template thumbnail連携 + CLI --generate-thumbnail。35テストPASS"
+    "summary": "Phase 1-2(PIL)+Phase 3(YMM4テンプレート)実装済み。Ymm4ThumbnailGeneratorがテンプレート.y4mmpのプレースホルダー差し替え+出力。パイプライン統合済み(YMM4優先/PILフォールバック)。60テストPASS。残: ユーザーによるテンプレート作成+実動画での検証"
   },
   {
     "id": "SP-038",
@@ -402,7 +402,7 @@
     "pct": 0,
     "cat": "pipeline",
     "file": "docs/specs/first_publish_checklist.md",
-    "summary": "初回YouTube公開の通しチェックリスト。Phase A(自動CSV)+B(YMM4手動)+C(MP4検証+OAuth+upload)の全ステップ。SP-035/038の完了判定を兼ねる"
+    "summary": "初回YouTube公開の通しチェックリスト。SP-050準拠でPhase 0-5(トピック選定+NLM Audio Overview+テキスト化+CSV生成+YMM4レンダリング+YouTube公開)を網羅。SP-035/038の完了判定を兼ねる"
   },
   {
     "id": "SP-046",
@@ -430,5 +430,23 @@
     "cat": "pipeline",
     "file": "docs/spec_feed_integration.md",
     "summary": "InoReader APIからRSSフィードのトピック候補を自動取得。Phase 1完了: OAuth認証クライアント+トピック抽出+CLI+61テストPASS。残: 実API疎通テスト、Phase 2(パイプライン自動連携)"
+  },
+  {
+    "id": "SP-049",
+    "title": "Design Foundations",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/DESIGN_FOUNDATIONS.md",
+    "summary": "三層モデル (NotebookLM/Python/YMM4) の設計公理。外部ツール前提・Python責務境界・過剰実装の分類"
+  },
+  {
+    "id": "SP-050",
+    "title": "E2E Workflow Specification",
+    "status": "partial",
+    "pct": 90,
+    "cat": "pipeline",
+    "file": "docs/specs/e2e_workflow_spec.md",
+    "summary": "トピック選定→YouTube公開の一気通貫ワークフロー仕様。Phase 0-7定義、未決定事項を質問形式で整理。DESIGN_FOUNDATIONS三層モデル準拠"
   }
 ]

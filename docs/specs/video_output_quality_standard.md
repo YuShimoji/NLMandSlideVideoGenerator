@@ -105,7 +105,7 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 **統合設計への示唆**:
 1. **最有望**: Standalone Podcast API (allowlistアクセス申請を推奨)
 2. **即時利用可**: notebooklm-py (非公式、無料Googleアカウントで動作、破損リスクあり)
-3. **台本生成**: Gemini改善 (Phase 1.5完了) で当面十分。Podcast APIが使えればさらに品質向上
+3. **台本構造化**: Gemini改善 (Phase 1.5完了) で構造化品質は十分。台本品質の源泉はNotebookLM (DESIGN_FOUNDATIONS.md Section 0)
 4. **スライド生成**: 公式APIなし。notebooklm-py/notebooklm-sdkの非公式APIか、Gemini+テンプレートが現実的
 5. **将来**: Standalone Podcast API のGA化 + スライドAPI公開を待つ
 
@@ -119,8 +119,8 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ### Phase 2: 台本パイプライン移行
 
-- NotebookLMベースの台本生成フローの構築
-- 現行Gemini台本生成との共存/段階移行
+- NotebookLM Audio Overview → テキスト化 → Gemini構造化 フローの確立 (DESIGN_FOUNDATIONS.md Section 0 で定義済み)
+- 現行Geminiフォールバック台本生成との共存/段階移行
 
 ### Phase 3: ビジュアルパイプライン移行 (部分完了)
 

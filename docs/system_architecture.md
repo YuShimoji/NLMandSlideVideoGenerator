@@ -1,18 +1,27 @@
 # NLMandSlideVideoGenerator システムアーキテクチャ
 
-最終更新: 2026-03-16
+最終更新: 2026-03-22
 
 ## 概要
 
-NLMandSlideVideoGeneratorは、Web調査から動画投稿までを段階的に自動化するモジュラー型ワークフロー基盤です。Python (CLI/Web UI) で台本生成・ビジュアルリソース取得・CSV生成を行い、YukkuriMovieMaker4 (YMM4) + NLMSlidePlugin で音声合成・タイムライン構築・最終レンダリングを行います。
+NLMandSlideVideoGeneratorは、NotebookLMの台本品質を活かした動画制作を段階的に自動化するモジュラー型ワークフロー基盤です。
+
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0):
+> NLM ソース投入 → Audio Overview → テキスト化 → Gemini構造化 → CSV組立 → YMM4レンダリング
+
+NotebookLM が台本品質を決定し、Python (CLI/Web UI) が台本構造化・ビジュアルリソース取得・CSV生成を行い、YukkuriMovieMaker4 (YMM4) + NLMSlidePlugin で音声合成・タイムライン構築・最終レンダリングを行います。
 
 ## システム構成図
 
 ```mermaid
 flowchart LR
-    subgraph S1[Stage 1: 素材用意]
-        A1[Research CLI] --> A2[Gemini Script Provider]
-        A2 --> A3[Content Adapter]
+    subgraph S0[Stage 0: 台本生成 — 入力層]
+        Z1[人間: NLMにソース投入] --> Z2[NotebookLM: Audio Overview]
+        Z2 --> Z3[NotebookLM: テキスト化]
+    end
+
+    subgraph S1[Stage 1: 台本構造化+素材用意 — 変換層]
+        A1[Gemini: テキスト構造化] --> A3[Content Adapter]
         A3 --> A4[ScriptBundle]
     end
 
@@ -50,16 +59,26 @@ flowchart LR
         D3[YouTube Uploader]
     end
 
-    S1 -->|ScriptBundle| S2 -->|4列CSV| S3 -->|mp4| S4
+    S0 -->|テキスト| S1 -->|ScriptBundle| S2 -->|4列CSV| S3 -->|mp4| S4
 ```
 
-### Stage 1: 素材用意レイヤー (Python)
+### Stage 0: 台本生成 — 入力層 (NotebookLM + 人間)
 
-- **Research CLI** (`scripts/research_cli.py`): collect→script→align→review→pipeline の一気通貫CLI。`--auto-images` `--duration` オプション対応。
-- **Gemini Script Provider** (`src/core/providers/script/gemini_provider.py`): Gemini API (google-genai SDK) による台本自動生成。`IScriptProvider` インターフェースで差し替え可能。
-- **NotebookLM Provider** (`src/core/providers/script/notebook_lm_provider.py`): NotebookLM経由の台本取得。`IScriptProvider` 実装。
+> 根本ワークフロー (DESIGN_FOUNDATIONS.md Section 0)
+
+1. 人間が NotebookLM にソース (URL/テキスト/PDF) を投入
+2. NotebookLM が Audio Overview (ポッドキャスト形式の対話音声) を生成
+3. 音声を NotebookLM に再投入し、テキスト化 (文字起こし)
+
+台本品質は NotebookLM が決定する。この工程は現在 Web UI で手動実行。
+
+### Stage 1: 台本構造化+素材用意レイヤー (Python + Gemini)
+
+- **Gemini 構造化** (`src/notebook_lm/gemini_integration.py`): NotebookLM テキストを Gemini API で構造化 (speaker/text 分離)。台本を「生成」するのではなく「構造化」する。NLM テキスト未提供時のみフォールバックとして台本を生成 (品質劣化を前提)。
+- **Gemini Script Provider** (`src/core/providers/script/gemini_provider.py`): `IScriptProvider` インターフェース。根本フローでは構造化用途。フォールバック時のみ生成用途。
+- **NotebookLM Provider** (`src/core/providers/script/notebook_lm_provider.py`): NotebookLM テキスト入力の受付。`IScriptProvider` 実装。
 - **Content Adapter** (`src/core/adapters/`): NotebookLM固有フォーマット（DeepDive等）を `ScriptBundle` に正規化。
-- **音声**: YMM4内蔵ゆっくりボイスを使用。Python側は音声生成を行わない。外部TTS連携コードは2026-03-04に全削除済み。
+- **音声**: YMM4内蔵ゆっくりボイスを使用。Python側は音声生成を行わない。
 
 ### Stage 2: ビジュアルリソース+CSV生成レイヤー (Python)
 
@@ -164,7 +183,7 @@ sequenceDiagram
     participant YMM4 as YMM4 + NLMSlidePlugin
 
     User->>CLI: pipeline "topic" --auto-images
-    CLI->>Gemini: 台本生成
+    CLI->>Gemini: 台本構造化 (NLMテキスト→speaker/text)
     Gemini-->>CLI: ScriptBundle
     CLI->>Classifier: classify_with_keywords(segments)
     Classifier->>Gemini: 分類+キーワード抽出
@@ -186,7 +205,7 @@ sequenceDiagram
 ### フォールバック連鎖
 
 1. **ビジュアルリソース**: Pexels → Pixabay → Gemini Imagen → TextSlideGenerator → 空欄
-2. **台本生成**: Gemini API → NotebookLMエクスポート → 手動CSV
+2. **台本**: NotebookLM Audio Overview+テキスト化 (正規) → Gemini台本生成 (フォールバック) → 手動CSV
 3. **Geminiモデル**: gemini-2.5-flash → gemini-2.0-flash → モック
 4. **分類**: Gemini分類 → ヒューリスティック分類
 5. **投稿**: YouTube自動投稿 → メタデータのみ生成 → 手動投稿
@@ -195,7 +214,8 @@ sequenceDiagram
 
 ### 1. Python/C# 二層構成
 
-- Python: 前工程 (調査→台本→ビジュアル→CSV) + 品質検証
+- NotebookLM: 台本品質の源泉 (Audio Overview → テキスト化)
+- Python: 変換層 (台本構造化→ビジュアル→CSV) + 品質検証
 - C# (NLMSlidePlugin): YMM4内でCSV→タイムライン→音声→レンダリング
 - 両者は `config/style_template.json` を共有し、スタイル設定を統一
 
@@ -220,7 +240,7 @@ sequenceDiagram
 
 ### 5. Gemini統合 (5用途)
 
-- 台本生成 (Gemini Flash)
+- 台本構造化 / フォールバック台本生成 (Gemini Flash)
 - セグメント分類 + 英語キーワード抽出 (Gemini Flash)
 - 日本語→英語クエリ翻訳 (Gemini Flash)
 - AI画像生成 (Imagen 4)
@@ -230,14 +250,14 @@ sequenceDiagram
 
 ### NotebookLM統合 (`src/notebook_lm/`)
 
-NotebookLMを利用した調査・台本生成の統合レイヤー。
+NotebookLMテキストの受入・構造化を担う変換レイヤー。(ディレクトリ名は歴史的遺産。src/notebook_lm/README.md 参照)
 
-- **SourceCollector**: Web情報収集 + 信頼度スコアリング
-- **GeminiIntegration**: Gemini APIによる台本生成・フォールバックチェーン管理 (gemini-2.5-flash → gemini-2.0-flash → モック)
+- **SourceCollector**: Web情報収集 + 信頼度スコアリング (Brave Search廃止済み。根本ワークフローではソース投入は人間がNotebookLMに直接行う。レガシーコード)
+- **GeminiIntegration**: Gemini APIによる台本構造化 (NLMテキスト→speaker/text分離)。NLMテキスト未提供時のみフォールバック台本生成。モデルチェーン: gemini-2.5-flash → gemini-2.0-flash → モック
 - **TranscriptProcessor**: 音声文字起こし結果の構造化 (SRT変換、キーポイント抽出、精度算出)
 - **ScriptAlignment**: 台本と素材の整合チェック
 - **CsvTranscriptLoader**: CSV形式の台本読み込み
-- **AudioGenerator**: 音声生成統合 (YMM4連携前処理)
+- **AudioGenerator**: レガシースタブ。音声合成はYMM4の責務。Python側は音声生成を行わない
 - **ResearchModels**: 調査データのデータクラス群
 
 ### スライド・Google Slides (`src/slides/`)
@@ -289,7 +309,7 @@ NotebookLMを利用した調査・台本生成の統合レイヤー。
 ### 環境変数
 
 ```bash
-GEMINI_API_KEY=...      # 台本生成/分類/翻訳/AI画像生成
+GEMINI_API_KEY=...      # 台本構造化/分類/翻訳/AI画像生成
 PEXELS_API_KEY=...      # ストック画像検索
 PIXABAY_API_KEY=...     # ストック画像検索 (フォールバック)
 ```
@@ -307,7 +327,7 @@ PIXABAY_API_KEY=...     # ストック画像検索 (フォールバック)
 
 ```python
 # AI/API
-google-genai             # Gemini SDK (台本生成/分類/翻訳/画像生成)
+google-genai             # Gemini SDK (台本構造化/分類/翻訳/画像生成)
 requests                 # Pexels/Pixabay API
 
 # 画像・音声
@@ -344,12 +364,11 @@ src/
 │   │   ├── pre_export_validator.py  # Pre-Export Validator
 │   │   └── ymm4_backend.py         # YMM4EditingBackend
 │   ├── platforms/
-│   │   ├── youtube_adapter.py       # YouTube投稿アダプター
-│   │   └── tiktok_adapter.py        # TikTokアダプター (将来)
+│   │   └── youtube_adapter.py       # YouTube投稿アダプター
 │   ├── providers/
 │   │   └── script/
-│   │       ├── gemini_provider.py   # Gemini台本生成
-│   │       └── notebook_lm_provider.py # NotebookLM台本取得
+│   │       ├── gemini_provider.py   # Gemini台本構造化 (フォールバック時のみ生成)
+│   │       └── notebook_lm_provider.py # NotebookLMテキスト受入
 │   ├── thumbnails/
 │   │   ├── template_generator.py    # テンプレートサムネイル生成
 │   │   └── ai_generator.py          # AIサムネイル生成

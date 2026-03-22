@@ -62,10 +62,7 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
 | トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | SP-048 (80%) | Phase 1完了: クライアント+抽出+CLI+61テスト。残: 実API疎通、Phase 2パイプライン連携 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
-| 整理 | TikTokAdapter 廃止検討 | 低 | なし | 221行モック実装。全メソッドスタブ (publish→2秒sleep→mock応答)。helpers.pyで条件付きロード。HUMAN_AUTHORITY |
-| 整理 | IPublishingQueue 方針決定 | 低 | なし | interfaces.py 7行のProtocol定義のみ。pipeline.py/stage_runners.pyでimportされるが常にNone。具象実装なし。HUMAN_AUTHORITY |
 | 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | **NOT DEAD**: helpers.pyでYMM4 backend有効時に実体化。104行、テスト3件。削除不要 |
-| 整理 | audio_generator.py Gemini+TTS到達不能コード除去 | 低 | なし | _tts_is_available()が常にFalse。_generate_script_with_gemini()/_generate_audio_with_tts()の約60行が到達不能。自走可 |
 | 整理 | slide_builder.py のproduction接続確認 | 低 | なし | 246行。テストのみ使用 (test_slide_builder.py)。production未importだが害なし |
 
 ---
@@ -129,6 +126,8 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-18: 摩擦インベントリ + F-004/F-006 + SP-044 Phase 1-2
 - 2026-03-18: SP-020→SP-031統合、SP-041 Phase 3、SP-043 Phase 4、SP-044 Phase 3
 - 2026-03-18: nightshift — 仕様書同期8件(Imagen4, pct100%), 開発ガイド全面更新, INDEX拡充
+- 2026-03-21: SP-047 Phase 2実検証(台本品質全指標PASS) + Phase 3(Wikimedia Commons統合+TextSlideアニメーション)
+- 2026-03-21: デッドコード削除3件 (TikTokAdapter 221行 + IPublishingQueue 7行 + Gemini+TTS 60行)
 
 ---
 

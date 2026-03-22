@@ -19,7 +19,7 @@
 
 ### Python側 (前工程)
 
-1. **素材収集**: Web調査 → Gemini台本生成 → 台本整形 (`scripts/research_cli.py`)
+1. **台本取得**: NotebookLM Audio Overview → テキスト化 → Gemini構造化 (DESIGN_FOUNDATIONS.md Section 0)
 2. **ビジュアルリソース取得**: SegmentClassifier → StockImageClient (Pexels/Pixabay) → AIImageProvider (Gemini Imagen) → スライドフォールバック
 3. **CSV生成**: CsvAssembler が台本 + 画像パス + アニメーション種別 を4列CSVに統合
 4. **品質検証**: Pre-Export Validator が画像存在・アニメーション種別・行数を検証

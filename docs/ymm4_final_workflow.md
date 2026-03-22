@@ -9,22 +9,24 @@
 
 ## 1. ワークフロー概要
 
-### 完全フロー（トピック→MP4）
+### 完全フロー（トピック→MP4）— 2026-03-22 更新
+
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0 参照)
 
 ```
-[Python] トピック + URL入力
+[人間] ソース (URL/テキスト/PDF) を NotebookLM に投入
     ↓
-[Python] リサーチ (SourceCollector) → ResearchPackage
+[NotebookLM] Audio Overview 生成 → 音声ファイル
     ↓
-[Python] 台本生成 (GeminiProvider) → ScriptBundle
+[NotebookLM] 音声を再投入 → テキスト化 (文字起こし) → プレーンテキスト
     ↓
-[Python] 台本レビュー (Gate A, 任意) → adopted/orphaned/conflict分類
+[Python] Gemini API で台本構造化 (speaker/text 分離) → 構造化 JSON
     ↓
-[Python] ストック画像取得 + AI画像生成 + テキストスライド生成 (SP-033)
+[Python] Google Slides API でスライド画像生成 + ストック画像取得 (SP-033)
     ↓
 [Python] CSV合成 (CsvAssembler) → timeline.csv (4列: 話者,テキスト,画像パス,アニメーション種別)
     ↓
-[Python] Pre-Export検証 (SP-031, 任意) → 画像存在/形式/統計チェック
+[Python] Pre-Export検証 (SP-031) → 画像存在/形式/統計チェック
     ↓
 [YMM4] NLMSlidePlugin CSVインポート + Voice生成 + スタイル自動適用
     ↓
@@ -32,6 +34,12 @@
     ↓
 最終 mp4
 ```
+
+> **変更点 (2026-03-22)**:
+> - SourceCollector (Brave Search) → 廃止。ソース投入は人間が NotebookLM に直接行う
+> - GeminiProvider 台本「生成」→ Gemini 台本「構造化」に限定
+> - テキストスライド生成 (PIL) → Google Slides API に移行
+> - 台本品質は NotebookLM が決定。Gemini は構造化のみ
 
 ### 簡易フロー（手動CSV→MP4）
 

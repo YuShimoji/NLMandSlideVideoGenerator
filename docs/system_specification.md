@@ -21,7 +21,8 @@ NLMandSlideVideoGenerator
 
 | Stage | 主目的 | 主なモジュール |
 | --- | --- | --- |
-| Stage 1: 素材用意 | Web調査・台本生成 | Research CLI, Gemini Script Provider, NotebookLM Provider |
+| Stage 0: 台本生成 | NotebookLM Audio Overview → テキスト化 | NotebookLM (人間操作) |
+| Stage 1: 台本構造化+素材用意 | Gemini構造化・Web素材取得 | Gemini (構造化), Content Adapter, Research CLI |
 | Stage 2: ビジュアル+CSV | 画像取得・分類・CSV組立・検証 | SegmentClassifier, StockImageClient, AIImageProvider, TextSlideGenerator, Orchestrator, CsvAssembler, Pre-Export Validator |
 | Stage 3: YMM4レンダリング | CSVインポート・音声合成・動画出力 | CsvImportDialog, StyleTemplateLoader, VoiceSpeakerDiscovery |
 | Stage 4: 投稿配信 | メタデータ・サムネイル・投稿 | MetadataGenerator, ThumbnailGenerator, YouTubeUploader |
@@ -37,14 +38,23 @@ NLMandSlideVideoGenerator
 
 ### 2.1 コア機能（Stage別）
 
-#### 2.1.1 Stage 1: 素材収集・台本生成
+#### 2.1.0 Stage 0: 台本生成 (NotebookLM — 入力層)
 
-- **入力**: トピック、参考URL
+> 根本ワークフロー (DESIGN_FOUNDATIONS.md Section 0)
+
+- **入力**: ソース (URL/テキスト/PDF) を人間が NotebookLM に投入
 - **処理**:
-  - Research CLI (`collect`): Web調査・情報収集
-  - Research CLI (`script`): Gemini APIによる台本生成
-  - Research CLI (`align`): 台本-素材整合
-  - Research CLI (`review`): 品質レビュー
+  1. NotebookLM が Audio Overview (ポッドキャスト形式対話音声) を生成
+  2. 音声を NotebookLM に再投入 → テキスト化 (文字起こし)
+- **出力**: プレーンテキスト (台本品質の源泉)
+
+#### 2.1.1 Stage 1: 台本構造化+素材用意 (Python + Gemini — 変換層)
+
+- **入力**: NotebookLM テキスト (Stage 0 の出力)
+- **処理**:
+  - Gemini API: NotebookLM テキストを speaker/text に構造化 (台本を「生成」しない)
+  - Content Adapter: 構造化結果を ScriptBundle に正規化
+  - (フォールバック) Gemini API: NLM テキスト未提供時のみ台本を生成
 - **出力**: ScriptBundle (台本セグメント群)
 
 #### 2.1.2 Stage 2: ビジュアルリソース+CSV生成
@@ -83,7 +93,7 @@ NLMandSlideVideoGenerator
 #### 2.2.1 NotebookLM統合 (`src/notebook_lm/`)
 
 - **SourceCollector**: Web情報収集 + 信頼度スコアリング
-- **GeminiIntegration**: Gemini APIによる台本生成・フォールバックチェーン管理 (gemini-2.5-flash → gemini-2.0-flash → モック)
+- **GeminiIntegration**: Gemini APIによる台本構造化 (NotebookLMテキスト→speaker/text分離)。NLMテキスト未提供時のみフォールバック台本生成。モデルチェーン: gemini-2.5-flash → gemini-2.0-flash → モック
 - **TranscriptProcessor**: 音声文字起こし結果の構造化 (SRT変換、キーポイント抽出、精度算出)
 - **ScriptAlignment**: 台本と素材の整合チェック
 - **CsvTranscriptLoader**: CSV形式の台本読み込み
@@ -156,7 +166,7 @@ NLMandSlideVideoGenerator
 ### 4.1 データフロー
 
 ```text
-[トピック入力] → [Web調査] → [Gemini台本生成] → [ScriptBundle]
+[NLMソース投入] → [Audio Overview] → [テキスト化] → [Gemini構造化] → [ScriptBundle]
                                                       ↓
 [SegmentClassifier] → [Pexels/Pixabay] → [Gemini Imagen] → [TextSlideGenerator] → [VisualResourcePackage]
                                                                                           ↓
@@ -171,7 +181,7 @@ NLMandSlideVideoGenerator
 
 | API | 用途 | レート制限 |
 | --- | --- | --- |
-| Gemini 2.5 Flash | 台本生成/分類/キーワード抽出/翻訳/台本補完 | 15 req/min (free) |
+| Gemini 2.5 Flash | 台本構造化/分類/キーワード抽出/翻訳 (フォールバック時のみ台本生成) | 15 req/min (free) |
 | Gemini Imagen 4 | AI画像生成 (有料プラン必須) | -- |
 | Pexels | ストック写真検索 | 200 req/hour (free) |
 | Pixabay | ストック写真検索 (フォールバック) | 5000 req/hour (free) |
