@@ -316,3 +316,274 @@ class TestParseScriptResponse:
         info = await g._parse_script_response(resp, "topic", "ja")
         assert info.segments == []
         assert info.total_duration_estimate == 0.0
+
+
+class TestBuildStructurePrompt:
+    """_build_structure_prompt (トランスクリプト構造化) のテスト"""
+
+    def test_basic_structure_prompt(self):
+        g = GeminiIntegration(api_key="key")
+        transcript = "Host1: こんにちは。今日はAIについて話しましょう。\nHost2: はい、最近の進展は目覚ましいですね。"
+        prompt = g._build_structure_prompt(transcript, "AI最新動向", 300.0, "ja")
+        assert "構造化" in prompt
+        assert "AI最新動向" in prompt
+        assert transcript in prompt
+        assert "日本語" in prompt
+        # 「生成」ではなく「構造化」タスクであることを明示
+        assert "生成」ではなく「構造化」" in prompt
+
+    def test_english_structure_prompt(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_structure_prompt("text", "topic", 300.0, "en")
+        assert "英語" in prompt
+
+    def test_speaker_mapping_applied(self):
+        g = GeminiIntegration(api_key="key")
+        # デフォルトプリセットの話者名は ["Host"] (1名)
+        prompt = g._build_structure_prompt(
+            "text", "topic", 300.0, "ja",
+            speaker_mapping={"Host": "れいむ"},
+        )
+        assert "れいむ" in prompt
+
+    def test_json_output_format_specified(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_structure_prompt("text", "topic", 300.0, "ja")
+        assert '"segments"' in prompt
+        assert '"speaker"' in prompt
+        assert '"key_points"' in prompt
+
+    def test_preserves_original_content_instruction(self):
+        g = GeminiIntegration(api_key="key")
+        prompt = g._build_structure_prompt("text", "topic", 300.0, "ja")
+        assert "維持" in prompt
+        assert "捏造" in prompt
+
+
+class TestStructureTranscript:
+    """structure_transcript (E2E mock) のテスト"""
+
+    @pytest.mark.asyncio
+    async def test_structure_transcript_mock_fallback(self):
+        """API未設定時にモックフォールバックで構造化が完了すること"""
+        g = GeminiIntegration(api_key="key")
+        # _llm_provider なし → モックフォールバック
+        # MIN_TRANSCRIPT_LENGTH以上のテキストが必要
+        transcript = "Host1: AIの最新動向について解説します。最近の技術革新は目覚ましいものがあります。\nHost2: はい、特に注目すべき分野がいくつかありますね。機械学習の進歩は著しいです。"
+        info = await g.structure_transcript(
+            transcript_text=transcript,
+            topic="AI最新動向",
+            target_duration=300.0,
+        )
+        assert isinstance(info, ScriptInfo)
+        assert len(info.segments) > 0
+        assert info.language == "ja"
+        assert info.title  # タイトルが生成されていること
+
+    @pytest.mark.asyncio
+    async def test_empty_transcript_raises(self):
+        """空文字列でValueErrorが発生すること"""
+        g = GeminiIntegration(api_key="key")
+        with pytest.raises(ValueError, match="空です"):
+            await g.structure_transcript(
+                transcript_text="",
+                topic="test",
+            )
+
+    @pytest.mark.asyncio
+    async def test_whitespace_only_transcript_raises(self):
+        """空白のみでValueErrorが発生すること"""
+        g = GeminiIntegration(api_key="key")
+        with pytest.raises(ValueError, match="空です"):
+            await g.structure_transcript(
+                transcript_text="   \n\t  ",
+                topic="test",
+            )
+
+    @pytest.mark.asyncio
+    async def test_too_short_transcript_raises(self):
+        """短すぎるテキストでValueErrorが発生すること"""
+        g = GeminiIntegration(api_key="key")
+        with pytest.raises(ValueError, match="短すぎます"):
+            await g.structure_transcript(
+                transcript_text="短い",
+                topic="test",
+            )
+
+    @pytest.mark.asyncio
+    async def test_min_length_transcript_accepted(self):
+        """最低文字数ちょうどのテキストが受け入れられること"""
+        g = GeminiIntegration(api_key="key")
+        text = "あ" * GeminiIntegration.MIN_TRANSCRIPT_LENGTH
+        info = await g.structure_transcript(
+            transcript_text=text,
+            topic="test",
+        )
+        assert isinstance(info, ScriptInfo)
+
+    @pytest.mark.asyncio
+    async def test_very_long_transcript_truncated(self):
+        """MAX_TRANSCRIPT_LENGTH超のテキストが切り詰められること（エラーにならない）"""
+        g = GeminiIntegration(api_key="key")
+        text = "あ" * (GeminiIntegration.MAX_TRANSCRIPT_LENGTH + 1000)
+        # 切り詰め警告が出るがエラーにはならない
+        info = await g.structure_transcript(
+            transcript_text=text,
+            topic="test",
+        )
+        assert isinstance(info, ScriptInfo)
+
+    @pytest.mark.asyncio
+    async def test_structure_transcript_with_speaker_mapping(self):
+        """speaker_mappingが構造化に渡されること"""
+        g = GeminiIntegration(api_key="key")
+        transcript = "Host1: こんにちは。" * 10  # MIN_TRANSCRIPT_LENGTH以上
+        info = await g.structure_transcript(
+            transcript_text=transcript,
+            topic="テスト",
+            speaker_mapping={"Host1": "れいむ", "Host2": "まりさ"},
+        )
+        assert isinstance(info, ScriptInfo)
+
+    def test_constants_defined(self):
+        """バリデーション定数が妥当な値であること"""
+        assert GeminiIntegration.MIN_TRANSCRIPT_LENGTH > 0
+        assert GeminiIntegration.MAX_TRANSCRIPT_LENGTH > GeminiIntegration.MIN_TRANSCRIPT_LENGTH
+        assert GeminiIntegration.MAX_TRANSCRIPT_LENGTH <= 1_000_000
+
+
+class TestGenerateThumbnailCopy:
+    """generate_thumbnail_copy (SP-037 Phase 4) のテスト"""
+
+    @pytest.mark.asyncio
+    async def test_mock_fallback_returns_valid_structure(self):
+        """API未設定時にモックフォールバックで有効な構造が返ること"""
+        g = GeminiIntegration(api_key="key")
+        script_info = ScriptInfo(
+            title="AIの衝撃的な進化",
+            content="",
+            segments=[
+                {"speaker": "Host1", "content": "AIの最新動向を解説します。"},
+                {"speaker": "Host2", "content": "最近の進歩は驚くべきものがあります。"},
+                {"speaker": "Host1", "content": "特に注目すべき分野を見ていきましょう。"},
+            ],
+            total_duration_estimate=300.0,
+            language="ja",
+            quality_score=0.8,
+            created_at=datetime(2026, 1, 1),
+        )
+        result = await g.generate_thumbnail_copy(script_info)
+
+        assert "main_text" in result
+        assert "sub_text" in result
+        assert "label" in result
+        assert "suggested_pattern" in result
+        assert "suggested_color" in result
+        assert result["suggested_pattern"] in {"A", "B", "C", "D", "E"}
+        assert result["suggested_color"] in {
+            "dark_red", "dark_yellow", "map_white", "high_contrast", "warm_alert",
+        }
+
+    @pytest.mark.asyncio
+    async def test_json_parse_failure_returns_defaults(self):
+        """JSON解析失敗時にデフォルト値が返ること"""
+        g = GeminiIntegration(api_key="key")
+
+        # _call_gemini_api を無効なJSONを返すようにモック
+        async def mock_api(prompt):
+            return GeminiResponse(
+                content="not valid json at all",
+                model="test", usage_metadata={},
+                safety_ratings=[], created_at=datetime(2026, 1, 1),
+            )
+
+        g._call_gemini_api = mock_api
+        script_info = ScriptInfo(
+            title="テスト題名", content="", segments=[],
+            total_duration_estimate=300.0, language="ja",
+            quality_score=0.5, created_at=datetime(2026, 1, 1),
+        )
+        result = await g.generate_thumbnail_copy(script_info)
+        assert result["main_text"] == "テスト題名"
+        assert result["suggested_pattern"] == "A"
+        assert result["suggested_color"] == "dark_red"
+
+    @pytest.mark.asyncio
+    async def test_missing_keys_补完(self):
+        """レスポンスに不足キーがある場合にデフォルト値で補完されること"""
+        g = GeminiIntegration(api_key="key")
+
+        async def mock_api(prompt):
+            return GeminiResponse(
+                content=json.dumps({"main_text": "なぜAIは", "sub_text": "その理由とは"}),
+                model="test", usage_metadata={},
+                safety_ratings=[], created_at=datetime(2026, 1, 1),
+            )
+
+        g._call_gemini_api = mock_api
+        script_info = ScriptInfo(
+            title="AI", content="", segments=[],
+            total_duration_estimate=300.0, language="ja",
+            quality_score=0.5, created_at=datetime(2026, 1, 1),
+        )
+        result = await g.generate_thumbnail_copy(script_info)
+        assert result["main_text"] == "なぜAIは"
+        assert result["sub_text"] == "その理由とは"
+        assert "label" in result
+        assert "suggested_pattern" in result
+        assert "suggested_color" in result
+
+    @pytest.mark.asyncio
+    async def test_invalid_pattern_normalized(self):
+        """無効なパターン値がAにフォールバックされること"""
+        g = GeminiIntegration(api_key="key")
+
+        async def mock_api(prompt):
+            return GeminiResponse(
+                content=json.dumps({
+                    "main_text": "test", "sub_text": "sub",
+                    "label": "解説", "suggested_pattern": "Z",
+                    "suggested_color": "invalid_color",
+                }),
+                model="test", usage_metadata={},
+                safety_ratings=[], created_at=datetime(2026, 1, 1),
+            )
+
+        g._call_gemini_api = mock_api
+        script_info = ScriptInfo(
+            title="T", content="", segments=[],
+            total_duration_estimate=300.0, language="ja",
+            quality_score=0.5, created_at=datetime(2026, 1, 1),
+        )
+        result = await g.generate_thumbnail_copy(script_info)
+        assert result["suggested_pattern"] == "A"
+        assert result["suggested_color"] == "dark_red"
+
+    @pytest.mark.asyncio
+    async def test_valid_api_response_parsed(self):
+        """正常なAPIレスポンスが正しく解析されること"""
+        g = GeminiIntegration(api_key="key")
+
+        expected = {
+            "main_text": "なぜ日本は",
+            "sub_text": "知られざる理由を徹底解説",
+            "label": "ゆっくり解説",
+            "suggested_pattern": "C",
+            "suggested_color": "map_white",
+        }
+
+        async def mock_api(prompt):
+            return GeminiResponse(
+                content=json.dumps(expected),
+                model="test", usage_metadata={},
+                safety_ratings=[], created_at=datetime(2026, 1, 1),
+            )
+
+        g._call_gemini_api = mock_api
+        script_info = ScriptInfo(
+            title="日本の地理", content="", segments=[],
+            total_duration_estimate=300.0, language="ja",
+            quality_score=0.5, created_at=datetime(2026, 1, 1),
+        )
+        result = await g.generate_thumbnail_copy(script_info)
+        assert result == expected

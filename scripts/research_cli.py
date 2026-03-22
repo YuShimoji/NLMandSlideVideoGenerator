@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -203,6 +204,9 @@ async def run_pipeline(
     style: str = "default",
     generate_thumbnail: bool = True,
     duration_mode: str = "auto",
+    transcript_path: Optional[Path] = None,
+    audio_path: Optional[Path] = None,
+    save_transcript: bool = False,
 ) -> Path:
     """collect → script gen → align → review → [stock images] → CSV の一気通貫実行。
 
@@ -220,6 +224,9 @@ async def run_pipeline(
         auto_images: Trueでストック画像APIから自動収集。
         target_duration: 目標動画尺(秒)。デフォルト300秒(5分)。
         resume_dir: 再開用の既存work_dirパス。
+        transcript_path: NotebookLMトランスクリプトファイルパス (根本ワークフロー)。
+        audio_path: NLM Audio Overview音声ファイルパス (SP-051)。
+        save_transcript: audio_path使用時に中間テキストを保存するか。
 
     Returns:
         最終出力CSVのパス。
@@ -275,8 +282,49 @@ async def run_pipeline(
     final_csv_path = work_dir / "final.csv"
     timeline_csv_path = work_dir / "timeline.csv"
 
+    # --- 音声 / トランスクリプト入力 (根本ワークフロー) ---
+    transcript_text: Optional[str] = None
+    audio_mode: bool = False
+
+    if audio_path and audio_path.exists():
+        # SP-051: 音声ファイルから直接構造化 (--audio が --transcript より優先)
+        audio_mode = True
+        print(f"\n=== Audio file loaded: {audio_path} ({audio_path.stat().st_size / (1024*1024):.1f}MB) ===")
+    elif transcript_path and transcript_path.exists():
+        with open(transcript_path, "r", encoding="utf-8") as handle:
+            transcript_text = handle.read()
+        print(f"\n=== Transcript loaded: {transcript_path} ({len(transcript_text)} chars) ===")
+
     # --- Step 1: collect ---
-    if state.is_step_done("collect") and package_path.exists():
+    if audio_mode:
+        # SP-051: 音声ファイル指定時はcollectスキップ
+        print("\n=== Step 1: Source Collection [SKIP: audio mode] ===")
+        sources = [SourceInfo(
+            url=str(audio_path),
+            title=f"NotebookLM Audio Overview: {topic}",
+            content_preview="(audio file)",
+            relevance_score=1.0,
+            reliability_score=1.0,
+            source_type="audio",
+        )]
+        stats.record_sources(1)
+        state.mark_done("collect", "audio")
+        state.save(work_dir)
+    elif transcript_text:
+        # 根本ワークフロー: transcript指定時はcollectスキップ
+        print("\n=== Step 1: Source Collection [SKIP: transcript mode] ===")
+        sources = [SourceInfo(
+            url=str(transcript_path),
+            title=f"NotebookLM transcript: {topic}",
+            content_preview=transcript_text[:500],
+            relevance_score=1.0,
+            reliability_score=1.0,
+            source_type="transcript",
+        )]
+        stats.record_sources(1)
+        state.mark_done("collect", "transcript")
+        state.save(work_dir)
+    elif state.is_step_done("collect") and package_path.exists():
         print("\n=== Step 1: Source Collection [SKIP: 完了済み] ===")
         with open(package_path, "r", encoding="utf-8") as handle:
             package = ResearchPackage.from_dict(json.load(handle))
@@ -328,8 +376,57 @@ async def run_pipeline(
             script_bundle = json.load(handle)
         segments = script_bundle.get("segments", [])
         stats.record_segments(len(segments))
+    elif audio_mode:
+        # SP-051: 音声ファイルから直接構造化 (1段階方式)
+        print("\n=== Step 2: Audio Transcription + Structuring (Gemini Audio) ===")
+        state.mark_running("script")
+        state.save(work_dir)
+        stats.start_step("script")
+        try:
+            from notebook_lm.audio_transcriber import AudioTranscriber
+
+            transcriber = AudioTranscriber(
+                api_key=os.environ.get("GEMINI_API_KEY", ""),
+                model_name=os.environ.get("GEMINI_MODEL"),
+            )
+            save_path = (work_dir / "transcript" / "transcript.txt") if save_transcript else None
+            script_info = await transcriber.transcribe_and_structure(
+                audio_path=audio_path,
+                topic=topic,
+                target_duration=target_duration,
+                language="ja",
+                style=style,
+                speaker_mapping=speaker_mapping,
+                save_transcript=save_path,
+            )
+
+            # ScriptInfo → script_bundle dict
+            script_bundle = {
+                "title": script_info.title,
+                "segments": script_info.segments,
+                "total_duration_estimate": script_info.total_duration_estimate,
+                "language": script_info.language,
+            }
+            segments = script_bundle["segments"]
+            print(f"Audio transcription complete: {len(segments)} segments, {script_info.total_duration_estimate:.0f}s")
+
+            with open(script_path, "w", encoding="utf-8") as handle:
+                json.dump(script_bundle, handle, ensure_ascii=False, indent=2)
+
+            stats.stop_step("script")
+            stats.record_segments(len(segments))
+            stats.record_llm_provider(f"gemini-audio ({transcriber.model_name})")
+
+            state.mark_done("script", "generated_script.json (audio)")
+            state.save(work_dir)
+        except Exception as e:
+            stats.stop_step("script")
+            state.mark_failed("script", str(e))
+            state.save(work_dir)
+            raise
     else:
-        print("\n=== Step 2: Script Generation (Gemini) ===")
+        mode_label = "Structuring" if transcript_text else "Generation"
+        print(f"\n=== Step 2: Script {mode_label} (Gemini) ===")
         state.mark_running("script")
         state.save(work_dir)
         stats.start_step("script")
@@ -340,7 +437,9 @@ async def run_pipeline(
                 target_duration=target_duration, style=style,
                 speaker_mapping=speaker_mapping,
             )
-            script_bundle = await provider.generate_script(topic, sources)
+            script_bundle = await provider.generate_script(
+                topic, sources, transcript_text=transcript_text,
+            )
             segments = script_bundle.get("segments", [])
             print(f"Generated script: {len(segments)} segments, target {target_duration/60:.0f}min")
 
@@ -395,7 +494,13 @@ async def run_pipeline(
             raise
 
     # --- Step 3: align ---
-    if state.is_step_done("align") and report_path.exists():
+    if audio_mode or transcript_text:
+        # audio/transcript モード: alignment analysis は不要
+        skip_reason = "audio mode" if audio_mode else "transcript mode"
+        print(f"\n=== Step 3: Alignment Analysis [SKIP: {skip_reason}] ===")
+        state.mark_done("align", f"skipped ({skip_reason})")
+        state.save(work_dir)
+    elif state.is_step_done("align") and report_path.exists():
         print("\n=== Step 3: Alignment Analysis [SKIP: 完了済み] ===")
         # resume時にalignment統計を復元
         if report_path.exists():
@@ -440,7 +545,14 @@ async def run_pipeline(
             raise
 
     # --- Step 4: review ---
-    if state.is_step_done("review") and final_csv_path.exists():
+    if audio_mode or transcript_text:
+        # audio/transcript モード: alignment report がないため review もスキップ
+        skip_reason = "audio mode" if audio_mode else "transcript mode"
+        print(f"\n=== Step 4: Review [SKIP: {skip_reason}] ===")
+        reviewed_csv = final_csv_path  # Step 6 で CSV 生成時に使用
+        state.mark_done("review", f"skipped ({skip_reason})")
+        state.save(work_dir)
+    elif state.is_step_done("review") and final_csv_path.exists():
         print("\n=== Step 4: Review [SKIP: 完了済み] ===")
         reviewed_csv = final_csv_path
     else:
@@ -483,22 +595,10 @@ async def run_pipeline(
                 stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
                 classifier = SegmentClassifier(visual_ratio_target=0.4)
 
-                # AI画像フォールバック (SP-033 Phase 3)
-                ai_provider = None
-                try:
-                    from core.visual.ai_image_provider import AIImageProvider
-                    ai_provider = AIImageProvider(cache_dir=work_dir / "stock_images" / "ai_generated")
-                    if not ai_provider.api_key:
-                        ai_provider = None
-                except Exception:
-                    pass
-
                 orchestrator = VisualResourceOrchestrator(
                     classifier=classifier,
                     stock_client=stock_client,
-                    ai_provider=ai_provider,
                     topic=topic,
-                    work_dir=work_dir,
                 )
                 vis_package = orchestrator.orchestrate(
                     segments, slide_paths, speaker_mapping=speaker_mapping,
@@ -561,21 +661,10 @@ async def run_pipeline(
                     stock_client = StockImageClient(cache_dir=work_dir / "stock_images")
                     classifier = SegmentClassifier(visual_ratio_target=0.4)
 
-                    ai_provider = None
-                    try:
-                        from core.visual.ai_image_provider import AIImageProvider
-                        ai_provider = AIImageProvider(cache_dir=work_dir / "stock_images" / "ai_generated")
-                        if not ai_provider.api_key:
-                            ai_provider = None
-                    except Exception:
-                        pass
-
                     orchestrator = VisualResourceOrchestrator(
                         classifier=classifier,
                         stock_client=stock_client,
-                        ai_provider=ai_provider,
                         topic=topic,
-                        work_dir=work_dir,
                     )
                     vis_package = orchestrator.orchestrate(
                     segments, slide_paths, speaker_mapping=speaker_mapping,
@@ -583,10 +672,18 @@ async def run_pipeline(
 
                 assembler = CsvAssembler()
                 assembled_segments: list[dict[str, str]] = []
-                with open(reviewed_csv, "r", encoding="utf-8") as f:
-                    for row in csv_mod.reader(f):
-                        if len(row) >= 2:
-                            assembled_segments.append({"speaker": row[0], "text": row[1]})
+                if transcript_text and not reviewed_csv.exists():
+                    # transcript モード: script_bundle から直接セグメント構築
+                    for seg in segments:
+                        assembled_segments.append({
+                            "speaker": seg.get("speaker", "Host"),
+                            "text": seg.get("content", ""),
+                        })
+                else:
+                    with open(reviewed_csv, "r", encoding="utf-8") as f:
+                        for row in csv_mod.reader(f):
+                            if len(row) >= 2:
+                                assembled_segments.append({"speaker": row[0], "text": row[1]})
 
                 if assembled_segments:
                     assembler.assemble_from_package(
@@ -621,10 +718,17 @@ async def run_pipeline(
 
                 assembler = CsvAssembler()
                 assembled_segments_fb: list[dict[str, str]] = []
-                with open(reviewed_csv, "r", encoding="utf-8") as f:
-                    for row in csv_mod.reader(f):
-                        if len(row) >= 2:
-                            assembled_segments_fb.append({"speaker": row[0], "text": row[1]})
+                if transcript_text and not reviewed_csv.exists():
+                    for seg in segments:
+                        assembled_segments_fb.append({
+                            "speaker": seg.get("speaker", "Host"),
+                            "text": seg.get("content", ""),
+                        })
+                else:
+                    with open(reviewed_csv, "r", encoding="utf-8") as f:
+                        for row in csv_mod.reader(f):
+                            if len(row) >= 2:
+                                assembled_segments_fb.append({"speaker": row[0], "text": row[1]})
 
                 if assembled_segments_fb:
                     assembler.assemble(
@@ -660,7 +764,6 @@ async def run_pipeline(
                 orchestrator = VisualResourceOrchestrator(
                     classifier=classifier,
                     topic=topic,
-                    work_dir=work_dir,
                 )
                 vis_package = orchestrator.orchestrate(
                     segments, slide_image_paths=[],
@@ -694,10 +797,17 @@ async def run_pipeline(
 
                     assembler = CsvAssembler()
                     assembled_segments_gen: list[dict[str, str]] = []
-                    with open(reviewed_csv, "r", encoding="utf-8") as f:
-                        for row in csv_mod.reader(f):
-                            if len(row) >= 2:
-                                assembled_segments_gen.append({"speaker": row[0], "text": row[1]})
+                    if transcript_text and not reviewed_csv.exists():
+                        for seg in segments:
+                            assembled_segments_gen.append({
+                                "speaker": seg.get("speaker", "Host"),
+                                "text": seg.get("content", ""),
+                            })
+                    else:
+                        with open(reviewed_csv, "r", encoding="utf-8") as f:
+                            for row in csv_mod.reader(f):
+                                if len(row) >= 2:
+                                    assembled_segments_gen.append({"speaker": row[0], "text": row[1]})
 
                     if assembled_segments_gen:
                         assembler.assemble_from_package(
@@ -744,8 +854,8 @@ async def run_pipeline(
         warnings = sum(1 for i in vresult.issues if i.severity.value == "warning")
         stats.record_validation(errors=errors, warnings=warnings)
 
-    # --- Post-pipeline: Thumbnail Generation (SP-037) ---
-    # Phase 3: YMM4テンプレートベースのサムネイル生成を優先
+    # --- Post-pipeline: Thumbnail Generation (SP-037 Phase 3-4) ---
+    # Phase 4: Gemini文言生成 + YMM4テンプレートベースのサムネイル生成
     thumbnail_ymm4_path = work_dir / "thumbnail_project.y4mmp"
     if generate_thumbnail and not thumbnail_ymm4_path.exists():
         try:
@@ -753,53 +863,90 @@ async def run_pipeline(
 
             ymm4_gen = Ymm4ThumbnailGenerator()
             templates = ymm4_gen.discover_templates()
-            if templates:
-                # 背景画像: 最初のストック画像があれば使用
-                bg_image = None
-                if vis_package:
-                    for r in vis_package.resources:
-                        if r.source == "stock" and r.image_path and r.image_path.exists():
-                            bg_image = r.image_path
-                            break
+            if not templates:
+                raise FileNotFoundError("YMM4サムネイルテンプレートなし")
+
+            # 背景画像: 最初のストック画像があれば使用
+            bg_image = None
+            if vis_package:
+                for r in vis_package.resources:
+                    if r.source == "stock" and r.image_path and r.image_path.exists():
+                        bg_image = r.image_path
+                        break
+
+            # Phase 4: Gemini文言生成を試行
+            thumbnail_copy = None
+            try:
+                from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
+                from datetime import datetime as _dt
+
+                _gemini = GeminiIntegration(
+                    api_key=os.environ.get("GEMINI_API_KEY", ""),
+                )
+                # script_info が存在しない場合 (非 audio パス) は script_bundle から構築
+                _script_info = locals().get("script_info")
+                if _script_info is None and script_bundle:
+                    _script_info = ScriptInfo(
+                        title=script_bundle.get("title", topic),
+                        content="",
+                        segments=script_bundle.get("segments", []),
+                        total_duration_estimate=script_bundle.get("total_duration_estimate", target_duration),
+                        language=script_bundle.get("language", "ja"),
+                        quality_score=0.5,
+                        created_at=_dt.now(),
+                    )
+                if _script_info:
+                    thumbnail_copy = await _gemini.generate_thumbnail_copy(
+                        script_info=_script_info,
+                    )
+                    # 文言をJSONとして保存
+                    copy_path = work_dir / "thumbnail_copy.json"
+                    with open(copy_path, "w", encoding="utf-8") as f:
+                        json.dump(thumbnail_copy, f, ensure_ascii=False, indent=2)
+                    print("\n=== Thumbnail Copy Generated (Gemini) ===")
+                    print(f"  Main: {thumbnail_copy.get('main_text', '')}")
+                    print(f"  Sub:  {thumbnail_copy.get('sub_text', '')}")
+                    print(f"  Pattern: {thumbnail_copy.get('suggested_pattern', '?')}")
+                    print(f"  Color: {thumbnail_copy.get('suggested_color', '?')}")
+            except Exception as e_copy:
+                logger.warning(f"Geminiサムネイル文言生成失敗、台本タイトルにフォールバック: {e_copy}")
+
+            if thumbnail_copy:
+                # Phase 4: Gemini文言 + 推奨パターン/色で生成
+                ymm4_path = ymm4_gen.generate_from_thumbnail_copy(
+                    thumbnail_copy=thumbnail_copy,
+                    output_dir=work_dir,
+                    background_image=bg_image,
+                )
+                print("\n=== YMM4 Thumbnail Project Generated (Phase 4) ===")
+                print(f"  {ymm4_path}")
+                print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
+            else:
+                # Phase 3 フォールバック: 台本データから直接生成
+                _style_preset_map = {
+                    "default": "dark_red",
+                    "news": "warm_alert",
+                    "educational": "high_contrast",
+                    "summary": "dark_yellow",
+                }
+                auto_preset = _style_preset_map.get(style)
 
                 ymm4_path = ymm4_gen.generate_from_script(
                     template_name=templates[0],
                     script=script_bundle,
                     output_dir=work_dir,
                     background_image=bg_image,
+                    color_preset=auto_preset,
                 )
-                print("\n=== YMM4 Thumbnail Project Generated ===")
+                print("\n=== YMM4 Thumbnail Project Generated (Phase 3 fallback) ===")
                 print(f"  Template: {templates[0]}")
+                if auto_preset:
+                    print(f"  Color preset: {auto_preset}")
                 print(f"  {ymm4_path}")
                 print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
-            else:
-                raise FileNotFoundError("YMM4サムネイルテンプレートなし")
+
         except Exception as e:
-            # フォールバック: PILベースのサムネイル生成
             print(f"\n=== YMM4 Thumbnail Skipped ({e}) ===")
-            print("  -> PILフォールバックでサムネイルを生成します")
-            try:
-                from core.thumbnails import AIThumbnailGenerator, resolve_thumbnail_style
-
-                thumb_style = resolve_thumbnail_style(style)
-                generator = AIThumbnailGenerator()
-
-                bg_image_fallback = None
-                if vis_package:
-                    for r in vis_package.resources:
-                        if r.source == "stock" and r.image_path and r.image_path.exists():
-                            bg_image_fallback = r.image_path
-                            break
-
-                thumb_path = await generator.generate_from_script(
-                    script=script_bundle,
-                    output_dir=work_dir,
-                    background_image=bg_image_fallback,
-                    style=thumb_style,
-                )
-                print(f"  PIL Thumbnail: {thumb_path}")
-            except Exception as e2:
-                print(f"  PIL Thumbnail also failed: {e2}")
 
     # --- Post-pipeline: Metadata + Credits (SP-038 + F-006) ---
     metadata_path = work_dir / "metadata.json"
@@ -1257,9 +1404,98 @@ async def run_upload(
     print(f"  Quota:      {quota['used']}/{quota['limit']} ({quota['remaining']} remaining)")
 
 
+async def run_publish(
+    video_path: Path,
+    topic_dir: Optional[Path] = None,
+    metadata_path: Optional[Path] = None,
+    privacy: str = "private",
+    thumbnail_path: Optional[Path] = None,
+    credentials_path: Optional[Path] = None,
+    verify_quality: bool = True,
+    save_result: bool = True,
+    schedule: Optional[str] = None,
+) -> None:
+    """Phase 7 一気通貫: MP4品質検証 → メタデータ → YouTube公開 → 結果保存 (SP-038 Phase 7)."""
+    from youtube.publisher import PublishOptions, YouTubePublisher
+
+    if not video_path.exists():
+        print(f"ERROR: MP4 file not found: {video_path}")
+        return
+
+    options = PublishOptions(
+        video_path=video_path,
+        privacy=privacy,
+        metadata_path=metadata_path,
+        thumbnail_path=thumbnail_path,
+        topic_dir=topic_dir,
+        credentials_path=credentials_path,
+        verify_quality=verify_quality,
+        schedule=schedule,
+        save_result=save_result,
+    )
+
+    def progress_cb(step: str, pct: float) -> None:
+        bar_len = 40
+        filled = int(bar_len * pct)
+        bar = "#" * filled + "-" * (bar_len - filled)
+        labels = {
+            "phase7_start": "Phase 7 Start",
+            "quality_done": "MP4 Quality Check",
+            "metadata_loaded": "Metadata Loaded",
+            "thumbnail_resolved": "Thumbnail",
+            "uploading": "Uploading",
+            "upload_done": "Upload Done",
+            "phase7_complete": "Complete",
+        }
+        label = labels.get(step, step)
+        print(f"\r  [{bar}] {pct*100:.0f}% {label:<20}", end="", flush=True)
+        if pct >= 1.0:
+            print()
+
+    options.progress_callback = progress_cb
+    file_size_mb = video_path.stat().st_size / (1024 * 1024)
+
+    print(f"\n{'='*60}")
+    print(f"YouTube Publish Pipeline (Phase 7)")
+    print(f"{'='*60}")
+    print(f"Video:     {video_path} ({file_size_mb:.1f} MB)")
+    print(f"Privacy:   {privacy}")
+    if schedule:
+        print(f"Schedule:  {schedule}")
+    if topic_dir:
+        print(f"Topic Dir: {topic_dir}")
+    print()
+
+    publisher = YouTubePublisher(credentials_path=credentials_path)
+    result = await publisher.publish(options)
+
+    print()
+    if result.error:
+        print(f"{'='*60}")
+        print(f"ERROR: {result.error}")
+        if result.quality_warnings:
+            print(f"  Warnings: {'; '.join(result.quality_warnings)}")
+        print(f"{'='*60}")
+        return
+
+    print(f"{'='*60}")
+    print(f"Publish complete!")
+    print(f"  Video ID:   {result.video_id}")
+    print(f"  URL:        {result.video_url}")
+    print(f"  Status:     {result.upload_status}")
+    print(f"  Privacy:    {result.privacy_status}")
+    print(f"  Quality:    {'PASS' if result.quality_passed else 'WARN'}")
+    if result.quality_warnings:
+        print(f"  Warnings:   {'; '.join(result.quality_warnings)}")
+    print(f"  Metadata:   {result.metadata_source}")
+    if result.result_file:
+        print(f"  Result:     {result.result_file}")
+    print(f"{'='*60}")
+
+
 def main() -> None:
     raw_args = sys.argv[1:]
-    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats", "upload", "verify", "thumbnail"}
+    known_commands = {"collect", "align", "review", "pipeline", "validate", "templates", "styles", "batch", "stats", "upload", "verify", "thumbnail", "publish"}
     if raw_args and raw_args[0] not in known_commands and raw_args[0] not in {"-h", "--help"}:
         raw_args = ["collect", *raw_args]
 
@@ -1298,6 +1534,9 @@ def main() -> None:
     pipe_parser.add_argument("--style", default="default", help="Script style preset: default/news/educational/summary (SP-036)")
     pipe_parser.add_argument("--generate-thumbnail", action="store_true", default=defaults.get("generate_thumbnail", True), help="Generate thumbnail image (default: ON)")
     pipe_parser.add_argument("--no-generate-thumbnail", dest="generate_thumbnail", action="store_false", help="Skip thumbnail generation")
+    pipe_parser.add_argument("--transcript", help="Path to NotebookLM transcript text file (root workflow)")
+    pipe_parser.add_argument("--audio", help="Path to NLM Audio Overview file (.mp3/.wav) for auto-transcription (SP-051)")
+    pipe_parser.add_argument("--save-transcript", action="store_true", default=False, help="Save intermediate transcript text when using --audio")
     pipe_parser.add_argument("--resume", help="Resume from existing work_dir")
 
     # batch サブコマンド (SP-040)
@@ -1331,8 +1570,8 @@ def main() -> None:
     verify_parser.add_argument("--resolution", default="1920x1080", help="Expected resolution (WxH)")
     verify_parser.add_argument("--update-batch-result", action="store_true", help="Update batch_result.json with verification results")
 
-    # thumbnail サブコマンド (SP-037 Phase 3)
-    thumb_parser = subparsers.add_parser("thumbnail", help="List/inspect YMM4 thumbnail templates")
+    # thumbnail サブコマンド (SP-037 Phase 3-4)
+    thumb_parser = subparsers.add_parser("thumbnail", help="List/inspect YMM4 thumbnail templates and color presets")
     thumb_parser.add_argument("--list", action="store_true", default=True, help="List available templates (default)")
     thumb_parser.add_argument("--inspect", help="Show placeholders in a specific template")
     thumb_parser.add_argument("--generate", help="Generate thumbnail project from template")
@@ -1341,6 +1580,9 @@ def main() -> None:
     thumb_parser.add_argument("--background", help="Background image path for generation")
     thumb_parser.add_argument("--character", help="Character image path for generation")
     thumb_parser.add_argument("--output-dir", help="Output directory for generated project")
+    thumb_parser.add_argument("--color-preset", choices=["dark_red", "dark_yellow", "map_white", "high_contrast", "warm_alert"], help="Color preset to apply (SP-037 Phase 4)")
+    thumb_parser.add_argument("--variants", type=int, help="Generate N variant color presets (SP-037 Phase 4)")
+    thumb_parser.add_argument("--list-presets", action="store_true", help="List available color presets")
 
     # upload サブコマンド (SP-038 Phase 3)
     upload_parser = subparsers.add_parser("upload", help="Upload MP4 to YouTube with metadata")
@@ -1351,14 +1593,48 @@ def main() -> None:
     upload_parser.add_argument("--credentials", help="Path to OAuth client secrets JSON (optional, uses settings default)")
     upload_parser.add_argument("--no-verify", action="store_true", help="Skip MP4 quality verification before upload")
 
+    # publish サブコマンド (SP-038 Phase 7 統合)
+    pub_parser = subparsers.add_parser("publish", help="Phase 7: MP4品質検証 → メタデータ → YouTube公開 → 結果保存を一気通貫実行")
+    pub_parser.add_argument("--video", required=True, help="Path to MP4 file")
+    pub_parser.add_argument("--topic-dir", help="Topic directory (auto-detects metadata.json and thumbnail)")
+    pub_parser.add_argument("--metadata", help="Path to metadata.json (optional if --topic-dir specified)")
+    pub_parser.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"], help="Privacy status (default: private)")
+    pub_parser.add_argument("--thumbnail", help="Path to thumbnail image (auto-detected from topic-dir)")
+    pub_parser.add_argument("--credentials", help="Path to OAuth client secrets JSON")
+    pub_parser.add_argument("--no-verify", action="store_true", help="Skip MP4 quality verification")
+    pub_parser.add_argument("--no-save", action="store_true", help="Skip saving publish_result.json")
+    pub_parser.add_argument("--schedule", help="Schedule publish time in ISO 8601 format (e.g. '2026-03-25T18:00:00Z')")
+
+    # feed サブコマンド (SP-048 Phase 2)
+    feed_parser = subparsers.add_parser(
+        "feed",
+        help="InoReaderフィードからトピック候補を取得し、バッチキュー互換形式で出力",
+    )
+    feed_source = feed_parser.add_mutually_exclusive_group(required=True)
+    feed_source.add_argument("--unread", action="store_true", help="未読記事を取得")
+    feed_source.add_argument("--folder", type=str, help="指定フォルダの記事を取得")
+    feed_source.add_argument("--starred", action="store_true", help="スター付き記事を取得")
+    feed_parser.add_argument("--count", type=int, default=50, help="取得件数 (default: 50)")
+    feed_parser.add_argument("--days", type=int, default=7, help="鮮度フィルタ日数 (default: 7)")
+    feed_parser.add_argument("--output-dir", type=str, default="output/feed", help="出力先 (default: output/feed)")
+    feed_parser.add_argument("--batch-name", type=str, default="feed_batch", help="バッチ名 (default: feed_batch)")
+    feed_parser.add_argument("--no-batch", action="store_true", help="バッチ互換形式を出力しない (topics.jsonのみ)")
+
     args = parser.parse_args(raw_args)
 
     if args.command == "thumbnail":
         from core.thumbnails import Ymm4ThumbnailGenerator
+        from core.thumbnails.ymm4_thumbnail_generator import COLOR_PRESETS
         gen = Ymm4ThumbnailGenerator()
         templates = gen.discover_templates()
 
-        if args.inspect:
+        if getattr(args, "list_presets", False):
+            print("=== Color Presets (SP-037 Phase 4) ===")
+            for name, preset in COLOR_PRESETS.items():
+                print(f"  {name}: {preset['description']}")
+                print(f"    Main: {preset['main_font_color']} (outline: {preset['main_outline_color']})")
+                print(f"    Sub:  {preset['sub_font_color']} (outline: {preset['sub_outline_color']})")
+        elif args.inspect:
             if args.inspect not in templates:
                 print(f"Template '{args.inspect}' not found. Available: {templates}")
                 return
@@ -1373,21 +1649,39 @@ def main() -> None:
             replacements: dict[str, str] = {}
             if args.title:
                 replacements["TITLE"] = args.title
+                replacements["MAIN_TEXT"] = args.title
             if args.subtitle:
                 replacements["SUBTITLE"] = args.subtitle
+                replacements["SUB_TEXT"] = args.subtitle
             if args.background:
                 replacements["BACKGROUND"] = str(Path(args.background).resolve())
             if args.character:
                 replacements["CHARACTER"] = str(Path(args.character).resolve())
 
             out_dir = Path(args.output_dir) if args.output_dir else Path("data/thumbnails/output")
-            result = gen.generate(
-                template_name=args.generate,
-                output_dir=out_dir,
-                replacements=replacements,
-            )
-            print(f"=== Generated: {result} ===")
-            print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
+
+            # バリエーション生成 (Phase 4)
+            if getattr(args, "variants", None):
+                preset_names = list(COLOR_PRESETS.keys())[:args.variants]
+                results = gen.generate_variants(
+                    template_name=args.generate,
+                    output_dir=out_dir,
+                    base_replacements=replacements,
+                    color_presets=preset_names,
+                )
+                print(f"=== Generated {len(results)} variants ===")
+                for r in results:
+                    print(f"  {r}")
+                print("  -> YMM4で各ファイルを開いて比較+レビューしてください")
+            else:
+                result = gen.generate(
+                    template_name=args.generate,
+                    output_dir=out_dir,
+                    replacements=replacements,
+                    color_preset=getattr(args, "color_preset", None),
+                )
+                print(f"=== Generated: {result} ===")
+                print("  -> YMM4で開いて1フレームPNG書き出し+レビューしてください")
         else:
             print("=== YMM4 Thumbnail Templates ===")
             if not templates:
@@ -1398,6 +1692,9 @@ def main() -> None:
                     ph = gen.list_placeholders(name)
                     all_ph = ph["text"] + ph["image"]
                     print(f"  {name}: {', '.join(all_ph) if all_ph else '(プレースホルダーなし)'}")
+            print("\n=== Color Presets ===")
+            for name, desc in gen.list_color_presets().items():
+                print(f"  {name}: {desc}")
         return
 
     if args.command == "upload":
@@ -1409,6 +1706,22 @@ def main() -> None:
                 thumbnail_path=Path(args.thumbnail) if args.thumbnail else None,
                 credentials_path=Path(args.credentials) if args.credentials else None,
                 verify_quality=not args.no_verify,
+            )
+        )
+        return
+
+    if args.command == "publish":
+        asyncio.run(
+            run_publish(
+                video_path=Path(args.video),
+                topic_dir=Path(args.topic_dir) if args.topic_dir else None,
+                metadata_path=Path(args.metadata) if args.metadata else None,
+                privacy=args.privacy,
+                thumbnail_path=Path(args.thumbnail) if args.thumbnail else None,
+                credentials_path=Path(args.credentials) if args.credentials else None,
+                verify_quality=not args.no_verify,
+                save_result=not args.no_save,
+                schedule=getattr(args, "schedule", None),
             )
         )
         return
@@ -1471,6 +1784,29 @@ def main() -> None:
         run_list_styles()
         return
 
+    if args.command == "feed":
+        from feed.feed_runner import run as feed_run, build_parser as feed_build_parser
+        import argparse as _ap
+
+        # feed_runner 互換の Namespace を構築
+        feed_ns = _ap.Namespace(
+            unread=getattr(args, "unread", False),
+            folder=getattr(args, "folder", None),
+            starred=getattr(args, "starred", False),
+            subscriptions=False,
+            count=args.count,
+            days=args.days,
+            output=Path(args.output_dir),
+            include_read=False,
+            batch=not args.no_batch,
+            batch_name=args.batch_name,
+            verbose=False,
+        )
+        exit_code = feed_run(feed_ns)
+        if exit_code != 0:
+            print(f"\nfeed コマンドがエラーコード {exit_code} で終了しました")
+        return
+
     if args.command == "batch":
         asyncio.run(
             run_batch(
@@ -1502,6 +1838,8 @@ def main() -> None:
         speaker_map = settings.PIPELINE_DEFAULTS.get("speaker_mapping")
         if args.speaker_map:
             speaker_map = json.loads(args.speaker_map)
+        transcript_file = Path(args.transcript) if args.transcript else None
+        audio_file = Path(args.audio) if args.audio else None
         asyncio.run(
             run_pipeline(
                 topic=args.topic or "",
@@ -1517,6 +1855,9 @@ def main() -> None:
                 style=args.style,
                 generate_thumbnail=bool(args.generate_thumbnail),
                 duration_mode=getattr(args, 'duration_mode', 'auto'),
+                transcript_path=transcript_file,
+                audio_path=audio_file,
+                save_transcript=getattr(args, 'save_transcript', False),
             )
         )
         return

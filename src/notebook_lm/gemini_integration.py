@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
-LLM連携スクリプト生成モジュール (SP-043 Phase 2-3 移行済み)
+LLM連携トランスクリプト構造化モジュール
+
+根本ワークフロー (DESIGN_FOUNDATIONS.md Section 0):
+  NLM音声 → テキスト化 → **Gemini構造化** → CSV → YMM4
+
+主要パス:
+  structure_transcript()  — NLMトランスクリプトをspeaker/textセグメントに構造化 (メイン)
+  generate_script_from_sources() — ソースから台本を生成 (フォールバック、NLMテキスト不在時)
 
 ILLMProvider 抽象を通じて Gemini / OpenAI / Claude / DeepSeek を透過的に利用。
 後方互換: api_key のみ指定時は create_llm_provider() で自動生成。
@@ -39,7 +46,15 @@ class ScriptInfo:
     created_at: datetime
 
 class GeminiIntegration:
-    """LLM連携スクリプト生成クラス (旧名 Gemini 固定、現在はマルチLLM対応)"""
+    """LLM連携トランスクリプト構造化クラス (マルチLLM対応)
+
+    主要メソッド:
+        structure_transcript()  — NLMテキスト → 構造化JSON (メインパス)
+        generate_script_from_sources() — ソース → 台本生成 (フォールバック)
+        generate_slide_content()  — 台本 → スライド内容
+
+    DESIGN_FOUNDATIONS準拠: Geminiは「構造化」が主責務。台本「生成」はフォールバック。
+    """
 
     # モデルフォールバックチェーン (gemini-2.5-flash を全用途で使用)
     DEFAULT_MODELS = ["gemini-2.5-flash"]
@@ -116,7 +131,12 @@ class GeminiIntegration:
         style: str = "default",
         speaker_mapping: Optional[Dict[str, str]] = None,
     ) -> ScriptInfo:
-        """ソースからスクリプトを生成"""
+        """ソースから台本を生成 (フォールバックパス)。
+
+        DESIGN_FOUNDATIONS準拠: NotebookLMトランスクリプトが得られない場合にのみ使用。
+        品質はNotebookLM経由のstructure_transcript()より劣る。
+        メインパスは structure_transcript() を使用すること。
+        """
         try:
             logger.info(f"Gemini APIでスクリプト生成開始: {topic} (style={style})")
 
@@ -496,6 +516,189 @@ URL: {source.get('url', 'URL不明')}
             "language": "ja",
         }
 
+    # -- 最小文字数: これ未満だと構造化に十分な情報がない --
+    MIN_TRANSCRIPT_LENGTH = 50
+    # -- 最大文字数: Gemini コンテキスト窓に収めるための安全上限 --
+    MAX_TRANSCRIPT_LENGTH = 500_000
+
+    async def structure_transcript(
+        self,
+        transcript_text: str,
+        topic: str,
+        target_duration: float = 300.0,
+        language: str = "ja",
+        style: str = "default",
+        speaker_mapping: Optional[Dict[str, str]] = None,
+    ) -> ScriptInfo:
+        """NotebookLMトランスクリプトを構造化してScriptInfoに変換。
+
+        根本ワークフロー (NLM音声→テキスト→Gemini構造化) の中核メソッド。
+        台本を「生成」するのではなく、既存の対話テキストを
+        speaker/text のセグメントに「構造化」する。
+
+        Args:
+            transcript_text: NotebookLMからのテキスト（文字起こし全文）
+            topic: 動画のトピック名
+            target_duration: 目標動画尺（秒）
+            language: 出力言語 ("ja" / "en")
+            style: スクリプトスタイルプリセット名
+            speaker_mapping: 話者名の置換マッピング
+
+        Returns:
+            ScriptInfo: 構造化されたセグメント群
+
+        Raises:
+            ValueError: transcript_text が空または短すぎる場合
+        """
+        # 入力バリデーション
+        if not transcript_text or not transcript_text.strip():
+            raise ValueError("transcript_text が空です。NotebookLMのテキスト出力を確認してください。")
+
+        cleaned = transcript_text.strip()
+        if len(cleaned) < self.MIN_TRANSCRIPT_LENGTH:
+            raise ValueError(
+                f"transcript_text が短すぎます ({len(cleaned)}文字)。"
+                f"最低{self.MIN_TRANSCRIPT_LENGTH}文字のテキストが必要です。"
+            )
+
+        if len(cleaned) > self.MAX_TRANSCRIPT_LENGTH:
+            logger.warning(
+                f"transcript_text が長大です ({len(cleaned)}文字)。"
+                f"先頭{self.MAX_TRANSCRIPT_LENGTH}文字に切り詰めます。"
+            )
+            cleaned = cleaned[: self.MAX_TRANSCRIPT_LENGTH]
+
+        logger.info(
+            f"トランスクリプト構造化開始: {topic} "
+            f"(style={style}, {len(cleaned)}文字, 目標{target_duration/60:.1f}分)"
+        )
+
+        prompt = self._build_structure_prompt(
+            cleaned, topic, target_duration, language,
+            style=style, speaker_mapping=speaker_mapping,
+        )
+
+        try:
+            response = await self._call_gemini_api(prompt)
+            script_info = await self._parse_script_response(response, topic, language)
+        except json.JSONDecodeError as e:
+            logger.error(f"構造化レスポンスのJSON解析に失敗: {e}")
+            raise
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"トランスクリプト構造化に失敗: {e}")
+            raise
+
+        # 構造化結果のバリデーション
+        if not script_info.segments:
+            logger.warning("構造化結果のセグメントが0件です。元テキストの形式を確認してください。")
+
+        logger.info(
+            f"トランスクリプト構造化完了: {len(script_info.segments)}セグメント, "
+            f"推定{script_info.total_duration_estimate/60:.1f}分"
+        )
+        return script_info
+
+    def _build_structure_prompt(
+        self,
+        transcript_text: str,
+        topic: str,
+        target_duration: float,
+        language: str,
+        style: str = "default",
+        speaker_mapping: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """トランスクリプト構造化用プロンプトを構築。
+
+        generate用プロンプトとの違い:
+        - ソース情報ではなく、対話テキスト全文を入力とする
+        - 「生成」ではなく「構造化」(話者分離+セグメント分割)を指示する
+        - 元テキストの内容・表現をできるだけ維持する
+        """
+        try:
+            preset = self.load_preset(style)
+        except (ValueError, OSError):
+            logger.warning(f"Preset '{style}' not found, falling back to built-in default")
+            preset = {}
+
+        lang_instruction = "日本語" if language == "ja" else "英語"
+
+        # プリセットからセグメント密度を取得
+        segment_density = preset.get("segment_density", {})
+        avg_seconds = preset.get("avg_segment_seconds", {})
+
+        duration_key = str(300)
+        for threshold in ["300", "900", "1800", "3600"]:
+            if target_duration <= int(threshold):
+                duration_key = threshold
+                break
+        else:
+            duration_key = "3600"
+
+        segment_count_hint = segment_density.get(duration_key, "20-30")
+        avg_segment_sec = avg_seconds.get(duration_key, 55)
+
+        speakers = preset.get("speakers", {})
+        speaker_names = speakers.get("default_names", ["Host1", "Host2"])
+        if speaker_mapping:
+            speaker_names = [speaker_mapping.get(n, n) for n in speaker_names]
+
+        speaker_list = "、".join(f"「{n}」" for n in speaker_names)
+        speaker_example = speaker_names[0]
+
+        prompt = f"""あなたはNotebookLMの対話形式トランスクリプトを、動画制作用の構造化JSONに変換する専門家です。
+
+以下の対話テキストを解析し、{lang_instruction}の動画用スクリプトJSONに構造化してください。
+
+【重要: これは「生成」ではなく「構造化」タスクです】
+- 元テキストの内容・表現・情報をできるだけそのまま維持してください
+- 話者の発話を分離し、セグメントに分割してください
+- 独自の内容を追加しないでください
+- 元テキストにない情報を捏造しないでください
+
+【トピック】
+{topic}
+
+【対話テキスト (NotebookLMトランスクリプト)】
+{transcript_text}
+
+【構造化の指示】
+1. 話者を識別し、{speaker_list}に割り当ててください
+   - 2名の対話形式が一般的です
+   - 話者が明示されていない場合は文脈から推定してください
+2. 対話を意味のあるセグメントに分割してください
+   - セグメント数目安: {segment_count_hint}個
+   - 各セグメント: {avg_segment_sec}秒前後 (50-150文字程度)
+3. 各セグメントにセクション名とkey_pointsを付与してください
+   - key_pointsはスライド画像検索に使える具体的なキーワード
+
+【制約】
+- 1セグメント = 1話者の発話のみ
+- セグメントの content に他の話者の発話を含めない
+- 元テキストの論理構造 (導入→本論→まとめ等) を維持する
+- 目安時間: {target_duration/60:.1f}分（約{int(target_duration)}秒）
+
+【出力形式】
+以下のJSON形式で出力してください：
+
+{{
+  "title": "動画タイトル (元テキストの主題から生成)",
+  "segments": [
+    {{
+      "section": "セクション名",
+      "content": "この話者の発話内容 (元テキストからの抽出・整形)",
+      "duration_estimate": {avg_segment_sec}.0,
+      "key_points": ["キーワード1", "キーワード2"],
+      "speaker": "{speaker_example}"
+    }}
+  ],
+  "total_duration_estimate": {target_duration},
+  "language": "{language}"
+}}
+"""
+        return prompt
+
     async def _check_rate_limit(self):
         """レート制限をチェック"""
         if self.request_count >= self.max_requests_per_minute:
@@ -554,6 +757,126 @@ URL: {source.get('url', 'URL不明')}
             raise
         except Exception as e:
             logger.error(f"スライド内容生成失敗: {e}")
+            raise
+
+    async def generate_thumbnail_copy(
+        self,
+        script_info: "ScriptInfo",
+        language: str = "ja",
+    ) -> Dict[str, Any]:
+        """台本からサムネイル用フック文言を自動生成する (SP-037 Phase 4)。
+
+        成功パターンのフック構文 (thumbnail_pattern_analysis.md Section 2.3) を
+        プロンプトに組み込み、YouTube解説動画の「売れるサムネイル」文言を生成する。
+
+        Args:
+            script_info: 台本データ (title, segments)
+            language: 出力言語 ("ja" / "en")
+
+        Returns:
+            dict: {
+                "main_text": "なぜXは...",       # 5-12文字のフック文言
+                "sub_text": "驚きの理由が...",    # 10-25文字の補足
+                "label": "ゆっくり解説",          # カテゴリラベル
+                "suggested_pattern": "C",         # 推奨レイアウトパターン (A-E)
+                "suggested_color": "dark_red",    # 推奨色彩プリセット名
+            }
+        """
+        title = script_info.title
+        # 最初の3セグメントからコンテキストを取得
+        first_segments = script_info.segments[:3]
+        segments_text = "\n".join(
+            f"- [{seg.get('speaker', '?')}] {seg.get('content', '')}"
+            for seg in first_segments
+        )
+
+        lang_instruction = "日本語" if language == "ja" else "英語"
+
+        prompt = f"""あなたはYouTube解説動画のサムネイル文言を作成する専門家です。
+
+以下の台本情報から、クリック率の高いサムネイル用テキストを{lang_instruction}で生成してください。
+
+【台本タイトル】
+{title}
+
+【冒頭の内容】
+{segments_text}
+
+【サムネイル文言の成功パターン】
+高再生数のYouTube解説動画サムネイルには、以下のフック構文が使われています:
+- 「なぜX？」 — 知的好奇心の直接刺激
+- 「Xの正体」 — 謎の提示+解決の約束
+- 「Xの謎」 — ミステリー感の醸成
+- 「絶対にX」 — 断定による強い主張
+- 「衝撃のX」 — 感情的インパクト
+- 「XX選」 — ボリュームの約束
+
+【制約】
+- main_text: 5-12文字。視覚的フック。モバイルでも読める大きさで表示される
+- sub_text: 10-25文字。補足情報。クリック判断材料
+- label: 「ゆっくり解説」「総集編」「緊急解説」等のカテゴリ表示
+- suggested_pattern: A(中央テキスト), B(左画像+右テキスト), C(地図+矢印), D(縦分割), E(数字+リスト) から1つ選択
+- suggested_color: dark_red(時事/ミステリー), dark_yellow(科学/雑学), map_white(地理), high_contrast(AI/テック), warm_alert(緊急ニュース) から1つ選択
+
+【出力形式】
+以下のJSON形式で出力してください:
+
+{{
+  "main_text": "フック文言",
+  "sub_text": "補足説明",
+  "label": "カテゴリ",
+  "suggested_pattern": "A",
+  "suggested_color": "dark_red"
+}}
+"""
+
+        try:
+            response = await self._call_gemini_api(prompt)
+            cleaned = self._extract_json_from_response(response.content)
+            result: Dict[str, Any] = json.loads(cleaned)
+
+            # バリデーション
+            required_keys = {"main_text", "sub_text", "label", "suggested_pattern", "suggested_color"}
+            missing = required_keys - set(result.keys())
+            if missing:
+                logger.warning(f"サムネイル文言生成: 不足キー {missing}、デフォルト値で補完")
+                defaults = {
+                    "main_text": title[:12] if title else "解説",
+                    "sub_text": "詳しく解説します",
+                    "label": "ゆっくり解説",
+                    "suggested_pattern": "A",
+                    "suggested_color": "dark_red",
+                }
+                for key in missing:
+                    result[key] = defaults[key]
+
+            valid_patterns = {"A", "B", "C", "D", "E"}
+            if result.get("suggested_pattern") not in valid_patterns:
+                result["suggested_pattern"] = "A"
+
+            valid_colors = {"dark_red", "dark_yellow", "map_white", "high_contrast", "warm_alert"}
+            if result.get("suggested_color") not in valid_colors:
+                result["suggested_color"] = "dark_red"
+
+            logger.info(
+                f"サムネイル文言生成完了: main='{result['main_text']}', "
+                f"pattern={result['suggested_pattern']}, color={result['suggested_color']}"
+            )
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"サムネイル文言JSON解析失敗: {e}、デフォルト値を返します")
+            return {
+                "main_text": title[:12] if title else "解説",
+                "sub_text": "最新情報を徹底解説",
+                "label": "ゆっくり解説",
+                "suggested_pattern": "A",
+                "suggested_color": "dark_red",
+            }
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"サムネイル文言生成失敗: {e}")
             raise
 
     def get_usage_stats(self) -> Dict[str, Any]:

@@ -203,3 +203,61 @@ class TestRun:
         report = (tmp_path / "feed_report.md").read_text(encoding="utf-8")
         assert "Feed Report" in report
         assert "Test Article" in report
+
+    @patch("src.feed.feed_runner.InoreaderClient")
+    def test_batch_flag_creates_batch_json(self, mock_client_cls, tmp_path):
+        """--batch フラグで batch_topics.json が生成されること (SP-048 Phase 2)"""
+        mock_client = MagicMock()
+        mock_client.get_unread_articles.return_value = _make_articles(3)
+        mock_client_cls.return_value = mock_client
+
+        parser = build_parser()
+        args = parser.parse_args(["--unread", "--days", "0", "--output", str(tmp_path), "--batch"])
+        exit_code = run(args)
+
+        assert exit_code == 0
+        assert (tmp_path / "topics.json").exists()
+        assert (tmp_path / "batch_topics.json").exists()
+
+        batch = json.loads((tmp_path / "batch_topics.json").read_text(encoding="utf-8"))
+        assert "batch_name" in batch
+        assert "defaults" in batch
+        assert "topics" in batch
+        assert len(batch["topics"]) == 3
+        # seed_urls が設定されていること
+        for t in batch["topics"]:
+            assert "topic" in t
+            assert "seed_urls" in t
+
+    @patch("src.feed.feed_runner.InoreaderClient")
+    def test_batch_custom_name(self, mock_client_cls, tmp_path):
+        """--batch-name でカスタム名が設定されること"""
+        mock_client = MagicMock()
+        mock_client.get_unread_articles.return_value = _make_articles(1)
+        mock_client_cls.return_value = mock_client
+
+        parser = build_parser()
+        args = parser.parse_args([
+            "--unread", "--days", "0", "--output", str(tmp_path),
+            "--batch", "--batch-name", "my_custom_batch",
+        ])
+        exit_code = run(args)
+
+        assert exit_code == 0
+        batch = json.loads((tmp_path / "batch_topics.json").read_text(encoding="utf-8"))
+        assert batch["batch_name"] == "my_custom_batch"
+
+    @patch("src.feed.feed_runner.InoreaderClient")
+    def test_no_batch_flag_omits_batch_json(self, mock_client_cls, tmp_path):
+        """--batch なしで batch_topics.json が生成されないこと"""
+        mock_client = MagicMock()
+        mock_client.get_unread_articles.return_value = _make_articles(2)
+        mock_client_cls.return_value = mock_client
+
+        parser = build_parser()
+        args = parser.parse_args(["--unread", "--days", "0", "--output", str(tmp_path)])
+        exit_code = run(args)
+
+        assert exit_code == 0
+        assert (tmp_path / "topics.json").exists()
+        assert not (tmp_path / "batch_topics.json").exists()

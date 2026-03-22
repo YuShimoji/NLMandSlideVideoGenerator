@@ -79,6 +79,69 @@ def extract_topics(
     return topics
 
 
+def convert_to_batch_format(
+    topics: List[Dict[str, Any]],
+    batch_name: str = "feed_batch",
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """フィードトピックをバッチキュー(SP-040)互換形式に変換する。
+
+    feed_runner が生成する [{"topic", "urls", ...}] を
+    バッチキューが期待する {"batch_name", "defaults", "topics": [{"topic", "seed_urls", ...}]}
+    に変換する。
+
+    Args:
+        topics: extract_topics() の出力。
+        batch_name: バッチ名。
+        defaults: バッチ全体のデフォルト設定 (style, duration, auto_images 等)。
+
+    Returns:
+        バッチキュー互換の辞書。
+    """
+    batch_topics = []
+    for t in topics:
+        entry: Dict[str, Any] = {"topic": t["topic"]}
+        if t.get("urls"):
+            entry["seed_urls"] = t["urls"]
+        # 追加メタデータをコメント的に保持 (パイプラインは無視するが人間レビューに有用)
+        if t.get("source"):
+            entry["_source"] = t["source"]
+        if t.get("published"):
+            entry["_published"] = t["published"]
+        if t.get("summary"):
+            entry["_summary"] = t["summary"]
+        batch_topics.append(entry)
+
+    return {
+        "batch_name": batch_name,
+        "defaults": defaults or {
+            "style": "news",
+            "duration": 1800,
+            "auto_images": True,
+            "auto_review": True,
+        },
+        "topics": batch_topics,
+    }
+
+
+def save_batch_json(
+    topics: List[Dict[str, Any]],
+    output_dir: Path,
+    batch_name: str = "feed_batch",
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Path:
+    """バッチキュー互換 JSON を出力する (SP-048 Phase 2)。"""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "batch_topics.json"
+
+    batch = convert_to_batch_format(topics, batch_name, defaults)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(batch, f, ensure_ascii=False, indent=2)
+
+    logger.info("Saved batch topics (%d items) to %s", len(topics), output_path)
+    return output_path
+
+
 def save_topics_json(topics: List[Dict[str, Any]], output_dir: Path) -> Path:
     """パイプライン互換 JSON を出力する。
 

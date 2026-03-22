@@ -18,7 +18,12 @@ from .inoreader_client import (
     InoreaderClient,
     InoreaderRateLimitError,
 )
-from .topic_extractor import extract_topics, save_feed_report, save_topics_json
+from .topic_extractor import (
+    extract_topics,
+    save_batch_json,
+    save_feed_report,
+    save_topics_json,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +82,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--include-read",
         action="store_true",
         help="既読記事も含める (--folder 使用時のみ)",
+    )
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="バッチキュー(SP-040)互換形式で batch_topics.json も出力",
+    )
+    parser.add_argument(
+        "--batch-name",
+        type=str,
+        default="feed_batch",
+        help="バッチ名 (--batch 使用時、default: feed_batch)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="詳細ログを表示"
@@ -163,7 +179,20 @@ def run(args: argparse.Namespace) -> int:
         print(f"\n出力完了:")
         print(f"  topics.json:    {json_path}")
         print(f"  feed_report.md: {report_path}")
-        print(f"\ntopics.json をパイプラインの入力として使用できます。")
+
+        # バッチキュー互換出力 (SP-048 Phase 2)
+        if args.batch:
+            batch_path = save_batch_json(
+                topics, args.output, batch_name=args.batch_name,
+            )
+            print(f"  batch_topics.json: {batch_path}")
+            print(
+                f"\nバッチ実行: python scripts/research_cli.py batch "
+                f"--topics {batch_path}"
+            )
+        else:
+            print(f"\ntopics.json をパイプラインの入力として使用できます。")
+            print(f"バッチ互換形式で出力するには --batch を追加してください。")
         return 0
 
     except InoreaderRateLimitError as e:

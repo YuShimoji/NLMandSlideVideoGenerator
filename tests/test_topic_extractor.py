@@ -8,7 +8,9 @@ from pathlib import Path
 from src.feed.inoreader_client import Article
 from src.feed.topic_extractor import (
     _strip_html,
+    convert_to_batch_format,
     extract_topics,
+    save_batch_json,
     save_feed_report,
     save_topics_json,
 )
@@ -230,3 +232,78 @@ class TestSaveFeedReport:
         path = save_feed_report([], tmp_path)
         content = path.read_text(encoding="utf-8")
         assert "0件" in content
+
+
+# --- Batch Format Conversion Tests (SP-048 Phase 2) ---
+
+
+class TestConvertToBatchFormat:
+    def test_basic_conversion(self):
+        topics = [
+            {"topic": "AI最新動向", "urls": ["https://example.com/ai"], "source": "TechBlog", "published": "2026-03-21"},
+        ]
+        batch = convert_to_batch_format(topics)
+        assert batch["batch_name"] == "feed_batch"
+        assert "defaults" in batch
+        assert len(batch["topics"]) == 1
+        assert batch["topics"][0]["topic"] == "AI最新動向"
+        assert batch["topics"][0]["seed_urls"] == ["https://example.com/ai"]
+
+    def test_metadata_preserved(self):
+        topics = [
+            {"topic": "Test", "urls": ["https://x.com"], "source": "Src", "published": "2026-01-01", "summary": "Sum"},
+        ]
+        batch = convert_to_batch_format(topics)
+        entry = batch["topics"][0]
+        assert entry["_source"] == "Src"
+        assert entry["_published"] == "2026-01-01"
+        assert entry["_summary"] == "Sum"
+
+    def test_empty_urls_omitted(self):
+        topics = [{"topic": "Test", "urls": [], "source": "S"}]
+        batch = convert_to_batch_format(topics)
+        assert "seed_urls" not in batch["topics"][0]
+
+    def test_custom_batch_name(self):
+        batch = convert_to_batch_format([], batch_name="custom")
+        assert batch["batch_name"] == "custom"
+
+    def test_custom_defaults(self):
+        custom = {"style": "educational", "duration": 900}
+        batch = convert_to_batch_format([], defaults=custom)
+        assert batch["defaults"]["style"] == "educational"
+        assert batch["defaults"]["duration"] == 900
+
+    def test_multiple_topics(self):
+        topics = [
+            {"topic": f"Topic {i}", "urls": [f"https://example.com/{i}"], "source": "S"}
+            for i in range(5)
+        ]
+        batch = convert_to_batch_format(topics)
+        assert len(batch["topics"]) == 5
+
+    def test_default_defaults(self):
+        batch = convert_to_batch_format([])
+        assert batch["defaults"]["auto_images"] is True
+        assert batch["defaults"]["auto_review"] is True
+
+
+class TestSaveBatchJson:
+    def test_save_creates_file(self, tmp_path):
+        topics = [{"topic": "Test", "urls": ["https://x.com"], "source": "S"}]
+        path = save_batch_json(topics, tmp_path)
+        assert path.exists()
+        assert path.name == "batch_topics.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["batch_name"] == "feed_batch"
+        assert len(data["topics"]) == 1
+
+    def test_save_with_custom_name(self, tmp_path):
+        path = save_batch_json([], tmp_path, batch_name="my_batch")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["batch_name"] == "my_batch"
+
+    def test_save_empty(self, tmp_path):
+        path = save_batch_json([], tmp_path)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["topics"] == []

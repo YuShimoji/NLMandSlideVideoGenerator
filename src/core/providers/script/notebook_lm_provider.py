@@ -31,6 +31,7 @@ class NotebookLMScriptProvider(IScriptProvider):
         topic: str,
         sources: List[SourceInfo],
         mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         NotebookLM を利用してスクリプトを生成
