@@ -361,10 +361,10 @@ Status: Audio Overview生成中... (残り約2分)
 - 新規ライン作成 → 手動で各Phase進捗を記録
 - 既存パイプラインへの接続 (Phase 2-5自動実行)
 
-### Phase 2: バッチ選定+AI評価 (1-2週)
+### Phase 2: バッチ選定 (1-2週)
 
 - バッチ選定画面
-- AI評価機能 (Gemini: トピック適性スコア)
+- ~~AI評価機能 (Gemini: トピック適性スコア)~~ **LEGACY: Gemini動画適性スコアリングは廃止。トピック選定は人間判断 (DESIGN_FOUNDATIONS Section 0: 人間がNotebookLMにソースを投入)**
 - Go/No-Go判定UI
 - RSS連携 (SP-048)
 
@@ -390,4 +390,4 @@ Status: Audio Overview生成中... (残り約2分)
 | Q53-1 | Streamlitで十分か、専用GUIフレームワークが必要か | Streamlit続行 / Electron / Tauri | Phase 1完了後 |
 | Q53-2 | プロダクションボードのデータ永続化方式 | JSON / SQLite / Streamlit Cloud | Phase 1実装時 |
 | Q53-3 | Playwright NLMの安定性は実用水準に達するか | 実用 / 補助的 / 断念 | Phase 3 PoC後 |
-| Q53-4 | AI評価のプロンプト設計と評価軸 | Phase 2設計時 | Phase 2設計時 |
+| Q53-4 | ~~AI評価のプロンプト設計と評価軸~~ | **LEGACY: 廃止** | — |

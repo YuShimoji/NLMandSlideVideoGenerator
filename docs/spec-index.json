@@ -497,7 +497,7 @@
     "pct": 40,
     "cat": "ui",
     "file": "docs/specs/producer_gui_spec.md",
-    "summary": "Streamlit制作者GUI。Phase 1-4実装計画。VS-1〜4安定後に着手",
+    "summary": "Streamlit制作者GUI。Phase 1-4実装計画。Phase 2 AI評価(Gemini動画適性スコア)は廃止。VS-1〜4安定後に着手",
     "vs": "VS-5",
     "blocked_by": "VS-1〜4安定後"
   }

@@ -182,3 +182,106 @@ VS-1が完了するまで、以下は着手しない:
 9. プレビュー確認 → MP4レンダリング
 10. MP4再生確認 → VS-1完了
 ```
+
+---
+
+## 統合優先タスク一覧 (2026-03-23 検収済み)
+
+> この一覧は全タスクの優先度を Tier 1-5 で定義する。
+> 上位セクションのVS定義と矛盾する場合、VS定義が優先。
+> 更新時は実際のspec-index.json / DELIVERABLE_MAP本体と照合すること。
+
+### 全体状況
+
+AI側の実装は全て完了。残りは主に人間操作 (環境構築・手動確認・デザイン判断)。
+パイプライン: NotebookLM → 音声 → Gemini構造化 → Python CSV → YMM4 → MP4 → YouTube
+
+### Tier 1: VS-1 初動画完走 (最優先・現在スライス)
+
+| # | タスク | 担当 | 状態 | ブロッカー |
+| --- | -------- | ------ | ------ | ----------- |
+| 1 | .NET 10 SDK インストール + YMM4プラグインビルド・配置 | 人間 | 未着手 | .NET 10 SDK |
+| 2 | 環境変数設定 (GEMINI_API_KEY, PEXELS_API_KEY) | 人間 | 未着手 | なし |
+| 3 | トピック選定 + NLM ソース投入 | 人間 | 未着手 | なし |
+| 4 | NLM Audio Overview 生成 + DL | 人間+NLM | 未着手 | なし |
+| 5 | `research_cli.py pipeline --audio` 実行 | 自動 | コード済み | #2完了 |
+| 6 | YMM4 CSV インポート + レンダリング | 人間+YMM4 | 未着手 | #1完了 |
+| 7 | MP4 再生確認 | 人間 | 未着手 | #6完了 |
+
+狙い: 1本目のMP4を手元で完成させ、パイプライン全体の実動作を検証する。VS-1が全ての後続作業の前提条件。
+
+### Tier 2: VS-2 YouTube公開
+
+| # | タスク | 担当 | 状態 | ブロッカー |
+| --- | -------- | ------ | ------ | ----------- |
+| 1 | ffmpeg インストール | 人間 | 未着手 | なし |
+| 2 | `research_cli.py verify` MP4品質検証 | 自動 | コード済み | ffmpeg |
+| 3 | YouTube 手動アップロード (初回) | 人間 | 未着手 | VS-1完了 |
+| 4 | Google OAuth設定 (自動化用) | 人間 | 未着手 | Google Cloud Console |
+| 5 | `research_cli.py upload` 自動アップロード | 自動 | コード済み | #4完了 |
+
+狙い: 初公開を達成し、YouTube側の制約 (エンコード・メタデータ) を実地検証する。
+
+### Tier 3: VS-3 制作品質確立
+
+| # | タスク | 担当 | 状態 | ブロッカー |
+| --- | -------- | ------ | ------ | ----------- |
+| 1 | VS-1 MP4の品質課題特定 | 人間 | 未着手 | VS-1完了 |
+| 2 | YMM4プロジェクトテンプレート (.ymmp) 作成 | 人間 | 未着手 | #1 |
+| 3 | overlay_plan.json の調整 | 人間+AI | 未着手 | #1 |
+| 4 | style_template.json のバリアント調整 | 人間+AI | 基盤完成 | #1 |
+| 5 | Gemini構造化プロンプト調整 | AI | 未着手 | #1 |
+| 6 | アニメーション方針確定 | 人間 | 保留(HUMAN_AUTHORITY) | #1 |
+
+狙い: 2本目以降の動画を一貫した視覚品質で制作できる基盤を作る。
+
+### Tier 4: VS-4 サムネイル + VS-5 自動化
+
+| スライス | 主要タスク | 状態 | ブロッカー |
+| --------- | ----------- | ------ | ----------- |
+| VS-4 サムネイル | YMM4テンプレートデザイン + Gemini文言生成調整 | 未着手 | VS-3完了 |
+| VS-5 自動化 | YouTube OAuth本番 / InoReader API実疎通 / Producer GUI Phase 2+ | partial | VS-1〜4安定後 |
+
+狙い: 週1本ペースの制作を持続可能にする。
+
+### Tier 5: partial仕様書の残作業
+
+| SP | タイトル | 進捗 | 残タスク |
+| ---- | --------- | ------ | --------- |
+| SP-035 | Integration Test Checklist | 65% | YMM4実機テスト |
+| SP-053 | Producer GUI | 40% | ~~AI評価統合~~ 廃止。バッチ選定UI+Playwright統合 |
+| SP-052 | YMM4 Video Quality Template | 65% | テンプレート作成+デザイン方針 |
+| SP-045 | First Publish Checklist | 80% | VS-1手順の実行 |
+| SP-047 | Video Output Quality Standard | 85% | Phase 4(NLMスライド統合), Phase 5(実API+実ブラウザ) |
+| SP-048 | InoReader/RSS Integration | 80% | 実API疎通 |
+| SP-037 | Thumbnail Pipeline | 85% | テンプレート実物作成 |
+| SP-051 | Audio Transcription | 90% | 実音声E2E+プロンプト調整 |
+| SP-038 | YouTube Publish Pipeline | 95% | 本番OAuth取得 |
+| SP-050 | E2E Workflow | 95% | 未決定事項Q1-1/Q6-2確定 |
+
+### 未確定の設計論点 (HUMAN_AUTHORITY待ち)
+
+| 論点 | 関連VS | 判断時期 |
+| ------ | -------- | --------- |
+| YMM4テンプレート Pattern A-E の優先順 | VS-3 | VS-1完走後 |
+| アニメーション方針 | VS-3 | VS-1完走後 |
+| サムネイルデザイン | VS-4 | VS-3完了後 |
+
+### 最大の摩擦 (CRITICAL)
+
+| 摩擦 | 影響度 | 対策状況 |
+| ------ | -------- | --------- |
+| YMM4手動操作が全体の80% | CRITICAL | SDK制限で根本解決困難 |
+| レンダリング時間が動画長の2-5倍 | CRITICAL | 就寝時実行で運用回避 |
+
+### 廃止済みレガシー項目
+
+以下は過去の仕様に含まれていたが、現在は廃止。Workerが誤って着手しないこと。
+
+| 項目 | 元SP | 廃止理由 |
+| ------ | ------ | --------- |
+| Gemini動画適性スコアリング (AI評価) | SP-053 Phase 2 | トピック選定は人間判断。DESIGN_FOUNDATIONS Section 0準拠 |
+| TextSlideGenerator (PILスライド生成) | SP-033/SP-041 | Google Slides API移行決定。DESIGN_FOUNDATIONS Section 5 |
+| Brave Search リサーチ | SP-014 | 人間がNLMに直接ソース投入。Decision 2026-03-22 |
+| Python TTS / 音声合成 | — | YMM4内蔵ゆっくりボイスが唯一の正規経路 |
+| MoviePy 動画レンダリング | — | YMM4が唯一のレンダリングエンジン |
