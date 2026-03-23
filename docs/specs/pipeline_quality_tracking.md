@@ -1,6 +1,6 @@
 # パイプライン品質トラッキング (SP-042)
 
-**最終更新**: 2026-03-18
+**最終更新**: 2026-03-23
 **ステータス**: done
 
 ---
@@ -40,7 +40,7 @@
 
 | 指標 | 単位 | 取得元 |
 |------|------|--------|
-| source_count | int | SourceCollector が取得したソース数 |
+| source_count | int | パイプラインに投入されたソース数 (NotebookLM経由の人間投入。旧SourceCollectorは廃止済) |
 | alignment_supported | int | AlignmentReport の supported 数 |
 | alignment_orphaned | int | AlignmentReport の orphaned 数 |
 | alignment_conflict | int | AlignmentReport の conflict 数 |
@@ -52,9 +52,9 @@
 | 指標 | 単位 | 取得元 |
 |------|------|--------|
 | stock_image_count | int | ストック画像取得成功数 |
-| ai_image_count | int | AI画像生成成功数 |
-| text_slide_count | int | TextSlide フォールバック数 |
-| image_hit_rate | float | (stock + ai) / total_visual_segments |
+| ai_image_count | int | AI画像生成成功数 (レガシー: Gemini Imagen廃止済。常に0。後方互換で保持) |
+| text_slide_count | int | TextSlide フォールバック数 (レガシー: TextSlideGenerator削除済。常に0。後方互換で保持) |
+| image_hit_rate | float | stock / total_visual_segments (旧計算式: (stock + ai) だが ai_image_count は常に0) |
 | visual_ratio | float | 画像付きセグメント / 全セグメント |
 
 ### 2.4 一貫性
@@ -104,7 +104,7 @@
   "visual": {
     "stock_image_count": 11,
     "ai_image_count": 0,
-    "text_slide_count": 18,
+    "text_slide_count": 0,
     "image_hit_rate": 0.38,
     "visual_ratio": 1.0
   },

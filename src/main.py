@@ -1,6 +1,11 @@
 """
-メインエントリーポイント
-YouTube解説動画自動化システムの実行
+レガシーエントリーポイント (非推奨)
+
+正規エントリポイントは scripts/research_cli.py です。
+  python scripts/research_cli.py pipeline --topic "..." --audio "..."
+
+このファイルは後方互換のため残存していますが、generate_video() は
+RuntimeError を送出します。DESIGN_FOUNDATIONS Section 5 参照。
 """
 import asyncio
 import sys

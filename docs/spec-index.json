@@ -60,7 +60,7 @@
     "pct": 100,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1262テスト (2026-03-18更新)"
+    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1242テスト (2026-03-23更新)"
   },
   {
     "id": "SP-008",
@@ -123,7 +123,7 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/research_workflow_design.md",
-    "summary": "Web調査+NLMスクリプト整合ワークフロー。Phase 1-5完了。注意: SourceCollector(Brave Search)は廃止済(2026-03-22)。正規経路はNotebookLMへの人間による直接投入"
+    "summary": "Web調査+NLMスクリプト整合ワークフロー。Phase 1-5完了。SourceCollector(Brave Search)は廃止済(DESIGN_FOUNDATIONS Section 5)。正規経路はNotebookLMへの人間による直接投入"
   },
   {
     "id": "SP-015",
@@ -294,7 +294,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1-3完了: 8種アニメーション+StockImageClient(Pexels/Pixabay/Wikimedia)。注意: Phase3のAIImageProvider(Gemini Imagen)とTextSlideGeneratorはレガシー(有料プラン専用/削除済)。現行フォールバックはPexels→Pixabay→Wikimediaの3層"
+    "summary": "Phase1-3完了: 8種アニメーション+StockImageClient(Pexels/Pixabay/Wikimedia)。AIImageProvider(Gemini Imagen)はレガシー(有料プラン専用/廃止)、TextSlideGeneratorは削除済。現行画像フォールバックはPexels→Pixabay→Wikimediaの3層のみ"
   },
   {
     "id": "SP-034",
@@ -339,7 +339,7 @@
     "pct": 95,
     "cat": "pipeline",
     "file": "docs/specs/youtube_publish_pipeline.md",
-    "summary": "Phase 1-4実装完了: メタデータ自動生成+クレジット挿入+YouTube Data API v3 resumable upload+Phase 7一気通貫publishコマンド(品質検証→メタデータ自動検出→アップロード→結果永続化)。66テストPASS。残: 本番OAuthトークン取得・実チャンネルテストアップロード・スケジュール投稿"
+    "summary": "Phase 1-4実装完了: メタデータ自動生成+クレジット挿入+YouTube Data API v3 resumable upload+Phase 7一気通貫publishコマンド(品質検証→メタデータ自動検出→アップロード→結果永続化)。71テストPASS。残: 本番OAuthトークン取得・実チャンネルテストアップロード・スケジュール投稿"
   },
   {
     "id": "SP-039",
@@ -375,7 +375,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/pipeline_quality_tracking.md",
-    "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json (速度/情報密度/視覚完成度/一貫性) + CLI stats閲覧 + batch_result.json統合"
+    "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json (速度/情報密度/視覚完成度/一貫性) + CLI stats閲覧 + batch_result.json統合。注: ai_image_count/text_slide_countはレガシー(常に0、後方互換保持)"
   },
   {
     "id": "SP-043",

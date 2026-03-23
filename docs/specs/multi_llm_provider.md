@@ -16,7 +16,7 @@ Gemini API への単一依存を解消し、複数の LLM プロバイダー (Cl
 - 無料枠: 20 req/day → 1動画でほぼ枯渇
 - 有料プランへの移行に技術的問題あり
 - 依存箇所: 4ファイル (gemini_integration, script_alignment, segment_classifier, stock_image_client)
-- 画像生成 (Imagen 4): 有料プランのみ → 別問題として扱う
+- 画像生成 (Imagen 4): **レガシー** (DESIGN_FOUNDATIONS Section 5)。有料プラン専用で実質使用不可。Pexels/Pixabay/Wikimediaストック画像に移行済み
 
 ### 1.2 目標 (To-Be)
 

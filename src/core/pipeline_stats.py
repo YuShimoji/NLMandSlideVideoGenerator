@@ -43,7 +43,7 @@ class PipelineStats:
     step_durations: Dict[str, float] = field(default_factory=dict)
     bottleneck_step: str = ""
 
-    # 情報密度
+    # 情報密度 (source_count: NotebookLM経由投入数。旧SourceCollector廃止済)
     source_count: int = 0
     segment_count: int = 0
     alignment_supported: int = 0
@@ -53,8 +53,8 @@ class PipelineStats:
 
     # 視覚完成度
     stock_image_count: int = 0
-    ai_image_count: int = 0
-    text_slide_count: int = 0
+    ai_image_count: int = 0  # レガシー: Gemini Imagen廃止済。常に0。後方互換で保持
+    text_slide_count: int = 0  # レガシー: TextSlideGenerator削除済。常に0。後方互換で保持
     image_hit_rate: float = 0.0
     visual_ratio: float = 0.0
 

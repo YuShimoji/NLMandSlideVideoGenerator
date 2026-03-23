@@ -6,15 +6,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: SP-053 Producer GUI Phase 2 + E2E検証
-直近の状態 (2026-03-23 Worker D session):
-  - Worker D: SP-047 Phase 3 + SP-051 Phase 1 + YMM4一本化レガシー整理
-  - SP-051: AudioTranscriber新設 (Gemini Audio API 1段階方式, 37テスト)
-  - SP-047 Phase 3: playwright_nlm.py改善 (create_notebook/add_source_text/add_source_file, セレクタ集約, 19テスト)
-  - YMM4一本化: audio_generator 385→80行, transcript_processor 548→180行, シミュレーション全削除
-  - DECISION LOG: YMM4一本化+SP-051+SP-047+レガシー整理の4件追記
-  - テスト: 1242 passed, 0 failed, 3 skipped
-  - 次のアクション: SP-051 Phase 2(実音声E2E), SP-053 AI評価統合
+現フェーズ: **成果物駆動 (VS-1 初動画完走)** — 仕様駆動から転換
+進捗管理: `docs/DELIVERABLE_MAP.md` (VS-1〜5 縦割りスライス)
+直近の状態 (2026-03-23 session 23):
+  - 53仕様 / 1316テスト / 37 done specs / 実動画ゼロ
+  - Worker A/B/C/D 検収完了 (全テスト緑)
+  - レガシー境界マップ統一完了
+  - AI側の実装は全て完了。VS-1の残りは全て人間操作
+  - 成果物スライス: VS-1(初動画) → VS-2(YouTube公開) → VS-3(品質テンプレ) → VS-4(サムネイル) → VS-5(自動化)
+  - 次のアクション: VS-1人間操作 (.NET SDK → YMM4ビルド → NLM音声 → pipeline実行 → YMM4レンダリング)
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |

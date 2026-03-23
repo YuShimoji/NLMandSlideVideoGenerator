@@ -149,7 +149,7 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 | ID | 影響 |
 |---|---|
 | SP-036 | Script Style Presets — NotebookLM移行後にプリセット設計を再考 |
-| SP-041 | TextSlide Visual Quality — PIL生成廃止方向。NotebookLMスライドに移行 |
+| SP-041 | TextSlide Visual Quality — **superseded** (TextSlideGenerator削除済)。Google Slides APIに移行決定 |
 | SP-033 | Visual Resource Pipeline — 画像ソース拡張 (ストック→ウェブ著作権クリア) |
 | SP-044 | Segment Duration Control — セグメント粒度目標の変更 (40-65秒→15-30秒) |
 | SP-045 | First Publish Checklist — 品質基準の反映が必要 |
