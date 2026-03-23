@@ -309,10 +309,10 @@
     "id": "SP-035",
     "title": "Integration Test Checklist",
     "status": "partial",
-    "pct": 60,
+    "pct": 65,
     "cat": "infra",
     "file": "docs/integration_test_checklist.md",
-    "summary": "全SP機能の統合実機テスト項目 (A-G)。チェックリスト整備済み + pre-flight自動チェック(preflight_sp035.py)追加 + テスト画像配置済み。YMM4実機テスト未実施。字幕/BGM/ストック画像/AI画像/Resync/Pre-Export/全統合E2Eの7セクション"
+    "summary": "SP全機能の統合実機テスト項目(A-H)。チェックリスト整備 + pre-flightスクリプト(preflight_sp035.py) + SP-052オーバーレイ検証セクション追加。YMM4実機テスト未実施。"
   },
   {
     "id": "SP-036",
@@ -462,10 +462,10 @@
     "id": "SP-052",
     "title": "YMM4 Video Quality Template Design",
     "status": "partial",
-    "pct": 30,
+    "pct": 55,
     "cat": "plugin",
     "file": "docs/specs/ymm4_video_quality_template.md",
-    "summary": "YMM4動画内容クオリティのテンプレート設計。レイヤー構成(7層)、テキストオーバーレイ(overlay_plan.json)、キャラ配置、背景ルール、アニメーション使い分け、人間/Python/YMM4責務境界の定義"
+    "summary": "YMM4動画品質テンプレート設計。Phase 1-3完了: overlay_plan.json自動生成(OverlayPlanner), CsvAssembler統合, YMM4プラグインOverlayImporter, StyleTemplateLoader拡張(overlay/characters/background), video_templatesディレクトリ構成。残: Phase 4実検証+テンプレート.y4mmp作成(人間)"
   },
   {
     "id": "SP-053",

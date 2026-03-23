@@ -204,12 +204,10 @@ class TestNotebookLMScriptProvider:
 
     @pytest.mark.asyncio
     async def test_generate_script_returns_bundle(self):
-        """generate_script がスクリプトバンドルを返すこと"""
+        """generate_script がスタブバンドルを返すこと"""
         from core.providers.script.notebook_lm_provider import NotebookLMScriptProvider
         from notebook_lm.research_models import SourceInfo
         from notebook_lm.audio_generator import AudioInfo
-        from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
-        from datetime import datetime
         from pathlib import Path
 
         provider = NotebookLMScriptProvider(api_key="")
@@ -223,30 +221,14 @@ class TestNotebookLMScriptProvider:
             language="ja",
             sample_rate=44100,
         )
-        mock_transcript = TranscriptInfo(
-            title="テスト動画",
-            total_duration=20.0,
-            segments=[
-                TranscriptSegment(
-                    id=1, start_time=0.0, end_time=20.0,
-                    speaker="ずんだもん", text="テスト発話テキストです。",
-                    key_points=[], slide_suggestion="", confidence_score=0.9,
-                )
-            ],
-            accuracy_score=0.9,
-            created_at=datetime.now(),
-            source_audio_path="/tmp/test.wav",
-        )
 
         with patch.object(provider.audio_generator, "generate_audio", new_callable=AsyncMock, return_value=mock_audio), \
-             patch.object(provider.transcript_processor, "process_audio", new_callable=AsyncMock, return_value=mock_transcript), \
              patch.object(provider, "_save_script", return_value=Path("/tmp/script.json")):
             bundle = await provider.generate_script(
                 topic="テストトピック",
                 sources=[mock_source],
             )
 
-        assert bundle["title"] == "テスト動画"
         assert bundle["topic"] == "テストトピック"
-        assert len(bundle["segments"]) == 1
-        assert bundle["segments"][0]["speaker"] == "ずんだもん"
+        assert "stub" in bundle["title"]
+        assert bundle["segments"] == []

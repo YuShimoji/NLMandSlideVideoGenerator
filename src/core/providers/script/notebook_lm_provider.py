@@ -1,10 +1,10 @@
 """
-NotebookLM ベースの Script Provider
-OpenSpec IScriptProvider 実装
+NotebookLM ベースの Script Provider — レガシースタブ
 
-DESIGN NOTE: Placeholder. Does not actually integrate NotebookLM API.
-Uses AudioGenerator (stub) + TranscriptProcessor internally.
-See docs/DESIGN_FOUNDATIONS.md Section 2.
+DESIGN NOTE (DESIGN_FOUNDATIONS.md):
+  実際の台本生成は NotebookLM (Audio Overview → テキスト化) が行う。
+  Python側の台本構造化は GeminiScriptProvider.structure_transcript() が担う。
+  このプロバイダは後方互換のためのスタブ。
 """
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -12,14 +12,14 @@ import json
 from datetime import datetime
 
 from notebook_lm.research_models import SourceInfo
-from notebook_lm.audio_generator import AudioGenerator
-from notebook_lm.transcript_processor import TranscriptProcessor
+from notebook_lm.audio_generator import AudioGenerator, AudioInfo
+from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo, TranscriptSegment
 
 from ...interfaces import IScriptProvider
 
 
 class NotebookLMScriptProvider(IScriptProvider):
-    """NotebookLM を利用したスクリプト生成プロバイダ"""
+    """NotebookLM を利用したスクリプト生成プロバイダ (レガシースタブ)"""
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
@@ -33,52 +33,22 @@ class NotebookLMScriptProvider(IScriptProvider):
         mode: str = "auto",
         transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """スタブ: プレースホルダー音声 → 空セグメントのバンドルを返す。
+
+        実際の台本生成は GeminiScriptProvider を使用すること。
         """
-        NotebookLM を利用してスクリプトを生成
-
-        Args:
-            topic: トピック
-            sources: ソース情報リスト
-            mode: 生成モード (auto/assist/manual)
-
-        Returns:
-            Dict[str, Any]: スクリプトバンドル
-        """
-        # NotebookLM の音声生成と文字起こしを活用
-        # 実際の NotebookLM API を模擬
-
-        # 1. 音声生成 (NotebookLM 風)
         audio_info = await self.audio_generator.generate_audio(sources)
 
-        # 3. 文字起こしでスクリプト生成
-        transcript = await self.transcript_processor.process_audio(audio_info)
-
-        # 4. スクリプト構造の構築
         script_bundle = {
-            "title": transcript.title,
+            "title": f"{topic} (stub)",
             "topic": topic,
             "source_count": len(sources),
             "audio_duration": audio_info.duration,
             "generated_at": datetime.now().isoformat(),
-            "segments": []
+            "segments": [],
         }
 
-        # 文字起こし結果からセグメント構築
-        for i, segment in enumerate(transcript.segments, 1):
-            script_bundle["segments"].append({
-                "id": f"seg_{i}",
-                "start_time": getattr(segment, "start_time", 0.0),
-                "end_time": getattr(segment, "end_time", 0.0),
-                "speaker": getattr(segment, "speaker", ""),
-                "content": getattr(segment, "text", ""),
-                "key_points": getattr(segment, "key_points", []),
-                "slide_suggestion": getattr(segment, "slide_suggestion", ""),
-                "confidence": getattr(segment, "confidence_score", 1.0),
-            })
-
-        # スクリプト保存
         self._save_script(script_bundle)
-
         return script_bundle
 
     def _save_script(self, script_bundle: Dict[str, Any]) -> Path:

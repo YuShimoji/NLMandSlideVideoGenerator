@@ -461,6 +461,60 @@ def _format_age(iso_str: str) -> str:
         return "不明"
 
 
+def _evaluate_topic_with_ai(line: ProductionLine) -> tuple[float, str]:
+    """Gemini APIでトピックの動画適性を評価する。(スコア, コメント)を返す"""
+    import asyncio
+    from core.llm_provider import create_llm_provider
+
+    provider = create_llm_provider()
+
+    prompt = f"""以下のYouTubeゆっくり解説動画のトピック候補を評価してください。
+
+トピック: {line.topic}
+ソース数: {len(line.source_urls)}件
+ソースURL: {', '.join(line.source_urls[:3]) if line.source_urls else '(なし)'}
+
+以下の5軸で0-5点のスコアを付け、1行の総合コメントを添えてください。
+- 情報密度: ソースの充実度、語るべき内容の量
+- 視聴者需要: YouTube視聴者の興味を引くか
+- 競合状況: 既存動画との差別化が可能か
+- 制作難易度: 構造化・画像調達の容易さ (高いほど易しい)
+- 鮮度: トピックの新しさ・時事性
+
+出力形式 (JSONのみ):
+{{"score": 3.5, "comment": "...", "breakdown": {{"info_density": 4, "demand": 3, "competition": 3, "difficulty": 4, "freshness": 3}}}}"""
+
+    async def _run():
+        return await provider.generate_text(prompt, max_tokens=256, temperature=0.3)
+
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                result = pool.submit(asyncio.run, _run()).result()
+        else:
+            result = asyncio.run(_run())
+
+        # JSONパース
+        result = result.strip()
+        if result.startswith("```"):
+            lines = result.split("\n")
+            result = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+        data = json.loads(result)
+        score = float(data.get("score", 0))
+        comment = data.get("comment", "")
+        return score, comment
+
+    except Exception as e:
+        return 0.0, f"AI評価エラー: {e}"
+
+
 def _render_batch_selection() -> None:
     """バッチ選定画面: 複数トピックを一括評価"""
     st.subheader("バッチ選定")
@@ -476,12 +530,28 @@ def _render_batch_selection() -> None:
     st.markdown(f"**{len(drafts)}件の下書きライン**")
     st.caption("Go/No-Go を判定して、Goしたラインを構造化フェーズに送ります")
 
+    # AI一括評価ボタン
+    if st.button("AI評価を実行", type="secondary"):
+        progress = st.progress(0.0, text="AI評価中...")
+        for i, line in enumerate(drafts):
+            if line.ai_score > 0:
+                continue  # 評価済みはスキップ
+            progress.progress((i + 1) / len(drafts), text=f"評価中: {line.topic[:20]}...")
+            score, comment = _evaluate_topic_with_ai(line)
+            line.ai_score = score
+            line.ai_comment = comment
+            store.update(line)
+        progress.progress(1.0, text="AI評価完了")
+        st.rerun()
+
+    st.markdown("---")
+
     # ライン一覧 + Go/No-Go ボタン
     decisions: dict[str, bool | None] = {}
 
     for line in drafts:
         with st.container():
-            cols = st.columns([3, 1, 1, 1, 1])
+            cols = st.columns([3, 2, 1, 1])
 
             with cols[0]:
                 st.markdown(f"**{line.topic}**")
@@ -494,7 +564,10 @@ def _render_batch_selection() -> None:
 
             with cols[1]:
                 if line.ai_score > 0:
-                    st.markdown(f"{'*' * int(line.ai_score)} {line.ai_score:.1f}")
+                    stars = int(line.ai_score)
+                    st.markdown(f"{'*' * stars}{'.' * (5 - stars)} **{line.ai_score:.1f}**/5")
+                    if line.ai_comment:
+                        st.caption(line.ai_comment[:60])
                 else:
                     st.caption("未評価")
 
@@ -506,11 +579,7 @@ def _render_batch_selection() -> None:
                 if st.button("No-Go", key=f"nogo_{line.line_id}"):
                     decisions[line.line_id] = False
 
-            with cols[4]:
-                if not line.audio_path and not line.transcript_path:
-                    st.caption("(音声/テキスト未設定)")
-
-            st.markdown("---")
+        st.markdown("---")
 
     # 一括決定ボタン
     batch_cols = st.columns(3)
