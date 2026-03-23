@@ -1,6 +1,6 @@
 # 音声自動文字起こし + 構造化パイプライン
 
-SP-051 | Status: partial | pct: 70 | 作成: 2026-03-22
+SP-051 | Status: partial | pct: 90 | 作成: 2026-03-22
 準拠: SP-050 E2E ワークフロー仕様 / DESIGN_FOUNDATIONS.md Section 0
 
 ---

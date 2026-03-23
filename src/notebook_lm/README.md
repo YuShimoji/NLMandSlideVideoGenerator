@@ -1,24 +1,30 @@
 # src/notebook_lm/
 
-## ディレクトリ名について
+## 概要
 
-このディレクトリ名は歴史的遺産である。
-プロジェクト初期に NotebookLM 統合を想定して作成されたが、
-NotebookLM API が非公開だったため、実際には Gemini 統合・ソース収集・台本処理のコードが格納されている。
+NotebookLM + Gemini 統合のPython変換層。
+DESIGN_FOUNDATIONS.md 三層モデルの「変換層」に相当する。
 
-**NotebookLM 固有のコードはゼロ。**
+## 現行ファイル
 
-## 実際の内容
+| ファイル | 内容 | 状態 |
+|---|---|---|
+| `gemini_integration.py` | Gemini API による台本構造化 (speaker/text分離) | 現行 |
+| `audio_transcriber.py` | Gemini Audio API による音声→構造化JSON (SP-051) | 現行 |
+| `script_alignment.py` | ソースと台本のアライメント | 現行 |
+| `transcript_processor.py` | TranscriptInfo データクラスのみ有効。シミュレーション機能は撤去済み | レガシー残存 |
+| `audio_generator.py` | AudioInfo データクラスのみ有効。音声生成機能は撤去済み | レガシー残存 |
+| `source_collector.py` | 廃止。コード残存だが未使用 (Brave Search廃止済) | レガシー残存 |
 
-| ファイル | 内容 |
-|---|---|
-| `gemini_integration.py` | Gemini API による台本生成 |
-| `source_collector.py` | Brave Search API による Web ソース収集 |
-| `transcript_processor.py` | 台本テキストのフォーマット変換 |
-| `script_alignment.py` | ソースと台本のアライメント |
-| `audio_generator.py` | レガシースタブ (常に無音WAV、YMM4が音声担当) |
+## レガシー境界
+
+`docs/DESIGN_FOUNDATIONS.md` Section 5 参照。
+- Python側の音声合成/TTS: 全削除済み
+- SourceCollector (Brave Search): 廃止
+- Gemini台本「生成」: フォールバックのみ。正規はNotebookLMテキストの「構造化」
+- 音声生成: YMM4が唯一の音声合成環境
 
 ## 参照
 
-- `docs/DESIGN_FOUNDATIONS.md` — 三層モデルと責務境界
-- `docs/notebooklm_drift_analysis.md` — NotebookLM→Gemini ドリフトの経緯
+- `docs/DESIGN_FOUNDATIONS.md` -- 三層モデルと責務境界
+- `docs/DELIVERABLE_MAP.md` -- 成果物駆動の開発優先順位

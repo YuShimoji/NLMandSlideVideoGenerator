@@ -184,7 +184,7 @@ python scripts/research_cli.py validate output_csv/timeline.csv
 ### ブロッカー回避パス
 
 - Gemini API quota 超過 → `LLM_PROVIDER` 環境変数でモデル切替、または時間を空けてリトライ
-- 画像取得全失敗 → TextSlide フォールバック (PIL) が自動で動作 (品質低下あり)
+- 画像取得全失敗 → 画像なし行としてCSVに出力される (YMM4側でデフォルト背景が適用)
 - `--transcript` ではなくソースから生成する場合 → `--topic` のみで実行 (Gemini が台本生成)
 
 ---

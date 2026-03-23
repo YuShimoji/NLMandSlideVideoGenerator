@@ -60,7 +60,7 @@
     "pct": 100,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1242テスト (2026-03-23更新)"
+    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1316テスト (2026-03-23更新)"
   },
   {
     "id": "SP-008",
@@ -276,7 +276,8 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/video_quality_pipeline_spec.md",
-    "summary": "style_template.json v1.1 + cinematic/minimal バリアント3種。Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。ExportValidator + ValidateImportItems拡張。BGMテンプレート自動配置 (fadeIn/fadeOut分離対応)"
+    "summary": "style_template.json v1.1 + cinematic/minimal バリアント3種。Python StyleTemplateManager + C# StyleTemplateLoader統一読み込み。ExportValidator + ValidateImportItems拡張。BGMテンプレート自動配置 (fadeIn/fadeOut分離対応)",
+    "vs": "VS-3"
   },
   {
     "id": "SP-032",
@@ -312,7 +313,9 @@
     "pct": 65,
     "cat": "infra",
     "file": "docs/integration_test_checklist.md",
-    "summary": "SP全機能の統合実機テスト項目(A-H)。チェックリスト整備 + pre-flightスクリプト(preflight_sp035.py) + SP-052オーバーレイ検証セクション追加。YMM4実機テスト未実施。"
+    "summary": "SP全機能の統合実機テスト項目(A-H)。チェックリスト整備+pre-flightスクリプト。YMM4実機テスト未実施。",
+    "vs": "VS-1",
+    "blocked_by": "YMM4実機テスト (人間操作)"
   },
   {
     "id": "SP-036",
@@ -330,7 +333,9 @@
     "pct": 85,
     "cat": "pipeline",
     "file": "docs/specs/thumbnail_pipeline.md",
-    "summary": "Phase 1-3実装済み+Phase 4コード実装完了: Gemini文言生成(generate_thumbnail_copy)+色彩プリセット5種+バリエーション生成+パイプライン自動統合+CLI統合。79テストPASS。残: YMM4テンプレート実物作成(人間作業)+実動画検証"
+    "summary": "Phase 1-4コード完了。残: YMM4テンプレート実物作成(人間作業)+実動画検証",
+    "vs": "VS-4",
+    "blocked_by": "VS-1完走後にサムネイルテンプレートデザイン (人間作業)"
   },
   {
     "id": "SP-038",
@@ -339,7 +344,9 @@
     "pct": 95,
     "cat": "pipeline",
     "file": "docs/specs/youtube_publish_pipeline.md",
-    "summary": "Phase 1-4実装完了: メタデータ自動生成+クレジット挿入+YouTube Data API v3 resumable upload+Phase 7一気通貫publishコマンド(品質検証→メタデータ自動検出→アップロード→結果永続化)。71テストPASS。残: 本番OAuthトークン取得・実チャンネルテストアップロード・スケジュール投稿"
+    "summary": "Phase 1-4コード完了。残: 本番OAuthトークン取得・実チャンネルテストアップロード",
+    "vs": "VS-2",
+    "blocked_by": "Google OAuth本番取得 (人間操作)"
   },
   {
     "id": "SP-039",
@@ -348,7 +355,8 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/mp4_quality_verification.md",
-    "summary": "Phase 1-2完了: MP4QualityChecker(FFprobe, 10検証項目)+CLI verify+SP-038連携(upload前自動品質ゲート, CRITICAL失敗でアップロード阻止, --no-verifyでスキップ可)。21テスト(17+4統合)"
+    "summary": "Phase 1-2完了: MP4QualityChecker(FFprobe, 10検証項目)+CLI verify+SP-038連携",
+    "vs": "VS-2"
   },
   {
     "id": "SP-040",
@@ -357,7 +365,8 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/batch_production_queue.md",
-    "summary": "Phase 1-3完了: CLI batch + topics.json + 順次実行 + エラー続行 + batch_result.json + Streamlit Web UI (バッチキューページ)。テストPASS"
+    "summary": "Phase 1-3完了: CLI batch + topics.json + 順次実行 + エラー続行 + batch_result.json + Streamlit Web UI",
+    "vs": "VS-5"
   },
   {
     "id": "SP-041",
@@ -375,7 +384,8 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/pipeline_quality_tracking.md",
-    "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json (速度/情報密度/視覚完成度/一貫性) + CLI stats閲覧 + batch_result.json統合。注: ai_image_count/text_slide_countはレガシー(常に0、後方互換保持)"
+    "summary": "パイプライン実行統計の自動収集基盤: pipeline_stats.json + CLI stats + batch_result.json統合",
+    "vs": "VS-5"
   },
   {
     "id": "SP-043",
@@ -384,7 +394,8 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/specs/multi_llm_provider.md",
-    "summary": "Phase 1-4完了: ILLMProvider抽象化+5プロバイダー+既存コード全移行+Streamlit LLM設定UI(プロバイダー選択/モデル/APIキー/接続テスト)。残: 実APIキー統合テスト(手動)"
+    "summary": "Phase 1-4完了: ILLMProvider抽象化+5プロバイダー+既存コード全移行+Streamlit LLM設定UI",
+    "vs": "VS-5"
   },
   {
     "id": "SP-044",
@@ -393,7 +404,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/segment_duration_control.md",
-    "summary": "Phase 1-3完了: 推定尺計算+セグメント検証+LLM自動調整(追加/統合)+CLI手動モード(--duration-mode manual|auto, continue/adjust/abort選択)。35テスト"
+    "summary": "Phase 1-3完了: 推定尺計算+セグメント検証+LLM自動調整+CLI手動モード。35テスト"
   },
   {
     "id": "SP-045",
@@ -402,7 +413,9 @@
     "pct": 80,
     "cat": "pipeline",
     "file": "docs/specs/first_publish_checklist.md",
-    "summary": "初回YouTube公開の通しチェックリスト。SP-050準拠でPhase 0-5(トピック選定+NLM Audio Overview+テキスト化+CSV生成+YMM4レンダリング+YouTube公開)を網羅。SP-035/038の完了判定を兼ねる"
+    "summary": "VS-1のチェックリスト。AI側完了、人間操作(NLM+YMM4)待ち。Phase 0-5網羅",
+    "vs": "VS-1",
+    "blocked_by": "人間操作 (NLM Audio Overview + YMM4レンダリング)"
   },
   {
     "id": "SP-046",
@@ -411,7 +424,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/template_consolidation.md",
-    "summary": "SP-020(ymm4_template_diff)のSP-031(style_template)への統合設計。speaker_name_colors名前優先+background+audio追加。後方互換あり"
+    "summary": "SP-020(ymm4_template_diff)のSP-031(style_template)への統合設計。後方互換あり"
   },
   {
     "id": "SP-047",
@@ -420,7 +433,9 @@
     "pct": 85,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。Phase 1-3完了 + Phase 3拡張: Playwright NLM半自動化 (create_notebook/add_source_text/add_source_file/セレクタ集約/19テスト)。残: Phase 4(NotebookLMスライド統合), Phase 5(実API品質検証+実ブラウザテスト)"
+    "summary": "Phase 1-3完了 + Playwright NLM半自動化。残: Phase 4(NLMスライド統合), Phase 5(実API+実ブラウザ)",
+    "vs": "VS-3/VS-5",
+    "blocked_by": "VS-1完走後の品質評価"
   },
   {
     "id": "SP-048",
@@ -429,7 +444,9 @@
     "pct": 80,
     "cat": "pipeline",
     "file": "docs/spec_feed_integration.md",
-    "summary": "InoReader APIからRSSフィードのトピック候補を自動取得。Phase 1完了: OAuth認証クライアント+トピック抽出+CLI+61テストPASS。残: 実API疎通テスト、Phase 2(パイプライン自動連携)"
+    "summary": "Phase 1コード完了。残: 実API疎通テスト + Phase 2パイプライン連携",
+    "vs": "VS-5",
+    "blocked_by": "InoReader OAuth設定 (人間操作)"
   },
   {
     "id": "SP-049",
@@ -438,7 +455,7 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/DESIGN_FOUNDATIONS.md",
-    "summary": "三層モデル (NotebookLM/Python/YMM4) の設計公理。外部ツール前提・Python責務境界・過剰実装の分類"
+    "summary": "三層モデル (NotebookLM/Python/YMM4) の設計公理 + Section 5 レガシー境界マップ"
   },
   {
     "id": "SP-050",
@@ -447,7 +464,9 @@
     "pct": 95,
     "cat": "pipeline",
     "file": "docs/specs/e2e_workflow_spec.md",
-    "summary": "トピック選定→YouTube公開の一気通貫ワークフロー仕様(Phase 0-7)。DESIGN_FOUNDATIONS三層モデル準拠。YMM4が唯一のマルチメディア合成WS。Python=CSV+素材生成まで。レガシー境界はDESIGN_FOUNDATIONS Section 5で定義"
+    "summary": "Phase 0-7一気通貫ワークフロー仕様。DESIGN_FOUNDATIONS三層モデル準拠。VS-1の手順定義",
+    "vs": "VS-1",
+    "blocked_by": "VS-1通し実行で未決定事項を確定"
   },
   {
     "id": "SP-051",
@@ -456,7 +475,9 @@
     "pct": 90,
     "cat": "pipeline",
     "file": "docs/specs/audio_transcription_spec.md",
-    "summary": "NLM Audio Overview音声→Gemini Audio APIで構造化JSON (1段階方式)。Phase 1完了: AudioTranscriber実装(inline/FileAPI自動切替, バリデーション, speaker_mapping, 中間テキスト保存) + CLI統合済み + 37テスト。レガシーTranscriptProcessor/AudioGeneratorシミュレーション撤去。残: Phase 2(実音声E2E+プロンプト調整)"
+    "summary": "Phase 1完了: AudioTranscriber (Gemini Audio API 1段階) + CLI統合 + 37テスト。残: Phase 2(実音声E2E+プロンプト調整)",
+    "vs": "VS-1/VS-3",
+    "blocked_by": "VS-1で実音声テスト → VS-3でプロンプト調整"
   },
   {
     "id": "SP-052",
@@ -465,7 +486,9 @@
     "pct": 65,
     "cat": "plugin",
     "file": "docs/specs/ymm4_video_quality_template.md",
-    "summary": "YMM4動画品質テンプレート設計。Phase 1-3 AI側完了: overlay_plan.json自動生成+CsvImportDialog統合+research_cli統合。AnimationAssigner場面別判定は保留(動画デザイン方向性未定)。残: Phase 4実検証+テンプレート.y4mmp作成(人間)+動画デザインユースケース確定"
+    "summary": "Phase 1-3 AI側完了。残: テンプレート.ymmp作成(人間) + 動画デザイン方針確定",
+    "vs": "VS-3",
+    "blocked_by": "VS-1完走後にYMM4テンプレートデザイン (人間作業)"
   },
   {
     "id": "SP-053",
@@ -474,6 +497,8 @@
     "pct": 40,
     "cat": "ui",
     "file": "docs/specs/producer_gui_spec.md",
-    "summary": "動画制作者向け統合GUI。プロダクションボード(カンバン)+バッチ選定+AI評価+ライン詳細+公開フロー。Streamlit再構成+Playwright NLM半自動化。ProductionLineデータモデル。Phase 1-4実装計画"
+    "summary": "Streamlit制作者GUI。Phase 1-4実装計画。VS-1〜4安定後に着手",
+    "vs": "VS-5",
+    "blocked_by": "VS-1〜4安定後"
   }
 ]
