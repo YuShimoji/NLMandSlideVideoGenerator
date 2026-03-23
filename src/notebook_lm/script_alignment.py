@@ -16,7 +16,7 @@ from core.adapters import ContentAdapterManager
 from core.utils.logger import logger
 
 from .research_models import AlignmentReport, ResearchPackage
-from .source_collector import SourceInfo
+from .research_models import SourceInfo
 
 _SENTENCE_SPLIT_RE = re.compile(r"[。．.!?！？\n]+")
 _TOKEN_RE = re.compile(r"[A-Za-z0-9一-龥ぁ-んァ-ヶー]{2,}")

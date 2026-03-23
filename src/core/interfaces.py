@@ -9,7 +9,7 @@ from pathlib import Path
 
 if TYPE_CHECKING:
     # 型チェック専用のインポート（実行時には評価しない）
-    from notebook_lm.source_collector import SourceInfo
+    from notebook_lm.research_models import SourceInfo
     from notebook_lm.audio_generator import AudioInfo
     from notebook_lm.transcript_processor import TranscriptInfo
     from slides.slide_generator import SlidesPackage
@@ -24,8 +24,13 @@ class IScriptProvider(Protocol):
         topic: str,
         sources: List[SourceInfo],
         mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """台本生成/取得。NotebookLM, Gemini, 手動入力などを抽象化"""
+        """台本構造化/生成。
+
+        transcript_text がある場合: NLMトランスクリプトの構造化 (メインパス)
+        transcript_text がない場合: ソースからの台本生成 (フォールバック)
+        """
 
 
 class IContentAdapter(Protocol):
@@ -74,11 +79,6 @@ class IEditingBackend(Protocol):
         extras: Optional[Dict[str, Any]] = None,
     ) -> VideoInfo:
         """YMM4等のレンダラー共通インターフェイス"""
-
-
-class ISourceCollector(Protocol):
-    async def collect_sources(self, topic: str, urls: Optional[List[str]] = None) -> List[SourceInfo]:
-        ...
 
 
 class IAudioGenerator(Protocol):
@@ -139,16 +139,7 @@ class IPlatformAdapter(Protocol):
         package: Dict[str, Any],
         options: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """YouTube/TikTok等、プラットフォーム固有ロジックを抽象化"""
-
-
-class IPublishingQueue(Protocol):
-    async def enqueue(
-        self,
-        package: Dict[str, Any],
-        schedule: Optional[str] = None,
-    ) -> str:
-        """予約投稿や承認待ちキューに投入"""
+        """YouTube等、プラットフォーム固有ロジックを抽象化"""
 
 
 class ThumbnailGeneratorProtocol(Protocol):

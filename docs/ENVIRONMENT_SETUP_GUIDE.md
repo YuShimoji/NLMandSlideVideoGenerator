@@ -29,7 +29,7 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-> **注意**: 別 PC への移行時や venv を再作成した場合は `pip install -r requirements.txt` を再実行してください。特に `google-genai` (Gemini API SDK) が欠けると、台本生成・alignment・キーワード抽出が全てモックフォールバックで動作し、品質が大幅に低下します。
+> **注意**: 別 PC への移行時や venv を再作成した場合は `pip install -r requirements.txt` を再実行してください。特に `google-genai` (Gemini API SDK) が欠けると、台本構造化・alignment・キーワード抽出が全てモックフォールバックで動作し、品質が大幅に低下します。
 
 ### API キーの設定
 
@@ -41,7 +41,7 @@ copy .env.example .env
 
 主要な環境変数:
 
-- `GEMINI_API_KEY` — Gemini API (台本生成・分類・翻訳)
+- `GEMINI_API_KEY` — Gemini API (台本構造化・分類・翻訳)
 - `PEXELS_API_KEY` — ストック画像検索 (Pexels)
 - `PIXABAY_API_KEY` — ストック画像検索 (Pixabay、フォールバック)
 - `BRAVE_API_KEY` — Web 検索 (Brave Search API)

@@ -9,6 +9,7 @@ Audience: All Agents
 この文書は、プロジェクトの方針、最終出力、最終ワークフロー、優先順位を固定するための全Agent向けSSOTです。
 
 参照優先順:
+0. `docs/DESIGN_FOUNDATIONS.md` (設計公理: 三層モデル・外部ツール前提・Python責務境界)
 1. この文書
 2. `docs/WORKFLOW_STATE_SSOT.md`
 3. `AI_CONTEXT.md`
@@ -31,7 +32,11 @@ Audience: All Agents
 | Gemini API統合 | DONE | CsvScriptCompletionPlugin にGemini REST API実装、6テスト追加 |
 | .NET Core分離 | DONE | NLMSlidePlugin.Core.csproj (YMM4非依存) + CI ubuntu テスト |
 | Path B完全削除 | DONE | 15ファイル削除、7ファイル修正、コード・テスト・API・Web UI全削除 (2026-03-08) |
-| Python tests | 1258 passed / 0 failed | カバレッジ84%+ (全体)。43/44仕様done。SP-035 partial(60%) |
+| PIL/AI画像生成廃止 | DONE | text_slide_generator.py, ai_image_provider.py, ai_generator.py, template_generator.py 削除済み (session 19-20) |
+| SourceCollector廃止 | DONE | Brave Search リサーチ廃止。NLMに人間が直接ソース投入 (session 18) |
+| 根本ワークフロー復元 | DONE | DESIGN_FOUNDATIONS.md Section 0。NLM→Audio→テキスト化→Gemini構造化→CSV→YMM4 |
+| 制作者パイプライン文書 | DONE | docs/PRODUCER_PIPELINE.md — 手動/自動/未実装の境界を1枚に明確化 (session 21) |
+| Python tests | 1230 passed / 0 failed | 52仕様 (41 done + 6 partial + 2 draft + 1 archived + 1 superseded)。SP-035 partial(60%) |
 | .NET tests | 34 passed / 0 failed | Core分離後 |
 
 ## Consistency Audit
@@ -58,7 +63,7 @@ Audience: All Agents
 | ターゲット視聴者 | 一般視聴者 (YouTube公開) |
 | 主な動画種別 | ニュース/時事解説、解説/教育系、ただし種別は限定しない汎用ツール |
 | 想定尺 | 長尺 (20-30分+) |
-| 制作ペース | 週1本以上。一晩に3本程度の制作能力を想定 |
+| 制作ペース | 品質優先。ペースは結果指標として扱う (2026-03-22 見直し) |
 | OP/ED | 不要。動画本編のみで十分 |
 
 ## Quality Definition (2026-03-17)
@@ -67,16 +72,16 @@ Audience: All Agents
 
 | 品質軸 | 定義 | 測定方法 |
 |---|---|---|
-| 制作スピード | トピック→MP4が一晩3本ペースで完了すること | パイプライン実行時間 + YMM4操作時間 |
-| 情報密度/正確性 | 台本の内容が正確で、視聴者が学べること | ソース照合 (Gate A) + Geminiプロンプト品質 |
+| 制作スピード | トピック→MP4の制作時間を継続的に改善すること（品質を犠牲にしない） | パイプライン実行時間 + YMM4操作時間 |
+| 情報密度/正確性 | 台本の内容が正確で、視聴者が学べること | NotebookLM台本品質 + ソース品質 |
 | 視覚的完成度 | アニメーション・字幕・画像の質が安定していること | style_template.json + Pre-Export検証 (SP-031) |
 | 一貫性/再現性 | 毎回同じ品質で出力できること | テンプレート駆動 + バリデーション自動化 |
 
 ### 情報密度に関する補足
 
-- 情報の質はNotebookLM/SourceCollectorからのソース品質に大きく依存する
-- ソース取得後のGeminiによる台本調整にはプロンプト整備が必要
-- 台本品質はパイプラインの自動化範囲外の側面もあるが、プロンプトテンプレート化で底上げ可能
+- 情報の質は NotebookLM に投入するソースの品質に大きく依存する
+- 台本品質は NotebookLM の Audio Overview → テキスト化で決まる (DESIGN_FOUNDATIONS.md Section 0)
+- Gemini は台本の「構造化」(speaker/text 分離) を行い、品質を「生成」しない
 
 ## Final Output Definition
 
@@ -90,7 +95,7 @@ Audience: All Agents
 | 制作入力 | CSV から生成できること（YMM4 が音声+動画を一貫処理） |
 | 主要経路 | `CSV -> YMM4 -> 動画` が安定していること |
 | 長尺対応 | 20-30分+の動画を安定して生成できること |
-| 制作スループット | 一晩3本ペースの制作が可能であること |
+| 制作スループット | 効率的な制作が可能であること（品質優先、ペースは結果指標） |
 
 ### Recommended
 
@@ -122,16 +127,22 @@ Audience: All Agents
 
 ## Final Workflow
 
-### Path A: YMM4 制作フロー（Primary）
+### Path A: YMM4 制作フロー（Primary）— 2026-03-22 更新
 
-1. 台本または構成案を作る
-2. CSV を作成する（手動 or Research workflow 経由）
-3. YMM4 で CSV を NLMSlidePlugin 経由でインポートする
-4. YMM4 がゆっくりボイス音声を生成する
-5. YMM4 が動画をレンダリングする → 最終 mp4
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0 参照)
+
+1. 人間が NotebookLM にソース (URL/テキスト/PDF) を投入する
+2. NotebookLM が Audio Overview (音声) を生成する
+3. 音声を NotebookLM に再投入し、テキスト化 (文字起こし) する
+4. Gemini API がテキストを構造化 (speaker/text 分離) する
+5. Python がスライド画像 (Google Slides API) と素材画像を調達する
+6. Python が CSV を組み立てる (4列: speaker, text, image_path, animation_type)
+7. YMM4 で CSV を NLMSlidePlugin 経由でインポートする
+8. YMM4 がゆっくりボイス音声を生成する
+9. YMM4 が動画をレンダリングする → 最終 mp4
 
 > YMM4 が最終レンダラーであり、Python パイプラインは CSV 作成までの前工程に責務を限定する。
-> YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
+> 台本品質は NotebookLM が決定する。Gemini は構造化のみ。
 
 ### ~~Path B~~ (削除済み, 2026-03-08)
 
@@ -139,13 +150,10 @@ Audience: All Agents
 > ExportFallbackManager, CSV Timeline API/UI、関連テスト7件を含む15ファイルが削除された。
 > YMM4一本化により、Pythonパイプラインの役割はCSV生成までの前工程に限定される。
 
-### Research 先行フロー（Path A の前工程）
+### ~~Research 先行フロー~~ (廃止, 2026-03-22)
 
-1. Web から資料収集する
-2. Research Package を保存する
-3. NLM たたき台台本と資料を照合する
-4. 採否判断を反映して CSV を出力する
-5. Path A へ接続する
+> Python の Brave Search リサーチは廃止。ソース投入は人間が NotebookLM に直接行う。
+> (DESIGN_FOUNDATIONS.md Section 0 / DECISION LOG 2026-03-22)
 
 ## Current E2E Topic
 
@@ -161,13 +169,15 @@ Audience: All Agents
 | Final CSV | `output_csv/final_script_rp_20260301_000417.csv` |
 | Current blocker | 多言語自動照合は弱いが、今回は手動採否相当で final CSV まで到達 |
 
-## Workflow Boundaries
+## Workflow Boundaries (2026-03-22 更新)
 
 | Layer | 主責務 | 出力 |
 |---|---|---|
-| Research | 出典確認、要約、資料パッケージ化 | Research Package |
-| Alignment | 台本との差分比較、採否判断 | Alignment Report / final CSV |
-| Production | YMM4 で CSV→音声→動画をレンダリング | 最終 mp4 |
+| 入力層 (NotebookLM) | ソース投入 → Audio Overview → テキスト化 | 台本テキスト (プレーンテキスト) |
+| 変換層 (Python+Gemini) | 台本構造化 + スライド生成 + 素材調達 + CSV組立 | timeline.csv + 画像群 |
+| 出力層 (YMM4) | CSV→音声生成→動画レンダリング | 最終 mp4 |
+
+> 詳細は `docs/DESIGN_FOUNDATIONS.md` Section 0 を参照。
 
 ## Agent Operating Policy
 

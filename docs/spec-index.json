@@ -60,7 +60,7 @@
     "pct": 100,
     "cat": "system",
     "file": "docs/system_specification.md",
-    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1258テスト (2026-03-18更新)"
+    "summary": "システム仕様書。4ステージ+支援機能の機能要件+非機能要件+技術仕様+完全ディレクトリ構成+外部API6種+1262テスト (2026-03-18更新)"
   },
   {
     "id": "SP-008",
@@ -326,20 +326,20 @@
   {
     "id": "SP-037",
     "title": "Thumbnail Pipeline Integration",
-    "status": "done",
-    "pct": 100,
+    "status": "partial",
+    "pct": 85,
     "cat": "pipeline",
     "file": "docs/specs/thumbnail_pipeline.md",
-    "summary": "Phase 1+2完了: パイプライン統合 + CJKフォント + SP-036スタイルマッピング(resolve_thumbnail_style) + SP-031 style_template thumbnail連携 + CLI --generate-thumbnail。35テストPASS"
+    "summary": "Phase 1-3実装済み+Phase 4コード実装完了: Gemini文言生成(generate_thumbnail_copy)+色彩プリセット5種+バリエーション生成+パイプライン自動統合+CLI統合。79テストPASS。残: YMM4テンプレート実物作成(人間作業)+実動画検証"
   },
   {
     "id": "SP-038",
     "title": "YouTube Publish Pipeline",
     "status": "partial",
-    "pct": 90,
+    "pct": 95,
     "cat": "pipeline",
     "file": "docs/specs/youtube_publish_pipeline.md",
-    "summary": "Phase 1-3実装完了: メタデータ自動生成+クレジット挿入+YouTube Data API v3 resumable upload(GoogleAuthHelper+モックフォールバック)+CLI uploadサブコマンド。41テストPASS。残: 本番OAuthトークン取得・実チャンネルテストアップロード"
+    "summary": "Phase 1-4実装完了: メタデータ自動生成+クレジット挿入+YouTube Data API v3 resumable upload+Phase 7一気通貫publishコマンド(品質検証→メタデータ自動検出→アップロード→結果永続化)。66テストPASS。残: 本番OAuthトークン取得・実チャンネルテストアップロード・スケジュール投稿"
   },
   {
     "id": "SP-039",
@@ -362,11 +362,11 @@
   {
     "id": "SP-041",
     "title": "TextSlide Visual Quality",
-    "status": "done",
+    "status": "superseded",
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/specs/text_slide_quality.md",
-    "summary": "Phase 1-3完了: 4レイアウト自動選択+グラデーション背景5テーマ+SP-036プリセット連携(news→Stats優先/blue, educational→TwoColumn優先/green, summary→Emphasis優先/warm)。59テスト"
+    "summary": "superseded: TextSlideGenerator削除済み (Google Slides API移行決定)。歴史的参照として保持"
   },
   {
     "id": "SP-042",
@@ -398,11 +398,11 @@
   {
     "id": "SP-045",
     "title": "First Publish Checklist",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 80,
     "cat": "pipeline",
     "file": "docs/specs/first_publish_checklist.md",
-    "summary": "初回YouTube公開の通しチェックリスト。Phase A(自動CSV)+B(YMM4手動)+C(MP4検証+OAuth+upload)の全ステップ。SP-035/038の完了判定を兼ねる"
+    "summary": "初回YouTube公開の通しチェックリスト。SP-050準拠でPhase 0-5(トピック選定+NLM Audio Overview+テキスト化+CSV生成+YMM4レンダリング+YouTube公開)を網羅。SP-035/038の完了判定を兼ねる"
   },
   {
     "id": "SP-046",
@@ -416,10 +416,64 @@
   {
     "id": "SP-047",
     "title": "Video Output Quality Standard",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 75,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。NotebookLMベース台本回帰、NotebookLMスライド活用、ウェブ著作権クリア画像優先、セグメント粒度細分化。docs/video_quality_diagnosis.md + docs/notebooklm_drift_analysis.md が前提"
+    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(API調査)+1.5(台本品質改善)+Phase 2(実検証)+Phase 3(Wikimedia Commons統合+E2E dry-runスクリプト+自動テスト16件+手動テストガイド36項目)完了。残: Phase 4(NotebookLMスライド統合), Phase 5(実API品質検証)"
+  },
+  {
+    "id": "SP-048",
+    "title": "InoReader/RSS Feed Integration",
+    "status": "partial",
+    "pct": 80,
+    "cat": "pipeline",
+    "file": "docs/spec_feed_integration.md",
+    "summary": "InoReader APIからRSSフィードのトピック候補を自動取得。Phase 1完了: OAuth認証クライアント+トピック抽出+CLI+61テストPASS。残: 実API疎通テスト、Phase 2(パイプライン自動連携)"
+  },
+  {
+    "id": "SP-049",
+    "title": "Design Foundations",
+    "status": "done",
+    "pct": 100,
+    "cat": "core",
+    "file": "docs/DESIGN_FOUNDATIONS.md",
+    "summary": "三層モデル (NotebookLM/Python/YMM4) の設計公理。外部ツール前提・Python責務境界・過剰実装の分類"
+  },
+  {
+    "id": "SP-050",
+    "title": "E2E Workflow Specification",
+    "status": "partial",
+    "pct": 95,
+    "cat": "pipeline",
+    "file": "docs/specs/e2e_workflow_spec.md",
+    "summary": "トピック選定→YouTube公開の一気通貫ワークフロー仕様。Phase 0-7定義。Q1-1/Q6-2暫定確定、Q-X1確定(Decision #72)。DESIGN_FOUNDATIONS三層モデル準拠"
+  },
+  {
+    "id": "SP-051",
+    "title": "Audio Transcription Pipeline",
+    "status": "partial",
+    "pct": 70,
+    "cat": "pipeline",
+    "file": "docs/specs/audio_transcription_spec.md",
+    "summary": "NLM Audio Overview音声ファイルからGemini Audio APIで文字起こし+構造化を1回のAPIコールで実行。Phase 2自動化。Phase 1実装済み(AudioTranscriber+CLI+23テスト)"
+  },
+  {
+    "id": "SP-052",
+    "title": "YMM4 Video Quality Template Design",
+    "status": "draft",
+    "pct": 0,
+    "cat": "plugin",
+    "file": "docs/specs/ymm4_video_quality_template.md",
+    "summary": "YMM4動画内容クオリティのテンプレート設計。レイヤー構成(7層)、テキストオーバーレイ(overlay_plan.json)、キャラ配置、背景ルール、アニメーション使い分け、人間/Python/YMM4責務境界の定義"
+  },
+  {
+    "id": "SP-053",
+    "title": "Producer GUI (Production Dashboard)",
+    "status": "draft",
+    "pct": 10,
+    "cat": "ui",
+    "file": "docs/specs/producer_gui_spec.md",
+    "summary": "動画制作者向け統合GUI。プロダクションボード(カンバン)+バッチ選定+AI評価+ライン詳細+公開フロー。Streamlit再構成+Playwright NLM半自動化。ProductionLineデータモデル。Phase 1-4実装計画"
   }
 ]

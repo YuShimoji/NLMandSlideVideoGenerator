@@ -1,19 +1,21 @@
-# 手動素材ワークフローガイド
+# 制作ワークフローガイド
 
-このガイドでは、NotebookLM等で生成した素材から動画を作成する手順を説明します。
+> **2026-03-22 更新**: 根本ワークフロー (DESIGN_FOUNDATIONS.md Section 0) に準拠。
 
 ---
 
 ## 概要
 
-**制作パス:**
+**制作パス (根本ワークフロー):**
 
 ```
-Path A (唯一): CSV → YMM4 → 最終 mp4
+NotebookLM ソース投入 → Audio Overview → テキスト化 → Gemini構造化 → CSV → YMM4 → mp4
 ```
 
-**必要素材:**
-1. **台本/テロップ** - CSV形式（speaker, text）
+**必要なもの:**
+1. **NotebookLM アカウント** — 台本生成 (Audio Overview + テキスト化)
+2. **Gemini API キー** — 台本構造化 (speaker/text 分離)
+3. **YMM4 + NLMSlidePlugin** — 音声生成 + 動画レンダリング
 
 **出力:**
 - YMM4 からレンダリングした最終 mp4
@@ -45,8 +47,8 @@ Speaker1,3行目のテロップです
 4. レイアウト・音声を確認・調整
 5. YMM4 で動画をレンダリング（書き出し）→ 最終 mp4
 
-> **重要**: YMM4 は個別 WAV エクスポートができないため、WAV 供給元としては使用しない。
-> YMM4 が最終レンダラーとして CSV→音声→動画を一貫処理する。
+> **重要**: YMM4 が最終レンダラーとして CSV → 音声合成 → 動画を一貫処理する。
+> Python 側は音声生成を行わない。
 
 ---
 
@@ -65,7 +67,7 @@ Speaker1,3行目のテロップです
 
 ## 方法3: 一気通貫パイプライン（トピックベース）
 
-トピックを指定して、リサーチ→台本生成→画像取得→CSV合成までを一気通貫で実行します。
+NotebookLM テキストを投入し、Gemini構造化→画像取得→CSV合成までを一気通貫で実行します。
 
 ```bash
 # CLI実行（推奨）
@@ -93,30 +95,17 @@ python scripts/research_cli.py pipeline \
 3. 「Audio Overview」を生成
 4. 生成された音声をダウンロード
 
-### 台本の準備
+### 台本テキストの取得 (根本ワークフロー)
 
-NotebookLMで生成された内容を元に、CSVを手動作成:
+> DESIGN_FOUNDATIONS.md Section 0 参照
 
-```csv
-Host1,今日はAI技術について話しましょう
-Host2,はい、最近の進化はすごいですね
-Host1,特に生成AIの分野が注目されています
-```
+1. NotebookLM にソース (URL/テキスト/PDF) を投入
+2. Audio Overview を生成 → 音声ファイルをダウンロード
+3. **音声を NotebookLM に再投入** → テキスト化 (文字起こし)
+4. テキストファイルとして保存 → Python パイプラインに投入
+5. Gemini API が speaker/text に構造化 → CSV に変換
 
-### 音声の分割
-
-NotebookLMの音声は1ファイルなので、以下の方法で分割:
-
-1. **手動分割**: Audacityなどで話者交代部分でカット
-2. **自動分割**: 無音検出で分割するスクリプト (`scripts/split_audio_by_silence.py`) を使用
-
-```bash
-python scripts/split_audio_by_silence.py \
-  --input path/to/long_audio.wav \
-  --out-dir path/to/audio_dir \
-  --min-silence-sec 0.7 \
-  --silence-threshold 0.02
-```
+> **注意**: 音声を外部ツールで WAV 分割する旧経路は廃止済み。音声は NotebookLM に再投入してテキスト化する。
 
 ---
 
@@ -141,15 +130,16 @@ brew install ffmpeg
 sudo apt install ffmpeg
 ```
 
-### 「音声ファイルが見つかりません」
+### 「CSVインポート後に音声が生成されない」
 
-- ファイル名が `001.wav`, `002.wav` ... の形式か確認
-- CSVの行数と音声ファイル数が一致しているか確認
+- YMM4 の NLMSlidePlugin が正しくインストールされているか確認
+- CSV の speaker 列が YMM4 のボイスプリセットにマッピング可能か確認
+- VoiceSpeakerDiscovery のログを確認
 
-### 「動画が生成されるが空になる」
+### 「NotebookLM のテキスト化が不正確」
 
-- FFmpegが正しくインストールされているか確認
-- 環境チェック: `python scripts/check_environment.py`
+- Audio Overview の音質が十分か確認
+- テキスト化後に手動で明らかな誤りを修正してから Gemini 構造化に投入
 
 ---
 

@@ -1,9 +1,10 @@
 # ドキュメント INDEX
 
-最終更新: 2026-03-18
+最終更新: 2026-03-22
 
 ## まず読む (現行SSOT)
 
+- **設計公理 (根本ワークフロー)**: `docs/DESIGN_FOUNDATIONS.md`
 - **方針/共有SSOT (AI Agent共通)**: `docs/PROJECT_ALIGNMENT_SSOT.md`
 - **開発バックログ / 方針**: `docs/backlog.md`
 - **制作ワークフロー (Path A)**: `docs/user_guide_manual_workflow.md`
@@ -47,7 +48,11 @@
 - **パイプライン品質トラッキング (SP-042)**: `docs/specs/pipeline_quality_tracking.md`
 - **マルチLLMプロバイダー (SP-043)**: `docs/specs/multi_llm_provider.md`
 - **セグメント尺コントロール (SP-044)**: `docs/specs/segment_duration_control.md`
-- **テンプレート統合設計**: `docs/specs/template_consolidation.md`
+- **初回公開チェックリスト (SP-045)**: `docs/specs/first_publish_checklist.md`
+- **テンプレート統合設計 (SP-046)**: `docs/specs/template_consolidation.md`
+- **動画出力品質基準 (SP-047)**: `docs/specs/video_output_quality_standard.md`
+- **InoReader/RSSフィード統合 (SP-048)**: `docs/spec_feed_integration.md`
+- **E2Eワークフロー仕様 (SP-050)**: `docs/specs/e2e_workflow_spec.md`
 
 ## データ仕様
 
@@ -63,6 +68,12 @@
 - **音声パス比較**: `docs/voice_path_comparison.md`
 - **Spec Index (JSON)**: `docs/spec-index.json`
 - **摩擦インベントリ**: `docs/friction_inventory.md`
+
+## 分析・診断
+
+- **動画品質診断**: `docs/video_quality_diagnosis.md`
+- **NotebookLMドリフト分析**: `docs/notebooklm_drift_analysis.md`
+- **根本原因分析 (ワークフロー消失)**: `docs/root_cause_workflow_loss.md`
 
 ## 検証・実績
 

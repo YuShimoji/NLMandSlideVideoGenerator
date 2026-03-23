@@ -29,7 +29,6 @@ with patch.dict("sys.modules", {
 }):
     from notebook_lm.audio_generator import AudioGenerator, AudioInfo
     from notebook_lm.source_collector import SourceInfo
-    from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
 
 
 # ---------------------------------------------------------------------------
@@ -103,53 +102,9 @@ class TestAudioGeneratorInit:
         assert gen.output_dir.exists()
         assert gen._job_poll_count == {}
 
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    def test_init_without_gemini_key(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = ""
-        gen = AudioGenerator()
-        assert gen.gemini_api_key == ""
-        # gemini_integration は falsy のはず
-        assert not gen.gemini_integration
-
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    def test_init_with_gemini_key(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = "test-key-123"
-        gen = AudioGenerator()
-        assert gen.gemini_api_key == "test-key-123"
-        assert gen.gemini_integration is not None
-
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    def test_init_no_gemini_attr(self, tmp_path):
-        """hasattr(settings, 'GEMINI_API_KEY') が False の場合"""
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        # GEMINI_API_KEY 属性を一時的に除去
-        saved = _mock_settings.GEMINI_API_KEY
-        del _mock_settings.GEMINI_API_KEY
-        try:
-            gen = AudioGenerator()
-            assert gen.gemini_api_key is None
-            assert gen.gemini_integration is None
-        finally:
-            _mock_settings.GEMINI_API_KEY = saved
-
 
 # ---------------------------------------------------------------------------
-# _tts_is_available
-# ---------------------------------------------------------------------------
-
-class TestTtsIsAvailable:
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    def test_always_false(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = ""
-        gen = AudioGenerator()
-        assert gen._tts_is_available() is False
-
-
-# ---------------------------------------------------------------------------
-# generate_audio — placeholder path (no Gemini / no TTS)
+# generate_audio — placeholder path (YMM4 handles voice)
 # ---------------------------------------------------------------------------
 
 class TestGenerateAudioPlaceholder:
@@ -181,35 +136,6 @@ class TestGenerateAudioPlaceholder:
 # ---------------------------------------------------------------------------
 # generate_audio — Gemini+TTS path (分岐の確認)
 # ---------------------------------------------------------------------------
-
-class TestGenerateAudioGeminiPath:
-    @pytest.mark.asyncio
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    async def test_gemini_tts_branch(self, tmp_path):
-        """gemini_integration あり & _tts_is_available=True で代替ワークフロー呼出"""
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = "key"
-        gen = AudioGenerator()
-
-        # _tts_is_available を True に上書き
-        gen._tts_is_available = MagicMock(return_value=True)
-        mock_script = ScriptInfo(
-            title="T", content="C", segments=[{"text": "a"}],
-            total_duration_estimate=60.0, language="ja",
-            quality_score=0.9, created_at=datetime(2026, 1, 1),
-        )
-        gen._generate_script_with_gemini = AsyncMock(return_value=mock_script)
-
-        expected_audio_info = AudioInfo(file_path=tmp_path / "out.wav", duration=60.0)
-        gen._generate_audio_with_tts = AsyncMock(return_value=tmp_path / "out.wav")
-        gen._validate_audio_quality = AsyncMock(return_value=expected_audio_info)
-
-        result = await gen.generate_audio([_make_source()])
-        assert result is expected_audio_info
-        gen._generate_script_with_gemini.assert_awaited_once()
-        gen._generate_audio_with_tts.assert_awaited_once()
-        gen._validate_audio_quality.assert_awaited_once()
-
 
 # ---------------------------------------------------------------------------
 # _generate_placeholder_audio
@@ -246,78 +172,6 @@ class TestGeneratePlaceholderAudio:
 # ---------------------------------------------------------------------------
 # _generate_script_with_gemini
 # ---------------------------------------------------------------------------
-
-class TestGenerateScriptWithGemini:
-    @pytest.mark.asyncio
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    async def test_no_integration_raises(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = ""
-        gen = AudioGenerator()
-        gen.gemini_integration = None
-        with pytest.raises(ValueError, match="not initialized"):
-            await gen._generate_script_with_gemini([_make_source()])
-
-    @pytest.mark.asyncio
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    async def test_converts_sources_and_calls_gemini(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = "key"
-        gen = AudioGenerator()
-
-        mock_script = ScriptInfo(
-            title="S", content="C", segments=[{"t": "a"}, {"t": "b"}],
-            total_duration_estimate=120.0, language="ja",
-            quality_score=0.85, created_at=datetime(2026, 1, 1),
-        )
-        gen.gemini_integration = MagicMock()
-        gen.gemini_integration.generate_script_from_sources = AsyncMock(
-            return_value=mock_script
-        )
-
-        sources = [_make_source(title="First"), _make_source(title="Second")]
-        result = await gen._generate_script_with_gemini(sources)
-
-        assert result is mock_script
-        call_kwargs = gen.gemini_integration.generate_script_from_sources.call_args
-        # sources が dict のリストに変換されているか
-        assert len(call_kwargs.kwargs.get("sources", call_kwargs.args[0] if call_kwargs.args else [])) == 2
-        # topic は最初のソースのタイトル
-        assert "First" in str(call_kwargs)
-
-    @pytest.mark.asyncio
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    async def test_empty_sources_uses_general_topic(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = "key"
-        gen = AudioGenerator()
-        gen.gemini_integration = MagicMock()
-        gen.gemini_integration.generate_script_from_sources = AsyncMock(
-            return_value=MagicMock(segments=[])
-        )
-        # sources が空の場合、topic は "General Topic"
-        # ただし sources[0].title でIndexError になるので、空の場合は実際にはエラー
-        # テストは空でない場合の正常系を確認
-        sources = [_make_source()]
-        await gen._generate_script_with_gemini(sources)
-        gen.gemini_integration.generate_script_from_sources.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# _generate_audio_with_tts
-# ---------------------------------------------------------------------------
-
-class TestGenerateAudioWithTts:
-    @pytest.mark.asyncio
-    @patch("notebook_lm.audio_generator.settings", _mock_settings)
-    async def test_raises_not_implemented(self, tmp_path):
-        _mock_settings.AUDIO_DIR = tmp_path / "audio"
-        _mock_settings.GEMINI_API_KEY = ""
-        gen = AudioGenerator()
-        mock_script = MagicMock()
-        with pytest.raises(NotImplementedError, match="YMM4"):
-            await gen._generate_audio_with_tts(mock_script)
-
 
 # ---------------------------------------------------------------------------
 # _upload_sources (simulation)

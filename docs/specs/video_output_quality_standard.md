@@ -24,13 +24,12 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ### D2: テキストスライドはNotebookLMのスライド生成を活用
 
-- 現行: TextSlideGenerator (PIL/Pillow, 708行) で箇条書きスライドをプログラム生成
-- 新: NotebookLMのスライド生成機能を活用
-- PIL生成は廃止方向
+- 旧: TextSlideGenerator (PIL/Pillow, 708行) で箇条書きスライドをプログラム生成 — **削除済み**
+- 新: NotebookLMのスライド生成機能を活用 / Google Slides API に移行決定
 
 ### D3: 画像素材はウェブ上の著作権クリア画像を優先
 
-- 現行: Pexelsストック画像 + Imagen AIフォールバック
+- 旧: Pexelsストック画像 + Imagen AIフォールバック (AIImageProvider削除済み)
 - 新: テーマに合ったウェブ上の著作権クリア画像を優先使用
   - 検索対象: Creative Commons, Wikimedia Commons, 政府公開資料, パブリックドメイン
   - ストック画像はフォールバック
@@ -44,17 +43,17 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 ## 品質基準 (目標)
 
 ### 台本
-- [ ] 冒頭15秒にフック (「この動画で分かること」「衝撃的な事実」等)
-- [ ] セグメント粒度: 15-30秒/セグメント (現行40-65秒から短縮)
-- [ ] 対話テンポ: 1発話50-100文字 (現行200-400文字から短縮)
-- [ ] ソース引用: ナチュラルな言い回し (「ソース1」「ソース3」のリテラル引用を排除)
-- [ ] キャラクター個性: テンプレート的相槌の排除
+- [x] 冒頭15秒にフック (「この動画で分かること」「衝撃的な事実」等) — プロンプトに指示追加済み
+- [x] セグメント粒度: 15-25秒/セグメント (旧40-65秒) — 4プリセット + バリデータ更新済み
+- [x] 対話テンポ: 1発話50-150文字 (旧200-400文字) — プロンプト指示更新済み
+- [x] ソース引用: ナチュラルな言い回し — プロンプトに明示的排除指示追加済み
+- [x] キャラクター個性: テンプレート的相槌の排除 — news/educationalプリセットに指示追加済み
 
 ### ビジュアル
 - [ ] テキストスライド: NotebookLMスライド生成活用
-- [ ] 画像素材: テーマに関連した著作権クリア画像 (ストック画像のみに依存しない)
+- [x] 画像素材: テーマに関連した著作権クリア画像 — Wikimedia Commons統合実装済み (Wikimedia→Pexels→Pixabay→AI→TextSlide)
 - [ ] 視覚変化: 5-15秒ごとに何らかの変化 (画像切替/アニメーション/テキストオーバーレイ)
-- [ ] アニメーション: 全セグメントに動きを付与 (static排除)、ただしトランジション過多にならない
+- [x] アニメーション: TextSlideに控えめなアニメーション (ken_burns/zoom) を自動付与。static排除達成
 
 ### 動画構成
 - [ ] 1セグメント1画像の制約を解除 (複数画像/セグメント可)
@@ -63,57 +62,81 @@ docs/video_quality_diagnosis.md に記載の品質診断結果に基づく。
 
 ## 実装フェーズ
 
-### Phase 1: NotebookLM統合調査 [DONE 2026-03-19]
+### Phase 1: NotebookLM統合調査 (完了)
 
-- [x] NotebookLMのAPIアクセス方法・制約の調査
-  - 結論: notebooklm-py (非公式PyPI) を採用。pip install + playwright install chromium
-  - 公式Enterprise APIは有料ライセンス必須のため不採用
-- [x] スライド生成機能の入出力: PPTX/PDF で取得可能
-- [x] 台本取得経路: Audio OverviewはMP3のみ。Study Guide (テキスト) を台本ソースとして使用
-- [x] 統合方式確定: P1+A (notebooklm-py + YMM4キャラ維持)
-  - Study Guide → Gemini → CSV → YMM4 (音声合成)
-  - Slides (PPTX/PDF) → PNG → YMM4 (画像トラック)
+#### 調査結果 (2026-03-21)
+
+**NotebookLM Enterprise API** (Discovery Engine API v1alpha):
+- ベースURL: `https://{location}-discoveryengine.googleapis.com/v1alpha/projects/{project}/locations/{location}/`
+- 認証: Google Cloud IAM + Bearer token (`gcloud auth print-access-token`)
+- 前提: Google Cloud プロジェクト + discoveryengine API有効化 + NotebookLM Enterprise ライセンス
+
+**利用可能なAPI**:
+- `notebooks.create` — ノートブック作成
+- `sources.batchCreate` — ソース追加 (Google Drive / テキスト / Web URL / YouTube URL)
+- `sources.uploadFile` — ファイルアップロード (PDF/DOCX/PPTX/XLSX/音声/画像)
+- `audioOverviews.create` — Audio Overview生成 (podcast風音声, 数分かかる, 1ノートブックにつき1つ)
+- `audioOverviews.delete` — Audio Overview削除
+
+**制約**:
+- Pre-GA (v1alpha): 仕様変更の可能性あり
+- Enterprise ライセンスが必要 (無料版NotebookLMにはAPI無し)
+- Audio Overview: ノートブック内のソースから生成、言語指定可、フォーカスエリア指定可
+- スライド生成API: **公式APIとしては未提供** (Web UIの "Slide Deck" / "Infographics" 機能はAPI非公開)
+
+**Standalone Podcast API** (Enterprise不要):
+- Enterprise ライセンス不要、GCPプロジェクト + `roles/discoveryengine.podcastApiUser` ロールのみ
+- **現在allowlist制** (Googleに申請が必要)
+- テキスト/画像/文書/動画/音声を入力 → MP3を出力 (最大約100kトークン)
+- 尺: SHORT (4-5分) / STANDARD (約10分)
+- NotebookLMの独自マルチスピーカーボイスモデルを使用 (汎用TTSより自然)
+
+**非公式ライブラリ**:
+- [notebooklm-py](https://github.com/teng-lin/notebooklm-py) — 非公式Python API (5.6k+ stars, notebooks/sources/audio/slides/chat)
+- [notebooklm-sdk](https://github.com/agmmnn/notebooklm-sdk) — TypeScript/Node.js SDK (同等機能)
+- [nblm-rs](https://github.com/K-dash/nblm-rs) — Rust/Python SDK for Enterprise API
+- [notebooklm-mcp-cli](https://github.com/jacob-bd/notebooklm-mcp-cli) — MCP統合
+
+**DIYパス**: Gemini + Cloud TTS でNotebookLM的ワークフローを再現可能
+- Google Cloud Blogにチュートリアルあり (LangGraph + Gemini 1.5 Pro)
+- 音声品質はNotebookLMネイティブより劣る
+
+**統合設計への示唆**:
+1. **最有望**: Standalone Podcast API (allowlistアクセス申請を推奨)
+2. **即時利用可**: notebooklm-py (非公式、無料Googleアカウントで動作、破損リスクあり)
+3. **台本構造化**: Gemini改善 (Phase 1.5完了) で構造化品質は十分。台本品質の源泉はNotebookLM (DESIGN_FOUNDATIONS.md Section 0)
+4. **スライド生成**: 公式APIなし。notebooklm-py/notebooklm-sdkの非公式APIか、Gemini+テンプレートが現実的
+5. **将来**: Standalone Podcast API のGA化 + スライドAPI公開を待つ
+
+### Phase 1.5: 台本品質改善 (Gemini側, 完了)
+
+- [x] セグメント粒度: 4プリセットの avg_segment_seconds を15-25秒に短縮
+- [x] segment_density: 各プリセットで3-4倍に増加
+- [x] プロンプト改善: 短発話50-150文字、フック必須、自然引用、テンポ改善
+- [x] バリデータ (_SEGMENT_TABLE) を新粒度に同期
+- [x] テスト更新 + 新規4件追加 (計1346テスト全通過)
 
 ### Phase 2: 台本パイプライン移行 [NEXT]
 
-アーキテクチャ:
-```
-sources (URLs/PDFs)
-  → notebooklm_client.create_notebook(sources)
-  → notebooklm_client.generate_study_guide()  → Markdown テキスト
-  → NlmScriptConverter.convert(study_guide)   → segment CSV
-  → CsvAssembler (既存)                       → YMM4 CSV
-```
+- NotebookLM Audio Overview → テキスト化 → Gemini構造化 フローの確立 (DESIGN_FOUNDATIONS.md Section 0 で定義済み)
+- 現行Geminiフォールバック台本生成との共存/段階移行
 
-実装タスク:
-- [ ] `pip install "notebooklm-py[browser]"` を requirements.txt に追加
-- [ ] `src/notebook_lm/notebooklm_client.py` 新設
-  - NotebookLMClient クラス: create_notebook / generate_study_guide / generate_slides / cleanup
-  - 認証: notebooklm login (初回のみ、セッション永続化)
-- [ ] `src/notebook_lm/nlm_script_converter.py` 新設
-  - Study Guide (Markdown) → YMM4 CSV 変換
-  - 品質基準適用 (SP-047): フック・セグメント粒度 15-30秒・発話50-100文字
-  - 内部実装: Gemini を「変換エンジン」として使用
-- [ ] `src/notebook_lm/gemini_integration.py` 役割変更
-  - 旧: 台本生成 (Geminiプロンプト駆動)
-  - 新: NLMテキスト → CSV 変換補助 (NlmScriptConverter から呼び出し)
-- [ ] テスト: NotebookLM API はモック化、変換ロジックは実テスト
+### Phase 3: ビジュアルパイプライン移行 (部分完了)
 
-### Phase 3: ビジュアルパイプライン移行
-
-アーキテクチャ:
-```
-notebooklm_client.generate_slides()  → PPTX/PDF
-  → SlideExtractor.extract_png(pptx) → PNG list
-  → 既存 ImageItem 配置パイプライン (SP-026)
-```
-
-実装タスク:
-- [ ] `src/slides/slide_extractor.py` 新設: PPTX/PDF → PNG (python-pptx or pdf2image)
-- [ ] TextSlideGenerator (PIL/Pillow, 708行) を廃止フラグ付きで縮退
-  - NLMスライドが利用可能な場合は PIL 生成をスキップ
-  - PIL は fallback として残す (NLM失敗時)
-- [ ] 著作権クリア画像検索: Wikimedia Commons API 統合 (Brave Search に加えて)
+- NotebookLMスライド生成: 公式APIなし、手動補助または非公式APIの検討 (HUMAN_AUTHORITY)
+- [x] **Wikimedia Commons画像統合** (2026-03-21 実装完了):
+  - `stock_image_client.py` に `_search_wikimedia()` を追加
+  - フォールバック順: Wikimedia Commons → Pexels → Pixabay → AI生成 → テキストスライド
+  - ライセンスフィルタ: CC系/PD系のみ許可 (Fair use等は除外)
+  - landscape比率フィルタ: width/height >= 1.2
+  - min_widthフィルタ: デフォルト1920px以上
+  - APIキー不要、`enable_wikimedia=True` (デフォルト) で有効
+  - テスト6件追加 (モック)
+- [x] **TextSlideアニメーション自動付与** (2026-03-21 実装完了):
+  - `AnimationType.gentle_cycle_types()` 追加 (ken_burns/zoom_in/zoom_out)
+  - `resource_orchestrator._assign_animations()` で source="generated" に控えめなアニメーション割当
+  - static排除達成 (全セグメントに動きが付く)
+- PILスライド生成: 即廃止ではなくフォールバックとして維持 (HUMAN_AUTHORITY)
 
 ### Phase 4: 品質検証
 

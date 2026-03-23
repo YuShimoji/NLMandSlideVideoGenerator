@@ -1,6 +1,6 @@
 # 開発バックログ
 
-最終更新: 2026-03-18 (session 12 nightshift)
+最終更新: 2026-03-22 (session 17 nightshift)
 
 ---
 
@@ -60,11 +60,10 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 | 統合テスト | SP-035 YMM4実機テスト実施 | 中 | SP-035 (60%) | チェックリスト整備済み+pre-flight自動チェック。YMM4環境で実施待ち |
 | YouTube公開 | SP-038 本番OAuthトークン取得+実チャンネルテスト | 中 | SP-038 (90%) | Phase 1-3実装完了。残: 本番OAuth取得・実チャンネルテストアップロード |
 | 背景動画 | ループ背景動画レイヤー | 低 | なし | 実需発生時に仕様化。YMM4側で手動追加可能 |
-| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | なし | バッチ制作日常化時に再訪 |
+| トピック自動取得 | Inoreader/RSSフィードからトピックを自動取得→topics.json生成 | 低 | SP-048 (80%) | Phase 1完了: クライアント+抽出+CLI+61テスト。残: 実API疎通、Phase 2パイプライン連携 |
 | 品質 | 型ヒント・Docstring整備 | 低 | なし | 継続 |
-| 整理 | TikTokAdapter 廃止検討 | 低 | なし | 220行モック実装。YouTube長尺がターゲットなので廃止が妥当。HUMAN_AUTHORITY |
-| 整理 | IPublishingQueue 方針決定 | 低 | なし | Protocol定義のみ、具象実装なし。スケジュール投稿不要なら削除。HUMAN_AUTHORITY |
-| 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | helpers.py から参照あり。テスト済みだが実パイプラインでの使用状況要確認 |
+| 整理 | BasicTimelinePlanner パイプライン接続確認 | 低 | なし | **NOT DEAD**: helpers.pyでYMM4 backend有効時に実体化。104行、テスト3件。削除不要 |
+| 整理 | slide_builder.py のproduction接続確認 | 低 | なし | 246行。テストのみ使用 (test_slide_builder.py)。production未importだが害なし |
 
 ---
 
@@ -72,8 +71,10 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 
 ### 短期 (~1週): partial SP を done に
 
+- SP-050 未決定事項解消 (90%→100%): 実制作で Q1-1/Q6-2/Q-X1 を確認
 - SP-035 統合実機テスト (60%→100%): YMM4環境で手動実施
 - SP-038 YouTube投稿 (90%→100%): 本番OAuthトークン取得 + 実チャンネルテスト
+- SP-045 初回公開通し実行 (draft→partial): SP-050準拠で1本通し
 
 ### 中期 (1-2ヶ月): 実運用開始
 
@@ -127,6 +128,10 @@ Path A (YMM4一本化) が唯一の制作経路。Path B (MoviePy) は 2026-03-0
 - 2026-03-18: 摩擦インベントリ + F-004/F-006 + SP-044 Phase 1-2
 - 2026-03-18: SP-020→SP-031統合、SP-041 Phase 3、SP-043 Phase 4、SP-044 Phase 3
 - 2026-03-18: nightshift — 仕様書同期8件(Imagen4, pct100%), 開発ガイド全面更新, INDEX拡充
+- 2026-03-21: SP-047 Phase 2実検証(台本品質全指標PASS) + Phase 3(Wikimedia Commons統合+TextSlideアニメーション)
+- 2026-03-21: デッドコード削除3件 (TikTokAdapter 221行 + IPublishingQueue 7行 + Gemini+TTS 60行)
+- 2026-03-22: 根本ワークフロー復元 (DESIGN_FOUNDATIONS.md) + 矛盾仕様7件修正 + SP-050 E2Eワークフロー仕様起草
+- 2026-03-22: SP-045 SP-050準拠改版 + ドキュメント同期 (テスト数1346, 仕様数50)
 
 ---
 

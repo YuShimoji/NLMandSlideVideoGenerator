@@ -50,6 +50,22 @@ class AnimationType(Enum):
             cls.PAN_DOWN,
         ]
 
+    @classmethod
+    def gentle_cycle_types(cls) -> List[AnimationType]:
+        """テキストスライド向けの控えめなアニメーション順序。
+
+        テキスト主体の画像でも視認性を損なわない動き:
+        - ken_burns (ゆっくりズーム): テキストの読みやすさを維持
+        - zoom_in / zoom_out: 軽微な拡大縮小
+        - 激しいpan系は除外 (テキストが画面外に出る可能性)
+        """
+        return [
+            cls.KEN_BURNS,
+            cls.ZOOM_IN,
+            cls.KEN_BURNS,
+            cls.ZOOM_OUT,
+        ]
+
 
 @dataclass
 class VisualResource:

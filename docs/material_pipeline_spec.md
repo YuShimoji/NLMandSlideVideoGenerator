@@ -1,6 +1,6 @@
 # 素材直結パイプライン仕様 (SP-032)
 
-**最終更新**: 2026-03-15
+**最終更新**: 2026-03-22
 **ステータス**: Phase A/B/C/D完了
 
 ---
@@ -14,9 +14,9 @@
 ```
 [手動] トピック定義
   ↓
-[自動] SourceCollector: Web資料収集 (Brave Search API)
+[手動] NotebookLM にソース投入 → Audio Overview → テキスト化
   ↓
-[手動/自動] 台本生成 (GeminiProvider or NotebookLMProvider)
+[自動] Gemini構造化 (speaker/text 分離)
   ↓
 [自動] SlideGenerator: Google Slides → PNG化
   ↓
@@ -36,11 +36,11 @@
 ### 1.2 目標（To-Be）
 
 ```
-[手動] トピック入力 + 資料URL指定
+[手動] トピック選定 + NotebookLM にソース投入
   ↓
-[自動] Step 1: リサーチ (SourceCollector)
+[手動] Step 1: NotebookLM Audio Overview → テキスト化
   ↓
-[自動] Step 2: 台本生成 (GeminiProvider, 資料注入)
+[自動] Step 2: 台本構造化 (Gemini, NLMテキスト→speaker/text)
   ↓
 [品質G] Gate A: 台本レビュー (Streamlit UI, 任意スキップ)
   ↓
@@ -59,40 +59,46 @@
 
 ## 2. 全ステップ仕様
 
-### Step 1: リサーチ（資料収集）
+### Step 1: ソース投入 + 台本生成 (NotebookLM)
+
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0):
+> 台本品質は NotebookLM が決定する。人間が NotebookLM にソースを投入し、Audio Overview を生成・テキスト化する。
 
 | 項目 | 内容 |
 |------|------|
-| 実行主体 | SourceCollector (src/notebook_lm/source_collector.py) |
-| 入力 | トピック文字列, シードURL群, 検索クエリ群 |
-| 処理 | Brave Search API → HTML解析 → 信頼度/関連度スコアリング |
-| 出力 | ResearchPackage (JSON) |
-| 自動/手動 | **自動** |
-| 品質保証 | relevance_score + reliability_score でソート。低スコア除外 |
-| 既存実装 | **実装済み** |
+| 実行主体 | 人間 + NotebookLM |
+| 入力 | URL, テキスト, PDF 等のソース |
+| 処理 | NotebookLM にソース投入 → Audio Overview 生成 → テキスト化 |
+| 出力 | テキストファイル (対話の文字起こし) |
+| 自動/手動 | **手動** (NotebookLM Web UI) |
+| 品質保証 | NotebookLM の Audio Overview 品質に依存 |
+| 既存実装 | 手動操作のため実装不要 |
 
-**情報源の信頼性について:**
-- SourceCollectorはWeb検索結果を取得し、ドメイン信頼度とキーワード関連度でスコアリングする
-- Gemini APIのモデル内部知識だけに依存しない設計（外部資料を明示的に注入）
-- 信頼度の低い情報源は自動除外（threshold設定可能）
+**注意:**
+- Brave Search による自動リサーチ (SourceCollector) は廃止済み (DECISION LOG #74, 2026-03-22)
+- ソース投入は人間が NotebookLM に直接行う
+- SourceCollector のコードはレガシーとして残存
 
-### Step 2: 台本生成
+### Step 2: 台本構造化 (Gemini)
+
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0):
+> NotebookLM が台本品質を決定する。Gemini は構造化のみ。
 
 | 項目 | 内容 |
 |------|------|
-| 実行主体 | GeminiProvider or NotebookLMProvider |
-| 入力 | ResearchPackage, トピック |
-| 処理 | AI台本生成 → セグメント構造化 |
+| 実行主体 | NotebookLM (台本品質) + Gemini (構造化) |
+| 入力 | NotebookLM テキスト (Audio Overview → テキスト化) |
+| 処理 | Gemini が NotebookLM テキストを speaker/text に構造化 |
 | 出力 | ScriptBundle (JSON: segments[].speaker, .content, .key_points) |
-| 自動/手動 | **自動**（プロバイダ選択は手動） |
-| 既存実装 | **実装済み** |
+| 自動/手動 | NotebookLM: 手動 / Gemini構造化: 自動 |
+| 既存実装 | **実装済み** (ただし Gemini の役割を「生成」→「構造化」に変更予定) |
 
-**2つの経路:**
+**経路の優先順:**
 
-| 経路 | 情報源 | 特徴 |
-|------|--------|------|
-| GeminiProvider | SourceCollectorの資料をプロンプトに注入 | 高速、カスタマイズ自由 |
-| NotebookLMProvider | ユーザーがNotebookLMに手動で資料投入 | 資料忠実度が高い、手動ステップあり |
+| 経路 | 位置づけ | 情報源 | 特徴 |
+|------|----------|--------|------|
+| NotebookLM (正規) | **正規経路** | NotebookLM Audio Overview → テキスト化 | 台本品質が高い。Gemini は構造化のみ担当 |
+| GeminiProvider (フォールバック) | フォールバック | SourceCollectorの資料をプロンプトに注入 | NLM テキスト未提供時のみ使用。品質は NLM に劣る |
 
 ### Gate A: 台本レビュー（品質ゲート）
 
@@ -187,13 +193,13 @@
 ## 3. データフロー図
 
 ```
-トピック + URL
+トピック + ソース (URL/テキスト/PDF)
     │
     ▼
-SourceCollector ─→ ResearchPackage (JSON)
+[手動] NotebookLM: ソース投入 → Audio Overview → テキスト化
     │
     ▼
-GeminiProvider ◄─ ResearchPackage
+[自動] Gemini: テキスト構造化 (speaker/text 分離)
     │
     ▼
 ScriptBundle (JSON)
@@ -250,7 +256,7 @@ python scripts/research_cli.py pipeline \
   --speaker-map '{"Host1":"れいむ","Host2":"まりさ"}'
 ```
 
-実行フロー: collect → script gen (GeminiProvider) → align → review → CsvAssembler
+実行フロー: NLMテキスト受入 → Gemini構造化 → align → review → CsvAssembler (collectはレガシー)
 
 - テスト: `tests/test_research_pipeline.py` (3件)
 

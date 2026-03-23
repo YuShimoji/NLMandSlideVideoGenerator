@@ -1,6 +1,10 @@
 """
 音声生成モジュール
 NotebookLMを使用したラジオ風音声の生成
+
+DESIGN NOTE: Legacy stub. Audio synthesis is YMM4's responsibility.
+This module only generates placeholder WAV files (_tts_is_available() always returns False).
+See docs/DESIGN_FOUNDATIONS.md Section 3.
 """
 import asyncio
 from typing import List
@@ -13,10 +17,10 @@ import struct
 
 # 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
-from .gemini_integration import GeminiIntegration, ScriptInfo
+
 
 from config.settings import settings
-from .source_collector import SourceInfo
+from .research_models import SourceInfo
 
 # Type checking imports (used only in type annotations)
 from typing import TYPE_CHECKING
@@ -52,108 +56,20 @@ class AudioGenerator:
         # NotebookLM 側の進行状況ポーリングをシミュレーションするための状態
         self._job_poll_count = {}
 
-        # 代替ワークフロー用: Gemini API キー設定
-        self.gemini_api_key = settings.GEMINI_API_KEY if hasattr(settings, 'GEMINI_API_KEY') else None
-        self.gemini_integration = GeminiIntegration(self.gemini_api_key) if self.gemini_api_key else None
-
-    def _tts_is_available(self) -> bool:
-        """External TTS は廃止済み (YMM4 に移行)。常に False を返す。"""
-        return False
-
     async def generate_audio(self, sources: List[SourceInfo]) -> AudioInfo:
         """
-        ソース情報から音声を生成
+        ソース情報から音声を生成。
 
-        Args:
-            sources: ソース情報一覧
-
-        Returns:
-            AudioInfo: 生成された音声情報
+        音声生成はYMM4側で行うため、ここではプレースホルダーを生成する。
         """
         logger.info(f"音声生成開始: {len(sources)}件のソースから")
 
         try:
-            # 代替ワークフロー: Gemini + TTS 統合
-            if self.gemini_integration and self._tts_is_available():
-                logger.info("Gemini + TTS 代替ワークフローを使用")
-
-                # Step 1: Geminiでスクリプト生成
-                script_info = await self._generate_script_with_gemini(sources)
-
-                # Step 2: TTSで音声生成
-                audio_file = await self._generate_audio_with_tts(script_info)
-
-                # Step 3: 音声品質の検証
-                audio_info = await self._validate_audio_quality(audio_file)
-
-                logger.success(f"代替ワークフロー音声生成完了: {audio_info.file_path}")
-                return audio_info
-
-            else:
-                # フォールバック: プレースホルダー実装
-                logger.warning("Gemini/TTS 設定が不足しているため、プレースホルダー実装を使用")
-                return await self._generate_placeholder_audio()
-
+            logger.warning("音声生成はYMM4で実施。プレースホルダーを使用")
+            return await self._generate_placeholder_audio()
         except Exception as e:
             logger.error(f"音声生成エラー: {str(e)}")
             raise
-
-    async def _generate_script_with_gemini(self, sources: List[SourceInfo]) -> 'ScriptInfo':
-        """
-        Gemini APIを使用してスクリプトを生成
-
-        Args:
-            sources: ソース情報一覧
-
-        Returns:
-            ScriptInfo: 生成されたスクリプト情報
-        """
-        logger.debug("Geminiでスクリプト生成開始")
-
-        if not self.gemini_integration:
-            raise ValueError("Gemini integration is not initialized")
-
-        # SourceInfo を GeminiIntegration 用に変換
-        gemini_sources = [
-            {
-                "title": source.title,
-                "url": source.url,
-                "content_preview": getattr(source, 'content_preview', ''),
-                "relevance_score": getattr(source, 'relevance_score', 1.0),
-                "reliability_score": getattr(source, 'reliability_score', 1.0)
-            }
-            for source in sources
-        ]
-
-        # トピックを推測（最初のソースのタイトルを使用）
-        topic = sources[0].title if sources else "General Topic"
-
-        # Gemini API でスクリプト生成
-        script_info = await self.gemini_integration.generate_script_from_sources(
-            sources=gemini_sources,
-            topic=topic,
-            target_duration=self.max_duration,
-            language="ja"
-        )
-
-        logger.debug(f"Geminiスクリプト生成完了: {len(script_info.segments)}セグメント")
-        return script_info
-
-    async def _generate_audio_with_tts(self, script_info: 'ScriptInfo') -> Path:
-        """
-        TTS統合を使用して音声を生成
-
-        External TTS providers have been removed. Use YMM4 for voice generation.
-
-        Args:
-            script_info: スクリプト情報
-
-        Raises:
-            NotImplementedError: Always. TTS is handled by YMM4.
-        """
-        raise NotImplementedError(
-            "External TTS providers have been removed. Use YMM4 for voice generation."
-        )
 
     async def _generate_placeholder_audio(self) -> AudioInfo:
         """

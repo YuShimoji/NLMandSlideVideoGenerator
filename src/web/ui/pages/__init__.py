@@ -25,6 +25,7 @@ from .material_pipeline import show_material_pipeline_page
 from .documentation import show_documentation_page
 from .tests import show_tests_page
 from .batch_queue import show_batch_queue_page
+from .production_board import show_production_board_page
 
 # Re-export utility functions for backward compatibility
 from ._utils import load_markdown_file, update_progress, _run_environment_check
@@ -40,6 +41,7 @@ __all__ = [
     "show_documentation_page",
     "show_tests_page",
     "show_batch_queue_page",
+    "show_production_board_page",
     # Utility functions
     "load_markdown_file",
     "update_progress",

@@ -75,7 +75,6 @@ def check_python_env(r: PreFlightResult) -> None:
         ("core.csv_assembler", "CsvAssembler"),
         ("core.visual.animation_assigner", "AnimationAssigner"),
         ("core.visual.stock_image_client", "StockImageClient"),
-        ("core.visual.text_slide_generator", "TextSlideGenerator"),
         ("core.export_validator", "ExportValidator"),
     ]
     for mod_name, cls_name in modules:

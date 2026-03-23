@@ -32,6 +32,7 @@ st.set_page_config(
 
 
 PAGE_OPTIONS = [
+    "🎬 プロダクションボード",
     "🏠 ホーム",
     "🔍 リサーチ・台本照合",
     "📦 素材パイプライン",
@@ -44,6 +45,7 @@ PAGE_OPTIONS = [
 ]
 
 PAGE_ALIASES = {
+    "board": "🎬 プロダクションボード",
     "home": "🏠 ホーム",
     "research": "🔍 リサーチ・台本照合",
     "material": "📦 素材パイプライン",
@@ -84,7 +86,10 @@ def main():
     )
 
     # ページ表示
-    if page == "🏠 ホーム":
+    if page == "🎬 プロダクションボード":
+        from src.web.ui.pages import show_production_board_page
+        show_production_board_page()
+    elif page == "🏠 ホーム":
         show_home_page()
     elif page == "🔍 リサーチ・台本照合":
         from src.web.ui.pages import show_research_page

@@ -38,6 +38,7 @@ class UploadMetadata:
     language: str
     privacy_status: str = "private"
     thumbnail_path: Optional[Path] = None
+    publish_at: Optional[str] = None  # ISO 8601 (例: "2026-03-25T18:00:00Z")
 
 
 def _normalize_metadata(metadata: Union[UploadMetadata, Dict[str, Any]]) -> UploadMetadata:
@@ -52,6 +53,7 @@ def _normalize_metadata(metadata: Union[UploadMetadata, Dict[str, Any]]) -> Uplo
         language=str(metadata.get("language", "ja")),
         privacy_status=str(metadata.get("privacy_status", "private")),
         thumbnail_path=Path(metadata["thumbnail_path"]) if metadata.get("thumbnail_path") else None,
+        publish_at=metadata.get("publish_at") or metadata.get("publishAt"),
     )
 
 
@@ -267,6 +269,22 @@ class YouTubeUploader:
         except ImportError as e:
             raise UploadError(f"google-api-python-client が必要です: {e}")
 
+        # スケジュール投稿: publishAt 指定時は privacyStatus を "private" に強制
+        # YouTube Data API v3 は publishAt + private の組み合わせでスケジュール公開を実現する
+        privacy = metadata.privacy_status
+        status_body: Dict[str, Any] = {
+            "privacyStatus": privacy,
+            "selfDeclaredMadeForKids": False,
+        }
+        if metadata.publish_at:
+            status_body["publishAt"] = metadata.publish_at
+            if privacy != "private":
+                logger.warning(
+                    f"スケジュール投稿には privacyStatus=private が必要です。"
+                    f"'{privacy}' を 'private' に変更します"
+                )
+                status_body["privacyStatus"] = "private"
+
         body = {
             "snippet": {
                 "title": metadata.title,
@@ -276,10 +294,7 @@ class YouTubeUploader:
                 "defaultLanguage": metadata.language,
                 "defaultAudioLanguage": metadata.language,
             },
-            "status": {
-                "privacyStatus": metadata.privacy_status,
-                "selfDeclaredMadeForKids": False,
-            },
+            "status": status_body,
         }
 
         media = MediaFileUpload(
@@ -347,13 +362,17 @@ class YouTubeUploader:
             await asyncio.sleep(0.1)
 
         video_id = f"mock_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        privacy = metadata.privacy_status
+        if metadata.publish_at:
+            logger.info(f"[MOCK] スケジュール投稿: {metadata.publish_at}")
+            privacy = "private"  # スケジュール投稿は private 必須
 
         return UploadResult(
             video_id=video_id,
             video_url=f"https://www.youtube.com/watch?v={video_id}",
             upload_status="uploaded",
             processing_status="processing",
-            privacy_status=metadata.privacy_status,
+            privacy_status=privacy,
             uploaded_at=datetime.now(),
         )
 

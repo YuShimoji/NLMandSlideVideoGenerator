@@ -1,83 +1,56 @@
 # HANDOVER
 
-Timestamp: 2026-03-19
-Actor: Claude Code (session 15)
+Timestamp: 2026-03-22
+Actor: Claude Code (session 17 NIGHTSHIFT)
 Type: Session Handover
 
 ## Current Status
 
-47仕様中44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047)。
-テスト 1199 passed / 3 failed (pre-existing) / 3 skipped。
+50仕様中45 done + 4 partial (SP-035 60%, SP-037 75%, SP-047 75%, SP-048 80%) + 1 draft (SP-045) + 1 archived + 1 superseded。
+テスト 1346 passed / 0 failed。
 
-新規テスト 10件 (test_notebooklm_client.py) を追加。
-失敗 3件はいずれも既存の API 依存テスト (今回の変更とは無関係)。
+**直近の進捗 (session 16-17):**
+- session 16: 矛盾仕様7件修正 + SP-045 SP-050準拠改版 + 前セッション未コミット変更統合
+- session 17: ドキュメント同期 (テスト数1262→1346, 仕様数更新, backlog更新)
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
-| SP-047 Phase 1 | DONE | notebooklm-py 調査完了。統合方式 P1+A 確定 |
-| SP-047 Phase 2 | IN PROGRESS (~40%) | notebooklm_client.py + nlm_script_converter.py 作成済み |
-| NotebookLMScriptProvider | UPDATED | AudioGenerator スタブ依存を全廃、新クライアント接続 |
-| requirements.txt | UPDATED | notebooklm-py[browser] + python-pptx 追加 |
-| DECISION LOG | UPDATED | 3件の設計決定を追記 (P1+A、Study Guide 経路) |
-| テスト | 10件追加 (10/10 passed) | 直接関連テスト 66件も全 passed |
+| 矛盾仕様修正 | DONE | HIGH 3件 + MEDIUM 3件 + LOW 1件、根本ワークフロー準拠に修正 |
+| SP-045 改版 | DONE | SP-050準拠でPhase 0-5構成に全面改版 |
+| SP-050 E2Eワークフロー仕様 | partial (90%) | Phase 0-7定義。未決定事項はQ形式で整理 |
+| DESIGN_FOUNDATIONS | DONE | 根本ワークフロー復元。三層モデル明文化 |
+| ドキュメント同期 | DONE | テスト数・仕様数を全主要ドキュメントで更新 |
 
-## Current Slice
+## Commits
 
-**SP-047 Phase 2: 台本パイプライン移行**
+### Session 16 (3 commits, unpushed)
+1. `fb7c0d9` docs: 根本ワークフロー復元に伴う矛盾仕様7件修正 + SP-045 SP-050準拠改版
+2. `14077f2` feat: 前セッション未コミット変更の統合
+3. `511a676` docs: CLAUDE.md session 16 状態更新
 
-実装済み:
-- `src/notebook_lm/notebooklm_client.py`: NLM ラッパー (mock/本番切替、async CM)
-- `src/notebook_lm/nlm_script_converter.py`: Study Guide → ScriptInfo 変換 (SP-047 品質基準組込み)
-- `src/core/providers/script/notebook_lm_provider.py`: 刷新済み
-
-残作業:
-- `notebooklm login` 実認証 + 実 NLM Study Guide 取得確認 (手動)
-- Phase 3: スライド PNG 変換 (python-pptx / pdf2image)
-- Phase 4: 品質検証 (1本動画を完成させる)
-
-## 設計確定事項 (session 15)
-
-| 決定 | 内容 |
-|------|------|
-| 統合方式 | P1+A: notebooklm-py で Study Guide + PPTX を取得。YMM4 キャラ声維持 |
-| 台本経路 | Study Guide (テキスト) → Gemini 変換 → YMM4 CSV |
-| Audio Overview | 使用しない (MP3のみでテキスト取得不可) |
-| 制作ペース目標 | 一晩 N 本バッチ (notebooklm-py は並列実行可能) |
-
-## Pre-existing テスト失敗 (要対応)
-
-| テスト | 原因 | 優先度 |
-|--------|------|--------|
-| test_research_pipeline::test_pipeline_auto_review | SP-044 自動拡張で 3→21 セグメント、テストが 3 を期待 | 中 |
-| test_script_alignment::test_llm_alignment_skipped_without_api_key | API Key なしでも "orphaned" が返ることを期待、現在 "supported" | 中 |
-| test_segment_classifier::test_classify_with_keywords_fallback | キーワード抽出の期待値不一致 | 低 |
-
-## Git State
-
-- Branch: `master`
-- 未コミットの変更:
-  - 新規: `src/notebook_lm/notebooklm_client.py`
-  - 新規: `src/notebook_lm/nlm_script_converter.py`
-  - 新規: `tests/test_notebooklm_client.py`
-  - 更新: `src/core/providers/script/notebook_lm_provider.py`
-  - 更新: `CLAUDE.md` (DECISION LOG 3件追記)
-  - 更新: `docs/specs/video_output_quality_standard.md` (Phase 1 DONE + Phase 2/3 詳細)
-  - 更新: `requirements.txt` (notebooklm-py + python-pptx)
+### Session 17 (pending commit)
+- docs: ドキュメント同期 (テスト数1346, 仕様数50, backlog更新)
 
 ## Next Actions
 
 | 優先度 | タスク | 手動/自動 |
 |--------|--------|----------|
-| 1 | `pip install "notebooklm-py[browser]"` + `notebooklm login` 実行 | 手動 |
-| 2 | 実 NLM 接続で Study Guide 取得確認 | 手動 |
-| 3 | SP-047 Phase 3: スライド PNG 変換実装 (python-pptx) | 自動 |
-| 4 | SP-047 Phase 4: 1本動画を完成させて品質基準確認 | 混在 |
-| 5 | pre-existing テスト 3件の修正 | 自動 |
+| 1 | SP-050 未決定事項 (Q1-1 Audio Overview設定, Q6-2 レンダリング実測, Q-X1 目標時間方針) | 手動 (実制作で確認) |
+| 2 | SP-035: YMM4実機テスト (60%→100%) | 手動 |
+| 3 | SP-038: 本番OAuth取得 + 実チャンネルテスト (90%→100%) | 手動 |
+| 4 | SourceCollector レガシーコード削除 | HUMAN_AUTHORITY |
+| 5 | SP-045: 初回公開通し実行 (draft→partial) | 手動 |
+
+## Pending Design Decisions
+
+1. **SourceCollector (Brave Search) 削除**: ISourceCollectorインターフェース含む設計変更が必要 (HUMAN_AUTHORITY)
+2. **NotebookLM Enterprise ライセンス取得**: コスト vs 価値の判断 (HUMAN_AUTHORITY)
+3. **DESIGN_FOUNDATIONS 過剰実装マップの解消**: gemini_integration.py / text_slide_generator.py / audio_generator.py / notebook_lm_provider.py (HUMAN_AUTHORITY)
 
 ## Primary References
 
-- `src/notebook_lm/notebooklm_client.py` — NLM ラッパー (新規)
-- `src/notebook_lm/nlm_script_converter.py` — Study Guide → CSV 変換器 (新規)
-- `docs/specs/video_output_quality_standard.md` — SP-047 仕様 (Phase 1 DONE 記録)
-- `CLAUDE.md` — DECISION LOG (P1+A 等の確定事項)
-- `docs/video_quality_diagnosis.md` — 品質診断結果
+- `docs/DESIGN_FOUNDATIONS.md` — 設計公理 (根本ワークフロー + 三層モデル)
+- `docs/specs/e2e_workflow_spec.md` — SP-050 E2Eワークフロー仕様
+- `docs/specs/first_publish_checklist.md` — SP-045 初回公開チェックリスト
+- `docs/spec-index.json` — 全50仕様の索引
+- `docs/backlog.md` — 開発バックログ

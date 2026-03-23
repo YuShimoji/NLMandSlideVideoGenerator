@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from config.settings import settings
 from notebook_lm.gemini_integration import GeminiIntegration
-from notebook_lm.source_collector import SourceInfo
+from notebook_lm.research_models import SourceInfo
 
 from ...interfaces import IScriptProvider
 
@@ -52,6 +52,7 @@ class GeminiScriptProvider(IScriptProvider):
         topic: str,
         sources: List[SourceInfo],
         mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         if not self.api_key and self._llm_provider is None:
             raise ValueError("LLM APIキーが設定されていません。環境変数 GEMINI_API_KEY / LLM_API_KEY を確認してください。")
@@ -63,25 +64,37 @@ class GeminiScriptProvider(IScriptProvider):
                 llm_provider=self._llm_provider,
             )
 
-        sources_payload: List[Dict[str, Any]] = [
-            {
-                "url": getattr(src, "url", ""),
-                "title": getattr(src, "title", ""),
-                "content_preview": getattr(src, "content_preview", ""),
-                "relevance_score": getattr(src, "relevance_score", 0.0),
-                "reliability_score": getattr(src, "reliability_score", 0.0),
-            }
-            for src in sources
-        ]
+        if transcript_text:
+            # 根本ワークフロー: NLMトランスクリプト → Gemini構造化
+            script_info = await self.client.structure_transcript(
+                transcript_text=transcript_text,
+                topic=topic,
+                target_duration=self.target_duration,
+                language=self.language,
+                style=self.style,
+                speaker_mapping=self.speaker_mapping,
+            )
+        else:
+            # フォールバック: ソースからGemini生成
+            sources_payload: List[Dict[str, Any]] = [
+                {
+                    "url": getattr(src, "url", ""),
+                    "title": getattr(src, "title", ""),
+                    "content_preview": getattr(src, "content_preview", ""),
+                    "relevance_score": getattr(src, "relevance_score", 0.0),
+                    "reliability_score": getattr(src, "reliability_score", 0.0),
+                }
+                for src in sources
+            ]
 
-        script_info = await self.client.generate_script_from_sources(
-            sources=sources_payload,
-            topic=topic,
-            target_duration=self.target_duration,
-            language=self.language,
-            style=self.style,
-            speaker_mapping=self.speaker_mapping,
-        )
+            script_info = await self.client.generate_script_from_sources(
+                sources=sources_payload,
+                topic=topic,
+                target_duration=self.target_duration,
+                language=self.language,
+                style=self.style,
+                speaker_mapping=self.speaker_mapping,
+            )
 
         try:
             cleaned_content = GeminiIntegration._extract_json_from_response(script_info.content)

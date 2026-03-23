@@ -51,9 +51,13 @@ class YouTubePlatformAdapter(IPlatformAdapter):
         thumbnail = package.get("thumbnail")
         schedule = package.get("schedule")
 
-        # スケジュール対応は後日実装
+        # スケジュール投稿: metadata に publish_at を設定
         if schedule:
-            logger.warning("Scheduled posting not yet implemented, posting immediately")
+            if hasattr(metadata, 'publish_at'):
+                metadata.publish_at = schedule
+            else:
+                metadata["publish_at"] = schedule
+            logger.info(f"スケジュール投稿設定: {schedule}")
 
         upload_result = await self.uploader.upload_video(
             video=video,

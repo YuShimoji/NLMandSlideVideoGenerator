@@ -83,7 +83,7 @@
 ┌──────────────────────────────────────────┐
 │ Stage 2: ビジュアル+CSV生成              │
 │ SegmentClassifier → StockImageClient     │
-│ → AIImageProvider → Orchestrator         │
+│ → Orchestrator                           │
 │ → CsvAssembler → Pre-Export Validator    │
 │ → 4列CSV (speaker,text,image,animation) │
 └──────────────────────────────────────────┘

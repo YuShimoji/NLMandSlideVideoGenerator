@@ -1,8 +1,10 @@
 """
-ストック画像API統合モジュール (SP-033 Phase 2)
+ストック画像API統合モジュール (SP-033 Phase 2 + SP-047 Phase 3)
 
-Pexels / Pixabay の無料APIからキーワード検索で画像を取得し、
+Wikimedia Commons / Pexels / Pixabay からキーワード検索で画像を取得し、
 スライド素材として利用可能な形式でダウンロード・キャッシュする。
+
+フォールバック順: Wikimedia Commons → Pexels → Pixabay
 """
 from __future__ import annotations
 
@@ -39,19 +41,20 @@ class StockImage:
     width: int
     height: int
     photographer: str
-    source: str  # "pexels" | "pixabay"
+    source: str  # "wikimedia" | "pexels" | "pixabay"
     alt_text: str = ""
     tags: List[str] = field(default_factory=list)
     local_path: Optional[Path] = None
 
 
 class StockImageClient:
-    """Pexels / Pixabay APIクライアント。
+    """Wikimedia Commons / Pexels / Pixabay APIクライアント。
 
     優先順位:
-    1. Pexels (高品質、200 req/hour 無料)
-    2. Pixabay (大量、5000 req/hour 無料)
-    3. キーなし → 空リスト返却 (エラーにしない)
+    1. Wikimedia Commons (著作権クリア画像、APIキー不要)
+    2. Pexels (高品質、200 req/hour 無料)
+    3. Pixabay (大量、5000 req/hour 無料)
+    4. キーなし → 空リスト返却 (エラーにしない)
 
     エラーハンドリング:
     - 5xx / 429: 指数バックオフでリトライ (最大3回)
@@ -59,6 +62,7 @@ class StockImageClient:
     - 接続エラー / タイムアウト: リトライ (最大3回)
     """
 
+    WIKIMEDIA_BASE = "https://commons.wikimedia.org/w/api.php"
     PEXELS_BASE = "https://api.pexels.com/v1"
     PIXABAY_BASE = "https://pixabay.com/api/"
 
@@ -67,9 +71,11 @@ class StockImageClient:
         pexels_api_key: Optional[str] = None,
         pixabay_api_key: Optional[str] = None,
         cache_dir: Optional[Path] = None,
+        enable_wikimedia: bool = True,
     ) -> None:
         self.pexels_api_key = pexels_api_key if pexels_api_key is not None else settings.STOCK_IMAGE_SETTINGS.get("pexels_api_key", "")
         self.pixabay_api_key = pixabay_api_key if pixabay_api_key is not None else settings.STOCK_IMAGE_SETTINGS.get("pixabay_api_key", "")
+        self.enable_wikimedia = enable_wikimedia
         self.cache_dir = cache_dir or (settings.DATA_DIR / "stock_images")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -135,9 +141,22 @@ class StockImageClient:
         orientation: str = "landscape",
         min_width: int = 1920,
     ) -> List[StockImage]:
-        """キーワードで画像を検索。Pexels優先、フォールバックでPixabay。"""
+        """キーワードで画像を検索。Wikimedia→Pexels→Pixabayの順でフォールバック。"""
         images: List[StockImage] = []
 
+        # 1. Wikimedia Commons (APIキー不要、著作権クリア)
+        if self.enable_wikimedia:
+            try:
+                images = self._search_wikimedia(query, count, min_width)
+                if images:
+                    logger.info(f"Wikimedia検索成功: '{query}' → {len(images)}件")
+                    return images
+            except (HTTPError, ConnectionError, Timeout) as e:
+                logger.warning(f"Wikimedia検索失敗: {e}")
+            except Exception as e:
+                logger.warning(f"Wikimedia検索失敗: {e}")
+
+        # 2. Pexels
         if self.pexels_api_key:
             try:
                 images = self._search_pexels(query, count, orientation, min_width)
@@ -277,6 +296,100 @@ class StockImageClient:
         except Exception as e:
             logger.warning(f"ダウンロード失敗: {image.download_url} - {e}")
             return None
+
+    def _search_wikimedia(
+        self,
+        query: str,
+        count: int,
+        min_width: int = 1920,
+    ) -> List[StockImage]:
+        """Wikimedia Commons API検索。
+
+        CC/パブリックドメインの画像を取得する。APIキー不要。
+        generator=search + prop=imageinfo でメタデータ+URLを取得。
+        """
+        params: Dict[str, Any] = {
+            "action": "query",
+            "format": "json",
+            "generator": "search",
+            "gsrsearch": f"filetype:bitmap {query}",
+            "gsrnamespace": "6",  # File namespace
+            "gsrlimit": str(min(count * 3, 50)),  # 多めに取得してフィルタ
+            "prop": "imageinfo",
+            "iiprop": "url|size|extmetadata|user",
+            "iiurlwidth": "1920",
+        }
+
+        response = self._request_with_retry(
+            self.WIKIMEDIA_BASE,
+            params=params,
+            timeout=15,
+            source_name="Wikimedia",
+        )
+        data = response.json()
+
+        pages = data.get("query", {}).get("pages", {})
+        if not pages:
+            return []
+
+        images: List[StockImage] = []
+        for page_id, page in pages.items():
+            if int(page_id) < 0:
+                continue
+
+            imageinfo_list = page.get("imageinfo", [])
+            if not imageinfo_list:
+                continue
+
+            info = imageinfo_list[0]
+            width = info.get("width", 0)
+            height = info.get("height", 0)
+
+            if width < min_width:
+                continue
+
+            # landscape check (width > height)
+            if height > 0 and width / height < 1.2:
+                continue
+
+            # ライセンス確認
+            extmeta = info.get("extmetadata", {})
+            license_short = extmeta.get("LicenseShortName", {}).get("value", "")
+            # CC系、PD系のみ許可
+            allowed_licenses = ("cc", "pd", "public domain", "cc0")
+            if license_short and not any(
+                lic in license_short.lower() for lic in allowed_licenses
+            ):
+                continue
+
+            # ダウンロードURLの決定
+            # thumburl (リサイズ版) が利用可能なら使用、なければ原寸
+            download_url = info.get("thumburl") or info.get("url", "")
+            if not download_url:
+                continue
+
+            photographer = info.get("user", "")
+            description = extmeta.get("ImageDescription", {}).get("value", "")
+            # HTMLタグ除去
+            if description:
+                description = re.sub(r"<[^>]+>", "", description)[:200]
+
+            images.append(StockImage(
+                id=f"wikimedia_{page.get('pageid', page_id)}",
+                url=f"https://commons.wikimedia.org/wiki/File:{page.get('title', '').replace('File:', '')}",
+                download_url=download_url,
+                width=width,
+                height=height,
+                photographer=photographer,
+                source="wikimedia",
+                alt_text=description,
+                tags=[],
+            ))
+
+            if len(images) >= count:
+                break
+
+        return images
 
     def _search_pexels(
         self,
@@ -538,8 +651,11 @@ class StockImageClient:
         for img in images:
             if img.source == "none" or not img.photographer:
                 continue
-            source_name = "Pexels" if img.source == "pexels" else "Pixabay"
-            lines.append(f"Photo by {img.photographer} on {source_name}")
+            if img.source == "wikimedia":
+                lines.append(f"Image by {img.photographer} via Wikimedia Commons ({img.url})")
+            else:
+                source_name = "Pexels" if img.source == "pexels" else "Pixabay"
+                lines.append(f"Photo by {img.photographer} on {source_name}")
 
         if not lines:
             return ""

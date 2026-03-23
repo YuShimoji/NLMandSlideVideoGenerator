@@ -6,21 +6,14 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: 出力品質改善 (NotebookLM回帰)
-直近の状態 (2026-03-19 session 15):
-  - SP-047 Phase 1 完了: notebooklm-py 統合調査完了、P1+A 設計確定
-  - SP-047 Phase 2 着手 (40%): NLM ラッパー + Study Guide→CSV 変換器 実装済み
-  - 全47仕様。44 done + 1 partial (SP-035) + 2 draft (SP-045, SP-047) + 1 archived + 1 superseded
-  - テスト: 1199 passed, 3 failed (pre-existing), 3 skipped / 新規 10件追加
-  - 現在のスライス: SP-047 Phase 2 (台本パイプライン移行)
-  - 実装済みファイル (未コミット):
-    - src/notebook_lm/notebooklm_client.py (NEW): NLM ラッパー
-    - src/notebook_lm/nlm_script_converter.py (NEW): Study Guide → ScriptInfo 変換
-    - src/core/providers/script/notebook_lm_provider.py (UPDATED): AudioGenerator スタブ廃止
-    - requirements.txt (UPDATED): notebooklm-py[browser] + python-pptx 追加
-    - tests/test_notebooklm_client.py (NEW): 10件
-  - 統合方式確定: P1+A (notebooklm-py + YMM4キャラ維持 + Study Guide 経路)
-  - 次のアクション: notebooklm login 実認証 → Phase 3 スライド PNG 変換
+現フェーズ: 根本ワークフロー復元完了 + 矛盾仕様修正完了
+直近の状態 (2026-03-22 session 18):
+  - session 18: SourceCollector レガシー削除 (438行→9行, テスト3ファイル削除, 23ファイル変更)
+  - session 17: ドキュメント同期 (テスト数1262→1346全8ファイル, INDEX拡充)
+  - session 16: 矛盾仕様7件修正完了 + SP-045 SP-050準拠改版
+  - 全50仕様。45 done + 4 partial (SP-035/037/047/048) + 1 draft (SP-045)
+  - テスト: 1267 passed, 0 failed (SourceCollectorテスト79件削除後)
+  - 次のアクション: SP-050 未決定事項 (Q1-1/Q6-2/Q-X1) は実制作で確認
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -68,8 +61,15 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-19 | テキストスライドはNotebookLMスライド生成を活用、PIL生成廃止方向 | PIL改善/NotebookLM/画像生成AI/Canva API | PILでの独自スライド生成は車輪の再発明。NotebookLMのスライド生成機能を活用する |
 | 2026-03-19 | 画像素材はウェブ上の著作権クリア画像を優先 | ストック継続/ウェブ優先/AI生成優先 | Pexelsストック画像は汎用的すぎてテーマとの関連性が弱い。著作権クリアなウェブ画像を優先し、ストックはフォールバック |
 | 2026-03-19 | 台本生成はNotebookLMベースに切替 | Geminiプロンプト改修/NotebookLM切替/ハイブリッド | NotebookLMの台本品質が高い。Geminiプロンプトの台本はセグメント粒度・対話テンポ・個性がYouTube水準に未達 |
-| 2026-03-19 | SP-047 統合方式: P1+A (notebooklm-py + YMM4キャラ維持) | P1自動化/P2手動/P3ハイブリッド + YMM4維持/NLM声 | notebooklm-pyでStudy Guide(テキスト)+スライド(PPTX)を取得。Audio Overviewは使用しない(テキスト取得不可)。YMM4キャラ声を維持。一晩N本バッチ制作を目標 |
-| 2026-03-19 | NLM台本取得経路: Study Guide → Gemini CSV変換 | Audio Overview STT/Study Guide/Briefing Doc | Audio OverviewはMP3のみでテキスト取得不可。Study Guideがテキスト出力としてYMM4 CSV変換の入力に最適 |
+| 2026-03-21 | サムネイルはYMM4テンプレートベースに転換、PIL生成はフォールバックに格下げ | PIL改善/YMM4テンプレート/外部ツール | PILベースのサムネイルはYouTube公開水準に未達。ゆっくり解説界隈の「売れるサムネイル」パターンに従う必要がある。テンプレート化+バラエティ+人間レビューが必須。文字配置の微細なズレが違和感を生むため自動生成では不十分 |
+| 2026-03-21 | 設計公理文書 (DESIGN_FOUNDATIONS.md) 新設。NotebookLM台本前提+YMM4設定前提+Python責務境界を明文化 | 既存doc修正/新規文書/不要 | 3つの暗黙前提の未文書化がドリフトと過剰実装の根本原因。三層モデル(入力層/変換層/出力層)で設計判断基準を定義 |
+| 2026-03-22 | 根本ワークフロー復元: NLM音声→テキスト化→Gemini構造化→CSV→YMM4。Geminiの台本「生成」は「構造化」に限定 | Gemini生成継続/NLMワークフロー復元/ハイブリッド | プロジェクト開始時の根本仕様(workflow_specification.md Step 2.1.2-2.1.3)がAIセッション蓄積で暗黙的に上書きされていた。commit b78d25e(2025-11-26)以降、DECISION LOG未記録のまま放棄 |
+| 2026-03-22 | SP-050 E2Eワークフロー仕様を根本ワークフロー準拠で起草。Phase 0-7定義+未決定事項 | SP-045更新のみ/新規SP/不要 | SP-045はチェックリスト(how)、SP-050は仕様定義(what)。根本ワークフローに合わせてPhase構成を再設計 |
+| 2026-03-22 | スライド生成をGoogle Slides APIに決定。PIL生成(708行)はフォールバックのみ | PIL改善/Google Slides/Canva/NLMスライド | Google Slides APIはテンプレートベースで自動化可能。PIL品質はYouTube水準に未達 |
+| 2026-03-22 | YMM4手動調整はほぼノータッチ(5分目標)に決定 | 5分/15分/30分+ | 制作効率向上にはYMM4作業最小化が必須。CSV品質で勝負する |
+| 2026-03-22 | Brave Searchリサーチ廃止。ソース投入は人間がNotebookLMに直接行う | 廃止/補助残す/両方 | 根本ワークフローではNotebookLMに直接ソースを投入する。Python側Webリサーチは不要 |
+| 2026-03-22 | 制作フロー明確化: リサーチ+台本選定を数本分一気に→GUI AI評価→制作者最終決定→GoラインのみYMM4投入 | 直列1本ずつ/バッチ選定+個別制作 | 台本選定フェーズとYMM4制作フェーズを分離。選定は数本分まとめて、制作は決定済みラインを投入 |
+| 2026-03-22 | 「一晩3本」のSSOT化を見直し。制作ペース目標ではなく品質優先 | 一晩3本固定/品質優先/ペース目標撤廃 | 制作ペースが強いSSOTになると品質判断が歪む。ペースは結果指標として扱い、品質を優先する |
 
 ## Key Paths
 

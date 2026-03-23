@@ -9,22 +9,24 @@
 
 ## 1. ワークフロー概要
 
-### 完全フロー（トピック→MP4）
+### 完全フロー（トピック→MP4）— 2026-03-22 更新
+
+> **根本ワークフロー** (DESIGN_FOUNDATIONS.md Section 0 参照)
 
 ```
-[Python] トピック + URL入力
+[人間] ソース (URL/テキスト/PDF) を NotebookLM に投入
     ↓
-[Python] リサーチ (SourceCollector) → ResearchPackage
+[NotebookLM] Audio Overview 生成 → 音声ファイル
     ↓
-[Python] 台本生成 (GeminiProvider) → ScriptBundle
+[NotebookLM] 音声を再投入 → テキスト化 (文字起こし) → プレーンテキスト
     ↓
-[Python] 台本レビュー (Gate A, 任意) → adopted/orphaned/conflict分類
+[Python] Gemini API で台本構造化 (speaker/text 分離) → 構造化 JSON
     ↓
-[Python] ストック画像取得 + AI画像生成 + テキストスライド生成 (SP-033)
+[Python] Google Slides API でスライド画像生成 + ストック画像取得 (SP-033)
     ↓
 [Python] CSV合成 (CsvAssembler) → timeline.csv (4列: 話者,テキスト,画像パス,アニメーション種別)
     ↓
-[Python] Pre-Export検証 (SP-031, 任意) → 画像存在/形式/統計チェック
+[Python] Pre-Export検証 (SP-031) → 画像存在/形式/統計チェック
     ↓
 [YMM4] NLMSlidePlugin CSVインポート + Voice生成 + スタイル自動適用
     ↓
@@ -32,6 +34,12 @@
     ↓
 最終 mp4
 ```
+
+> **変更点 (2026-03-22)**:
+> - SourceCollector (Brave Search) → 廃止。ソース投入は人間が NotebookLM に直接行う
+> - GeminiProvider 台本「生成」→ Gemini 台本「構造化」に限定
+> - テキストスライド生成 (PIL) → Google Slides API に移行
+> - 台本品質は NotebookLM が決定。Gemini は構造化のみ
 
 ### 簡易フロー（手動CSV→MP4）
 
@@ -156,19 +164,17 @@ python scripts/research_cli.py validate --csv output_csv/timeline.csv
 CLI `--auto-images` オプション使用時、以下の3段階フォールバックで画像を自動取得する。
 
 ```
-1. ストック画像 (Pexels/Pixabay API)
+1. ストック画像 (Pexels/Pixabay/Wikimedia Commons)
     ↓ 取得失敗
-2. AI生成画像 (Gemini Imagen 4, 有料プラン必須)
-    ↓ 生成失敗
-3. テキストスライド自動生成 (TextSlideGenerator)
+2. placeholder (画像なし)
 ```
 
 | ソース | 特徴 | APIキー |
 |--------|------|---------|
 | Pexels | 高品質写真、200req/h | PEXELS_API_KEY |
 | Pixabay | フォールバック、5000req/h | PIXABAY_API_KEY |
-| Gemini Imagen | AI生成イラスト、日次制限あり | GEMINI_API_KEY |
-| テキストスライド | キーワード+テーマカラーの自動生成画像 | 不要 |
+| Wikimedia Commons | CC/PD画像、APIキー不要 | 不要 |
+| placeholder | 画像なし (空欄) | 不要 |
 
 セグメント分類（SegmentClassifier）により、visual/textualを自動判定し、textualセグメントには `static` アニメーションを適用。
 
@@ -229,7 +235,7 @@ Voice生成後、WavDurationReaderが音声実尺を取得し、ImageItem/TextIt
 | 動画出力フリーズ | YMM4再起動 → プロジェクト再読み込み → 出力のみ再実行 |
 | パイプライン中断 | `--resume` オプションで失敗ステップから再開 |
 | Geminiクォータ超過 | フォールバックチェーン (gemini-2.5-flash → gemini-2.0-flash → モック) が自動切替 |
-| ストック画像取得失敗 | AI画像 → テキストスライドへ自動フォールバック |
+| ストック画像取得失敗 | Wikimedia Commons → placeholderへ自動フォールバック |
 
 ---
 
@@ -241,7 +247,7 @@ Voice生成後、WavDurationReaderが音声実尺を取得し、ImageItem/TextIt
 | PlaybackRate 単位 | ImageItem: 100.0、AudioItem/TextItem: 1.0 | プラグイン側で自動設定 |
 | 先頭/末尾の黒フレーム | フェードイン/アウト時に背景がない | 先頭/末尾のFade値を0にするか、背景レイヤーを手動追加 |
 | パン系の隙間 | fitZoom × 1.12 で余白確保済み | テンプレートの `pan_zoom_ratio` で調整可能 |
-| Gemini Imagen 日次制限 | 無料枠に制限あり | stock → AI → slide の3段階フォールバック |
+| 画像取得失敗 | 全ストック/Wikimedia検索に失敗 | Pexels → Pixabay → Wikimedia → placeholder のフォールバック |
 
 ---
 

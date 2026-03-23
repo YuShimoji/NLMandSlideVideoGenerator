@@ -94,3 +94,40 @@ NotebookLM が提供していた（提供するはずだった）以下の能力
 ```
 | 2026-03-19 | NotebookLM→Gemini ドリフトを検出。NotebookLM ベースへの回帰を決定 | Gemini維持/NotebookLM回帰/ハイブリッド | プロジェクト本来の設計意図。Gemini プロンプトの台本品質が YouTube 公開水準に達していない (docs/video_quality_diagnosis.md) |
 ```
+
+→ CLAUDE.md DECISION LOG に追記済み (2026-03-19)。
+
+---
+
+## 2026-03-22 更新: 根本ワークフロー復元
+
+### 復元された根本ワークフロー
+
+`docs/DESIGN_FOUNDATIONS.md` Section 0 に記録:
+
+```
+NLM ソース投入 → Audio Overview 音声生成 → 音声をNLMに再投入 → テキスト化 → Gemini構造化 → CSV → YMM4
+```
+
+### 本分析の推奨アクションの実施状況
+
+| 推奨アクション | 状況 (2026-03-22) |
+|---|---|
+| SP-047 Phase 1: NotebookLM API 再調査 | 完了。Enterprise API 必要、スライド API 未公開 |
+| NotebookLM 再統合レベルの決定 | **決定**: 台本品質は NLM が決定。Gemini は構造化のみ |
+| `src/notebook_lm/` ディレクトリのリネーム | **保留**: README.md で歴史的遺産であることを説明 |
+
+### 根本原因の追加分析
+
+本分析 (2026-03-19) は NotebookLM の「役割」消失を正しく検出したが、
+具体的なワークフロー（Audio Overview → 音声再投入 → テキスト化）は
+`docs/workflow_specification.md` (git 履歴) から復元できなかった。
+
+2026-03-22 にユーザー指摘により根本ワークフローが再発見され、
+`docs/DESIGN_FOUNDATIONS.md` Section 0 および `docs/root_cause_workflow_loss.md` に記録された。
+
+### 参照
+
+- `docs/DESIGN_FOUNDATIONS.md` — 根本ワークフロー (Section 0)
+- `docs/root_cause_workflow_loss.md` — 詳細な根本原因分析
+- `docs/specs/e2e_workflow_spec.md` (SP-050) — 根本フロー準拠の E2E 仕様

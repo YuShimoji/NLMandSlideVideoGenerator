@@ -16,7 +16,7 @@ sys.path.insert(0, str(project_root / "src"))  # notebook_lm/, slides/ 等用
 os.chdir(project_root)
 
 from config.settings import settings, create_directories
-from notebook_lm.source_collector import SourceCollector, SourceInfo
+from notebook_lm.research_models import SourceInfo
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor, TranscriptInfo, TranscriptSegment
 from slides.slide_generator import SlideGenerator, SlidesPackage, SlideInfo

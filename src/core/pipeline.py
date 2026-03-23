@@ -10,7 +10,6 @@ from typing import List, Optional, Dict, Any, Callable
 from config.settings import create_directories
 
 from .interfaces import (
-    ISourceCollector,
     IAudioGenerator,
     ITranscriptProcessor,
     ISlideGenerator,
@@ -24,10 +23,8 @@ from .interfaces import (
     IEditingBackend,
     IThumbnailGenerator,
     IPlatformAdapter,
-    IPublishingQueue,
 )
 # 既存実装（デフォルトDI）
-from notebook_lm.source_collector import SourceCollector
 from notebook_lm.audio_generator import AudioGenerator, AudioInfo
 from notebook_lm.transcript_processor import TranscriptProcessor
 from slides.slide_generator import SlideGenerator
@@ -50,7 +47,6 @@ class ModularVideoPipeline:
 
     def __init__(
         self,
-        source_collector: Optional[ISourceCollector] = None,
         audio_generator: Optional[IAudioGenerator] = None,
         transcript_processor: Optional[ITranscriptProcessor] = None,
         slide_generator: Optional[ISlideGenerator] = None,
@@ -64,10 +60,8 @@ class ModularVideoPipeline:
         editing_backend: Optional[IEditingBackend] = None,
         thumbnail_generator: Optional[IThumbnailGenerator] = None,
         platform_adapter: Optional[IPlatformAdapter] = None,
-        publishing_queue: Optional[IPublishingQueue] = None,
     ) -> None:
         # Stage1 legacy fallbacks
-        self.source_collector = source_collector or SourceCollector()
         self.audio_generator = audio_generator or AudioGenerator()
         self.transcript_processor = transcript_processor or TranscriptProcessor()
         self.slide_generator = slide_generator or SlideGenerator()
@@ -88,7 +82,6 @@ class ModularVideoPipeline:
 
         # Stage3 modular components
         self.platform_adapter = platform_adapter
-        self.publishing_queue = publishing_queue
 
         # Operation modes per stage
         self.stage_modes = {
@@ -109,6 +102,7 @@ class ModularVideoPipeline:
         user_preferences: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
         job_id: Optional[str] = None,
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         パイプライン実行
@@ -126,21 +120,10 @@ class ModularVideoPipeline:
             self.stage_modes.update(stage_modes)
 
         try:
-            # Phase 1: ソース収集
+            # Phase 1: ソース (根本WFでは人間がNotebookLMに直接投入。自動収集は廃止)
+            sources: List = []
             if progress_callback:
-                progress_callback("ソース収集", 0.1, "関連ソースの収集を開始します...")
-            try:
-                sources = await self._collect_sources_with_retry(topic, urls)
-                logger.info(f"ソース収集完了: {len(sources)}件")
-                if progress_callback:
-                    progress_callback("ソース収集", 0.1, f"ソース収集完了: {len(sources)}件")
-            except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-                logger.error(f"ソース収集失敗 (recoverable): {e}")
-                raise PipelineError(str(e), stage="sources", recoverable=True)
-            except Exception as e:
-                import traceback
-                logger.error(f"ソース収集で予期せぬエラー: {e}\n{traceback.format_exc()}")
-                raise PipelineError(str(e), stage="sources", recoverable=False)
+                progress_callback("初期化", 0.1, "パイプライン初期化完了")
 
             stage1_mode = self.stage_modes.get("stage1", "auto")
             stage2_mode = self.stage_modes.get("stage2", "auto")
@@ -162,6 +145,7 @@ class ModularVideoPipeline:
                         topic=topic,
                         sources=sources,
                         mode=stage1_mode,
+                        transcript_text=transcript_text,
                     )
                     script_bundle = await self._normalize_script_with_fallback(raw_script)
                     if progress_callback:
@@ -191,7 +175,10 @@ class ModularVideoPipeline:
                 if progress_callback:
                     progress_callback("従来処理", 0.2, "従来の処理方式を使用します...")
                 logger.info("Stage1カスタムプロバイダ未設定のため従来フローを使用")
-                script_bundle, audio_info = await sr.run_legacy_stage1_with_fallback(topic, sources, self.audio_generator)
+                script_bundle, audio_info = await sr.run_legacy_stage1_with_fallback(
+                    topic, sources, self.audio_generator,
+                    transcript_text=transcript_text,
+                )
 
             logger.info(f"音声生成完了: {audio_info.file_path}")
             if progress_callback:
@@ -253,7 +240,6 @@ class ModularVideoPipeline:
                         user_preferences=user_preferences,
                         metadata_generator=self.metadata_generator,
                         platform_adapter=self.platform_adapter,
-                        publishing_queue=self.publishing_queue,
                         uploader=self.uploader,
                         progress_callback=progress_callback,
                     )
@@ -312,20 +298,18 @@ class ModularVideoPipeline:
             raise PipelineError(str(e), recoverable=False)
 
     @retry_on_failure()
-    async def _collect_sources_with_retry(self, topic: str, urls: Optional[List[str]] = None) -> List:
-        """ソース収集（リトライ付き）"""
-        return await self.source_collector.collect_sources(topic, urls)
-
-    @retry_on_failure()
     async def _generate_script_with_retry(
         self,
         topic: str,
         sources: List,
-        mode: str = "auto"
+        mode: str = "auto",
+        transcript_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """スクリプト生成（リトライ付き）"""
         if self.script_provider is not None:
-            return await self.script_provider.generate_script(topic, sources, mode)
+            return await self.script_provider.generate_script(
+                topic, sources, mode, transcript_text=transcript_text,
+            )
         raise PipelineError("script_provider is not configured", recoverable=False)
 
     async def _generate_and_save_metadata(

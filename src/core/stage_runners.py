@@ -15,7 +15,7 @@ from config.settings import settings
 from .utils.logger import logger
 from .llm_provider import create_llm_provider
 
-from notebook_lm.source_collector import SourceInfo
+from notebook_lm.research_models import SourceInfo
 from notebook_lm.audio_generator import AudioInfo
 from notebook_lm.transcript_processor import TranscriptInfo
 from notebook_lm.gemini_integration import GeminiIntegration, ScriptInfo
@@ -29,45 +29,64 @@ from .interfaces import (
     IEditingBackend,
     IMetadataGenerator,
     IPlatformAdapter,
-    IPublishingQueue,
     IUploader,
     ThumbnailGeneratorProtocol,
 )
+from .segment_duration_validator import validate_segments, adjust_segments
 
 
 async def run_legacy_stage1(
     topic: str,
     sources: List[SourceInfo],
     audio_generator: IAudioGenerator,
+    *,
+    transcript_text: Optional[str] = None,
 ) -> tuple[Optional[Dict[str, Any]], AudioInfo]:
-    """従来のGemini+TTSまたはNotebookLMモックを使用したStage1処理"""
+    """Stage1処理: トランスクリプト構造化 or フォールバック台本生成。
+
+    DESIGN_FOUNDATIONS準拠:
+      transcript_text あり → structure_transcript() (メインパス)
+      transcript_text なし → generate_script_from_sources() (フォールバック)
+    """
 
     script_bundle: Optional[Dict[str, Any]] = None
 
     # LLM プロバイダー生成 (LLM_PROVIDER env var で切替可能)
     llm_api_key = settings.GEMINI_API_KEY or os.environ.get("LLM_API_KEY", "")
     if llm_api_key:
-        logger.info("LLM によるスクリプト・スライド生成パスを使用します")
         try:
             llm_provider = create_llm_provider(api_key=llm_api_key)
             gemini = GeminiIntegration(api_key=llm_api_key, llm_provider=llm_provider)
-            sources_payload = [
-                {
-                    "url": getattr(s, "url", ""),
-                    "title": getattr(s, "title", ""),
-                    "content_preview": getattr(s, "content_preview", ""),
-                    "relevance_score": getattr(s, "relevance_score", 0.0),
-                    "reliability_score": getattr(s, "reliability_score", 0.0),
-                }
-                for s in sources
-            ]
             language = settings.YOUTUBE_SETTINGS.get("default_language", "ja")
-            script_info: ScriptInfo = await gemini.generate_script_from_sources(
-                sources=sources_payload,
-                topic=topic,
-                target_duration=300.0,
-                language=language,
-            )
+
+            if transcript_text:
+                # メインパス: NLMトランスクリプト → Gemini構造化
+                logger.info("根本ワークフロー: NLMトランスクリプトをGeminiで構造化します")
+                script_info: ScriptInfo = await gemini.structure_transcript(
+                    transcript_text=transcript_text,
+                    topic=topic,
+                    target_duration=300.0,
+                    language=language,
+                )
+            else:
+                # フォールバック: ソースから台本生成
+                logger.info("フォールバック: ソースからLLMで台本を生成します")
+                sources_payload = [
+                    {
+                        "url": getattr(s, "url", ""),
+                        "title": getattr(s, "title", ""),
+                        "content_preview": getattr(s, "content_preview", ""),
+                        "relevance_score": getattr(s, "relevance_score", 0.0),
+                        "reliability_score": getattr(s, "reliability_score", 0.0),
+                    }
+                    for s in sources
+                ]
+                script_info = await gemini.generate_script_from_sources(
+                    sources=sources_payload,
+                    topic=topic,
+                    target_duration=300.0,
+                    language=language,
+                )
 
             settings.SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -81,6 +100,18 @@ async def run_legacy_stage1(
             except json.JSONDecodeError:
                 logger.warning("Gemini スクリプトをJSONとして解析できませんでした。生テキストを保持します。")
                 script_bundle = {"title": script_info.title, "content": script_info.content}
+
+            # SP-044: セグメント粒度検証 + 自動調整
+            if isinstance(script_bundle, dict) and "segments" in script_bundle:
+                segments = script_bundle["segments"]
+                validation = validate_segments(segments, 300.0)
+                logger.info(f"SP-044 検証: {validation.message}")
+                if not validation.is_ok:
+                    logger.warning(f"SP-044 セグメント検証: {validation.status} - {validation.message}")
+                    adjusted = await adjust_segments(segments, validation, topic=topic)
+                    if adjusted is not segments:
+                        script_bundle["segments"] = adjusted
+                        logger.info(f"SP-044 自動調整適用: {len(segments)}→{len(adjusted)}セグメント")
 
             # Geminiスライド情報の生成（任意）
             prefer_gemini = settings.SLIDES_SETTINGS.get("prefer_gemini_slide_content", False)
@@ -130,10 +161,15 @@ async def run_legacy_stage1_with_fallback(
     topic: str,
     sources: List[SourceInfo],
     audio_generator: IAudioGenerator,
+    *,
+    transcript_text: Optional[str] = None,
 ) -> tuple[Optional[Dict[str, Any]], AudioInfo]:
-    """従来 Stage1 処理（フォールバック付き）"""
+    """Stage1処理（フォールバック付き）"""
     try:
-        return await run_legacy_stage1(topic, sources, audio_generator)
+        return await run_legacy_stage1(
+            topic, sources, audio_generator,
+            transcript_text=transcript_text,
+        )
     except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
         logger.warning(f"Legacy Stage1 failed: {e}. Using minimal fallback...")
         audio_info = await audio_generator.generate_audio(sources)
@@ -235,14 +271,13 @@ async def run_stage3_upload(
     *,
     metadata_generator: IMetadataGenerator,
     platform_adapter: Optional[IPlatformAdapter] = None,
-    publishing_queue: Optional[IPublishingQueue] = None,
     uploader: Optional[IUploader] = None,
     progress_callback: Optional[Callable[[str, float, str], None]] = None,
 ) -> tuple[Optional[UploadResult], Optional[str], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """Stage3: アップロード処理
 
     Returns:
-        tuple: (upload_result, youtube_url, metadata, publishing_result)
+        tuple: (upload_result, youtube_url, metadata, platform_result)
     """
     if progress_callback:
         progress_callback("アップロード準備", 0.9, "メタデータを生成します...")
@@ -266,13 +301,6 @@ async def run_stage3_upload(
             "thumbnail": thumbnail_path,
             "schedule": user_preferences.get("schedule") if user_preferences else None,
         }
-
-        if publishing_queue:
-            queue_id = await publishing_queue.enqueue(
-                package,
-                schedule=package.get("schedule"),
-            )
-            logger.info(f"投稿キューに登録しました: {queue_id}")
 
         publishing_result = await platform_adapter.publish(
             package,
