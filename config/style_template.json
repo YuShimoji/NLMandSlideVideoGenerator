@@ -71,5 +71,60 @@
     "max_total_duration_seconds": 3600,
     "warn_gap_threshold_seconds": 1.0,
     "warn_overlap_threshold_seconds": -0.1
+  },
+
+  "overlay": {
+    "chapter_title": {
+      "font_size": 64,
+      "font_color": "#FFFFFF",
+      "bold": true,
+      "position": "top_center",
+      "y_offset_ratio": 0.08,
+      "fade_in_sec": 0.5,
+      "fade_out_sec": 0.5,
+      "duration_sec": 4.0,
+      "background_opacity": 0.6
+    },
+    "key_point": {
+      "font_size": 40,
+      "font_color": "#FFFFFF",
+      "bold": true,
+      "style": "border",
+      "position": "lower_third",
+      "y_offset_ratio": 0.70,
+      "duration_sec": 7.0,
+      "background_image": "lower_third.png"
+    },
+    "statistic": {
+      "font_size": 72,
+      "font_color": "#FFD700",
+      "bold": true,
+      "position": "center_upper",
+      "y_offset_ratio": 0.30,
+      "duration_sec": 4.0
+    },
+    "source_citation": {
+      "font_size": 28,
+      "font_color": "#CCCCCC",
+      "italic": true,
+      "position": "above_subtitle",
+      "y_offset_ratio": 0.55,
+      "duration_sec": 5.0
+    }
+  },
+
+  "characters": {
+    "speaker_map": {
+      "\u308c\u3044\u3080": { "character_name": "\u535a\u9e97\u970a\u5922", "position": "right" },
+      "\u307e\u308a\u3055": { "character_name": "\u9727\u96e8\u9b54\u7406\u6c99", "position": "left" },
+      "\u30ca\u30ec\u30fc\u30bf\u30fc": { "character_name": null, "position": null }
+    },
+    "layout": "two_speaker_bottom"
+  },
+
+  "background": {
+    "base_color": [26, 26, 46],
+    "base_gradient": true,
+    "gradient_end_color": [10, 10, 30]
   }
 }

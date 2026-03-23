@@ -71,6 +71,68 @@ namespace NLMSlidePlugin.Core
             public double WarnOverlapThresholdSeconds { get; set; } = -0.1;
         }
 
+        // ---- SP-052: オーバーレイ・キャラクター・背景 ----
+
+        public class OverlayTypeConfig
+        {
+            public int FontSize { get; set; } = 40;
+            public string FontColor { get; set; } = "#FFFFFF";
+            public bool Bold { get; set; } = false;
+            public bool Italic { get; set; } = false;
+            public string Style { get; set; } = "default";
+            public string Position { get; set; } = "top_center";
+            public double YOffsetRatio { get; set; } = 0.08;
+            public double FadeInSec { get; set; } = 0.5;
+            public double FadeOutSec { get; set; } = 0.5;
+            public double DurationSec { get; set; } = 4.0;
+            public double BackgroundOpacity { get; set; } = 0.0;
+            public string? BackgroundImage { get; set; }
+        }
+
+        public class OverlayConfig
+        {
+            public OverlayTypeConfig ChapterTitle { get; set; } = new()
+            {
+                FontSize = 64, Bold = true, Position = "top_center",
+                YOffsetRatio = 0.08, DurationSec = 4.0, BackgroundOpacity = 0.6
+            };
+            public OverlayTypeConfig KeyPoint { get; set; } = new()
+            {
+                FontSize = 40, Bold = true, Style = "border",
+                Position = "lower_third", YOffsetRatio = 0.70, DurationSec = 7.0,
+                BackgroundImage = "lower_third.png"
+            };
+            public OverlayTypeConfig Statistic { get; set; } = new()
+            {
+                FontSize = 72, FontColor = "#FFD700", Bold = true,
+                Position = "center_upper", YOffsetRatio = 0.30, DurationSec = 4.0
+            };
+            public OverlayTypeConfig SourceCitation { get; set; } = new()
+            {
+                FontSize = 28, FontColor = "#CCCCCC", Italic = true,
+                Position = "above_subtitle", YOffsetRatio = 0.55, DurationSec = 5.0
+            };
+        }
+
+        public class SpeakerCharacterConfig
+        {
+            public string? CharacterName { get; set; }
+            public string? Position { get; set; }
+        }
+
+        public class CharactersConfig
+        {
+            public Dictionary<string, SpeakerCharacterConfig> SpeakerMap { get; set; } = new();
+            public string Layout { get; set; } = "two_speaker_bottom";
+        }
+
+        public class BackgroundConfig
+        {
+            public List<int> BaseColor { get; set; } = new() { 26, 26, 46 };
+            public bool BaseGradient { get; set; } = true;
+            public List<int> GradientEndColor { get; set; } = new() { 10, 10, 30 };
+        }
+
         // ---- 集約クラス ----
 
         public class StyleTemplate
@@ -87,6 +149,9 @@ namespace NLMSlidePlugin.Core
             public CrossfadeConfig Crossfade { get; set; } = new();
             public TimingConfig Timing { get; set; } = new();
             public ValidationConfig Validation { get; set; } = new();
+            public OverlayConfig? Overlay { get; set; }
+            public CharactersConfig? Characters { get; set; }
+            public BackgroundConfig? Background { get; set; }
         }
 
         // ---- 読み込みロジック ----
