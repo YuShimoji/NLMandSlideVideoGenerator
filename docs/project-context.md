@@ -6,15 +6,13 @@
 - 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 - ブランチ戦略: trunk-based (master)
 - 現フェーズ: docs負債解消完了 → コミット整理待ち → 初回通し実行待ち
-- 直近の状態 (2026-03-23 session 22 CLOSE):
-  - session 19 (先行): PIL系4ファイル削除, SP-037/038/048/051拡張, Feed/YouTube publisher
-  - session 20 (GUI担当): SP-053 Phase 1 (ProductionLine+Streamlit+Playwright NLM PoC)
-  - session 21 (仕様一本化): PRODUCER_PIPELINE.md新設, 孤立テスト削除, バグ修正4件
-  - session 22 (docs負債解消): project-context.md新規作成, docs孤立参照除去11ファイル, preflight修正, PRODUCER_PIPELINE.mdコード検証OK
-  - 53仕様 (41 done + 8 partial + 2 draft + 1 archived + 1 superseded)
-  - テスト: 1241 passed / 0 failed (pytest実測値)
-  - 未コミット: 58ファイル変更 + 14 untracked + 25 commits unpushed
-  - 核心課題: 53仕様・1241テストだが実動画を1本も通しで作っていない
+- 直近の状態 (2026-03-23 Worker A/C/D session):
+  - Worker A: SP-052 Phase 1-3 AI側完了 (overlay_plan.json自動生成+CsvImportDialog統合+ハイブリッドスタイル方針確定)
+  - Worker C: SP-048 Phase 2 完了確認 (74テスト全緑、実API疎通のみ残)
+  - Worker D: SP-051 AudioTranscriber + SP-047 playwright_nlm改善 + YMM4一本化レガシー整理
+  - SP-035実機テスト準備完了 (preflight 35 PASS, テスト画像6枚+overlay_plan.json生成済み)
+  - テスト: 1242+ passed / 0 failed
+  - 核心課題: 53仕様だが実動画を1本も通しで作っていない → SP-045通し実行が最優先
 
 ---
 

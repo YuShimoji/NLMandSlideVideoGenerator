@@ -162,6 +162,7 @@ python scripts/research_cli.py pipeline `
 確認項目:
 - [ ] `output_csv/timeline.csv` が生成された (4列: speaker, text, image_path, animation)
 - [ ] `output_csv/metadata.json` が生成された
+- [ ] `output_csv/overlay_plan.json` が生成された (SP-052, key_points/章タイトル/統計のオーバーレイ指示)
 - [ ] 画像が取得された (stock / AI / slide)
 - [ ] パイプライン完了サマリーに CRITICAL フォールバック WARNING がないこと
 
@@ -207,6 +208,7 @@ python scripts/research_cli.py validate output_csv/timeline.csv
 - [ ] ImageItem (背景画像) が配置されている
 - [ ] アニメーション (Ken Burns / zoom / pan) が反映されている
 - [ ] BGM テンプレートが適用されている (style_template.json)
+- [ ] テキストオーバーレイ (章タイトル/キーポイント) が Layer 7 に配置されている (SP-052, overlay_plan.json が CSV と同じディレクトリにある場合のみ)
 
 ### Step 4-3: プレビュー + レンダリング
 
