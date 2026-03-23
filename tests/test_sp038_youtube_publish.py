@@ -64,6 +64,7 @@ with patch.dict("sys.modules", {
     "core": MagicMock(),
     "core.utils": MagicMock(),
     "core.utils.logger": MagicMock(logger=MagicMock()),
+    "core.utils.mp4_checker": MagicMock(),
     "core.exceptions": MagicMock(),
     "notebook_lm": MagicMock(),
     "notebook_lm.transcript_processor": _transcript_module,
@@ -312,6 +313,7 @@ with patch.dict("sys.modules", {
     "core": MagicMock(),
     "core.utils": MagicMock(),
     "core.utils.logger": MagicMock(logger=MagicMock()),
+    "core.utils.mp4_checker": MagicMock(),
     "core.exceptions": MagicMock(
         UploadError=type("UploadError", (Exception,), {}),
         QuotaExceededError=type("QuotaExceededError", (Exception,), {}),
