@@ -77,6 +77,32 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-23 | レガシー整理: audio_generator 385→80行、transcript_processor 548→180行。シミュレーションコード全削除 | 削除/スタブ維持/リファクタ | YMM4一本化方針に伴い不要なシミュレーションコードを撤去。データクラス(AudioInfo/TranscriptInfo)は広く参照されているため保持 |
 | 2026-03-23 | SP-052 AnimationAssigner場面別判定は保留。動画デザイン方向性未定 | 即実装/ユースケース先行/保留 | アニメーションを機械的に割当てても全体デザインと合わなければ逆効果。スライド動画ではSTATICが適切なケースが多い。Phase 4で1本通し制作後にユースケースを確定してから再検討 |
 | 2026-03-23 | 動画スタイル: ハイブリッド方式。アニメーション: 場面依存 | スライド主体/キャラ+背景/ハイブリッド | データ時はスライド、対話時はキャラ+背景、導入/まとめは全画面画像。アニメーションは画像種別で判定(スライド=static, 写真=ken_burns)。具体ルールは1本通し制作後に確定 |
+| 2026-03-23 | レガシー境界マップを DESIGN_FOUNDATIONS Section 5 + CLAUDE.md + project-context.md に統一記載 | 個別ドキュメント修正/統一マップ新設 | ドキュメント散逸により外部API・音声・PILスライド等のレガシー仕様が混乱を引き起こしていた。全セッションが参照する単一の境界定義を確立 |
+
+## Legacy Boundaries (全セッション必読)
+
+**YMM4 は唯一のマルチメディア合成ワークスペース。** 詳細は `docs/DESIGN_FOUNDATIONS.md` Section 5 参照。
+
+正規パイプライン:
+```
+人間 → NotebookLM → 音声 → Gemini構造化 → Python CSV組立 → YMM4 → MP4 → YouTube
+```
+
+以下は全てレガシー。新規開発・拡張・テスト追加の対象にしない:
+- Python側の音声合成/TTS (全削除済)
+- Path B / MoviePy (全削除済)
+- TextSlideGenerator / PIL スライド生成 (削除済、Google Slides API に移行)
+- Gemini Imagen AI画像生成 (有料プラン専用、実質使用不可)
+- SourceCollector / Brave Search リサーチ (廃止、人間がNLMに直接投入)
+- Gemini による台本「生成」(フォールバックのみ。正規は NotebookLM テキストの「構造化」)
+- audio_generator.py / transcript_processor.py のシミュレーション機能 (スタブ化済)
+- WAV-to-YMM4 インポート経路 (削除済)
+- ymm4_template_diff.json (SP-020、superseded by SP-031 style_template.json)
+
+レガシーコードが残存しているファイル (呼び出し禁止):
+- `src/notebook_lm/source_collector.py` — 廃止。コード残存だが未使用
+- `src/notebook_lm/audio_generator.py` — AudioInfo データクラスのみ有効
+- `src/notebook_lm/transcript_processor.py` — TranscriptInfo データクラスのみ有効
 
 ## Key Paths
 

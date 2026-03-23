@@ -36,7 +36,7 @@
 - CIワークフロー11→6整理完了 - task-validation, documentation, openspec×3削除。
 - OpenSpecフレームワーク削除完了 - spec 0件ロード、import broken、ci-mainと重複のため。
 - Geminiモデルフォールバックチェーン: gemini-2.5-flash → gemini-2.0-flash → モック。
-- 素材パイプライン4層フォールバック: Pexels/Pixabay → Gemini Imagen → TextSlideGenerator → none。
+- 素材パイプライン: Pexels → Pixabay → Wikimedia Commons。Gemini Imagen (有料プラン専用)・TextSlideGenerator (削除済) はレガシー。
 - SP-004: pan_down追加で8種アニメーション完成 (2026-03-17)。全spec done化。
 - SP-019: Troubleshooting Guide v2.0。Gemini/ストック素材/パイプライン再開/アニメーション追加 (2026-03-17)。
 - test_main.py RuntimeWarning修正: _close_and_raiseでコルーチン未awaitを解消。

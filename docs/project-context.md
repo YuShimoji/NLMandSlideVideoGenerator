@@ -16,6 +16,17 @@
 
 ---
 
+## LEGACY BOUNDARIES
+
+> 全セッション必読: `docs/DESIGN_FOUNDATIONS.md` Section 5 (Legacy Boundary Map)
+> CLAUDE.md の Legacy Boundaries セクションも参照。
+
+**YMM4 は唯一のマルチメディア合成ワークスペース。**
+Python 側の音声合成・TTS・動画レンダリング・PILスライド生成・Brave Searchリサーチは全てレガシー。
+外部APIや音声関連の新規開発・拡張は行わない。
+
+---
+
 ## CURRENT DEVELOPMENT AXIS
 
 - 主軸: 初回YouTube公開準備 (SP-045)

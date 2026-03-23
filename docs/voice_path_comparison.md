@@ -1,13 +1,17 @@
 # ゆっくりボイス利用経路 比較・推奨
 
+> **LEGACY DOCUMENT** (2026-03-23)
+> この文書は歴史的参照として保持。現行の唯一の音声経路は **YMM4 内蔵ゆっくりボイス** のみ。
+> Path 2 (手動WAV準備) はサポート外。詳細は `docs/DESIGN_FOUNDATIONS.md` Section 5 参照。
+
 Updated: 2026-03-04T01:00:00+09:00
 Source: TASK_014
 
 ## 前提
 
 - 最終出力は 16:9 の汎用スライド動画
-- 音声は「ゆっくりボイス」が最優先
-- CSV パイプラインへの入力は `audio_dir` 配下の `001.wav`, `002.wav`, ... 形式
+- 音声は YMM4 内蔵ゆっくりボイスのみ (唯一の正規経路)
+- Python は CSV と素材画像を生成するまでが責務
 - キャラクター表示は必須ではない
 
 ---
@@ -48,17 +52,10 @@ Source: TASK_014
 
 ---
 
-### 第2推奨: 手動準備 + Python パイプライン
+### ~~第2推奨: 手動準備 + Python パイプライン~~ (LEGACY — サポート外)
 
-**理由**: どんな環境でも使えるが、音声生成は手作業。Python パイプラインで動画を自動生成。
-
-**手順**:
-
-| Step | 操作 | 出力 |
-|------|------|------|
-| 1 | 任意のツールでゆっくり音声を生成（棒読みちゃん等） | 音声ファイル群 |
-| 2 | CSV の行番号に合わせて `001.wav`, `002.wav`, ... にリネーム | `audio_dir/` |
-| 3 | YMM4にCSVを取り込み、音声生成と動画レンダリングを実行 | 動画 + 字幕 |
+> **この経路は 2026-03-11 以降サポート外。** WAV-to-YMM4 インポート経路 (_copy_audio_assets) は削除済み。
+> Python 側で音声ファイルを準備する必要はない。YMM4 が CSV インポート時に音声を自動合成する。
 
 ---
 
@@ -66,24 +63,14 @@ Source: TASK_014
 
 | 状態 | 対処 |
 |------|------|
-| YMM4 がインストールされていない | 第2推奨（手動WAV準備 + Python pipeline）に切り替え |
-| WAV ファイルが `audio_dir` にない（手動pipeline使用時） | パイプラインは起動するがデフォルト3秒のプレースホルダーが使われる |
-| WAV の連番が CSV 行数と合わない（手動pipeline使用時） | ログに警告が出る。不足分はデフォルト音声長で補完される |
-| パイプライン実行中にエラー（手動pipeline使用時） | `--video-quality 480p` で低解像度テストを先に行い、成功を確認してから本番品質で再実行 |
+| YMM4 がインストールされていない | YMM4 をインストールする (唯一の動画制作経路) |
 
 ---
 
-## ログの見方
+## 歴史的注記
 
-パイプライン実行時のログで音声経路の状態を確認:
+以下は削除済みの旧経路の記録。新規開発では参照しないこと。
 
-```
-INFO: CsvTranscriptLoader: Loading CSV ...
-INFO: Audio file found: 001.wav (duration=3.2s)
-INFO: Audio file found: 002.wav (duration=2.8s)
-WARNING: Audio file not found: 003.wav (using default 3.0s)
-```
-
-- `Audio file found` → 正常
-- `Audio file not found` → WAV が足りていない。生成を確認
-- `using default` → プレースホルダー音声が使われている
+- 手動 WAV 準備 + Python pipeline → 2026-03-08 Path B 完全削除
+- 外部 TTS 連携 → 2026-03-04 全削除
+- audio_dir / WAV 連番方式 → 2026-03-11 _copy_audio_assets 除去

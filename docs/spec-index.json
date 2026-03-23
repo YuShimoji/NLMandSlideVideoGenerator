@@ -123,7 +123,7 @@
     "pct": 100,
     "cat": "core",
     "file": "docs/research_workflow_design.md",
-    "summary": "Web調査+NLMスクリプト整合ワークフロー。Phase 1-5完了 (collect/align/review/E2E/pipeline CLI)"
+    "summary": "Web調査+NLMスクリプト整合ワークフロー。Phase 1-5完了。注意: SourceCollector(Brave Search)は廃止済(2026-03-22)。正規経路はNotebookLMへの人間による直接投入"
   },
   {
     "id": "SP-015",
@@ -146,11 +146,11 @@
   {
     "id": "SP-017",
     "title": "Voice Path Comparison",
-    "status": "done",
+    "status": "legacy",
     "pct": 100,
     "cat": "core",
     "file": "docs/voice_path_comparison.md",
-    "summary": "ゆっくりボイス経路比較+推奨 (YMM4内蔵ゆっくりボイスのみ)"
+    "summary": "LEGACY: 歴史的参照。唯一の正規経路はYMM4内蔵ゆっくりボイス。Path 2(手動WAV)はサポート外。DESIGN_FOUNDATIONS Section 5参照"
   },
   {
     "id": "SP-018",
@@ -294,7 +294,7 @@
     "pct": 100,
     "cat": "pipeline",
     "file": "docs/visual_resource_pipeline_spec.md",
-    "summary": "Phase1完了: 8種アニメーション(pan_down追加)実機テストPASS。Phase2完了: StockImageClient+Orchestrator+CLI/UI統合+エラーハンドリング+日本語クエリ翻訳。Phase3完了: AIImageProvider (Gemini Imagen) + stock→AI→slideフォールバック連鎖 + CLI/UI統合"
+    "summary": "Phase1-3完了: 8種アニメーション+StockImageClient(Pexels/Pixabay/Wikimedia)。注意: Phase3のAIImageProvider(Gemini Imagen)とTextSlideGeneratorはレガシー(有料プラン専用/削除済)。現行フォールバックはPexels→Pixabay→Wikimediaの3層"
   },
   {
     "id": "SP-034",
@@ -447,7 +447,7 @@
     "pct": 95,
     "cat": "pipeline",
     "file": "docs/specs/e2e_workflow_spec.md",
-    "summary": "トピック選定→YouTube公開の一気通貫ワークフロー仕様。Phase 0-7定義。Q1-1/Q6-2暫定確定、Q-X1確定(Decision #72)。DESIGN_FOUNDATIONS三層モデル準拠"
+    "summary": "トピック選定→YouTube公開の一気通貫ワークフロー仕様(Phase 0-7)。DESIGN_FOUNDATIONS三層モデル準拠。YMM4が唯一のマルチメディア合成WS。Python=CSV+素材生成まで。レガシー境界はDESIGN_FOUNDATIONS Section 5で定義"
   },
   {
     "id": "SP-051",

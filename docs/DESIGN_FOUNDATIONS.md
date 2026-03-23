@@ -217,4 +217,78 @@ AI セッションの蓄積により暗黙的に上書きされた。
 - `docs/video_quality_diagnosis.md` — 出力品質問題の根本原因 = 「コードで全てを解決する前提」
 - `docs/workflow_boundary.md` — Python内部の責務分離
 
+---
+
+## 5. レガシー境界マップ（Legacy Boundary Map）
+
+### 目的
+
+このセクションは、全セッション・全タスクが参照すべき「現行 / レガシー」の境界を定義する。
+ここに「レガシー」と記載された機能・コード・仕様は、新規開発の対象としない。
+
+### 設計原則
+
+**YMM4 は唯一のマルチメディア合成ワークスペースである。**
+音声合成・字幕配置・動画レンダリング・トランジション・キャラアニメーション・多層構成は全て YMM4 の責務。
+Python は CSV と素材画像を生成するまでが責務であり、マルチメディア処理を行わない。
+
+### 現行パイプライン（これだけが正規）
+
+```
+人間 → NotebookLM → 音声 → Gemini構造化 → Python CSV組立 → YMM4 → MP4 → YouTube
+```
+
+| ステップ | 実行者 | Python の関与 |
+|---|---|---|
+| ソース投入 | 人間 | なし |
+| Audio Overview 生成 | NotebookLM | なし |
+| 音声文字起こし | Gemini Audio API (SP-051) | AudioTranscriber |
+| 台本構造化 | Gemini API | gemini_integration.py |
+| スライド生成 | Google Slides API | google_slides_client.py |
+| 素材画像調達 | Pexels / Pixabay / Wikimedia | stock_image_client.py |
+| CSV 組立 | Python | csv_assembler.py |
+| 音声合成+動画制作 | YMM4 | なし（CSV を渡すだけ） |
+| MP4 検証 | Python | mp4_checker.py |
+| YouTube 公開 | Python + 人間 | uploader.py |
+
+### レガシー一覧（新規開発禁止）
+
+| 分類 | レガシー項目 | 現行の代替 | コード状態 | 備考 |
+|---|---|---|---|---|
+| **音声** | Python側TTS/音声合成 | YMM4内蔵ゆっくりボイス | 全削除済 (2026-03-04) | 外部TTS連携コードは存在しない |
+| **音声** | audio_generator.py シミュレーション | AudioInfo データクラスのみ保持 | スタブ化済 (2026-03-23) | AudioInfo 型定義のみ残存 |
+| **音声** | transcript_processor.py シミュレーション | SP-051 AudioTranscriber | スタブ化済 (2026-03-23) | TranscriptInfo 型定義のみ残存 |
+| **音声** | WAV-to-YMM4 インポート経路 | YMM4 が自前で音声合成 | 削除済 (2026-03-11) | _copy_audio_assets 除去 |
+| **動画** | Path B (MoviePy backend) | YMM4 一本化 | 全削除済 (2026-03-08) | video_composer 等6ファイル削除 |
+| **動画** | run_csv_pipeline.py | YMM4 NLMSlidePlugin | 削除済 | Python での動画レンダリングは行わない |
+| **スライド** | TextSlideGenerator (PIL) | Google Slides API | 削除済 (2026-03-22) | 708行のPILスライド生成コード |
+| **スライド** | Gemini Imagen (AI画像生成) | Pexels/Pixabay ストック画像 | コード残存だがフォールバック末端 | 有料プラン専用 (400エラー) |
+| **リサーチ** | SourceCollector (Brave Search) | 人間が NotebookLM に直接投入 | コード残存だが廃止 (2026-03-22) | source_collector.py は呼ばれない |
+| **台本** | Gemini による台本「生成」 | NotebookLM テキスト → Gemini「構造化」 | コード残存（フォールバック） | 正規は構造化のみ。生成は品質劣化前提 |
+| **テンプレート** | ymm4_template_diff.json (SP-020) | style_template.json (SP-031) | 後方互換で残存 | SP-020 は superseded |
+| **仕様** | SP-009 Workflow Specification | SP-050 E2E Workflow Spec | archived | 旧全自動ワークフロー構想 |
+| **仕様** | SP-041 TextSlide Visual Quality | Google Slides API 移行 | superseded | TextSlideGenerator 削除に伴い無効 |
+
+### 外部API依存の整理
+
+| API | 状態 | 用途 | テスト方針 |
+|---|---|---|---|
+| Gemini API | **現行** | 音声文字起こし (SP-051) + 台本構造化 | モックテスト + 実API疎通は手動 |
+| Google Slides API | **現行** (テンプレート未作成) | スライド画像生成 | モックテスト。テンプレート作成は人間作業 |
+| Pexels API | **現行** | ストック画像調達 (1st fallback) | モックテスト |
+| Pixabay API | **現行** | ストック画像調達 (2nd fallback) | モックテスト |
+| YouTube Data API v3 | **現行** (OAuth未取得) | 動画アップロード | モックテスト。本番OAuthは人間作業 |
+| NotebookLM Web UI | **現行** (手動操作) | 台本品質生成 | テスト対象外（人間操作） |
+| Brave Search API | **レガシー** | 廃止 (2026-03-22) | テスト不要 |
+| Gemini Imagen | **レガシー** | 有料プラン専用、実質使用不可 | テスト不要 |
+| InoReader API | **将来** (SP-048) | トピック候補自動取得 | Phase 1テスト済。実API疎通のみ残 |
+
+### このセクションの運用ルール
+
+- 新しい仕様や機能を追加する前に、このマップを参照して「レガシーの再実装」になっていないか確認すること
+- レガシーコードを呼び出す新コードを書かないこと
+- 「レガシー」のステータス変更は HUMAN_AUTHORITY に該当する
+
+---
+
 この文書の変更は HUMAN_AUTHORITY に該当する。

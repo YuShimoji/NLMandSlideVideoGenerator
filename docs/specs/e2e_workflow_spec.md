@@ -365,19 +365,24 @@ data/topics/{topic_id}/
 
 ---
 
-## 現行コードとのギャップ
+## 現行コードとのギャップ (2026-03-23 更新)
 
-| 項目 | 現行コード | この仕様 |
-|---|---|---|
-| 台本入力 | Gemini が「生成」 | NotebookLM テキストを受入 → Gemini が「構造化」 |
-| NotebookLM テキスト投入 | 経路なし | テキストファイル指定 or テキスト貼り付け |
-| Brave Search リサーチ | 実装済み (source_collector.py) | 廃止。NotebookLM に人間が直接ソース投入 |
-| スライド | PIL 自動生成 (708行) | Google Slides API |
-| YMM4 手動調整 | 未定義 | ほぼノータッチ (5分目標) |
-| 成果物管理 | output_csv/ に一括出力 | トピック別ディレクトリ |
-| 制作フロー | 1本ずつ直列 | 選定バッチ + 個別制作の2段階 |
-| 制作ペース | 「一晩3本」が SSOT | 品質優先。ペースは結果指標 |
-| メタデータ | Python 自動生成のみ | AI台本時生成 → Python抽出 → 人間編集 |
+> レガシー境界の詳細は `docs/DESIGN_FOUNDATIONS.md` Section 5 を参照。
+
+| 項目 | 現行コード | この仕様 | ギャップ状態 |
+|---|---|---|---|
+| 台本入力 | Gemini で「構造化」(gemini_integration.py) | NotebookLM テキスト → Gemini「構造化」 | 解消済 (フォールバック時のみ生成) |
+| NotebookLM テキスト投入 | --transcript / --audio オプション | テキストファイル指定 or SP-051 音声直接 | 解消済 |
+| Brave Search リサーチ | source_collector.py (コード残存) | 廃止。NotebookLM に人間が直接ソース投入 | レガシーコード残存。呼び出し禁止 |
+| スライド | Google Slides API (google_slides_client.py) | Google Slides API | テンプレート未作成 (人間作業) |
+| PIL スライド | TextSlideGenerator 削除済 | 使用しない | 解消済 (レガシー) |
+| Gemini Imagen | コード残存 (有料プラン専用) | 使用しない | レガシー。400エラーで実質不可 |
+| 音声合成 | YMM4 内蔵ゆっくりボイス | YMM4 のみ | 解消済。Python側TTS全削除 |
+| YMM4 手動調整 | NLMSlidePlugin CSV インポート | ほぼノータッチ (5分目標) | 実測未実施 |
+| 成果物管理 | output_csv/ に一括出力 | トピック別ディレクトリ | 未実装 |
+| 制作フロー | 1本ずつ直列 | 選定バッチ + 個別制作の2段階 | 未実装 (SP-053) |
+| 制作ペース | 品質優先 | 品質優先。ペースは結果指標 | 解消済 |
+| メタデータ | metadata_generator.py | AI台本時生成 → Python抽出 → 人間編集 | 部分的に実装済 |
 
 ---
 
