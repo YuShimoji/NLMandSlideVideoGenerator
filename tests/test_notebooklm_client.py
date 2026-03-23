@@ -206,35 +206,47 @@ class TestNotebookLMScriptProvider:
     async def test_generate_script_returns_bundle(self):
         """generate_script がスクリプトバンドルを返すこと"""
         from core.providers.script.notebook_lm_provider import NotebookLMScriptProvider
-        from notebook_lm.source_collector import SourceInfo
+        from notebook_lm.research_models import SourceInfo
+        from notebook_lm.audio_generator import AudioInfo
+        from notebook_lm.transcript_processor import TranscriptInfo, TranscriptSegment
+        from datetime import datetime
+        from pathlib import Path
 
         provider = NotebookLMScriptProvider(api_key="")
 
         mock_source = MagicMock(spec=SourceInfo)
         mock_source.url = "https://example.com/article"
 
-        with patch.object(provider._converter, "convert", new_callable=AsyncMock) as mock_convert:
-            from datetime import datetime
-            mock_convert.return_value = ScriptInfo(
-                title="テスト動画",
-                content="",
-                segments=[
-                    {"section": "本編", "content": "テスト発話テキストです。", "speaker": "ずんだもん",
-                     "duration_estimate": 20.0, "key_points": []}
-                ],
-                total_duration_estimate=20.0,
-                language="ja",
-                quality_score=0.8,
-                created_at=datetime.now(),
-            )
+        mock_audio = AudioInfo(
+            file_path=Path("/tmp/test.wav"),
+            duration=20.0,
+            language="ja",
+            sample_rate=44100,
+        )
+        mock_transcript = TranscriptInfo(
+            title="テスト動画",
+            total_duration=20.0,
+            segments=[
+                TranscriptSegment(
+                    id=1, start_time=0.0, end_time=20.0,
+                    speaker="ずんだもん", text="テスト発話テキストです。",
+                    key_points=[], slide_suggestion="", confidence_score=0.9,
+                )
+            ],
+            accuracy_score=0.9,
+            created_at=datetime.now(),
+            source_audio_path="/tmp/test.wav",
+        )
 
+        with patch.object(provider.audio_generator, "generate_audio", new_callable=AsyncMock, return_value=mock_audio), \
+             patch.object(provider.transcript_processor, "process_audio", new_callable=AsyncMock, return_value=mock_transcript), \
+             patch.object(provider, "_save_script", return_value=Path("/tmp/script.json")):
             bundle = await provider.generate_script(
                 topic="テストトピック",
                 sources=[mock_source],
-                target_duration=300.0,
             )
 
         assert bundle["title"] == "テスト動画"
-        assert bundle["provider"] == "notebooklm"
+        assert bundle["topic"] == "テストトピック"
         assert len(bundle["segments"]) == 1
-        assert bundle["quality_score"] == 0.8
+        assert bundle["segments"][0]["speaker"] == "ずんだもん"

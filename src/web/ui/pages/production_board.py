@@ -15,6 +15,7 @@ from src.core.production_line import (
     LineStatus,
     ProductionLine,
     ProductionLineStore,
+    _update_status_from_phase,
 )
 
 
@@ -231,15 +232,25 @@ def _render_line_detail(line: ProductionLine) -> None:
         if line.status not in ("done", "cancelled"):
             next_phase = line.current_phase + 1
             if next_phase <= 7:
-                if st.button(f"Phase {next_phase} へ進める"):
-                    line.complete_phase(line.current_phase)
-                    line.advance_phase(next_phase)
-                    _update_status_by_phase(line)
-                    _get_store().update(line)
-                    st.rerun()
+                can_advance, reason = line.can_advance_to(next_phase)
+                if can_advance:
+                    if st.button(f"Phase {next_phase} へ進める"):
+                        line.complete_phase(line.current_phase)
+                        line.advance_phase(next_phase)
+                        _update_status_by_phase(line)
+                        _get_store().update(line)
+                        st.rerun()
+                else:
+                    st.button(f"Phase {next_phase} へ進める", disabled=True)
+                    st.caption(reason)
 
     with action_cols[2]:
-        if line.status not in ("done", "cancelled"):
+        if line.status == "failed":
+            if st.button("リトライ"):
+                line.retry_from_current()
+                _get_store().update(line)
+                st.rerun()
+        elif line.status not in ("done", "cancelled"):
             if st.button("完了にする"):
                 line.set_status(LineStatus.DONE)
                 _get_store().update(line)
@@ -329,16 +340,8 @@ def _render_line_detail(line: ProductionLine) -> None:
 
 
 def _update_status_by_phase(line: ProductionLine) -> None:
-    """フェーズに応じてステータスを自動更新する"""
-    phase = line.current_phase
-    if phase <= 1:
-        line.set_status(LineStatus.SELECTING)
-    elif phase <= 5:
-        line.set_status(LineStatus.STRUCTURING)
-    elif phase == 6:
-        line.set_status(LineStatus.PRODUCING)
-    elif phase == 7:
-        line.set_status(LineStatus.REVIEWING)
+    """フェーズに応じてステータスを自動更新する (後方互換ラッパー)"""
+    _update_status_from_phase(line)
 
 
 def _run_pipeline_for_line(
@@ -458,6 +461,253 @@ def _format_age(iso_str: str) -> str:
         return "不明"
 
 
+def _render_batch_selection() -> None:
+    """バッチ選定画面: 複数トピックを一括評価"""
+    st.subheader("バッチ選定")
+
+    # draft状態のライン一覧
+    store = _get_store()
+    drafts = store.list_by_status(LineStatus.DRAFT)
+
+    if not drafts:
+        st.info("下書きラインがありません。「新規作成」タブでトピックを追加してください。")
+        return
+
+    st.markdown(f"**{len(drafts)}件の下書きライン**")
+    st.caption("Go/No-Go を判定して、Goしたラインを構造化フェーズに送ります")
+
+    # ライン一覧 + Go/No-Go ボタン
+    decisions: dict[str, bool | None] = {}
+
+    for line in drafts:
+        with st.container():
+            cols = st.columns([3, 1, 1, 1, 1])
+
+            with cols[0]:
+                st.markdown(f"**{line.topic}**")
+                source_count = len(line.source_urls)
+                has_audio = bool(line.audio_path)
+                st.caption(
+                    f"ソース: {source_count}件"
+                    + (f" | 音声: あり" if has_audio else "")
+                )
+
+            with cols[1]:
+                if line.ai_score > 0:
+                    st.markdown(f"{'*' * int(line.ai_score)} {line.ai_score:.1f}")
+                else:
+                    st.caption("未評価")
+
+            with cols[2]:
+                if st.button("Go", key=f"go_{line.line_id}"):
+                    decisions[line.line_id] = True
+
+            with cols[3]:
+                if st.button("No-Go", key=f"nogo_{line.line_id}"):
+                    decisions[line.line_id] = False
+
+            with cols[4]:
+                if not line.audio_path and not line.transcript_path:
+                    st.caption("(音声/テキスト未設定)")
+
+            st.markdown("---")
+
+    # 一括決定ボタン
+    batch_cols = st.columns(3)
+    with batch_cols[0]:
+        if st.button("全てGo", type="primary"):
+            for line in drafts:
+                decisions[line.line_id] = True
+    with batch_cols[1]:
+        if st.button("全てNo-Go"):
+            for line in drafts:
+                decisions[line.line_id] = False
+
+    # 決定を適用
+    for line_id, go in decisions.items():
+        line = store.get(line_id)
+        if line is None:
+            continue
+        line.go_decision = go
+        if go:
+            line.set_status(LineStatus.SELECTING)
+        else:
+            line.set_status(LineStatus.CANCELLED)
+        store.update(line)
+
+    if decisions:
+        go_count = sum(1 for v in decisions.values() if v)
+        nogo_count = sum(1 for v in decisions.values() if not v)
+        if go_count:
+            st.success(f"{go_count}件をGoに設定しました")
+        if nogo_count:
+            st.info(f"{nogo_count}件をNo-Goに設定しました")
+        st.rerun()
+
+
+def _render_script_preview(line: ProductionLine) -> None:
+    """台本プレビュー画面"""
+    if st.button("< 詳細に戻る"):
+        st.session_state.board_view = "detail"
+        st.rerun()
+
+    st.subheader(f"台本プレビュー: {line.topic}")
+
+    if not line.script_json_path or not Path(line.script_json_path).exists():
+        st.warning("構造化台本がまだ生成されていません")
+        return
+
+    data = json.loads(Path(line.script_json_path).read_text(encoding="utf-8"))
+    segments = data.get("segments", data if isinstance(data, list) else [])
+
+    # 統計
+    stat_cols = st.columns(4)
+    stat_cols[0].metric("セグメント", len(segments))
+    stat_cols[1].metric("推定尺", f"{line.estimated_duration / 60:.1f}分")
+
+    speakers = sorted({s.get("speaker", "?") for s in segments if s.get("speaker")})
+    stat_cols[2].metric("話者", len(speakers))
+    stat_cols[3].metric("平均尺/seg", f"{line.estimated_duration / max(len(segments), 1):.0f}秒")
+
+    # フィルタ
+    filter_options = ["全て"] + speakers
+    selected_filter = st.selectbox("フィルタ", filter_options, key="script_filter")
+
+    st.markdown("---")
+
+    # セグメント一覧
+    for i, seg in enumerate(segments):
+        speaker = seg.get("speaker", "?")
+        text = seg.get("text", seg.get("content", ""))
+        duration = seg.get("duration_estimate", seg.get("duration", 0))
+        image = seg.get("image_path", "")
+        animation = seg.get("animation", "")
+
+        if selected_filter != "全て" and speaker != selected_filter:
+            continue
+
+        with st.container():
+            seg_cols = st.columns([1, 8])
+            with seg_cols[0]:
+                st.markdown(f"**#{i+1:02d}**")
+                if duration:
+                    st.caption(f"{duration:.0f}秒")
+            with seg_cols[1]:
+                st.markdown(f"**[{speaker}]** {text[:200]}{'...' if len(text) > 200 else ''}")
+                meta_parts = []
+                if image:
+                    meta_parts.append(f"画像: {Path(image).name}")
+                if animation:
+                    meta_parts.append(f"アニメ: {animation}")
+                if meta_parts:
+                    st.caption(" | ".join(meta_parts))
+
+    st.markdown("---")
+    if st.button("CSV再生成 (パイプライン Phase 4-5)"):
+        st.info("詳細画面からパイプラインを実行してください")
+
+
+def _render_publish_panel(line: ProductionLine) -> None:
+    """後処理+公開パネル (Phase 7)"""
+    st.subheader("公開準備")
+
+    # MP4検証
+    st.markdown("### MP4検証")
+    if line.mp4_path and Path(line.mp4_path).exists():
+        st.markdown(f"ファイル: `{line.mp4_path}`")
+        if st.button("FFprobe検証を実行"):
+            _run_mp4_validation(line)
+    else:
+        st.warning("MP4ファイルが未設定です。「パスを更新」からMP4パスを設定してください。")
+
+    # メタデータ
+    st.markdown("---")
+    st.markdown("### メタデータ")
+
+    if line.metadata_path and Path(line.metadata_path).exists():
+        meta = json.loads(Path(line.metadata_path).read_text(encoding="utf-8"))
+
+        with st.form(f"metadata_edit_{line.line_id}"):
+            title = st.text_input("タイトル", value=meta.get("title", line.topic))
+            description = st.text_area("説明文", value=meta.get("description", ""), height=120)
+            tags_str = st.text_input("タグ (カンマ区切り)", value=", ".join(meta.get("tags", [])))
+            privacy = st.selectbox(
+                "公開設定",
+                ["private", "unlisted", "public"],
+                index=["private", "unlisted", "public"].index(meta.get("privacy_status", "private")),
+            )
+
+            if st.form_submit_button("メタデータを保存"):
+                meta["title"] = title
+                meta["description"] = description
+                meta["tags"] = [t.strip() for t in tags_str.split(",") if t.strip()]
+                meta["privacy_status"] = privacy
+                Path(line.metadata_path).write_text(
+                    json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+                st.success("メタデータを保存しました")
+    else:
+        st.info("メタデータファイルがまだ生成されていません")
+
+    # YouTube公開
+    st.markdown("---")
+    st.markdown("### YouTube公開")
+
+    if line.youtube_url:
+        st.success(f"公開済み: {line.youtube_url}")
+    else:
+        can_publish = (
+            line.mp4_path
+            and Path(line.mp4_path).exists()
+            and line.metadata_path
+            and Path(line.metadata_path).exists()
+        )
+        if can_publish:
+            if st.button("YouTubeにアップロード", type="primary"):
+                _run_youtube_upload(line)
+        else:
+            st.warning("MP4とメタデータが揃っていません")
+
+
+def _run_mp4_validation(line: ProductionLine) -> None:
+    """MP4品質検証を実行"""
+    try:
+        from src.youtube.publisher import validate_mp4
+        result = validate_mp4(line.mp4_path)
+        if result.get("passed", False):
+            st.success(f"全検証項目PASS: {result.get('summary', '')}")
+        else:
+            st.error(f"検証失敗: {result.get('errors', [])}")
+    except ImportError:
+        st.info("FFprobe検証はCLIから実行してください: python -m src.youtube.publisher validate " + line.mp4_path)
+    except Exception as e:
+        st.error(f"検証エラー: {e}")
+
+
+def _run_youtube_upload(line: ProductionLine) -> None:
+    """YouTube公開を実行"""
+    try:
+        from src.youtube.publisher import YouTubePublisher
+        publisher = YouTubePublisher()
+        result = publisher.publish(
+            mp4_path=line.mp4_path,
+            metadata_path=line.metadata_path,
+        )
+        line.youtube_url = result.get("url", "")
+        line.youtube_video_id = result.get("video_id", "")
+        line.set_status(LineStatus.DONE)
+        _get_store().update(line)
+        st.success(f"公開完了: {line.youtube_url}")
+        st.rerun()
+    except ImportError:
+        st.error("YouTube publisher モジュールが利用できません")
+    except Exception as e:
+        line.add_error(f"YouTube upload failed: {e}")
+        line.set_status(LineStatus.FAILED)
+        _get_store().update(line)
+        st.error(f"公開エラー: {e}")
+
+
 def show_production_board_page() -> None:
     """プロダクションボードのメインエントリポイント"""
     st.header("プロダクションボード")
@@ -469,24 +719,47 @@ def show_production_board_page() -> None:
         st.session_state.selected_line_id = None
 
     # ナビゲーション
-    if st.session_state.board_view == "detail" and st.session_state.selected_line_id:
+    view = st.session_state.board_view
+    selected_id = st.session_state.selected_line_id
+
+    if view == "script_preview" and selected_id:
+        line = _get_store().get(selected_id)
+        if line:
+            _render_script_preview(line)
+        else:
+            st.session_state.board_view = "board"
+            st.rerun()
+    elif view == "detail" and selected_id:
         if st.button("< ボードに戻る"):
             st.session_state.board_view = "board"
             st.session_state.selected_line_id = None
             st.rerun()
 
-        line = _get_store().get(st.session_state.selected_line_id)
+        line = _get_store().get(selected_id)
         if line:
             _render_line_detail(line)
+
+            # 台本プレビューへのリンク
+            if line.script_json_path and Path(line.script_json_path).exists():
+                if st.button("台本プレビューを開く"):
+                    st.session_state.board_view = "script_preview"
+                    st.rerun()
+
+            # Phase 7: 公開パネル
+            if line.current_phase >= 7 or line.status == "reviewing":
+                _render_publish_panel(line)
         else:
             st.error("ラインが見つかりません")
             st.session_state.board_view = "board"
     else:
         # ボードビュー
-        tab_board, tab_new = st.tabs(["ボード", "新規作成"])
+        tab_board, tab_new, tab_batch = st.tabs(["ボード", "新規作成", "バッチ選定"])
 
         with tab_board:
             _render_board()
 
         with tab_new:
             _render_new_line_form()
+
+        with tab_batch:
+            _render_batch_selection()

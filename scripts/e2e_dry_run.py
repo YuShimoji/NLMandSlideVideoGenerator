@@ -204,7 +204,6 @@ def stage_orchestrate_visuals(
         classifier=classifier,
         stock_client=client,
         topic=topic,
-        work_dir=output_dir,
     )
 
     package = orchestrator.orchestrate(segments)

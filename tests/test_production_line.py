@@ -226,6 +226,78 @@ class TestProductionLineStore:
         assert len(data["lines"]) == 1
 
 
+class TestPhaseGuard:
+    """can_advance_to / retry_from_current のテスト"""
+
+    def test_can_advance_basic(self):
+        line = ProductionLine.create("test")
+        ok, _ = line.can_advance_to(1)
+        # Phase 1 requires audio_path
+        assert ok is False
+
+    def test_can_advance_with_audio(self):
+        line = ProductionLine.create("test")
+        line.audio_path = "/tmp/audio.mp3"
+        ok, _ = line.can_advance_to(1)
+        assert ok is True
+
+    def test_cannot_advance_backwards(self):
+        line = ProductionLine.create("test")
+        line.advance_phase(3)
+        ok, reason = line.can_advance_to(2)
+        assert ok is False
+        assert "既に" in reason
+
+    def test_cannot_advance_done(self):
+        line = ProductionLine.create("test")
+        line.set_status(LineStatus.DONE)
+        ok, reason = line.can_advance_to(1)
+        assert ok is False
+
+    def test_phase_2_requires_transcript(self):
+        line = ProductionLine.create("test")
+        line.current_phase = 1
+        ok, reason = line.can_advance_to(2)
+        assert ok is False
+        assert "テキスト" in reason
+
+    def test_phase_6_requires_csv(self):
+        line = ProductionLine.create("test")
+        line.current_phase = 5
+        ok, reason = line.can_advance_to(6)
+        assert ok is False
+        assert "CSV" in reason
+
+    def test_phase_7_requires_mp4(self):
+        line = ProductionLine.create("test")
+        line.current_phase = 6
+        ok, reason = line.can_advance_to(7)
+        assert ok is False
+        assert "MP4" in reason
+
+    def test_phase_no_guard(self):
+        """Phase 3 (構造化→台本) にはガードなし"""
+        line = ProductionLine.create("test")
+        line.current_phase = 2
+        ok, _ = line.can_advance_to(3)
+        assert ok is True
+
+    def test_retry_from_failed(self):
+        line = ProductionLine.create("test")
+        line.advance_phase(3)
+        line.set_status(LineStatus.FAILED)
+        line.retry_from_current()
+        assert line.status != "failed"
+        assert "リトライ" in line.error_log[-1]
+
+    def test_retry_noop_when_not_failed(self):
+        line = ProductionLine.create("test")
+        line.advance_phase(3)
+        line.retry_from_current()
+        # No-op: status unchanged, no error log entry about retry
+        assert all("リトライ" not in e for e in line.error_log)
+
+
 class TestSlugify:
     """_slugify関数のテスト"""
 

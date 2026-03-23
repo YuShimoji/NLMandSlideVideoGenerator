@@ -103,6 +103,37 @@ class ProductionLine:
         self.updated_at = now
         self.phase_timestamps[f"phase_{phase}_start"] = now
 
+    def can_advance_to(self, phase: int) -> tuple[bool, str]:
+        """指定フェーズに進めるかガードチェック。(可否, 理由)を返す"""
+        if phase <= self.current_phase:
+            return False, f"既にPhase {self.current_phase} にいます"
+        if self.status in ("done", "cancelled"):
+            return False, f"ステータスが{self.display_status}のため進行不可"
+
+        guards: dict[int, tuple[str, str]] = {
+            1: ("audio_path", "Audio Overviewファイルパスが未設定"),
+            2: ("transcript_path", "テキストファイルパスが未設定"),
+            4: ("script_json_path", "構造化台本が未設定"),
+            6: ("csv_path", "CSVファイルが未設定"),
+            7: ("mp4_path", "MP4ファイルが未設定"),
+        }
+
+        if phase in guards:
+            attr, msg = guards[phase]
+            if not getattr(self, attr, ""):
+                return False, msg
+
+        return True, ""
+
+    def retry_from_current(self) -> None:
+        """現在フェーズをリトライ (failed状態からの復帰)"""
+        if self.status != LineStatus.FAILED.value:
+            return
+        phase = self.current_phase
+        self.error_log.append(f"[{datetime.now().isoformat()}] Phase {phase} リトライ開始")
+        self.advance_phase(phase)
+        _update_status_from_phase(self)
+
     def complete_phase(self, phase: int) -> None:
         """フェーズ完了を記録する"""
         now = datetime.now().isoformat()
@@ -238,6 +269,19 @@ class ProductionLineStore:
         for line in self._lines.values():
             counts[line.status] = counts.get(line.status, 0) + 1
         return counts
+
+
+def _update_status_from_phase(line: ProductionLine) -> None:
+    """フェーズに応じてステータスを自動更新する"""
+    phase = line.current_phase
+    if phase <= 1:
+        line.set_status(LineStatus.SELECTING)
+    elif phase <= 5:
+        line.set_status(LineStatus.STRUCTURING)
+    elif phase == 6:
+        line.set_status(LineStatus.PRODUCING)
+    elif phase == 7:
+        line.set_status(LineStatus.REVIEWING)
 
 
 def _slugify(text: str) -> str:
