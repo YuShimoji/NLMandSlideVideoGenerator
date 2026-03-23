@@ -17,7 +17,7 @@ python -c "import core, notebook_lm, slides, youtube; print('OK: core imports')"
 python scripts/research_cli.py pipeline --help  # --transcript オプションが表示されること
 ```
 
-- [x] Python 1267+ テスト PASS
+- [x] Python 1318 テスト PASS (1 skipped)
 - [x] SP-035 preflight 36 PASS / 0 FAIL
 - [x] SP-038 upload テスト 45 PASS (mock モード)
 

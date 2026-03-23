@@ -9,8 +9,8 @@
 - 直近の状態 (2026-03-23):
   - 成果物駆動マップ (DELIVERABLE_MAP.md) 新設
   - レガシー境界マップ統一 (DESIGN_FOUNDATIONS Section 5 + CLAUDE.md + 個別docs)
-  - Worker A/B/C/D 検収完了 (1316 passed / 0 failed)
-  - **核心**: 53仕様・1316テスト積み上げ済み、実動画ゼロ。AI側作業は全て完了。VS-1の残りは全て人間操作。
+  - Worker A/B/C/D 検収完了 (1318 passed / 1 skipped)
+  - **核心**: 53仕様・1318テスト積み上げ済み、実動画ゼロ。AI側作業は全て完了。VS-1の残りは全て人間操作。
 
 ---
 
