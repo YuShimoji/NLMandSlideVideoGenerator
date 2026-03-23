@@ -453,7 +453,7 @@
     "id": "SP-051",
     "title": "Audio Transcription Pipeline",
     "status": "partial",
-    "pct": 70,
+    "pct": 80,
     "cat": "pipeline",
     "file": "docs/specs/audio_transcription_spec.md",
     "summary": "NLM Audio Overview音声ファイルからGemini Audio APIで文字起こし+構造化を1回のAPIコールで実行。Phase 2自動化。Phase 1実装済み(AudioTranscriber+CLI+23テスト)"
@@ -461,8 +461,8 @@
   {
     "id": "SP-052",
     "title": "YMM4 Video Quality Template Design",
-    "status": "draft",
-    "pct": 0,
+    "status": "partial",
+    "pct": 30,
     "cat": "plugin",
     "file": "docs/specs/ymm4_video_quality_template.md",
     "summary": "YMM4動画内容クオリティのテンプレート設計。レイヤー構成(7層)、テキストオーバーレイ(overlay_plan.json)、キャラ配置、背景ルール、アニメーション使い分け、人間/Python/YMM4責務境界の定義"
@@ -470,8 +470,8 @@
   {
     "id": "SP-053",
     "title": "Producer GUI (Production Dashboard)",
-    "status": "draft",
-    "pct": 10,
+    "status": "partial",
+    "pct": 40,
     "cat": "ui",
     "file": "docs/specs/producer_gui_spec.md",
     "summary": "動画制作者向け統合GUI。プロダクションボード(カンバン)+バッチ選定+AI評価+ライン詳細+公開フロー。Streamlit再構成+Playwright NLM半自動化。ProductionLineデータモデル。Phase 1-4実装計画"

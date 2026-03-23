@@ -1,56 +1,71 @@
 # HANDOVER
 
-Timestamp: 2026-03-22
-Actor: Claude Code (session 17 NIGHTSHIFT)
+Timestamp: 2026-03-23
+Actor: Claude Code (session 23)
 Type: Session Handover
 
 ## Current Status
 
-50仕様中45 done + 4 partial (SP-035 60%, SP-037 75%, SP-047 75%, SP-048 80%) + 1 draft (SP-045) + 1 archived + 1 superseded。
-テスト 1346 passed / 0 failed。
+53仕様中41 done + 8 partial (SP-035 60%, SP-037 85%, SP-038 95%, SP-047 75%, SP-048 80%, SP-050 95%, SP-051 80%, SP-053 40%) + 2 draft (SP-045, SP-052 30%) + 1 archived + 1 superseded。
+テスト 1222 passed / 0 failed / 3 skipped。
 
-**直近の進捗 (session 16-17):**
-- session 16: 矛盾仕様7件修正 + SP-045 SP-050準拠改版 + 前セッション未コミット変更統合
-- session 17: ドキュメント同期 (テスト数1262→1346, 仕様数更新, backlog更新)
+**直近の進捗 (session 23):**
+
+- origin/master (session 16-22, 30コミット) をマージ統合
+- SP-053 Phase 2: フェーズ遷移ガード, バッチ選定画面, 台本プレビュー, 後処理+公開画面, エラーリカバリー
+- SP-051/SP-052: 前セッション未コミット変更統合 (AudioTranscriber 392行 + OverlayPlanner 206行 + StyleTemplate拡張 + OverlayImporter.cs)
+- Worker Prompts 5件作成: docs/worker-prompts/
+- E2E dry-run: mockモード通過, VisualResourceOrchestrator work_dir引数バグ修正
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
-| 矛盾仕様修正 | DONE | HIGH 3件 + MEDIUM 3件 + LOW 1件、根本ワークフロー準拠に修正 |
-| SP-045 改版 | DONE | SP-050準拠でPhase 0-5構成に全面改版 |
-| SP-050 E2Eワークフロー仕様 | partial (90%) | Phase 0-7定義。未決定事項はQ形式で整理 |
-| DESIGN_FOUNDATIONS | DONE | 根本ワークフロー復元。三層モデル明文化 |
-| ドキュメント同期 | DONE | テスト数・仕様数を全主要ドキュメントで更新 |
+| SP-053 Phase 2 | DONE | バッチ選定/台本プレビュー/公開画面/ガード/リカバリー |
+| SP-051 AudioTranscriber | partial (80%) | Gemini Audio API 1段階方式, 37テスト。実音声テスト待ち |
+| SP-052 OverlayPlanner | partial (30%) | overlay_plan.json生成, style_template拡張。テンプレート.y4mmp未作成 |
+| Worker Prompts | DONE | 5 Worker (A-E) + Core Developer Domain |
+| E2E dry-run | PASS | mock 3seg: CSV正常生成, アニメーション多様割当 |
 
 ## Commits
 
-### Session 16 (3 commits, unpushed)
-1. `fb7c0d9` docs: 根本ワークフロー復元に伴う矛盾仕様7件修正 + SP-045 SP-050準拠改版
-2. `14077f2` feat: 前セッション未コミット変更の統合
-3. `511a676` docs: CLAUDE.md session 16 状態更新
+### Session 23 (3 commits, pushed)
 
-### Session 17 (pending commit)
-- docs: ドキュメント同期 (テスト数1346, 仕様数50, backlog更新)
+1. `b85a211` merge: integrate origin/master sessions 16-22 into local session 15
+2. `ee199c1` feat: SP-053 Phase 2 + Worker Prompts + E2E dry-run修正
+3. `b92cdb1` feat: 前セッション未コミット変更の統合 (SP-051/SP-052)
 
 ## Next Actions
 
 | 優先度 | タスク | 手動/自動 |
 |--------|--------|----------|
-| 1 | SP-050 未決定事項 (Q1-1 Audio Overview設定, Q6-2 レンダリング実測, Q-X1 目標時間方針) | 手動 (実制作で確認) |
-| 2 | SP-035: YMM4実機テスト (60%→100%) | 手動 |
-| 3 | SP-038: 本番OAuth取得 + 実チャンネルテスト (90%→100%) | 手動 |
-| 4 | SourceCollector レガシーコード削除 | HUMAN_AUTHORITY |
+| 1 | SP-053 AI評価統合: バッチ選定画面にGemini動画適性スコア組込み | 自動 |
+| 2 | 実APIでのE2E dry-run (Geminiクォータ回復後) | 手動+自動 |
+| 3 | SP-035: YMM4実機テスト (60%→100%) | 手動 (Worker A) |
+| 4 | SP-038: 本番OAuth取得 + 実チャンネルテスト (95%→100%) | 手動 (Worker B) |
 | 5 | SP-045: 初回公開通し実行 (draft→partial) | 手動 |
+
+## Worker Prompts
+
+並列開発用のWorker分担。詳細は `docs/worker-prompts/README.md` 参照。
+
+| Worker | 領域 | 対象SP |
+|--------|------|--------|
+| Core (本セッション) | パイプライン信頼性・GUI・Gemini構造化 | SP-050, SP-053 |
+| A | YMM4 Plugin & テンプレート | SP-035, SP-052 |
+| B | YouTube公開パイプライン | SP-038, SP-045 |
+| C | Feed/RSS統合 | SP-048 |
+| D | NotebookLM自動化 | SP-047, SP-051 |
+| E | Google Slides API | 新規 |
 
 ## Pending Design Decisions
 
-1. **SourceCollector (Brave Search) 削除**: ISourceCollectorインターフェース含む設計変更が必要 (HUMAN_AUTHORITY)
+1. **SP-053 AI評価**: トピック動画適性のスコアリング基準 (HUMAN_AUTHORITY)
 2. **NotebookLM Enterprise ライセンス取得**: コスト vs 価値の判断 (HUMAN_AUTHORITY)
-3. **DESIGN_FOUNDATIONS 過剰実装マップの解消**: gemini_integration.py / text_slide_generator.py / audio_generator.py / notebook_lm_provider.py (HUMAN_AUTHORITY)
+3. **SP-052 テンプレートパターン**: ゆっくり解説ジャンルのレイアウト設計 (HUMAN_AUTHORITY)
 
 ## Primary References
 
 - `docs/DESIGN_FOUNDATIONS.md` — 設計公理 (根本ワークフロー + 三層モデル)
-- `docs/specs/e2e_workflow_spec.md` — SP-050 E2Eワークフロー仕様
-- `docs/specs/first_publish_checklist.md` — SP-045 初回公開チェックリスト
-- `docs/spec-index.json` — 全50仕様の索引
+- `docs/specs/producer_gui_spec.md` — SP-053 Producer GUI仕様
+- `docs/worker-prompts/` — Worker分担定義
+- `docs/spec-index.json` — 全53仕様の索引
 - `docs/backlog.md` — 開発バックログ

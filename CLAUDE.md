@@ -6,14 +6,16 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 プロジェクト名: NLMandSlideVideoGenerator
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
-現フェーズ: 根本ワークフロー復元完了 + 矛盾仕様修正完了
-直近の状態 (2026-03-22 session 18):
-  - session 18: SourceCollector レガシー削除 (438行→9行, テスト3ファイル削除, 23ファイル変更)
-  - session 17: ドキュメント同期 (テスト数1262→1346全8ファイル, INDEX拡充)
-  - session 16: 矛盾仕様7件修正完了 + SP-045 SP-050準拠改版
-  - 全50仕様。45 done + 4 partial (SP-035/037/047/048) + 1 draft (SP-045)
-  - テスト: 1267 passed, 0 failed (SourceCollectorテスト79件削除後)
-  - 次のアクション: SP-050 未決定事項 (Q1-1/Q6-2/Q-X1) は実制作で確認
+現フェーズ: SP-053 Producer GUI Phase 2 + E2E検証
+直近の状態 (2026-03-23 session 23):
+  - session 23: SP-053 Phase 2実装 + Worker Prompts作成 + E2E dry-run検証
+  - SP-053 Phase 2: フェーズ遷移ガード, バッチ選定画面, 台本プレビュー, 後処理+公開画面, エラーリカバリー
+  - SP-051/SP-052: 前セッション未コミット変更統合 (AudioTranscriber+OverlayPlanner+StyleTemplate拡張)
+  - Worker Prompts 5件: docs/worker-prompts/ (A:YMM4, B:YouTube, C:Feed, D:NLM, E:Slides)
+  - E2E dry-run: mockモード通過, VisualResourceOrchestrator work_dir引数修正
+  - 全53仕様。41 done + 8 partial (SP-035/037/038/047/048/050/051/053) + 1 draft (SP-045/SP-052) + 1 archived + 1 superseded
+  - テスト: 1222 passed, 0 failed, 3 skipped
+  - 次のアクション: SP-053 AI評価統合, 実APIでのdry-run, Gemini構造化改善
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
