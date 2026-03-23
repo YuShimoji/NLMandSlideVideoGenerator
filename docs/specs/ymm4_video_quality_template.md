@@ -1,6 +1,6 @@
 # SP-052: YMM4 動画内容クオリティテンプレート設計
 
-SP-052 | Status: draft | Created: 2026-03-22
+SP-052 | Status: partial | pct: 55 | Created: 2026-03-22 | Updated: 2026-03-23
 
 ---
 
@@ -384,31 +384,47 @@ def assign_animation(segment, image_source):
 
 ## 8. 実装フェーズ
 
-### Phase 1: テンプレート基盤（人間+AI並行）
+### Phase 1: テンプレート基盤（人間+AI並行） -- AI側完了 (2026-03-23)
 
-| 担当 | 作業 | 成果物 |
-|------|------|--------|
-| 人間 | YMM4でdefaultテンプレート作成（キャラ配置+背景+字幕位置） | `config/video_templates/default/template.y4mmp` |
-| 人間 | キャラクター素材の入手・配置 | `config/video_templates/default/characters/` |
-| AI | style_template.json の overlay/characters/background セクション追加 | `config/style_template.json` 拡張 |
-| AI | overlay_plan.json 生成ロジック実装 | `src/core/overlay/overlay_planner.py` |
+| 担当 | 作業 | 成果物 | 状態 |
+|------|------|--------|------|
+| 人間 | YMM4でdefaultテンプレート作成（キャラ配置+背景+字幕位置） | `config/video_templates/default/template.y4mmp` | 未実施 |
+| 人間 | キャラクター素材の入手・配置 | `config/video_templates/default/characters/` | 未実施 |
+| AI | style_template.json の overlay/characters/background セクション追加 | `config/style_template.json` 拡張 | 完了 |
+| AI | overlay_plan.json 生成ロジック実装 | `src/core/overlay/overlay_planner.py` | 完了 (18テスト) |
+| AI | config/video_templates/ ディレクトリ構成 + README | `config/video_templates/` | 完了 |
 
-### Phase 2: NLMSlidePlugin拡張（AI）
+### Phase 2: NLMSlidePlugin拡張（AI） -- 完了 (2026-03-23)
 
-| 作業 | 成果物 |
-|------|--------|
-| overlay_plan.json 読み込み機能追加 | `TimelinePlugin/OverlayImporter.cs` (新規) |
-| TextItem配置ロジック（Layer 7） | 同上 |
-| style_template.json のoverlay設定読み込み | `Core/StyleTemplateLoader.cs` 拡張 |
-| テスト | `tests/` 拡張 |
+| 作業 | 成果物 | 状態 |
+|------|--------|------|
+| overlay_plan.json 読み込み機能追加 | `Core/OverlayImporter.cs` (新規) | 完了 |
+| TextItem配置ロジック（Layer 7） | 同上 | 完了 |
+| style_template.json のoverlay設定読み込み | `Core/StyleTemplateLoader.cs` 拡張 | 完了 |
+| テスト | `Tests/OverlayImporterTests.cs` (8テスト) | 完了 (.NET 10 SDK未インストールでローカルビルド不可) |
 
-### Phase 3: パイプライン統合（AI）
+### Phase 3: パイプライン統合（AI） -- 完了 (2026-03-23)
 
-| 作業 | 成果物 |
-|------|--------|
-| CsvAssembler で overlay_plan.json を同時出力 | `src/core/csv_assembler.py` 拡張 |
-| AnimationAssigner の場面別判定拡張 | `src/core/visual/animation_assigner.py` 拡張 |
-| Pre-Export Validation にオーバーレイ検証追加 | バリデーション拡張 |
+| 作業 | 成果物 | 状態 |
+|------|--------|------|
+| CsvAssembler で overlay_plan.json を同時出力 | `src/core/csv_assembler.py` 拡張 | 完了 (4テスト) |
+| Ymm4TimelineImporter で overlay自動読込+TextItem配置 | `TimelinePlugin/Ymm4TimelineImporter.cs` 拡張 | 完了 |
+| AnimationAssigner の場面別判定拡張 | `src/core/visual/animation_assigner.py` 拡張 | 保留: 動画デザイン方向性未定。ユースケース確定後に再検討 |
+| Pre-Export Validation にオーバーレイ検証追加 | バリデーション拡張 | 未着手 (Phase 4で必要性判断) |
+
+### Phase 3 設計保留事項 (2026-03-23)
+
+AnimationAssigner の場面別判定拡張は、**具体的な動画デザイン方向性が未確定**のため保留。
+
+**懸念**: アニメーション（パン・ズーム等）を機械的に割り当てても、全体的な動画デザインと合わなければ逆効果。スライド動画では「動かさない (STATIC)」方が適切なケースが多い。
+
+**再開条件**:
+
+- Phase 4 で実際に1本通し制作を完了し、動画デザインの方向性を確定する
+- 「どのような画像に対して、どのアニメーションが有効か」の具体的ユースケースを定義する
+- ユースケースに基づいて AnimationAssigner を拡張する
+
+なお `_assign_context_aware()` メソッドは実装済みだが `context_aware=True` を明示しない限り呼ばれないため、既存動作に影響しない。
 
 ### Phase 4: 実検証+品質調整（人間+AI）
 

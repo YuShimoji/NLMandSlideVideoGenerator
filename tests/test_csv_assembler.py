@@ -1,5 +1,6 @@
-"""CsvAssembler テスト (SP-032 Gap 1, SP-033 拡張)"""
+"""CsvAssembler テスト (SP-032 Gap 1, SP-033 拡張, SP-052 overlay)"""
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -225,3 +226,111 @@ class TestComputeMapping:
     def test_single_slide(self):
         m = CsvAssembler._compute_mapping(5, 1)
         assert all(v == 0 for v in m.values())
+
+
+class TestOverlayPlanGeneration:
+    """SP-052: CsvAssembler からの overlay_plan.json 自動生成テスト。"""
+
+    def test_overlay_generated_with_script_data(self, tmp_path):
+        """script_data を渡すと overlay_plan.json が生成される。"""
+        script_data = {
+            "title": "テスト動画",
+            "segments": [
+                {
+                    "section": "導入",
+                    "speaker": "Host1",
+                    "content": "こんにちは",
+                    "duration_estimate": 5.0,
+                    "key_points": ["テストポイント"],
+                },
+                {
+                    "section": "本論",
+                    "speaker": "Host2",
+                    "content": "本題に入ります",
+                    "duration_estimate": 10.0,
+                    "key_points": ["メインポイント"],
+                },
+            ],
+        }
+
+        out = tmp_path / "output" / "timeline.csv"
+        assembler = CsvAssembler()
+        assembler.assemble(
+            script_segments=script_data["segments"],
+            slide_image_paths=[],
+            output_path=out,
+            script_data=script_data,
+        )
+
+        overlay_path = tmp_path / "output" / "overlay_plan.json"
+        assert overlay_path.exists()
+
+        data = json.loads(overlay_path.read_text(encoding="utf-8"))
+        assert data["version"] == "1.0"
+        assert len(data["overlays"]) >= 2  # at least 2 chapter_titles
+
+    def test_no_overlay_without_key_points(self, tmp_path):
+        """key_points が空で section が全て同じなら overlay は chapter_title のみ。"""
+        segments = [
+            {"speaker": "A", "content": "テキスト", "section": "同じセクション"},
+            {"speaker": "B", "content": "テキスト2", "section": "同じセクション"},
+        ]
+
+        out = tmp_path / "timeline.csv"
+        assembler = CsvAssembler()
+        assembler.assemble(segments, [], out, script_data={"segments": segments})
+
+        overlay_path = tmp_path / "overlay_plan.json"
+        assert overlay_path.exists()
+
+        data = json.loads(overlay_path.read_text(encoding="utf-8"))
+        chapter_titles = [o for o in data["overlays"] if o["type"] == "chapter_title"]
+        assert len(chapter_titles) == 1  # 1 section change only
+
+    def test_overlay_not_generated_without_content(self, tmp_path):
+        """key_points も section もない場合は overlay_plan.json が生成されない。"""
+        segments = [
+            {"speaker": "A", "content": "テキスト"},
+        ]
+
+        out = tmp_path / "timeline.csv"
+        assembler = CsvAssembler()
+        assembler.assemble(segments, [], out)
+
+        overlay_path = tmp_path / "overlay_plan.json"
+        # section/key_points がないので overlays は空 → ファイル生成されない
+        assert not overlay_path.exists()
+
+    def test_from_script_bundle_generates_overlay(self, tmp_path):
+        """from_script_bundle 経由でも overlay_plan.json が生成される。"""
+        script_bundle = {
+            "title": "バンドルテスト",
+            "segments": [
+                {
+                    "section": "Part1",
+                    "speaker": "Host1",
+                    "content": "ファーストセグメント",
+                    "duration_estimate": 8.0,
+                    "key_points": ["ポイント1"],
+                },
+                {
+                    "section": "Part2",
+                    "speaker": "Host2",
+                    "content": "セカンドセグメント",
+                    "duration_estimate": 10.0,
+                    "key_points": [],
+                },
+            ],
+        }
+
+        slides_dir = tmp_path / "slides"
+        slides_dir.mkdir()
+
+        out = tmp_path / "output" / "timeline.csv"
+        CsvAssembler.from_script_bundle(script_bundle, slides_dir, out)
+
+        overlay_path = tmp_path / "output" / "overlay_plan.json"
+        assert overlay_path.exists()
+
+        data = json.loads(overlay_path.read_text(encoding="utf-8"))
+        assert len(data["overlays"]) >= 2

@@ -239,13 +239,14 @@ class TestGenerateSlidesWithGoogle:
             "max_slides_per_batch": 20,
             "theme": "business",
             "prefer_gemini_slide_content": False,
+            "template_presentation_id": "",
+            "default_layout": "TITLE_AND_BODY",
         }
         mock_settings.SLIDES_DIR = Path("/tmp/test_slides")
         mock_settings.SLIDES_IMAGES_DIR = Path("/tmp/test_slides/images")
 
         client_instance = MockClient.return_value
-        client_instance.create_presentation.return_value = "pres_abc123"
-        client_instance.add_slides.return_value = True
+        client_instance.generate_programmatic.return_value = "pres_abc123"
         client_instance.export_pptx.return_value = True
         client_instance.export_thumbnails.return_value = []
 
@@ -262,7 +263,7 @@ class TestGenerateSlidesWithGoogle:
         assert result.slides[0].title == "Introduction"
         assert result.slides[0].content == "Hello world"
         assert result.slides[1].speakers == ["Host"]
-        client_instance.add_slides.assert_called_once()
+        client_instance.generate_programmatic.assert_called_once()
         client_instance.export_pptx.assert_called_once()
         client_instance.export_thumbnails.assert_called_once()
 
@@ -275,19 +276,21 @@ class TestGenerateSlidesWithGoogle:
             "max_slides_per_batch": 20,
             "theme": "business",
             "prefer_gemini_slide_content": False,
+            "template_presentation_id": "",
+            "default_layout": "TITLE_AND_BODY",
         }
         mock_settings.SLIDES_DIR = Path("/tmp/test_slides")
         mock_settings.SLIDES_IMAGES_DIR = Path("/tmp/test_slides/images")
 
         client_instance = MockClient.return_value
-        client_instance.create_presentation.side_effect = Exception("API down")
+        client_instance.generate_programmatic.side_effect = Exception("API down")
 
         gen = SlideGenerator()
         contents = [{"title": "S1", "text": "content", "duration": 15.0}]
 
         result = await gen._generate_slides_with_google(contents, "Fallback Test")
 
-        # presentation_id が None なのでモックフォールバックパスに入る
+        # generate_programmatic が例外 -> presentation_id が None -> モックフォールバック
         assert result.presentation_id.startswith("mock_")
         assert result.total_slides == 1
         assert result.slides[0].title == "S1"
@@ -295,27 +298,28 @@ class TestGenerateSlidesWithGoogle:
     @pytest.mark.asyncio
     @patch("slides.slide_generator.settings")
     @patch("slides.slide_generator.GoogleSlidesClient")
-    async def test_api_add_slides_failure_continues(self, MockClient, mock_settings):
-        """add_slides でエラーが出てもスライド生成は続行される"""
+    async def test_api_programmatic_returns_id_despite_internal_issues(self, MockClient, mock_settings):
+        """generate_programmatic が ID を返せばスライド生成は続行される"""
         mock_settings.SLIDES_SETTINGS = {
             "max_chars_per_slide": 200,
             "max_slides_per_batch": 20,
             "theme": "business",
             "prefer_gemini_slide_content": False,
+            "template_presentation_id": "",
+            "default_layout": "TITLE_AND_BODY",
         }
         mock_settings.SLIDES_DIR = Path("/tmp/test_slides")
         mock_settings.SLIDES_IMAGES_DIR = Path("/tmp/test_slides/images")
 
         client_instance = MockClient.return_value
-        client_instance.create_presentation.return_value = "pres_xyz"
-        client_instance.add_slides.side_effect = Exception("batch update error")
+        client_instance.generate_programmatic.return_value = "pres_xyz"
         client_instance.export_pptx.return_value = True
         client_instance.export_thumbnails.return_value = []
 
         gen = SlideGenerator()
         contents = [{"title": "S1", "text": "c", "duration": 5.0}]
 
-        result = await gen._generate_slides_with_google(contents, "Add Fail Test")
+        result = await gen._generate_slides_with_google(contents, "Programmatic Test")
 
         assert result.presentation_id == "pres_xyz"
         assert result.total_slides == 1
@@ -330,13 +334,14 @@ class TestGenerateSlidesWithGoogle:
             "max_slides_per_batch": 20,
             "theme": "business",
             "prefer_gemini_slide_content": False,
+            "template_presentation_id": "",
+            "default_layout": "TITLE_AND_BODY",
         }
         mock_settings.SLIDES_DIR = Path("/tmp/test_slides")
         mock_settings.SLIDES_IMAGES_DIR = Path("/tmp/test_slides/images")
 
         client_instance = MockClient.return_value
-        client_instance.create_presentation.return_value = "pres_export_fail"
-        client_instance.add_slides.return_value = True
+        client_instance.generate_programmatic.return_value = "pres_export_fail"
         client_instance.export_pptx.side_effect = ImportError("no pptx")
         client_instance.export_thumbnails.side_effect = RuntimeError("thumb fail")
 
@@ -350,18 +355,20 @@ class TestGenerateSlidesWithGoogle:
     @patch("slides.slide_generator.settings")
     @patch("slides.slide_generator.GoogleSlidesClient")
     async def test_api_returns_none_falls_back(self, MockClient, mock_settings):
-        """create_presentation が None を返すとモックフォールバック"""
+        """generate_programmatic が None を返すとモックフォールバック"""
         mock_settings.SLIDES_SETTINGS = {
             "max_chars_per_slide": 200,
             "max_slides_per_batch": 20,
             "theme": "business",
             "prefer_gemini_slide_content": False,
+            "template_presentation_id": "",
+            "default_layout": "TITLE_AND_BODY",
         }
         mock_settings.SLIDES_DIR = Path("/tmp/test_slides")
         mock_settings.SLIDES_IMAGES_DIR = Path("/tmp/test_slides/images")
 
         client_instance = MockClient.return_value
-        client_instance.create_presentation.return_value = None
+        client_instance.generate_programmatic.return_value = None
 
         gen = SlideGenerator()
         contents = [

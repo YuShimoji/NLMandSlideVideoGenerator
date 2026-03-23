@@ -389,6 +389,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int skippedRows = 0;
 
             int nextFrame = 0; // 音声長ベースで次のアイテム開始位置を累積
+            var segmentStartFrames = new Dictionary<int, int>(); // SP-052: overlay用
 
             for (int i = 0; i < capturedItems.Count; i++)
             {
@@ -397,6 +398,7 @@ namespace NLMSlidePlugin.TimelinePlugin
                 StatusMessage = $"Processing {i + 1}/{capturedItems.Count}: {item.Speaker}...";
 
                 int frame = nextFrame;
+                segmentStartFrames[i] = frame; // SP-052: 各セグメントの開始フレームを記録
                 int currentItemLength = Math.Max(1, (int)Math.Round((item.Duration ?? _styleTemplate.Timing.DefaultDurationSeconds) * fps)); // デフォルト長
                 bool hasItemInRow = false;
 
@@ -587,6 +589,18 @@ namespace NLMSlidePlugin.TimelinePlugin
                 }
             }
 
+            // SP-052: Overlay import (overlay_plan.json → TextItem on Layer 7)
+            int overlayCount = 0;
+            try
+            {
+                overlayCount = ImportOverlayItems(activeTimeline, segmentStartFrames, fps, baseLayer);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Overlay import skipped: {ex.Message}");
+                WriteRuntimeLog($"Overlay ERROR: {ex}");
+            }
+
             // RefreshTimelineLengthAndMaxLayer on UI thread
             Application.Current?.Dispatcher?.Invoke(() =>
             {
@@ -595,13 +609,14 @@ namespace NLMSlidePlugin.TimelinePlugin
 
             ProgressValue = 100;
             string bgmStatus = bgmAdded ? ", BGM: 1件" : "";
-            StatusMessage = $"Imported {importedRows} items (Voice: {voiceItemsCount}, Image: {imageItemsCount}{bgmStatus}).";
-            AppendLog($"Import success: Rows={importedRows}, Voice={voiceItemsCount}, Image={imageItemsCount}, BGM={bgmAdded}, Skipped={skippedRows}");
-            WriteRuntimeLog($"ImportWithVoiceItemNative done: voice={voiceItemsCount}, image={imageItemsCount}, bgm={bgmAdded}, skipped={skippedRows}");
+            string overlayStatus = overlayCount > 0 ? $", Overlay: {overlayCount}件" : "";
+            StatusMessage = $"Imported {importedRows} items (Voice: {voiceItemsCount}, Image: {imageItemsCount}{bgmStatus}{overlayStatus}).";
+            AppendLog($"Import success: Rows={importedRows}, Voice={voiceItemsCount}, Image={imageItemsCount}, BGM={bgmAdded}, Overlay={overlayCount}, Skipped={skippedRows}");
+            WriteRuntimeLog($"ImportWithVoiceItemNative done: voice={voiceItemsCount}, image={imageItemsCount}, bgm={bgmAdded}, overlay={overlayCount}, skipped={skippedRows}");
 
             MessageBox.Show(
                 $"インポート完了{Environment.NewLine}{Environment.NewLine}" +
-                $"VoiceItem: {voiceItemsCount}件, ImageItem: {imageItemsCount}件{bgmStatus}{Environment.NewLine}" +
+                $"VoiceItem: {voiceItemsCount}件, ImageItem: {imageItemsCount}件{bgmStatus}{overlayStatus}{Environment.NewLine}" +
                 $"スキップ: {skippedRows}件",
                 "CSV Import Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -1087,11 +1102,14 @@ namespace NLMSlidePlugin.TimelinePlugin
                     var itemsProp = activeTimeline.GetType().GetProperty("Items");
                     bool itemsHasSetter = itemsProp?.SetMethod != null;
 
+                    var segmentStartFrames = new Dictionary<int, int>(); // SP-052
+
                     for (int i = 0; i < items.Count; i++)
                     {
                         var item = items[i];
                         int frame = (int)Math.Round(item.StartTime * fps);
                         int length = (int)Math.Round((item.Duration ?? 1.0) * fps);
+                        segmentStartFrames[i] = frame; // SP-052
 
                         // SP-028: Use actual WAV duration when available
                         if (!string.IsNullOrEmpty(item.AudioFilePath) && File.Exists(item.AudioFilePath))
@@ -1140,11 +1158,22 @@ namespace NLMSlidePlugin.TimelinePlugin
                         progress.Report((int)(i * 100.0 / items.Count));
                     }
 
+                    // SP-052: Overlay import
+                    int overlayCount = 0;
+                    try
+                    {
+                        overlayCount = ImportOverlayItems(activeTimeline, segmentStartFrames, fps, baseLayer);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteRuntimeLog($"Overlay ERROR (AudioItem mode): {ex}");
+                    }
+
                     int itemsAfter = activeTimeline.Items.Count;
-                    WriteRuntimeLog($"Import done: added={audioCount + textCount + imageCount}, itemsBefore={itemsBefore}, itemsAfter={itemsAfter}");
+                    WriteRuntimeLog($"Import done: added={audioCount + textCount + imageCount + overlayCount}, itemsBefore={itemsBefore}, itemsAfter={itemsAfter}");
 
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
-                    return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, 0, activeTimeline.Items.Count);
+                    return new ImportExecutionResult(count, audioCount, textCount, imageCount, 0, 0, activeTimeline.Items.Count, overlayCount);
                 });
             });
         }
@@ -1190,12 +1219,15 @@ namespace NLMSlidePlugin.TimelinePlugin
                 int textItemsCount = 0;
                 int imageItemsCount = 0;
                 int skippedRows = 0;
+                var segmentStartFrames = new Dictionary<int, int>(); // SP-052
+                int segIdx = 0;
 
                 var allTimelineItems = new List<IItem>();
 
                 foreach (var csvItem in items)
                 {
                     int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
+                    segmentStartFrames[segIdx++] = startFrame; // SP-052
                     int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
 
                     // SP-028: Use actual WAV duration when available
@@ -1278,7 +1310,20 @@ namespace NLMSlidePlugin.TimelinePlugin
                         else
                             activeTimeline.Items.Add(item);
                     }
+
+                    // SP-052: Overlay import
+                    int overlayCount = 0;
+                    try
+                    {
+                        overlayCount = ImportOverlayItems(activeTimeline, segmentStartFrames, fps, baseLayer);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteRuntimeLog($"Overlay ERROR (sync mode): {ex}");
+                    }
+
                     activeTimeline.RefreshTimelineLengthAndMaxLayer();
+                    return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, 0, skippedRows, activeTimeline.Items.Count, overlayCount);
                 }
 
                 return new ImportExecutionResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, 0, skippedRows, activeTimeline.Items.Count);
@@ -1985,6 +2030,93 @@ namespace NLMSlidePlugin.TimelinePlugin
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        /// <summary>
+        /// SP-052: overlay_plan.json を読み込み、TextItem として Layer 7 に配置する。
+        /// CSVファイルと同じディレクトリから overlay_plan.json を検索する。
+        /// </summary>
+        private int ImportOverlayItems(
+            Timeline activeTimeline,
+            Dictionary<int, int> segmentStartFrames,
+            int fps,
+            int baseLayer)
+        {
+            if (string.IsNullOrEmpty(CsvPath)) return 0;
+
+            var plan = OverlayImporter.LoadPlanFromCsvDir(
+                CsvPath,
+                msg => WriteRuntimeLog($"[SP-052] {msg}"));
+
+            if (plan == null || plan.Overlays.Count == 0) return 0;
+
+            var overlayConfig = _styleTemplate.Overlay;
+            int overlayBaseLayer = baseLayer + 17; // Layer 7 relative to baseLayer
+
+            var textItemParams = OverlayImporter.ConvertToTextItems(
+                plan, segmentStartFrames, fps,
+                activeTimeline.VideoInfo.Width, activeTimeline.VideoInfo.Height,
+                overlayConfig, overlayBaseLayer);
+
+            if (textItemParams.Count == 0) return 0;
+
+            var itemsProp = activeTimeline.GetType().GetProperty("Items");
+            bool hasSetter = itemsProp?.SetMethod != null;
+
+            int count = 0;
+            var dispatcher = Application.Current?.Dispatcher;
+
+            foreach (var p in textItemParams)
+            {
+                var textItem = new TextItem
+                {
+                    Text = p.Text,
+                    Frame = p.Frame,
+                    Layer = p.Layer,
+                    Length = p.Length,
+                    PlaybackRate = 100.0,
+                };
+
+                // Apply overlay text style (Values in-place — same pattern as ApplySubtitleStyle)
+                textItem.Font = "Meiryo UI";
+                textItem.FontSize.Values[0].Value = p.FontSize;
+                textItem.FontColor = p.FontColor;
+                textItem.Bold = p.Bold;
+                // Italic: set via reflection as TextItem may not expose it directly
+                var italicProp = textItem.GetType().GetProperty("Italic");
+                if (italicProp != null && p.Italic)
+                    italicProp.SetValue(textItem, true);
+                textItem.BasePoint = Enum.TryParse<BasePoint>(p.BasePoint, true, out var bp) ? bp : BasePoint.CenterTop;
+                textItem.Y.Values[0].Value = p.Y;
+
+                // Outline for readability
+                textItem.Style = YukkuriMovieMaker.Project.Items.Style.Border;
+                textItem.StyleColor = Colors.Black;
+
+                if (dispatcher != null)
+                {
+                    dispatcher.Invoke(() =>
+                    {
+                        if (hasSetter)
+                            itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
+                        else
+                            activeTimeline.Items.Add(textItem);
+                    });
+                }
+                else
+                {
+                    if (hasSetter)
+                        itemsProp!.SetValue(activeTimeline, activeTimeline.Items.Add(textItem));
+                    else
+                        activeTimeline.Items.Add(textItem);
+                }
+
+                count++;
+            }
+
+            AppendLog($"SP-052: {count} overlay TextItems added (Layer {overlayBaseLayer})");
+            WriteRuntimeLog($"Overlay: {count} items, plan={plan.Overlays.Count}, config={overlayConfig != null}");
+            return count;
+        }
+
         private readonly record struct ImportExecutionResult(
             int ImportedRows,
             int AudioItems,
@@ -1992,6 +2124,7 @@ namespace NLMSlidePlugin.TimelinePlugin
             int ImageItems,
             int VoiceItems,
             int SkippedRows,
-            int TimelineItemsAfterImport);
+            int TimelineItemsAfterImport,
+            int OverlayItems = 0);
     }
 }

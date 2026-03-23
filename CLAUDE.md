@@ -7,15 +7,14 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 環境: Python 3.11 (venv) / .NET 10.0 (YMM4 plugin) / Windows 11
 ブランチ戦略: trunk-based (master)
 現フェーズ: SP-053 Producer GUI Phase 2 + E2E検証
-直近の状態 (2026-03-23 session 23):
-  - session 23: SP-053 Phase 2実装 + Worker Prompts作成 + E2E dry-run検証
-  - SP-053 Phase 2: フェーズ遷移ガード, バッチ選定画面, 台本プレビュー, 後処理+公開画面, エラーリカバリー
-  - SP-051/SP-052: 前セッション未コミット変更統合 (AudioTranscriber+OverlayPlanner+StyleTemplate拡張)
-  - Worker Prompts 5件: docs/worker-prompts/ (A:YMM4, B:YouTube, C:Feed, D:NLM, E:Slides)
-  - E2E dry-run: mockモード通過, VisualResourceOrchestrator work_dir引数修正
-  - 全53仕様。41 done + 8 partial (SP-035/037/038/047/048/050/051/053) + 1 draft (SP-045/SP-052) + 1 archived + 1 superseded
-  - テスト: 1222 passed, 0 failed, 3 skipped
-  - 次のアクション: SP-053 AI評価統合, 実APIでのdry-run, Gemini構造化改善
+直近の状態 (2026-03-23 Worker D session):
+  - Worker D: SP-047 Phase 3 + SP-051 Phase 1 + YMM4一本化レガシー整理
+  - SP-051: AudioTranscriber新設 (Gemini Audio API 1段階方式, 37テスト)
+  - SP-047 Phase 3: playwright_nlm.py改善 (create_notebook/add_source_text/add_source_file, セレクタ集約, 19テスト)
+  - YMM4一本化: audio_generator 385→80行, transcript_processor 548→180行, シミュレーション全削除
+  - DECISION LOG: YMM4一本化+SP-051+SP-047+レガシー整理の4件追記
+  - テスト: 1242 passed, 0 failed, 3 skipped
+  - 次のアクション: SP-051 Phase 2(実音声E2E), SP-053 AI評価統合
 
 ## DECISION LOG
 | 日付 | 決定事項 | 選択肢 | 決定理由 |
@@ -72,6 +71,12 @@ CSVから動画・字幕のサムネイルを生成するパイプライン。Py
 | 2026-03-22 | Brave Searchリサーチ廃止。ソース投入は人間がNotebookLMに直接行う | 廃止/補助残す/両方 | 根本ワークフローではNotebookLMに直接ソースを投入する。Python側Webリサーチは不要 |
 | 2026-03-22 | 制作フロー明確化: リサーチ+台本選定を数本分一気に→GUI AI評価→制作者最終決定→GoラインのみYMM4投入 | 直列1本ずつ/バッチ選定+個別制作 | 台本選定フェーズとYMM4制作フェーズを分離。選定は数本分まとめて、制作は決定済みラインを投入 |
 | 2026-03-22 | 「一晩3本」のSSOT化を見直し。制作ペース目標ではなく品質優先 | 一晩3本固定/品質優先/ペース目標撤廃 | 制作ペースが強いSSOTになると品質判断が歪む。ペースは結果指標として扱い、品質を優先する |
+| 2026-03-23 | YMM4一本化: 音声合成・字幕・背景合成はすべてYMM4。API音声サービス不使用。動画背景もYMM4上で編集、Pythonからの直打ちなし | YMM4一本化/Python側音声保持/ハイブリッド | レガシーシミュレーションコードが積み上がっており責務境界が不明瞭だった。DESIGN_FOUNDATIONS準拠でPython=変換層に徹する |
+| 2026-03-23 | SP-051 AudioTranscriber実装。Gemini Audio APIで音声→構造化JSON (1段階方式) | 1段階/2段階Whisper/2段階Gemini | API 1回=コスト半減、レイテンシ半減。新規依存なし(既存google-genai) |
+| 2026-03-23 | SP-047 Phase 3 playwright_nlm.py改善。create_notebook/add_source_text/add_source_file追加、セレクタ集約 | 改善/現状維持 | NLM Web UIの半自動化で手動操作を削減。セレクタをSELECTORS dictに集約しUI変更耐性向上 |
+| 2026-03-23 | レガシー整理: audio_generator 385→80行、transcript_processor 548→180行。シミュレーションコード全削除 | 削除/スタブ維持/リファクタ | YMM4一本化方針に伴い不要なシミュレーションコードを撤去。データクラス(AudioInfo/TranscriptInfo)は広く参照されているため保持 |
+| 2026-03-23 | SP-052 AnimationAssigner場面別判定は保留。動画デザイン方向性未定 | 即実装/ユースケース先行/保留 | アニメーションを機械的に割当てても全体デザインと合わなければ逆効果。スライド動画ではSTATICが適切なケースが多い。Phase 4で1本通し制作後にユースケースを確定してから再検討 |
+| 2026-03-23 | 動画スタイル: ハイブリッド方式。アニメーション: 場面依存 | スライド主体/キャラ+背景/ハイブリッド | データ時はスライド、対話時はキャラ+背景、導入/まとめは全画面画像。アニメーションは画像種別で判定(スライド=static, 写真=ken_burns)。具体ルールは1本通し制作後に確定 |
 
 ## Key Paths
 

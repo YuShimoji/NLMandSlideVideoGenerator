@@ -54,20 +54,25 @@ namespace NLMSlidePlugin.TimelinePlugin
                     }
                 }
 
+                // SP-052: overlay_plan.json の読み込み
+                var overlayPlan = OverlayImporter.LoadPlanFromCsvDir(csvPath);
+
                 result.TotalItems = items.Count;
                 result.AudioFilesFound = audioFound;
                 result.Items = items;
 
                 if (timeline != null)
                 {
-                    var execResult = AddToTimeline(items, timeline, addSubtitles);
+                    var execResult = AddToTimeline(items, timeline, addSubtitles, overlayPlan: overlayPlan);
                     result.Success = true;
-                    result.Message = $"{execResult.ImportedRows}件をタイムラインに追加しました（音声: {execResult.AudioItems}件, 字幕: {execResult.TextItems}件, 画像: {execResult.ImageItems}件）";
+                    var overlayMsg = execResult.OverlayItems > 0 ? $", オーバーレイ: {execResult.OverlayItems}件" : "";
+                    result.Message = $"{execResult.ImportedRows}件をタイムラインに追加しました（音声: {execResult.AudioItems}件, 字幕: {execResult.TextItems}件, 画像: {execResult.ImageItems}件{overlayMsg}）";
                 }
                 else
                 {
                     result.Success = true;
-                    result.Message = $"{items.Count}件のデータを読み込みました（音声: {audioFound}件）";
+                    var overlayMsg = overlayPlan != null ? $", オーバーレイ: {overlayPlan.Overlays.Count}件" : "";
+                    result.Message = $"{items.Count}件のデータを読み込みました（音声: {audioFound}件{overlayMsg}）";
                 }
 
                 _settings.LastCsvPath = csvPath;
@@ -87,7 +92,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         /// useVoiceItem=true の場合、AudioItem+TextItem の代わりに VoiceItem を使用する。
         /// VoiceItem は YMM4 がレンダー時に音声合成を行うネイティブ方式。
         /// </summary>
-        public AddToTimelineResult AddToTimeline(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true, bool useVoiceItem = false)
+        public AddToTimelineResult AddToTimeline(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true, bool useVoiceItem = false, OverlayImporter.OverlayPlan? overlayPlan = null)
         {
             int fps = Math.Max(1, timeline.VideoInfo.FPS);
             int baseLayer = GetImportBaseLayer(timeline);
@@ -100,14 +105,23 @@ namespace NLMSlidePlugin.TimelinePlugin
             int textItemsCount = 0;
             int imageItemsCount = 0;
             int voiceItemsCount = 0;
+            int overlayItemsCount = 0;
             int skippedRows = 0;
 
             var allTimelineItems = new List<IItem>();
 
+            // SP-052: セグメントごとの開始フレームを記録 (overlay配置用)
+            var segmentStartFrames = new Dictionary<int, int>();
+
+            int segmentIndex = 0;
             foreach (var csvItem in items)
             {
                 int startFrame = Math.Max(0, (int)Math.Round(csvItem.StartTime * fps));
                 int lengthFrames = Math.Max(1, (int)Math.Round((csvItem.Duration ?? 3.0) * fps));
+
+                // SP-052: 開始フレームを記録
+                segmentStartFrames[segmentIndex] = startFrame;
+                segmentIndex++;
 
                 // SP-028: Use actual WAV duration when available
                 if (!string.IsNullOrWhiteSpace(csvItem.AudioFilePath) && File.Exists(csvItem.AudioFilePath))
@@ -215,6 +229,33 @@ namespace NLMSlidePlugin.TimelinePlugin
                     skippedRows++;
             }
 
+            // SP-052: オーバーレイ TextItem の配置
+            if (overlayPlan != null && overlayPlan.Overlays.Count > 0)
+            {
+                // style_template から overlay 設定を取得
+                var styleTemplate = StyleTemplateLoader.Load(csvFilePath: null, log: null);
+                var overlayTextItems = OverlayImporter.ConvertToTextItems(
+                    overlayPlan, segmentStartFrames, fps,
+                    timeline.VideoInfo.Width, timeline.VideoInfo.Height,
+                    styleTemplate?.Overlay, baseLayer + 17);
+
+                foreach (var overlayParam in overlayTextItems)
+                {
+                    var textItem = new TextItem
+                    {
+                        Frame = overlayParam.Frame,
+                        Layer = overlayParam.Layer,
+                        Length = overlayParam.Length,
+                        PlaybackRate = 100.0,
+                        Text = overlayParam.Text
+                    };
+                    // フォントサイズ・色・太字等はYMM4 API経由で設定
+                    // (TextItem のプロパティ互換性は YMM4 バージョンに依存)
+                    allTimelineItems.Add(textItem);
+                    overlayItemsCount++;
+                }
+            }
+
             if (allTimelineItems.Count > 0)
             {
                 // ImmutableList対応: Items.Add()は新リストを返す。
@@ -232,15 +273,15 @@ namespace NLMSlidePlugin.TimelinePlugin
                 timeline.RefreshTimelineLengthAndMaxLayer();
             }
 
-            return new AddToTimelineResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, voiceItemsCount, skippedRows, timeline.Items.Count);
+            return new AddToTimelineResult(importedRows, audioItemsCount, textItemsCount, imageItemsCount, voiceItemsCount, overlayItemsCount, skippedRows, timeline.Items.Count);
         }
 
         /// <summary>
         /// 非同期版 AddToTimeline（UIスレッドからの呼び出し用）
         /// </summary>
-        public Task<AddToTimelineResult> AddToTimelineAsync(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true, bool useVoiceItem = false)
+        public Task<AddToTimelineResult> AddToTimelineAsync(List<CsvTimelineItem> items, Timeline timeline, bool addSubtitles = true, bool useVoiceItem = false, OverlayImporter.OverlayPlan? overlayPlan = null)
         {
-            return Task.FromResult(AddToTimeline(items, timeline, addSubtitles, useVoiceItem));
+            return Task.FromResult(AddToTimeline(items, timeline, addSubtitles, useVoiceItem, overlayPlan));
         }
 
         private static int GetImportBaseLayer(Timeline timeline)
@@ -264,6 +305,7 @@ namespace NLMSlidePlugin.TimelinePlugin
         int TextItems,
         int ImageItems,
         int VoiceItems,
+        int OverlayItems,
         int SkippedRows,
         int TotalTimelineItems);
 

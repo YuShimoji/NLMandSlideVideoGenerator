@@ -1,7 +1,8 @@
 """
-CSV自動合成モジュール (SP-032 Gap 1, SP-033 拡張)
+CSV自動合成モジュール (SP-032 Gap 1, SP-033 拡張, SP-052 overlay統合)
 
 台本セグメント + スライドPNG → YMM4インポート用CSV (話者,テキスト,画像パス[,アニメーション種別])
++ overlay_plan.json 自動生成 (SP-052)
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from .utils.logger import logger
 from .visual.models import AnimationType, VisualResourcePackage
 from .visual.animation_assigner import AnimationAssigner
+from .overlay.overlay_planner import OverlayPlanner
 
 
 _SPEAKER_PREFIX_RE = re.compile(r"^(Host\d*|Speaker\d*|ナレーター)\s*[:：]\s*", re.IGNORECASE)
@@ -44,6 +46,7 @@ class CsvAssembler:
         output_path: Path,
         speaker_mapping: Optional[Dict[str, str]] = None,
         auto_animation: bool = True,
+        script_data: Optional[Dict[str, Any]] = None,
     ) -> Path:
         """台本セグメント + スライドPNG群 → CSV 4列形式で出力。
 
@@ -53,6 +56,7 @@ class CsvAssembler:
             output_path: 出力CSVファイルパス。
             speaker_mapping: 台本上の話者名 → YMM4ボイス名のマッピング。
             auto_animation: True の場合、アニメーション種別を自動割当する (SP-033)。
+            script_data: 台本全体データ (SP-052 overlay生成用)。segments + title 等を含む辞書。
 
         Returns:
             出力CSVのパス。
@@ -111,7 +115,32 @@ class CsvAssembler:
         logger.info(
             f"CSV自動合成完了: {len(rows)}行, スライド{num_slides}枚 → {output_path}"
         )
+
+        # SP-052: overlay_plan.json 生成
+        self._generate_overlay_plan(script_data, script_segments, output_path)
+
         return output_path
+
+    def _generate_overlay_plan(
+        self,
+        script_data: Optional[Dict[str, Any]],
+        script_segments: List[Dict[str, Any]],
+        csv_output_path: Path,
+    ) -> None:
+        """台本データから overlay_plan.json を CSV と同じディレクトリに生成する。"""
+        # script_data が渡されていない場合、segments から再構成
+        if script_data is None:
+            script_data = {"segments": script_segments}
+        elif "segments" not in script_data:
+            script_data = {**script_data, "segments": script_segments}
+
+        planner = OverlayPlanner()
+        plan = planner.plan(script_data)
+
+        if plan.overlays:
+            overlay_path = csv_output_path.parent / "overlay_plan.json"
+            plan.save(overlay_path)
+            logger.info(f"overlay_plan.json 生成: {len(plan.overlays)}件 → {overlay_path}")
 
     @staticmethod
     def _compute_mapping(
@@ -142,6 +171,7 @@ class CsvAssembler:
         package: VisualResourcePackage,
         output_path: Path,
         speaker_mapping: Optional[Dict[str, str]] = None,
+        script_data: Optional[Dict[str, Any]] = None,
     ) -> Path:
         """VisualResourcePackage (Orchestrator出力) からCSVを生成する。
 
@@ -195,6 +225,10 @@ class CsvAssembler:
             f"CSV合成完了 (Orchestrator): {len(rows)}行, "
             f"stock={stock_count}, slide={slide_count} → {output_path}"
         )
+
+        # SP-052: overlay_plan.json 生成
+        self._generate_overlay_plan(script_data, script_segments, output_path)
+
         return output_path
 
     @classmethod
@@ -239,4 +273,5 @@ class CsvAssembler:
             output_path=output_path,
             speaker_mapping=speaker_mapping,
             auto_animation=auto_animation,
+            script_data=script_bundle,
         )

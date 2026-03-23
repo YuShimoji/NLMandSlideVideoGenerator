@@ -1,6 +1,11 @@
 """
 スライド生成モジュール
 Google Slidesを使用したスライドの自動生成
+
+三段フォールバック:
+  1. テンプレート複製方式 (template_presentation_id 設定時)
+  2. プログラマティック方式 (API認証済み、テンプレートID未設定)
+  3. python-pptx モック (API未認証時)
 """
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -8,13 +13,14 @@ from dataclasses import dataclass
 import time
 import json
 
-# 基本的なロガー設定（loguruの代替）
 from core.utils.logger import logger
 
 from config.settings import settings
 from notebook_lm.transcript_processor import TranscriptInfo
 from .content_splitter import ContentSplitter
 from .google_slides_client import GoogleSlidesClient
+from .slide_templates import SlideTemplateConfig, SlideContent, LayoutType
+
 
 @dataclass
 class SlideInfo:
@@ -37,6 +43,7 @@ class SlideInfo:
         if self.duration and not self.estimated_duration:
             self.estimated_duration = self.duration
 
+
 @dataclass
 class SlidesPackage:
     """スライドパッケージ情報
@@ -58,6 +65,7 @@ class SlidesPackage:
         if self.slides is None:
             self.slides = []
 
+
 class SlideGenerator:
     """スライド生成クラス"""
 
@@ -67,10 +75,15 @@ class SlideGenerator:
         self.theme = settings.SLIDES_SETTINGS["theme"]
         self.output_dir = settings.SLIDES_DIR
         self.content_splitter = ContentSplitter()
+        self.template_config = SlideTemplateConfig.from_settings(settings.SLIDES_SETTINGS)
+
+    def _create_client(self) -> GoogleSlidesClient:
+        """テンプレート設定を注入した GoogleSlidesClient を生成する。"""
+        return GoogleSlidesClient(template_config=self.template_config)
 
     async def authenticate(self) -> bool:
         """Google Slides API 認証"""
-        client = GoogleSlidesClient()
+        client = self._create_client()
         available = client.is_available()
         if available:
             logger.info("Google Slides API 認証済み")
@@ -143,43 +156,47 @@ class SlideGenerator:
         presentation_title: str
     ) -> SlidesPackage:
         """
-        Google Slidesでスライドを生成
+        Google Slidesでスライドを生成 (三段フォールバック)
 
-        Args:
-            slide_contents: スライド内容一覧
-            presentation_title: プレゼンテーションタイトル
-
-        Returns:
-            SlidesPackage: 生成されたスライドパッケージ
+        1. テンプレート複製方式
+        2. プログラマティック方式
+        3. python-pptx モック
         """
         logger.info("Google Slidesでスライド生成中...")
-        client = GoogleSlidesClient()
+        client = self._create_client()
         presentation_id: Optional[str] = None
         slides: List[SlideInfo] = []
 
-        # まずはAPIが利用可能か試みる
-        try:
-            presentation_id = client.create_presentation(presentation_title)
-        except Exception as e:
-            presentation_id = None
-            logger.warning(f"Slides APIのプレゼン作成に失敗: {e}")
+        # SlideContent 中間表現に変換
+        default_layout = self.template_config.default_layout
+        contents = [SlideContent.from_dict(c, default_layout) for c in slide_contents]
+
+        # --- フォールバック 1: テンプレート複製方式 ---
+        if self.template_config.is_template_mode:
+            try:
+                presentation_id = client.generate_from_template(
+                    contents, presentation_title
+                )
+                if presentation_id:
+                    logger.info("テンプレート複製方式でスライド生成成功")
+            except Exception as e:
+                logger.warning(f"テンプレート複製方式に失敗: {e}")
+                presentation_id = None
+
+        # --- フォールバック 2: プログラマティック方式 ---
+        if not presentation_id:
+            try:
+                presentation_id = client.generate_programmatic(
+                    contents, presentation_title
+                )
+                if presentation_id:
+                    logger.info("プログラマティック方式でスライド生成成功")
+            except Exception as e:
+                presentation_id = None
+                logger.warning(f"プログラマティック方式に失敗: {e}")
 
         if presentation_id:
-            # API経由でのスライド追加（簡易）
-            try:
-                simplified = [
-                    {
-                        "title": c.get("title", f"スライド {i+1}"),
-                        "content": c.get("text", ""),
-                        "duration": c.get("duration", 15.0)
-                    }
-                    for i, c in enumerate(slide_contents)
-                ]
-                client.add_slides(presentation_id, simplified)
-            except Exception as e:
-                logger.warning(f"スライド追加でエラー（フォールバック継続）: {e}")
-
-            # SlideInfoを整備
+            # SlideInfo を整備
             for i, c in enumerate(slide_contents, start=1):
                 slides.append(SlideInfo(
                     slide_id=i,
@@ -190,19 +207,18 @@ class SlideGenerator:
                     speakers=c.get("speakers"),
                 ))
 
-            # PPTXとサムネイル画像を書き出し
+            # PPTX と サムネイル画像を書き出し
             pptx_path = self.output_dir / f"{presentation_id}.pptx"
             try:
                 client.export_pptx(presentation_id, pptx_path)
-            except (ImportError, AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
-                logger.warning(f"PPTXエクスポート失敗: {e}")
             except Exception as e:
                 logger.warning(f"PPTXエクスポート失敗: {e}")
 
             try:
-                client.export_thumbnails(presentation_id, settings.SLIDES_IMAGES_DIR / presentation_id)
-            except (ImportError, AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
-                logger.warning(f"サムネイル書き出し失敗: {e}")
+                client.export_thumbnails(
+                    presentation_id,
+                    settings.SLIDES_IMAGES_DIR / presentation_id,
+                )
             except Exception as e:
                 logger.warning(f"サムネイル書き出し失敗: {e}")
 
@@ -218,7 +234,7 @@ class SlideGenerator:
             logger.info(f"Google Slidesでの生成完了: {len(slides)}枚")
             return slides_package
 
-        # APIが使えない場合は既存のモック実装にフォールバック
+        # --- フォールバック 3: python-pptx モック ---
         logger.warning("Slides API未使用のため、モック生成にフォールバックします")
         slides = [
             SlideInfo(
@@ -250,13 +266,6 @@ class SlideGenerator:
     ) -> SlidesPackage:
         """
         スクリプトバンドルからスライドを生成（NotebookLM対応）
-
-        Args:
-            script_bundle: スクリプトバンドル
-            max_slides: 最大スライド数
-
-        Returns:
-            SlidesPackage: 生成されたスライドパッケージ
         """
         logger.info("スクリプトバンドルからスライド生成中...")
 
@@ -271,7 +280,6 @@ class SlideGenerator:
                 content=bundle_slide.get("content", ""),
                 layout_type=bundle_slide.get("layout", "title_and_content"),
                 estimated_duration=bundle_slide.get("duration", 15.0),
-                # Gemini/NotebookLM 由来のフィールド名差異を吸収
                 image_suggestions=bundle_slide.get(
                     "image_suggestions", bundle_slide.get("images", [])
                 ),
@@ -346,12 +354,7 @@ class SlideGenerator:
         return slides_package
 
     async def _download_slides_file(self, slides_package: SlidesPackage):
-        """
-        スライドファイルをダウンロード
-
-        Args:
-            slides_package: スライドパッケージ
-        """
+        """スライドファイルをダウンロード"""
         logger.info("スライドファイルダウンロード中...")
 
         # 既にAPIでエクスポート済みなら何もしない
@@ -394,12 +397,6 @@ class SlideGenerator:
             if slides_package.file_path is not None:
                 prs.save(str(slides_package.file_path))
                 logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
-        except (OSError, AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"PPTX生成に失敗しました: {e}")
-            if slides_package.file_path is not None:
-                with open(slides_package.file_path, "wb") as f:
-                    f.write(b"")
-                logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
         except Exception as e:
             logger.warning(f"PPTX生成に失敗しました: {e}")
             if slides_package.file_path is not None:
@@ -408,12 +405,7 @@ class SlideGenerator:
                 logger.info(f"スライドダウンロード完了: {slides_package.file_path}")
 
     async def _save_slides_metadata(self, slides_package: SlidesPackage):
-        """
-        スライドメタデータを保存
-
-        Args:
-            slides_package: スライドパッケージ
-        """
+        """スライドメタデータを保存"""
         metadata_path = self.output_dir / f"{slides_package.presentation_id}_metadata.json"
 
         metadata = {

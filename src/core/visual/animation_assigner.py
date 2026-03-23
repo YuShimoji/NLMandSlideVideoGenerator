@@ -1,13 +1,23 @@
-"""アニメーション自動割当 (SP-033 Phase 1)
+"""アニメーション自動割当 (SP-033 Phase 1, SP-052 Phase 3 場面別判定)
 
 セグメント列に対して視覚的多様性を確保するアニメーション種別を自動割当する。
+SP-052: セグメントの性質（スライド/統計/トピック変更/章開始）に基づく判定を追加。
 """
 from __future__ import annotations
 
+import random
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .models import AnimationType, VisualResource, VisualResourcePackage
+
+# Statistics detection regex (shared with overlay_planner)
+_STAT_RE = re.compile(
+    r"[\$￥€]?\d[\d,\.]*\s*"
+    r"(?:億|万|千|兆|百万|%|人|件|回|円|ドル|[KMBT](?:illion)?)?",
+    re.IGNORECASE,
+)
 
 
 class AnimationAssigner:
@@ -115,6 +125,7 @@ class AnimationAssigner:
         segments: List[Dict[str, Any]],
         slide_image_paths: Optional[List[Path]] = None,
         segment_to_slide: Optional[Dict[int, Optional[int]]] = None,
+        context_aware: bool = True,
     ) -> VisualResourcePackage:
         """台本セグメント + スライドマッピングからアニメーションを割当する。
 
@@ -124,13 +135,14 @@ class AnimationAssigner:
             segments: 台本セグメント群。
             slide_image_paths: スライドPNG画像パス群。
             segment_to_slide: セグメント→スライドインデックスのマッピング。
+            context_aware: True の場合、セグメント性質に基づく場面別判定を行う (SP-052)。
         """
         segment_count = len(segments)
         if not slide_image_paths:
             none_list: List[Optional[Path]] = [None] * segment_count
             return self.assign(segment_count, none_list)
 
-        # マッピングが無い場合は1:1で割当
+        # 画像パスの解決
         if segment_to_slide is None:
             img_list: List[Optional[Path]] = []
             for i in range(segment_count):
@@ -138,15 +150,80 @@ class AnimationAssigner:
                     img_list.append(slide_image_paths[i])
                 else:
                     img_list.append(None)
+        else:
+            img_list = []
+            for i in range(segment_count):
+                slide_idx = segment_to_slide.get(i)
+                if slide_idx is not None and slide_idx < len(slide_image_paths):
+                    img_list.append(slide_image_paths[slide_idx])
+                else:
+                    img_list.append(None)
+
+        if not context_aware or self._text_slides:
             return self.assign(segment_count, img_list)
 
-        # マッピングに基づいて画像パスを解決
-        mapped_list: List[Optional[Path]] = []
-        for i in range(segment_count):
-            slide_idx = segment_to_slide.get(i)
-            if slide_idx is not None and slide_idx < len(slide_image_paths):
-                mapped_list.append(slide_image_paths[slide_idx])
-            else:
-                mapped_list.append(None)
+        # SP-052: 場面別判定
+        return self._assign_context_aware(segments, img_list)
 
-        return self.assign(segment_count, mapped_list)
+    def _assign_context_aware(
+        self,
+        segments: List[Dict[str, Any]],
+        image_paths: List[Optional[Path]],
+    ) -> VisualResourcePackage:
+        """SP-052: セグメントの性質に基づくアニメーション自動判定。
+
+        判定優先度:
+        1. 画像なし → STATIC
+        2. スライド画像 (source == "slide") → STATIC (テキスト可読性優先)
+        3. 統計データあり → STATIC (数値の可読性優先)
+        4. 章の開始 (section 変化) → ZOOM_IN (注目を集める)
+        5. トピック変更 (section 変化の直後) → PAN_LEFT or PAN_RIGHT (場面転換)
+        6. デフォルト → KEN_BURNS (写真・イラスト向け)
+        """
+        resources: List[VisualResource] = []
+        prev_section: Optional[str] = None
+
+        for i, seg in enumerate(segments):
+            img = image_paths[i]
+            section = seg.get("section", "")
+            content = seg.get("content", "") or seg.get("text", "")
+            source = seg.get("image_source", "")
+
+            if img is None:
+                resources.append(VisualResource(
+                    image_path=None, animation_type=AnimationType.STATIC, source="none",
+                ))
+                prev_section = section or prev_section
+                continue
+
+            # スライド画像 → STATIC
+            if source == "slide":
+                resources.append(VisualResource(
+                    image_path=img, animation_type=AnimationType.STATIC, source="slide",
+                ))
+                prev_section = section or prev_section
+                continue
+
+            # 統計データ含有 → STATIC
+            if _STAT_RE.search(content):
+                resources.append(VisualResource(
+                    image_path=img, animation_type=AnimationType.STATIC, source="stock",
+                ))
+                prev_section = section or prev_section
+                continue
+
+            # 章の開始 (section 変化) → ZOOM_IN
+            if section and section != prev_section:
+                resources.append(VisualResource(
+                    image_path=img, animation_type=AnimationType.ZOOM_IN, source="stock",
+                ))
+                prev_section = section
+                continue
+
+            # デフォルト → KEN_BURNS
+            resources.append(VisualResource(
+                image_path=img, animation_type=AnimationType.KEN_BURNS, source="stock",
+            ))
+            prev_section = section or prev_section
+
+        return VisualResourcePackage(resources=resources, source_provider="context_aware")

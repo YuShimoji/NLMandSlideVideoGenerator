@@ -149,22 +149,54 @@ WARN は画像パス不在（サンプルCSVの相対パス参照先が未配置
 
 ---
 
-## G. 全統合E2E (最終レンダリング)
+## G. テキストオーバーレイ検証 (SP-052)
 
-上記 A〜F を含むCSVで YMM4 インポート → レンダリング → mp4 出力。
+### 準備
+
+1. Python でサンプル台本から overlay_plan.json を生成:
+
+```python
+from core.overlay.overlay_planner import OverlayPlanner
+import json
+
+script = json.load(open("output_csv/script.json", encoding="utf-8"))
+planner = OverlayPlanner()
+plan = planner.plan(script)
+plan.save("output_csv/overlay_plan.json")
+```
+
+2. overlay_plan.json を CSV と同じディレクトリに配置
 
 ### 検証項目
 
 | # | 確認項目 | 期待値 | 結果 |
 |---|----------|--------|------|
-| G1 | mp4ファイル生成 | 指定先に出力 | |
-| G2 | 動画再生 | エラーなく最後まで再生 | |
-| G3 | 字幕の色分け | 話者ごとに色が異なる | |
-| G4 | BGM | 背景に BGM が再生される | |
-| G5 | ストック画像 | セグメントに対応する画像が表示 | |
-| G6 | アニメーション | 各種アニメが視覚的に確認可能 | |
-| G7 | 音声同期 | テキストとボイスが一致 | |
-| G8 | 総尺 | セグメント数に応じた適切な長さ | |
+| G1 | overlay_plan.json 生成 | セクション変更時に chapter_title エントリが生成される | |
+| G2 | key_point 抽出 | key_points 配列から key_point エントリが生成される | |
+| G3 | statistic 検出 | 数値表現を含むセグメントで statistic エントリが生成される | |
+| G4 | source_citation 検出 | 「出典:」等の表現で citation エントリが生成される | |
+| G5 | YMM4 TextItem 配置 | OverlayImporter が TextItem を Layer 7 に正しく配置 | |
+| G6 | オーバーレイの視認性 | 章タイトル/キーポイントが字幕と重ならず可読 | |
+
+---
+
+## H. 全統合E2E (最終レンダリング)
+
+上記 A〜G を含むCSVで YMM4 インポート → レンダリング → mp4 出力。
+
+### 検証項目
+
+| # | 確認項目 | 期待値 | 結果 |
+|---|----------|--------|------|
+| H1 | mp4ファイル生成 | 指定先に出力 | |
+| H2 | 動画再生 | エラーなく最後まで再生 | |
+| H3 | 字幕の色分け | 話者ごとに色が異なる | |
+| H4 | BGM | 背景に BGM が再生される | |
+| H5 | ストック画像 | セグメントに対応する画像が表示 | |
+| H6 | アニメーション | 各種アニメが視覚的に確認可能 | |
+| H7 | 音声同期 | テキストとボイスが一致 | |
+| H8 | 総尺 | セグメント数に応じた適切な長さ | |
+| H9 | テキストオーバーレイ | 章タイトル/キーポイントが表示される (SP-052) | |
 
 ---
 

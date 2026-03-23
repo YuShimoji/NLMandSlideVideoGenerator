@@ -834,6 +834,22 @@ async def run_pipeline(
             state.mark_done("assemble", "final.csv")
             state.save(work_dir)
 
+    # --- Post-pipeline: Overlay Plan Generation (SP-052) ---
+    overlay_plan_path = work_dir / "overlay_plan.json"
+    if script_bundle and segments and not overlay_plan_path.exists():
+        try:
+            from core.overlay.overlay_planner import OverlayPlanner
+
+            planner = OverlayPlanner()
+            overlay_plan = planner.plan(script_bundle)
+            if overlay_plan.overlays:
+                overlay_plan.save(overlay_plan_path)
+                print(f"\n=== Overlay Plan: {len(overlay_plan.overlays)} overlays → {overlay_plan_path} ===")
+            else:
+                print("\n=== Overlay Plan: No overlays detected (skipped) ===")
+        except Exception as e:
+            print(f"\n=== Overlay Plan: generation failed ({e}), continuing ===")
+
     # --- Post-pipeline: Pre-Export Validation ---
     if reviewed_csv.exists():
         from core.export_validator import ExportValidator

@@ -289,7 +289,7 @@ def check_checklist_exists(r: PreFlightResult) -> None:
     checklist = PROJECT_ROOT / "docs" / "integration_test_checklist.md"
     if checklist.exists():
         content = checklist.read_text(encoding="utf-8")
-        sections = re.findall(r"^## [A-G]\.", content, re.MULTILINE)
+        sections = re.findall(r"^## [A-Z]\.", content, re.MULTILINE)
         r.ok(f"integration_test_checklist.md: {len(sections)} セクション")
     else:
         r.fail("docs/integration_test_checklist.md が存在しない")

@@ -124,6 +124,15 @@ class Settings:
             "long_line_max_subslides": 3,
             "min_subslide_duration": 0.5,
             "prefer_gemini_slide_content": os.getenv("SLIDES_USE_GEMINI_CONTENT", "false").lower() == "true",
+            # Google Slides テンプレート設定
+            # テンプレートプレゼンIDが設定されていればテンプレート複製方式を使用
+            # 未設定時はプログラマティック方式にフォールバック
+            "template_presentation_id": os.getenv("SLIDES_TEMPLATE_PRESENTATION_ID", ""),
+            "default_layout": os.getenv("SLIDES_DEFAULT_LAYOUT", "TITLE_AND_BODY"),
+            "title_placeholder_tag": "{{TITLE}}",
+            "body_placeholder_tag": "{{BODY}}",
+            "speaker_placeholder_tag": "{{SPEAKER}}",
+            "keypoints_placeholder_tag": "{{KEYPOINTS}}",
         }
         
         # プレースホルダースライドテーマ設定

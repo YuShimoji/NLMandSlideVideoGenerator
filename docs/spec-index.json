@@ -417,10 +417,10 @@
     "id": "SP-047",
     "title": "Video Output Quality Standard",
     "status": "partial",
-    "pct": 75,
+    "pct": 85,
     "cat": "pipeline",
     "file": "docs/specs/video_output_quality_standard.md",
-    "summary": "出力動画品質のYouTube公開水準達成。Phase 1(API調査)+1.5(台本品質改善)+Phase 2(実検証)+Phase 3(Wikimedia Commons統合+E2E dry-runスクリプト+自動テスト16件+手動テストガイド36項目)完了。残: Phase 4(NotebookLMスライド統合), Phase 5(実API品質検証)"
+    "summary": "出力動画品質のYouTube公開水準達成。Phase 1-3完了 + Phase 3拡張: Playwright NLM半自動化 (create_notebook/add_source_text/add_source_file/セレクタ集約/19テスト)。残: Phase 4(NotebookLMスライド統合), Phase 5(実API品質検証+実ブラウザテスト)"
   },
   {
     "id": "SP-048",
@@ -453,19 +453,19 @@
     "id": "SP-051",
     "title": "Audio Transcription Pipeline",
     "status": "partial",
-    "pct": 80,
+    "pct": 90,
     "cat": "pipeline",
     "file": "docs/specs/audio_transcription_spec.md",
-    "summary": "NLM Audio Overview音声ファイルからGemini Audio APIで文字起こし+構造化を1回のAPIコールで実行。Phase 2自動化。Phase 1実装済み(AudioTranscriber+CLI+23テスト)"
+    "summary": "NLM Audio Overview音声→Gemini Audio APIで構造化JSON (1段階方式)。Phase 1完了: AudioTranscriber実装(inline/FileAPI自動切替, バリデーション, speaker_mapping, 中間テキスト保存) + CLI統合済み + 37テスト。レガシーTranscriptProcessor/AudioGeneratorシミュレーション撤去。残: Phase 2(実音声E2E+プロンプト調整)"
   },
   {
     "id": "SP-052",
     "title": "YMM4 Video Quality Template Design",
     "status": "partial",
-    "pct": 55,
+    "pct": 65,
     "cat": "plugin",
     "file": "docs/specs/ymm4_video_quality_template.md",
-    "summary": "YMM4動画品質テンプレート設計。Phase 1-3完了: overlay_plan.json自動生成(OverlayPlanner), CsvAssembler統合, YMM4プラグインOverlayImporter, StyleTemplateLoader拡張(overlay/characters/background), video_templatesディレクトリ構成。残: Phase 4実検証+テンプレート.y4mmp作成(人間)"
+    "summary": "YMM4動画品質テンプレート設計。Phase 1-3 AI側完了: overlay_plan.json自動生成+CsvImportDialog統合+research_cli統合。AnimationAssigner場面別判定は保留(動画デザイン方向性未定)。残: Phase 4実検証+テンプレート.y4mmp作成(人間)+動画デザインユースケース確定"
   },
   {
     "id": "SP-053",
