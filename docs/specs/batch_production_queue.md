@@ -66,7 +66,7 @@
 
 - `defaults`: 全トピック共通のパラメータ
 - 各トピックで個別にオーバーライド可能
-- `seed_urls` は任意（省略時はBrave Search APIのみ）
+- `seed_urls` は任意（~~省略時はBrave Search APIのみ~~ **LEGACY: Brave Search廃止。ソース投入は人間がNotebookLMに直接行う。DESIGN_FOUNDATIONS Section 5参照**）
 
 ---
 
@@ -111,7 +111,7 @@
 | Gemini | 20 req/day | 3-6 req (台本+分類+キーワード) | フォールバックチェーン |
 | Pexels | 200 req/h | 30-90 req (ストック画像検索) | トピック間にインターバル |
 | Pixabay | 5000 req/h | フォールバックのみ | 十分 |
-| Brave Search | 2000 req/月 (無料) | 3-9 req (ソース収集) | 十分 |
+| ~~Brave Search~~ | ~~2000 req/月 (無料)~~ | ~~3-9 req (ソース収集)~~ | **LEGACY: 廃止 (2026-03-22)** |
 
 ---
 

@@ -74,12 +74,9 @@ SP-053 | Status: draft | Updated: 2026-03-23
 │  │ Status: Audio Overview生成完了 (12:34, 8分32秒)      │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                             │
-│  ┌─ AI評価 ───────────────────────────────────────────┐   │
-│  │ トピックA: ★★★★☆ "情報密度高い、競合少ない"          │   │
-│  │ トピックB: ★★★☆☆ "既出トピック、差別化必要"          │   │
-│  │ トピックC: ★★☆☆☆ "ソース不足"                       │   │
-│  │                                                       │   │
-│  │ [Go: A,B] [No-Go: C] [全てGo]                        │   │
+│  ┌─ LEGACY: AI評価 (廃止) ────────────────────────────┐   │
+│  │ ※ Gemini動画適性スコアリングは廃止 (2026-03-23)      │   │
+│  │ ※ トピック選定は人間判断。Go/No-Goは手動で行う        │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                                                             │
 │  [選定を確定 → 構造化フェーズへ]                             │
@@ -91,8 +88,8 @@ SP-053 | Status: draft | Updated: 2026-03-23
 1. トピックを1-5件入力 (手動 or RSS取得)
 2. 各トピックについてNotebookLMでAudio Overview生成 (手動 or Playwright支援)
 3. 音声ファイルを指定
-4. AI評価を実行 (Gemini: トピックの動画適性スコア+コメント)
-5. Go/No-Go判定
+4. ~~AI評価を実行 (Gemini: トピックの動画適性スコア+コメント)~~ **LEGACY: 廃止。人間がトピック選定を判断**
+5. Go/No-Go判定 (人間判断)
 6. 確定 → Goしたラインが「構造化」列に移動
 
 ---
@@ -227,10 +224,10 @@ class ProductionLine:
     thumbnail_path: str | None      # サムネイル画像
     youtube_url: str | None         # YouTube URL
 
-    # AI評価
-    ai_score: float | None          # 動画適性スコア (0-5)
-    ai_comment: str | None          # AI評価コメント
-    go_decision: bool | None        # Go/No-Go判定
+    # AI評価 — LEGACY: 廃止 (2026-03-23)。トピック選定は人間判断。
+    ai_score: float | None          # LEGACY: 常にNone
+    ai_comment: str | None          # LEGACY: 常にNone
+    go_decision: bool | None        # 人間が手動で判定
 
     # メタ
     topic_dir: str                  # data/topics/{topic_id}/

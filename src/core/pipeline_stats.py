@@ -110,12 +110,10 @@ class PipelineStats:
         if total_alignment > 0:
             self.alignment_rate = round(self.alignment_supported / total_alignment, 3)
 
-        # 画像ヒット率
-        total_visual = self.stock_image_count + self.ai_image_count + self.text_slide_count
+        # 画像ヒット率 (レガシーの ai_image_count / text_slide_count は常に0のため計算に含めない)
+        total_visual = self.stock_image_count
         if total_visual > 0:
-            self.image_hit_rate = round(
-                (self.stock_image_count + self.ai_image_count) / total_visual, 3
-            )
+            self.image_hit_rate = 1.0  # stock_image のみが現行。全てヒット扱い
 
         # 視覚カバー率
         if self.segment_count > 0:

@@ -59,10 +59,10 @@ class TestPipelineStats:
 
     def test_record_visual(self) -> None:
         stats = PipelineStats()
-        stats.record_visual(stock=11, ai=0, text_slide=18)
+        stats.record_visual(stock=11, ai=0, text_slide=0)
         assert stats.stock_image_count == 11
         assert stats.ai_image_count == 0
-        assert stats.text_slide_count == 18
+        assert stats.text_slide_count == 0  # レガシー: 常に0
 
     def test_record_validation(self) -> None:
         stats = PipelineStats()
@@ -84,16 +84,17 @@ class TestPipelineStats:
 
     def test_finalize_image_hit_rate(self) -> None:
         stats = PipelineStats()
-        stats.record_visual(stock=11, ai=2, text_slide=18)
+        stats.record_visual(stock=11, ai=0, text_slide=0)
         stats.finalize()
-        assert stats.image_hit_rate == pytest.approx(13 / 31, abs=0.01)
+        assert stats.image_hit_rate == 1.0  # stock_imageのみが現行
 
     def test_finalize_visual_ratio(self) -> None:
         stats = PipelineStats()
         stats.record_segments(29)
-        stats.record_visual(stock=11, ai=0, text_slide=18)
+        stats.record_visual(stock=11, ai=0, text_slide=0)
         stats.finalize()
-        assert stats.visual_ratio == pytest.approx(29 / 29, abs=0.01)
+        # visual_ratio = stock_image_count / segment_count (レガシーのai/text_slideは常に0)
+        assert stats.visual_ratio == pytest.approx(11 / 29, abs=0.01)
 
     def test_finalize_zero_division_safe(self) -> None:
         stats = PipelineStats()
@@ -111,7 +112,7 @@ class TestSerialization:
         stats.record_sources(3)
         stats.record_segments(10)
         stats.record_alignment(8, 1, 1)
-        stats.record_visual(stock=5, ai=1, text_slide=4)
+        stats.record_visual(stock=5, ai=0, text_slide=0)
         stats.record_validation(errors=0, warnings=1)
         stats.speaker_mapping_applied = True
         stats.step_durations = {"collect": 0.5, "script": 10.0}
@@ -122,7 +123,7 @@ class TestSerialization:
         assert d["topic"] == "AI技術"
         assert d["speed"]["step_durations"]["collect"] == 0.5
         assert d["density"]["alignment_rate"] == pytest.approx(0.8, abs=0.01)
-        assert d["visual"]["image_hit_rate"] == pytest.approx(0.6, abs=0.01)
+        assert d["visual"]["image_hit_rate"] == 1.0  # stock_imageのみが現行
         assert d["consistency"]["speaker_mapping_applied"] is True
 
     def test_save_and_load(self, tmp_path: Path) -> None:
@@ -131,7 +132,7 @@ class TestSerialization:
         stats.record_sources(5)
         stats.record_segments(15)
         stats.record_alignment(12, 2, 1)
-        stats.record_visual(stock=8, ai=0, text_slide=7)
+        stats.record_visual(stock=8, ai=0, text_slide=0)
         stats.record_validation(errors=1, warnings=3)
         stats.speaker_mapping_applied = True
         stats.step_durations = {"collect": 0.5, "script": 30.0, "align": 100.0}
@@ -159,7 +160,7 @@ class TestSerialization:
     def test_json_roundtrip(self, tmp_path: Path) -> None:
         stats = PipelineStats()
         stats.start_pipeline("roundtrip", "テスト")
-        stats.record_visual(stock=3, ai=1, text_slide=6)
+        stats.record_visual(stock=3, ai=0, text_slide=0)
         stats.finalize()
 
         stats.save(tmp_path)
@@ -167,8 +168,8 @@ class TestSerialization:
             raw = json.load(f)
 
         assert raw["visual"]["stock_image_count"] == 3
-        assert raw["visual"]["ai_image_count"] == 1
-        assert raw["visual"]["text_slide_count"] == 6
+        assert raw["visual"]["ai_image_count"] == 0  # レガシー: 常に0
+        assert raw["visual"]["text_slide_count"] == 0  # レガシー: 常に0
 
 
 class TestCLIStats:
@@ -180,7 +181,7 @@ class TestCLIStats:
         stats.record_sources(5)
         stats.record_segments(10)
         stats.record_alignment(8, 1, 1)
-        stats.record_visual(stock=4, ai=1, text_slide=5)
+        stats.record_visual(stock=4, ai=0, text_slide=0)
         stats.record_validation(errors=0, warnings=1)
         stats.total_duration = kwargs.get("duration", 120.0)
         stats.step_durations = {"collect": 1.0, "script": 50.0, "align": 60.0}
@@ -310,7 +311,7 @@ class TestSummary:
         stats.record_sources(5)
         stats.record_segments(29)
         stats.record_alignment(24, 4, 1)
-        stats.record_visual(stock=11, ai=0, text_slide=18)
+        stats.record_visual(stock=11, ai=0, text_slide=0)
         stats.step_durations = {"collect": 0.5, "script": 30.7, "align": 253.2}
         stats.total_duration = 338.5
         stats.finalize()

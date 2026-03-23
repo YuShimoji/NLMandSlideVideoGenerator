@@ -67,10 +67,12 @@ class ProductionLine:
     youtube_url: str = ""
     youtube_video_id: str = ""
 
-    # AI評価
-    ai_score: float = 0.0        # 0-5
-    ai_comment: str = ""
-    go_decision: bool | None = None
+    # AI評価 — LEGACY: Gemini動画適性スコアリング廃止 (2026-03-23)
+    # トピック選定は人間判断。DESIGN_FOUNDATIONS Section 0準拠。
+    # 後方互換のため残存。新規コードでは使用しないこと。
+    ai_score: float = 0.0        # LEGACY: 常に0
+    ai_comment: str = ""         # LEGACY: 常に空文字
+    go_decision: bool | None = None  # LEGACY: 常にNone
 
     # メタ
     topic_dir: str = ""           # data/topics/{topic_id}/
